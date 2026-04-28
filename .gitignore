@@ -1,0 +1,189 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.yarn/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# Expo
+.expo/
+.expo-shared/
+expo-env.d.ts
+web-build/
+
+# iOS
+ios/Pods/
+ios/build/
+ios/.xcode.env.local
+*.xcuserdata
+*.xcworkspace/xcuserdata/
+DerivedData/
+
+# Android
+android/build/
+android/.gradle/
+android/.idea/
+android/app/build/
+android/app/release/
+android/local.properties
+*.keystore
+!debug.keystore
+*.hprof
+
+# EAS
+.easignore
+eas-build-*.tar.gz
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+.idea/
+*.swp
+*.swo
+*~
+.fleet/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Sentry
+.sentryclirc
+sentry.properties
+
+# Storybook
+storybook-static/
+
+# Maestro
+.maestro/
+
+# Local SQLite
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+!packages/db/fixtures/**/*.sqlite
+!packages/db/fixtures/**/*.db
+
+# Misc
+.cache/
+tmp/
+temp/
+
+# Documentation (hosted on Outline)
+docs/
+
+# AI tooling
+CLAUDE.md
+.cursorrules
+.aider*
+.github/copilot-instructions.md
+
+# Apple iOS credentials
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+*.certSigningRequest
+AuthKey_*.p8
+GoogleService-Info.plist
+ExportOptions.plist
+
+# Android credentials
+*.jks
+keystore.properties
+google-services.json
+android/app/google-services.json
+android/app/upload-keystore.jks
+android/app/release.keystore
+
+# EAS / cloud credentials
+credentials.json
+eas-credentials*.json
+*service-account*.json
+google-play-service-account*.json
+.aws/
+aws-credentials*
+.gcloud/
+gcp-key*.json
+
+# Generic secrets
+*.pem
+*.key
+*.crt
+*.der
+secrets.yaml
+secrets.yml
+secrets.json
+.secrets/
+.vault-token
+
+# Doppler
+.doppler.yaml
+.doppler/
+doppler.env
+
+# Sentry tokens
+.env.sentry-build-plugin
+sentry-auth-token
+
+# SSH / GPG keys
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+id_ecdsa
+id_ecdsa.*
+*.gpg
+*.asc
+
+# Database dumps
+*.sql
+*.dump
+*.bak
+!packages/db/migrations/**/*.sql
+!services/edge-functions/**/migrations/**/*.sql
+
+# iOS xcconfig secrets
+*.local.xcconfig
+Secrets.xcconfig
+
+# Native crash logs
+*.crash
+hs_err_pid*.log
+
+# Metro
+.metro-cache/
+.metro-health-check*
+.expo-internal/
+
