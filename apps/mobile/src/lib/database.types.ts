@@ -120,35 +120,54 @@ export type Database = {
       media: {
         Row: {
           created_at: string
+          event_id: string | null
           height: number | null
           id: string
           kind: string
+          mime_type: string | null
+          name: string | null
           owner_id: string | null
+          size_bytes: number | null
           storage_path: string
           trip_id: string
           width: number | null
         }
         Insert: {
           created_at?: string
+          event_id?: string | null
           height?: number | null
           id?: string
           kind?: string
+          mime_type?: string | null
+          name?: string | null
           owner_id?: string | null
+          size_bytes?: number | null
           storage_path: string
           trip_id: string
           width?: number | null
         }
         Update: {
           created_at?: string
+          event_id?: string | null
           height?: number | null
           id?: string
           kind?: string
+          mime_type?: string | null
+          name?: string | null
           owner_id?: string | null
+          size_bytes?: number | null
           storage_path?: string
           trip_id?: string
           width?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: 'media_event_id_fkey'
+            columns: ['event_id']
+            isOneToOne: false
+            referencedRelation: 'trip_events'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'media_owner_id_fkey'
             columns: ['owner_id']
