@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
@@ -43,19 +43,14 @@ export default function AddExpenseScreen() {
   const [picked, setPicked] = useState<string | null>(null)
   const currency = picked ?? tripCurrency
 
-  // Who shares the expense, and with what weight. Seeded to everyone, weight 1 (equal).
-  const [shares, setShares] = useState<ShareState>({})
-  useEffect(() => {
-    if (!members) {
-      return
-    }
-    setShares((prev) => {
-      if (Object.keys(prev).length > 0) {
-        return prev
-      }
-      return Object.fromEntries(members.map((m) => [m.id, { included: true, weight: 1 }]))
-    })
-  }, [members])
+  // Only user-touched members are stored; everyone else defaults to included, weight 1.
+  // Deriving the default (instead of seeding state) avoids a setState-in-effect and
+  // means members who join while the form is open are included by default.
+  const [overrides, setOverrides] = useState<ShareState>({})
+  const stateFor = useCallback(
+    (memberId: string) => overrides[memberId] ?? { included: true, weight: 1 },
+    [overrides],
+  )
 
   const {
     control,
@@ -100,9 +95,9 @@ export default function AddExpenseScreen() {
       return []
     }
     return members
-      .filter((m) => shares[m.id]?.included)
-      .map((m) => ({ memberId: m.id, weight: shares[m.id]?.weight ?? 1 }))
-  }, [members, shares])
+      .filter((m) => stateFor(m.id).included)
+      .map((m) => ({ memberId: m.id, weight: stateFor(m.id).weight }))
+  }, [members, stateFor])
 
   // Live per-member shares for the preview (memberId -> cents).
   const shareByMember = useMemo(() => {
@@ -115,11 +110,17 @@ export default function AddExpenseScreen() {
   const blocked = (isForeign && !canConvert) || participants.length === 0
 
   function toggle(memberId: string) {
-    setShares((s) => ({ ...s, [memberId]: { ...s[memberId], included: !s[memberId]?.included } }))
+    setOverrides((s) => {
+      const cur = s[memberId] ?? { included: true, weight: 1 }
+      return { ...s, [memberId]: { ...cur, included: !cur.included } }
+    })
   }
 
   function setWeight(memberId: string, weight: number) {
-    setShares((s) => ({ ...s, [memberId]: { ...s[memberId], weight: Math.max(1, weight) } }))
+    setOverrides((s) => {
+      const cur = s[memberId] ?? { included: true, weight: 1 }
+      return { ...s, [memberId]: { ...cur, weight: Math.max(1, weight) } }
+    })
   }
 
   async function onSubmit(values: CreateExpenseValues) {
@@ -224,8 +225,8 @@ export default function AddExpenseScreen() {
 
       <Text style={styles.sectionTitle}>Split between</Text>
       {members.map((member) => {
-        const state = shares[member.id]
-        const included = state?.included ?? false
+        const state = stateFor(member.id)
+        const included = state.included
         const name = member.user_id === userId ? 'You' : (member.display_name ?? 'Member')
         const share = shareByMember.get(member.id)
         return (
@@ -248,16 +249,16 @@ export default function AddExpenseScreen() {
               <View style={styles.memberRight}>
                 <View style={styles.stepper}>
                   <Pressable
-                    onPress={() => setWeight(member.id, (state?.weight ?? 1) - 1)}
+                    onPress={() => setWeight(member.id, state.weight - 1)}
                     accessibilityRole="button"
                     accessibilityLabel="Decrease shares"
                     hitSlop={6}
                   >
                     <Ionicons name="remove" size={18} color={theme.colors.foreground} />
                   </Pressable>
-                  <Text style={styles.weight}>{state?.weight ?? 1}</Text>
+                  <Text style={styles.weight}>{state.weight}</Text>
                   <Pressable
-                    onPress={() => setWeight(member.id, (state?.weight ?? 1) + 1)}
+                    onPress={() => setWeight(member.id, state.weight + 1)}
                     accessibilityRole="button"
                     accessibilityLabel="Increase shares"
                     hitSlop={6}
