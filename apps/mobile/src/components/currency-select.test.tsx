@@ -43,14 +43,14 @@ describe('CurrencySelect', () => {
     render(<CurrencySelect value="USD" currencies={CURRENCIES} onChange={jest.fn()} />)
 
     // getByRole with selected:true finds only the active chip
-    expect(screen.getByRole('button', { name: 'USD', selected: true })).toBeOnTheScreen()
+    expect(screen.getByRole('radio', { name: 'USD', selected: true })).toBeOnTheScreen()
   })
 
   it('marks non-selected chips with accessibilityState selected=false', () => {
     render(<CurrencySelect value="USD" currencies={CURRENCIES} onChange={jest.fn()} />)
 
     // EUR is not selected — querying selected:true should not find it
-    expect(screen.queryByRole('button', { name: 'EUR', selected: true })).toBeNull()
+    expect(screen.queryByRole('radio', { name: 'EUR', selected: true })).toBeNull()
   })
 
   it('calls onChange when the currently selected chip is pressed again', () => {
@@ -66,6 +66,6 @@ describe('CurrencySelect', () => {
     render(<CurrencySelect value="" currencies={[]} onChange={jest.fn()} />)
 
     // No chips should be present; component should not crash
-    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.queryByRole('radio')).toBeNull()
   })
 })

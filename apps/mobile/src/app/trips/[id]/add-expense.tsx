@@ -22,6 +22,7 @@ import {
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
 import { useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
+import { paramString } from '@/lib/routing'
 
 const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
 
@@ -29,7 +30,7 @@ type ShareState = Record<string, { included: boolean; weight: number }>
 
 export default function AddExpenseScreen() {
   const params = useLocalSearchParams<{ id: string }>()
-  const tripId = (Array.isArray(params.id) ? params.id[0] : params.id) ?? ''
+  const tripId = paramString(params.id)
   const router = useRouter()
   const { theme } = useUnistyles()
   const { session } = useAuth()

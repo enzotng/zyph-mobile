@@ -8,10 +8,11 @@ import { useAuth } from '@/features/auth'
 import { formatAmount, useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
 import { useDeleteTrip, useTrip } from '@/features/trips'
+import { paramString } from '@/lib/routing'
 
 export default function TripDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>()
-  const tripId = (Array.isArray(params.id) ? params.id[0] : params.id) ?? ''
+  const tripId = paramString(params.id)
   const { data: trip, isLoading, isError } = useTrip(tripId)
   const { data: expenses } = useExpenses(tripId)
   const { data: balances } = useTripBalances(tripId)
