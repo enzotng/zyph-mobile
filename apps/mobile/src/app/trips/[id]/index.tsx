@@ -73,6 +73,13 @@ export default function TripDetailScreen() {
               </Pressable>
             </View>
 
+            <Link
+              href={{ pathname: '/trips/[id]/timeline', params: { id: tripId } }}
+              style={styles.timelineLink}
+            >
+              View timeline →
+            </Link>
+
             {members && members.length > 0 ? (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Members</Text>
@@ -193,6 +200,11 @@ const styles = StyleSheet.create((theme, rt) => ({
   link: {
     color: theme.colors.primary,
     fontWeight: '600',
+  },
+  timelineLink: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+    paddingTop: theme.gap(3),
   },
   muted: {
     color: theme.colors.muted,
