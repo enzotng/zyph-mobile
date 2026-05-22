@@ -1,0 +1,13 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 0b333458104c5cf5718e39a9e76bd17b98265ec0..805397d60c2a98ff6609b7f843ef581d4400d17c 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -68,7 +68,7 @@ function __awaiter(thisArg, _arguments, P, generator) {
+ let otelModulePromise = null;
+ const OTEL_PKG = "@opentelemetry/api";
+ function loadOtel() {
+-	if (otelModulePromise === null) otelModulePromise = import(/* webpackIgnore: true */ /* turbopackIgnore: true */ /* @vite-ignore */ OTEL_PKG).catch(() => null);
++	if (otelModulePromise === null) otelModulePromise = Promise.resolve(null); /* zyph: dynamic import removed for Hermes */
+ 	return otelModulePromise;
+ }
+ /**

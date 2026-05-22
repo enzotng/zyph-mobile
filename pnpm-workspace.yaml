@@ -1,3 +1,6 @@
 packages:
   - apps/*
   - packages/*
+
+patchedDependencies:
+  '@supabase/supabase-js': patches/@supabase__supabase-js.patch

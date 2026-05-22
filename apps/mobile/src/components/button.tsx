@@ -5,13 +5,20 @@ type ButtonProps = {
   label: string
   onPress?: (event: GestureResponderEvent) => void
   variant?: 'primary' | 'secondary'
+  disabled?: boolean
 }
 
-export function Button({ label, onPress, variant = 'primary' }: ButtonProps) {
+export function Button({ label, onPress, variant = 'primary', disabled = false }: ButtonProps) {
   styles.useVariants({ variant })
 
   return (
-    <Pressable style={styles.button} onPress={onPress} accessibilityRole="button">
+    <Pressable
+      style={[styles.button, disabled && styles.disabled]}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+    >
       <Text style={styles.label}>{label}</Text>
     </Pressable>
   )
@@ -33,6 +40,9 @@ const styles = StyleSheet.create((theme) => ({
         },
       },
     },
+  },
+  disabled: {
+    opacity: 0.5,
   },
   label: {
     fontSize: theme.fontSize.md,

@@ -1,14 +1,30 @@
-import { Text, View } from 'react-native'
+import { useState } from 'react'
+import { Alert, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { signOut, useAuth } from '@/features/auth'
 
 export default function HomeScreen() {
+  const { session } = useAuth()
+  const [signingOut, setSigningOut] = useState(false)
+
+  async function onSignOut() {
+    setSigningOut(true)
+    try {
+      await signOut()
+    } catch (error) {
+      Alert.alert('Sign out failed', error instanceof Error ? error.message : 'Please try again.')
+    } finally {
+      setSigningOut(false)
+    }
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>ZYPH</Text>
-      <Text style={styles.subtitle}>Offline-first travel</Text>
-      <Button label="Get started" onPress={() => {}} />
+      <Text style={styles.subtitle}>{session?.user.email ?? 'Offline-first travel'}</Text>
+      <Button label="Sign out" variant="secondary" onPress={onSignOut} disabled={signingOut} />
     </View>
   )
 }
