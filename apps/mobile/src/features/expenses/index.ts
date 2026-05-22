@@ -1,4 +1,5 @@
 export * from './api/expenses.api'
 export * from './hooks/use-expenses'
 export * from './schemas'
+export * from './settlement'
 export * from './splits'
