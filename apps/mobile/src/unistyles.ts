@@ -1,5 +1,7 @@
 import { StyleSheet } from 'react-native-unistyles'
 
+import { applyThemePreference, getThemePreference } from './lib/preferences'
+
 // Spacing helper + radius/typography scales shared across themes.
 const shared = {
   gap: (v: number) => v * 4,
@@ -72,3 +74,6 @@ StyleSheet.configure({
   themes: appThemes,
   breakpoints,
 })
+
+// Apply the saved theme preference (overrides adaptive if light/dark was chosen).
+applyThemePreference(getThemePreference())
