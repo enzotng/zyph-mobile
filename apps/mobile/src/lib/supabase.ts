@@ -1,10 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { AppState } from 'react-native'
 
+import type { Database } from './database.types'
 import { env } from './env'
 import { secureSessionStorage } from './secure-storage'
 
-export const supabase = createClient(env.supabaseUrl, env.supabaseKey, {
+export const supabase = createClient<Database>(env.supabaseUrl, env.supabaseKey, {
   auth: {
     storage: secureSessionStorage,
     autoRefreshToken: true,

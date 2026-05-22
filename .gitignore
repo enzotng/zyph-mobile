@@ -174,6 +174,7 @@ id_ecdsa.*
 *.bak
 !packages/db/migrations/**/*.sql
 !services/edge-functions/**/migrations/**/*.sql
+!supabase/migrations/**/*.sql
 
 # iOS xcconfig secrets
 *.local.xcconfig
