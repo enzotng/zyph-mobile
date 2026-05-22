@@ -6,7 +6,7 @@ import { StyleSheet } from 'react-native-unistyles'
 
 import { Screen } from '@/components/screen'
 import { useAuth } from '@/features/auth'
-import { formatAmount, useExpenses, useTripBalances } from '@/features/expenses'
+import { formatAmount, settleBalances, useExpenses, useTripBalances } from '@/features/expenses'
 import { useRegenerateInviteCode, useTripMembers } from '@/features/group'
 import { useDeleteTrip, useTrip } from '@/features/trips'
 import { paramString } from '@/lib/routing'
@@ -45,6 +45,9 @@ export default function TripDetailScreen() {
   }
 
   const nameById = new Map((members ?? []).map((member) => [member.id, member.display_name]))
+  const userIdByMember = new Map(
+    (balances ?? []).map((balance) => [balance.member_id, balance.user_id]),
+  )
 
   function labelFor(memberUserId: string | null, memberId: string): string {
     if (memberUserId && memberUserId === userId) {
@@ -52,6 +55,17 @@ export default function TripDetailScreen() {
     }
     return nameById.get(memberId) ?? 'Member'
   }
+
+  function labelForMember(memberId: string): string {
+    return labelFor(userIdByMember.get(memberId) ?? null, memberId)
+  }
+
+  const settlements = settleBalances(
+    (balances ?? []).map((balance) => ({
+      memberId: balance.member_id,
+      balanceCents: balance.balance_cents ?? 0,
+    })),
+  )
 
   async function shareInvite() {
     if (!trip) {
@@ -182,15 +196,24 @@ export default function TripDetailScreen() {
 
             {members && members.length > 0 ? (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Members</Text>
-                {members.map((member) => (
-                  <View key={member.id} style={styles.rowBetween}>
-                    <Text style={styles.body}>
-                      {member.user_id === userId ? 'You' : (member.display_name ?? 'Member')}
-                    </Text>
-                    <Text style={styles.muted}>{member.role}</Text>
-                  </View>
-                ))}
+                <Text style={styles.sectionTitle}>Members ({members.length})</Text>
+                {members.map((member) => {
+                  const name = member.user_id === userId ? 'You' : (member.display_name ?? 'Member')
+                  const initial = name.charAt(0).toUpperCase()
+                  return (
+                    <View key={member.id} style={styles.memberRow}>
+                      <View style={styles.memberInfo}>
+                        <View style={styles.avatar}>
+                          <Text style={styles.avatarText}>{initial}</Text>
+                        </View>
+                        <Text style={styles.body}>{name}</Text>
+                      </View>
+                      {member.role === 'owner' ? (
+                        <Text style={styles.ownerBadge}>Owner</Text>
+                      ) : null}
+                    </View>
+                  )
+                })}
               </View>
             ) : null}
 
@@ -207,6 +230,26 @@ export default function TripDetailScreen() {
                       ]}
                     >
                       {formatAmount(balance.balance_cents ?? 0, trip.currency)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {settlements.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Settle up</Text>
+                {settlements.map((settlement) => (
+                  <View
+                    key={`${settlement.fromMemberId}-${settlement.toMemberId}`}
+                    style={styles.rowBetween}
+                  >
+                    <Text style={styles.body}>
+                      {labelForMember(settlement.fromMemberId)} →{' '}
+                      {labelForMember(settlement.toMemberId)}
+                    </Text>
+                    <Text style={styles.amount}>
+                      {formatAmount(settlement.amountCents, trip.currency)}
                     </Text>
                   </View>
                 ))}
@@ -302,6 +345,34 @@ const styles = StyleSheet.create((theme, rt) => ({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: theme.gap(1),
+  },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.gap(1),
+  },
+  memberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+  },
+  avatar: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: theme.gap(8),
+    height: theme.gap(8),
+    borderRadius: theme.gap(4),
+    backgroundColor: theme.colors.primary,
+  },
+  avatarText: {
+    fontWeight: '700',
+    color: theme.colors.primaryForeground,
+  },
+  ownerBadge: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   link: {
     color: theme.colors.primary,
