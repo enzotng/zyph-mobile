@@ -361,6 +361,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_trip_balances: {
+        Args: { _trip_id: string }
+        Returns: {
+          balance_cents: number
+          member_id: string
+          owed_cents: number
+          paid_cents: number
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       member_status: 'invited' | 'active'

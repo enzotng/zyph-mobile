@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { createExpense, listExpenses } from '../api/expenses.api'
+import { createExpense, getTripBalances, listExpenses } from '../api/expenses.api'
 
 export function expensesQueryKey(tripId: string) {
   return ['trips', tripId, 'expenses'] as const
+}
+
+export function balancesQueryKey(tripId: string) {
+  return ['trips', tripId, 'balances'] as const
 }
 
 export function useExpenses(tripId: string) {
@@ -14,12 +18,22 @@ export function useExpenses(tripId: string) {
   })
 }
 
+export function useTripBalances(tripId: string) {
+  return useQuery({
+    queryKey: balancesQueryKey(tripId),
+    queryFn: () => getTripBalances(tripId),
+    enabled: Boolean(tripId),
+  })
+}
+
 export function useCreateExpense(tripId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: createExpense,
     onSuccess: () => {
+      // Refresh only what an expense affects: the expense list and the balances.
       void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
     },
   })
 }

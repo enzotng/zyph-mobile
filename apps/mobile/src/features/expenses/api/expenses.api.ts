@@ -2,6 +2,15 @@ import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
 
 export type Expense = Database['public']['Tables']['expenses']['Row']
+export type TripBalance = Database['public']['Functions']['get_trip_balances']['Returns'][number]
+
+export async function getTripBalances(tripId: string): Promise<TripBalance[]> {
+  const { data, error } = await supabase.rpc('get_trip_balances', { _trip_id: tripId })
+  if (error) {
+    throw error
+  }
+  return data
+}
 
 export async function listExpenses(tripId: string): Promise<Expense[]> {
   const { data, error } = await supabase
