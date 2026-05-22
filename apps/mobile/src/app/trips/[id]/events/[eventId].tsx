@@ -15,15 +15,12 @@ import {
   useUploadDocument,
 } from '@/features/media'
 import { eventStatus, formatCountdown, useEvent } from '@/features/timeline'
-
-function paramValue(value: string | string[] | undefined): string {
-  return (Array.isArray(value) ? value[0] : value) ?? ''
-}
+import { paramString } from '@/lib/routing'
 
 export default function EventDetailScreen() {
   const params = useLocalSearchParams<{ id: string; eventId: string }>()
-  const tripId = paramValue(params.id)
-  const eventId = paramValue(params.eventId)
+  const tripId = paramString(params.id)
+  const eventId = paramString(params.eventId)
   const { theme } = useUnistyles()
 
   const { data: event, isLoading } = useEvent(eventId)
@@ -66,7 +63,20 @@ export default function EventDetailScreen() {
   function confirmDelete(doc: TripDocument) {
     Alert.alert('Delete document', doc.name ?? 'This document', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => del.mutate(doc) },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await del.mutateAsync(doc)
+          } catch (error) {
+            Alert.alert(
+              'Could not delete',
+              error instanceof Error ? error.message : 'Please try again.',
+            )
+          }
+        },
+      },
     ])
   }
 

@@ -1,18 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Controller, useForm } from 'react-hook-form'
-import { Alert } from 'react-native'
+import { ActivityIndicator, Alert, Text } from 'react-native'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { type CreateTripValues, createTripSchema, useTrip, useUpdateTrip } from '@/features/trips'
+import { paramString } from '@/lib/routing'
 
 export default function EditTripScreen() {
   const params = useLocalSearchParams<{ id: string }>()
-  const tripId = (Array.isArray(params.id) ? params.id[0] : params.id) ?? ''
+  const tripId = paramString(params.id)
   const router = useRouter()
-  const { data: trip } = useTrip(tripId)
+  const { data: trip, isLoading } = useTrip(tripId)
   const updateTrip = useUpdateTrip()
   const {
     control,
@@ -35,6 +36,22 @@ export default function EditTripScreen() {
         error instanceof Error ? error.message : 'Please try again.',
       )
     }
+  }
+
+  if (isLoading) {
+    return (
+      <Screen title="Edit trip">
+        <ActivityIndicator />
+      </Screen>
+    )
+  }
+
+  if (!trip) {
+    return (
+      <Screen showBack>
+        <Text>Trip not found.</Text>
+      </Screen>
+    )
   }
 
   return (

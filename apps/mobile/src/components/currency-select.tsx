@@ -16,6 +16,7 @@ export function CurrencySelect({ label, value, currencies, onChange }: CurrencyS
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.row}
+        accessibilityRole="radiogroup"
       >
         {currencies.map((code) => {
           const active = code === value
@@ -24,7 +25,7 @@ export function CurrencySelect({ label, value, currencies, onChange }: CurrencyS
               key={code}
               style={[styles.chip, active ? styles.chipActive : null]}
               onPress={() => onChange(code)}
-              accessibilityRole="button"
+              accessibilityRole="radio"
               accessibilityState={{ selected: active }}
             >
               <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{code}</Text>

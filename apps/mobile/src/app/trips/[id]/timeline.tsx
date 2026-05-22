@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
 import { Link, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Screen } from '@/components/screen'
@@ -13,11 +13,12 @@ import {
   type TimelineItem,
   useEvents,
 } from '@/features/timeline'
+import { paramString } from '@/lib/routing'
 
 export default function TimelineScreen() {
   const params = useLocalSearchParams<{ id: string }>()
-  const tripId = (Array.isArray(params.id) ? params.id[0] : params.id) ?? ''
-  const { data: events } = useEvents(tripId)
+  const tripId = paramString(params.id)
+  const { data: events, isLoading, isError } = useEvents(tripId)
   const { theme } = useUnistyles()
   const router = useRouter()
   const items = useMemo(() => groupEventsByDay(events ?? []), [events])
@@ -74,7 +75,11 @@ export default function TimelineScreen() {
         </Link>
       }
     >
-      {items.length === 0 ? (
+      {isLoading ? (
+        <ActivityIndicator />
+      ) : isError ? (
+        <Text style={styles.muted}>Could not load the timeline.</Text>
+      ) : items.length === 0 ? (
         <Text style={styles.muted}>Add your first event.</Text>
       ) : (
         <FlashList

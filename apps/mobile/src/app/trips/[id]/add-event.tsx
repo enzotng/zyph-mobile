@@ -11,12 +11,13 @@ import { DateField } from '@/components/date-field'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { type CreateEventValues, createEventSchema, useCreateEvent } from '@/features/timeline'
+import { paramString } from '@/lib/routing'
 
 const ONE_HOUR_MS = 3_600_000
 
 export default function AddEventScreen() {
   const params = useLocalSearchParams<{ id: string }>()
-  const tripId = (Array.isArray(params.id) ? params.id[0] : params.id) ?? ''
+  const tripId = paramString(params.id)
   const router = useRouter()
   const { theme } = useUnistyles()
   const createEvent = useCreateEvent(tripId)
