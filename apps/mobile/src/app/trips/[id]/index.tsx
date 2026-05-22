@@ -3,7 +3,8 @@ import { Link, useLocalSearchParams } from 'expo-router'
 import { ActivityIndicator, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
-import { formatAmount, useExpenses } from '@/features/expenses'
+import { useAuth } from '@/features/auth'
+import { formatAmount, useExpenses, useTripBalances } from '@/features/expenses'
 import { useTrip } from '@/features/trips'
 
 export default function TripDetailScreen() {
@@ -11,6 +12,9 @@ export default function TripDetailScreen() {
   const tripId = (Array.isArray(params.id) ? params.id[0] : params.id) ?? ''
   const { data: trip, isLoading, isError } = useTrip(tripId)
   const { data: expenses } = useExpenses(tripId)
+  const { data: balances } = useTripBalances(tripId)
+  const { session } = useAuth()
+  const userId = session?.user.id
 
   if (isLoading) {
     return (
@@ -38,6 +42,28 @@ export default function TripDetailScreen() {
           <View style={styles.head}>
             <Text style={styles.title}>{trip.title}</Text>
             {trip.destination ? <Text style={styles.subtitle}>{trip.destination}</Text> : null}
+
+            {balances && balances.length > 0 ? (
+              <View style={styles.balances}>
+                <Text style={styles.sectionTitle}>Balances</Text>
+                {balances.map((balance) => (
+                  <View key={balance.member_id} style={styles.balanceRow}>
+                    <Text style={styles.expenseDesc}>
+                      {balance.user_id === userId ? 'You' : 'Member'}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.expenseAmount,
+                        (balance.balance_cents ?? 0) < 0 ? styles.negative : null,
+                      ]}
+                    >
+                      {formatAmount(balance.balance_cents ?? 0, trip.currency)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
             <View style={styles.sectionRow}>
               <Text style={styles.sectionTitle}>Expenses</Text>
               <Link
@@ -103,6 +129,18 @@ const styles = StyleSheet.create((theme, rt) => ({
   link: {
     color: theme.colors.primary,
     fontWeight: '600',
+  },
+  balances: {
+    gap: theme.gap(1),
+    paddingTop: theme.gap(4),
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: theme.gap(1),
+  },
+  negative: {
+    color: theme.colors.destructive,
   },
   muted: {
     color: theme.colors.muted,
