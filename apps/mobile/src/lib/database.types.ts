@@ -50,11 +50,13 @@ export type Database = {
       expenses: {
         Row: {
           amount_cents: number
+          base_amount_cents: number
           created_at: string
           created_by: string | null
           currency: string
           deleted_at: string | null
           description: string
+          fx_rate: number
           id: string
           paid_by: string | null
           trip_id: string
@@ -63,11 +65,13 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
+          base_amount_cents: number
           created_at?: string
           created_by?: string | null
           currency?: string
           deleted_at?: string | null
           description: string
+          fx_rate?: number
           id?: string
           paid_by?: string | null
           trip_id: string
@@ -76,11 +80,13 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
+          base_amount_cents?: number
           created_at?: string
           created_by?: string | null
           currency?: string
           deleted_at?: string | null
           description?: string
+          fx_rate?: number
           id?: string
           paid_by?: string | null
           trip_id?: string
@@ -337,17 +343,21 @@ export type Database = {
       create_expense_with_splits: {
         Args: {
           _amount_cents: number
+          _base_amount_cents: number
           _currency: string
           _description: string
+          _fx_rate: number
           _trip_id: string
         }
         Returns: {
           amount_cents: number
+          base_amount_cents: number
           created_at: string
           created_by: string | null
           currency: string
           deleted_at: string | null
           description: string
+          fx_rate: number
           id: string
           paid_by: string | null
           trip_id: string
