@@ -4,7 +4,6 @@ import { Pressable, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
-import { signOut } from '@/features/auth'
 import { type Trip, useTrips } from '@/features/trips'
 
 export default function TripsScreen() {
@@ -13,12 +12,7 @@ export default function TripsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>My trips</Text>
-        <Pressable onPress={() => void signOut()} accessibilityRole="button">
-          <Text style={styles.signOut}>Sign out</Text>
-        </Pressable>
-      </View>
+      <Text style={styles.title}>My trips</Text>
 
       {isLoading ? (
         <Text style={styles.muted}>Loading…</Text>
@@ -74,20 +68,11 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingHorizontal: theme.gap(6),
     backgroundColor: theme.colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.gap(2),
-  },
   title: {
     fontSize: theme.fontSize.xl,
     fontWeight: '700',
     color: theme.colors.foreground,
-  },
-  signOut: {
-    color: theme.colors.muted,
-    fontWeight: '600',
+    paddingVertical: theme.gap(2),
   },
   center: {
     flex: 1,
@@ -104,11 +89,11 @@ const styles = StyleSheet.create((theme, rt) => ({
     color: theme.colors.muted,
   },
   list: {
-    gap: theme.gap(3),
     paddingVertical: theme.gap(3),
   },
   card: {
     padding: theme.gap(4),
+    marginBottom: theme.gap(3),
     borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,

@@ -1,6 +1,6 @@
 import type { Session } from '@supabase/supabase-js'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { Slot, useRouter, useSegments } from 'expo-router'
+import { Stack, useRouter, useSegments } from 'expo-router'
 import { useEffect } from 'react'
 import { ActivityIndicator, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
@@ -37,7 +37,7 @@ function RootNavigator() {
     )
   }
 
-  return <Slot />
+  return <Stack screenOptions={{ headerShown: false }} />
 }
 
 export default function RootLayout() {
