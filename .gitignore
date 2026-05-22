@@ -14,7 +14,8 @@ out/
 # Expo
 .expo/
 .expo-shared/
-expo-env.d.ts
+# expo-env.d.ts is committed: it provides CSS-module/asset type declarations
+# (via expo/types) that CI typecheck needs without running `expo start` first.
 web-build/
 
 # iOS
