@@ -1,15 +1,18 @@
+import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
 import { Link, useLocalSearchParams } from 'expo-router'
 import { useCallback, useMemo } from 'react'
-import { Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { Pressable, Text, View } from 'react-native'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { Screen } from '@/components/screen'
 import { groupEventsByDay, type TimelineItem, useEvents } from '@/features/timeline'
 
 export default function TimelineScreen() {
   const params = useLocalSearchParams<{ id: string }>()
   const tripId = (Array.isArray(params.id) ? params.id[0] : params.id) ?? ''
   const { data: events } = useEvents(tripId)
+  const { theme } = useUnistyles()
   const items = useMemo(() => groupEventsByDay(events ?? []), [events])
 
   const renderItem = useCallback(
@@ -26,17 +29,16 @@ export default function TimelineScreen() {
   )
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Timeline</Text>
-        <Link
-          href={{ pathname: '/trips/[id]/add-event', params: { id: tripId } }}
-          style={styles.link}
-        >
-          Add event
+    <Screen
+      title="Timeline"
+      right={
+        <Link href={{ pathname: '/trips/[id]/add-event', params: { id: tripId } }} asChild>
+          <Pressable accessibilityRole="button" accessibilityLabel="Add event" hitSlop={8}>
+            <Ionicons name="add" size={26} color={theme.colors.primary} />
+          </Pressable>
         </Link>
-      </View>
-
+      }
+    >
       {items.length === 0 ? (
         <Text style={styles.muted}>Add your first event.</Text>
       ) : (
@@ -48,32 +50,11 @@ export default function TimelineScreen() {
           renderItem={renderItem}
         />
       )}
-    </View>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create((theme, rt) => ({
-  container: {
-    flex: 1,
-    paddingHorizontal: theme.gap(6),
-    paddingTop: rt.insets.top + theme.gap(4),
-    backgroundColor: theme.colors.background,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: theme.gap(2),
-  },
-  title: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: '700',
-    color: theme.colors.foreground,
-  },
-  link: {
-    color: theme.colors.primary,
-    fontWeight: '600',
-  },
   muted: {
     color: theme.colors.muted,
   },

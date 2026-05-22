@@ -1,10 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'expo-router'
 import { Controller, useForm } from 'react-hook-form'
-import { Alert, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { Alert } from 'react-native'
 
 import { Button } from '@/components/button'
+import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { type JoinTripValues, joinTripSchema, useJoinTrip } from '@/features/group'
 
@@ -33,9 +33,7 @@ export default function JoinTripScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Join a trip</Text>
-
+    <Screen title="Join a trip" scroll>
       <Controller
         control={control}
         name="code"
@@ -57,21 +55,6 @@ export default function JoinTripScreen() {
         onPress={handleSubmit(onSubmit)}
         disabled={joinTrip.isPending}
       />
-    </View>
+    </Screen>
   )
 }
-
-const styles = StyleSheet.create((theme, rt) => ({
-  container: {
-    flex: 1,
-    gap: theme.gap(4),
-    paddingHorizontal: theme.gap(6),
-    paddingTop: rt.insets.top + theme.gap(4),
-    backgroundColor: theme.colors.background,
-  },
-  title: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: '700',
-    color: theme.colors.foreground,
-  },
-}))
