@@ -39,7 +39,8 @@
         }
       ],
       "react-native-edge-to-edge",
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
