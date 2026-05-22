@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
-import { Link, useLocalSearchParams } from 'expo-router'
+import { Link, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
@@ -19,6 +19,7 @@ export default function TimelineScreen() {
   const tripId = (Array.isArray(params.id) ? params.id[0] : params.id) ?? ''
   const { data: events } = useEvents(tripId)
   const { theme } = useUnistyles()
+  const router = useRouter()
   const items = useMemo(() => groupEventsByDay(events ?? []), [events])
 
   // Tick once a minute so the countdown stays current without per-second churn.
@@ -35,7 +36,16 @@ export default function TimelineScreen() {
       }
       const status = eventStatus(item.event.starts_at, item.event.ends_at, now)
       return (
-        <View style={styles.eventRow}>
+        <Pressable
+          style={styles.eventRow}
+          onPress={() =>
+            router.push({
+              pathname: '/trips/[id]/events/[eventId]',
+              params: { id: tripId, eventId: item.event.id },
+            })
+          }
+          accessibilityRole="button"
+        >
           <View style={styles.eventHead}>
             <Text style={styles.eventTitle}>{item.event.title}</Text>
             {status.kind === 'upcoming' ? (
@@ -47,10 +57,10 @@ export default function TimelineScreen() {
             ) : null}
           </View>
           {item.event.notes ? <Text style={styles.muted}>{item.event.notes}</Text> : null}
-        </View>
+        </Pressable>
       )
     },
-    [now],
+    [now, router, tripId],
   )
 
   return (

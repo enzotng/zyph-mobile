@@ -15,6 +15,18 @@ export async function listEvents(tripId: string): Promise<TripEvent[]> {
   return data
 }
 
+export async function getEvent(eventId: string): Promise<TripEvent | null> {
+  const { data, error } = await supabase
+    .from('trip_events')
+    .select('*')
+    .eq('id', eventId)
+    .maybeSingle()
+  if (error) {
+    throw error
+  }
+  return data
+}
+
 export type CreateEventInput = {
   tripId: string
   title: string
