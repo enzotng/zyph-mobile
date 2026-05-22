@@ -347,6 +347,7 @@ export type Database = {
           _currency: string
           _description: string
           _fx_rate: number
+          _splits: Json
           _trip_id: string
         }
         Returns: {

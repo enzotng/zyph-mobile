@@ -1,5 +1,6 @@
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
+import type { ExpenseSplit } from '../splits'
 
 export type Expense = Database['public']['Tables']['expenses']['Row']
 export type TripBalance = Database['public']['Functions']['get_trip_balances']['Returns'][number]
@@ -35,6 +36,9 @@ export type CreateExpenseInput = {
   baseAmountCents: number
   // Frozen rate used for the conversion (currency -> trip currency); 1 when identical.
   fxRate: number
+  // Per-member shares (in trip currency); must sum to baseAmountCents. The server
+  // validates membership + the sum.
+  splits: ExpenseSplit[]
 }
 
 export async function createExpense({
@@ -44,12 +48,13 @@ export async function createExpense({
   currency,
   baseAmountCents,
   fxRate,
+  splits,
 }: CreateExpenseInput): Promise<Expense> {
-  // Atomic server-side: inserts the expense + equal splits, enforces membership,
+  // Atomic server-side: inserts the expense + the provided splits, enforces membership,
   // resolves the payer from auth.uid(). One round trip, one transaction.
   // The server trusts the client-computed baseAmountCents/fxRate (it only validates
   // sign): acceptable because trip members are mutually trusted and balances are
-  // informational (no money movement). Membership itself is server-enforced.
+  // informational (no money movement). Membership + the split sum are server-enforced.
   const { data, error } = await supabase.rpc('create_expense_with_splits', {
     _trip_id: tripId,
     _description: description,
@@ -57,6 +62,7 @@ export async function createExpense({
     _currency: currency,
     _base_amount_cents: baseAmountCents,
     _fx_rate: fxRate,
+    _splits: splits.map((s) => ({ member_id: s.memberId, share_cents: s.shareCents })),
   })
   if (error) {
     throw error
