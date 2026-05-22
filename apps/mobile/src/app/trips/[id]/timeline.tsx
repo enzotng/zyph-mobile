@@ -1,12 +1,18 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
 import { Link, useLocalSearchParams } from 'expo-router'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Screen } from '@/components/screen'
-import { groupEventsByDay, type TimelineItem, useEvents } from '@/features/timeline'
+import {
+  eventStatus,
+  formatCountdown,
+  groupEventsByDay,
+  type TimelineItem,
+  useEvents,
+} from '@/features/timeline'
 
 export default function TimelineScreen() {
   const params = useLocalSearchParams<{ id: string }>()
@@ -15,17 +21,36 @@ export default function TimelineScreen() {
   const { theme } = useUnistyles()
   const items = useMemo(() => groupEventsByDay(events ?? []), [events])
 
+  // Tick once a minute so the countdown stays current without per-second churn.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
   const renderItem = useCallback(
-    ({ item }: { item: TimelineItem }) =>
-      item.kind === 'header' ? (
-        <Text style={styles.dayHeader}>{item.label}</Text>
-      ) : (
+    ({ item }: { item: TimelineItem }) => {
+      if (item.kind === 'header') {
+        return <Text style={styles.dayHeader}>{item.label}</Text>
+      }
+      const status = eventStatus(item.event.starts_at, item.event.ends_at, now)
+      return (
         <View style={styles.eventRow}>
-          <Text style={styles.eventTitle}>{item.event.title}</Text>
+          <View style={styles.eventHead}>
+            <Text style={styles.eventTitle}>{item.event.title}</Text>
+            {status.kind === 'upcoming' ? (
+              <Text style={[styles.badge, styles.badgeUpcoming]}>{formatCountdown(status)}</Text>
+            ) : status.kind === 'in_progress' ? (
+              <Text style={[styles.badge, styles.badgeProgress]}>In progress</Text>
+            ) : status.kind === 'completed' ? (
+              <Text style={[styles.badge, styles.badgeCompleted]}>Completed</Text>
+            ) : null}
+          </View>
           {item.event.notes ? <Text style={styles.muted}>{item.event.notes}</Text> : null}
         </View>
-      ),
-    [],
+      )
+    },
+    [now],
   )
 
   return (
@@ -74,9 +99,29 @@ const styles = StyleSheet.create((theme, rt) => ({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
+  eventHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.gap(2),
+  },
   eventTitle: {
+    flex: 1,
     fontSize: theme.fontSize.md,
     fontWeight: '600',
     color: theme.colors.foreground,
+  },
+  badge: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: '700',
+  },
+  badgeUpcoming: {
+    color: theme.colors.primary,
+  },
+  badgeProgress: {
+    color: theme.colors.success,
+  },
+  badgeCompleted: {
+    color: theme.colors.muted,
   },
 }))
