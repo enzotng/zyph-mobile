@@ -33,3 +33,11 @@ export async function joinTripByCode(code: string): Promise<string> {
   }
   return data
 }
+
+export async function regenerateInviteCode(tripId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('regenerate_invite_code', { _trip_id: tripId })
+  if (error) {
+    throw error
+  }
+  return data
+}

@@ -1,4 +1,5 @@
 import { FlashList } from '@shopify/flash-list'
+import * as Clipboard from 'expo-clipboard'
 import { Link, useLocalSearchParams, useRouter } from 'expo-router'
 import { ActivityIndicator, Alert, Pressable, Share, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
@@ -6,7 +7,7 @@ import { StyleSheet } from 'react-native-unistyles'
 import { Screen } from '@/components/screen'
 import { useAuth } from '@/features/auth'
 import { formatAmount, useExpenses, useTripBalances } from '@/features/expenses'
-import { useTripMembers } from '@/features/group'
+import { useRegenerateInviteCode, useTripMembers } from '@/features/group'
 import { useDeleteTrip, useTrip } from '@/features/trips'
 import { paramString } from '@/lib/routing'
 
@@ -21,6 +22,7 @@ export default function TripDetailScreen() {
   const userId = session?.user.id
   const router = useRouter()
   const deleteTrip = useDeleteTrip()
+  const regenerate = useRegenerateInviteCode(tripId)
 
   if (isLoading) {
     return (
@@ -58,6 +60,38 @@ export default function TripDetailScreen() {
     await Share.share({
       message: `Join my trip "${trip.title}" on ZYPH with invite code: ${trip.invite_code}`,
     })
+  }
+
+  async function copyInvite() {
+    if (!trip) {
+      return
+    }
+    await Clipboard.setStringAsync(trip.invite_code)
+    Alert.alert('Copied', 'Invite code copied to clipboard.')
+  }
+
+  function confirmRegenerate() {
+    Alert.alert(
+      'Regenerate invite code',
+      'The current code stops working. People who already joined keep their access.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Regenerate',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await regenerate.mutateAsync()
+            } catch (error) {
+              Alert.alert(
+                'Could not regenerate',
+                error instanceof Error ? error.message : 'Please try again.',
+              )
+            }
+          },
+        },
+      ],
+    )
   }
 
   const isOwner = trip.owner_id === userId
@@ -112,14 +146,32 @@ export default function TripDetailScreen() {
             ) : null}
 
             <View style={styles.inviteRow}>
-              <View>
+              <View style={styles.inviteInfo}>
                 <Text style={styles.muted}>Invite code</Text>
                 <Text style={styles.code}>{trip.invite_code}</Text>
               </View>
-              <Pressable onPress={() => void shareInvite()} accessibilityRole="button">
-                <Text style={styles.link}>Share</Text>
-              </Pressable>
+              <View style={styles.inviteActions}>
+                <Pressable onPress={() => void copyInvite()} accessibilityRole="button">
+                  <Text style={styles.link}>Copy</Text>
+                </Pressable>
+                <Pressable onPress={() => void shareInvite()} accessibilityRole="button">
+                  <Text style={styles.link}>Share</Text>
+                </Pressable>
+              </View>
             </View>
+
+            {isOwner ? (
+              <Pressable
+                onPress={confirmRegenerate}
+                disabled={regenerate.isPending}
+                accessibilityRole="button"
+                style={styles.regenerate}
+              >
+                <Text style={styles.muted}>
+                  {regenerate.isPending ? 'Regenerating…' : 'Regenerate code'}
+                </Text>
+              </Pressable>
+            ) : null}
 
             <Link
               href={{ pathname: '/trips/[id]/timeline', params: { id: tripId } }}
@@ -214,6 +266,17 @@ const styles = StyleSheet.create((theme, rt) => ({
     marginTop: theme.gap(3),
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.card,
+  },
+  inviteInfo: {
+    flexShrink: 1,
+  },
+  inviteActions: {
+    flexDirection: 'row',
+    gap: theme.gap(4),
+  },
+  regenerate: {
+    alignSelf: 'flex-start',
+    paddingTop: theme.gap(2),
   },
   code: {
     fontSize: theme.fontSize.lg,

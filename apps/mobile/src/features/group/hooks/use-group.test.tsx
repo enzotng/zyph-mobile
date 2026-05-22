@@ -3,7 +3,12 @@ import { renderHook, waitFor } from '@testing-library/react-native'
 import { createQueryWrapper } from '@/test-utils/query-wrapper'
 
 import * as api from '../api/group.api'
-import { tripMembersQueryKey, useJoinTrip, useTripMembers } from './use-group'
+import {
+  tripMembersQueryKey,
+  useJoinTrip,
+  useRegenerateInviteCode,
+  useTripMembers,
+} from './use-group'
 
 jest.mock('@/lib/supabase')
 jest.mock('../api/group.api')
@@ -52,6 +57,22 @@ describe('useJoinTrip', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips'] })
+  })
+})
+
+describe('useRegenerateInviteCode', () => {
+  it('regenerates the code and invalidates the cached trip', async () => {
+    jest.mocked(api.regenerateInviteCode).mockResolvedValue('newcode123456')
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useRegenerateInviteCode('t1'), { wrapper })
+    result.current.mutate()
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(api.regenerateInviteCode).toHaveBeenCalledWith('t1')
+    expect(result.current.data).toBe('newcode123456')
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips', 't1'], exact: true })
   })
 })
 

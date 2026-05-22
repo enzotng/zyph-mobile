@@ -405,6 +405,7 @@ export type Database = {
         }[]
       }
       join_trip_by_code: { Args: { _code: string }; Returns: string }
+      regenerate_invite_code: { Args: { _trip_id: string }; Returns: string }
     }
     Enums: {
       member_status: 'invited' | 'active'
