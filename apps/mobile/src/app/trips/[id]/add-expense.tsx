@@ -1,37 +1,56 @@
+import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { ActivityIndicator, Alert, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { CurrencySelect } from '@/components/currency-select'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
+import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
+  computeSplits,
   createExpenseSchema,
   formatAmount,
   toCents,
   useCreateExpense,
 } from '@/features/expenses'
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
+import { useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
 
 const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
+
+type ShareState = Record<string, { included: boolean; weight: number }>
 
 export default function AddExpenseScreen() {
   const params = useLocalSearchParams<{ id: string }>()
   const tripId = (Array.isArray(params.id) ? params.id[0] : params.id) ?? ''
   const router = useRouter()
+  const { theme } = useUnistyles()
+  const { session } = useAuth()
+  const userId = session?.user.id
   const { data: trip } = useTrip(tripId)
+  const { data: members } = useTripMembers(tripId)
   const { data: fx } = useFxRates()
   const createExpense = useCreateExpense(tripId)
 
   const tripCurrency = trip?.currency ?? 'EUR'
   const [picked, setPicked] = useState<string | null>(null)
   const currency = picked ?? tripCurrency
+
+  // Only user-touched members are stored; everyone else defaults to included, weight 1.
+  // Deriving the default (instead of seeding state) avoids a setState-in-effect and
+  // means members who join while the form is open are included by default.
+  const [overrides, setOverrides] = useState<ShareState>({})
+  const stateFor = useCallback(
+    (memberId: string) => overrides[memberId] ?? { included: true, weight: 1 },
+    [overrides],
+  )
 
   const {
     control,
@@ -44,7 +63,6 @@ export default function AddExpenseScreen() {
 
   const amount = useWatch({ control, name: 'amount' })
 
-  // Trip currency first, then every ECB currency alphabetically.
   const currencies = useMemo(() => {
     const rest = fx
       ? Object.keys(fx.rates)
@@ -57,16 +75,53 @@ export default function AddExpenseScreen() {
   const isForeign = currency !== tripCurrency
   const canConvert = !isForeign || Boolean(fx?.rates[currency] && fx?.rates[tripCurrency])
 
-  // Live preview of the trip-currency equivalent for a foreign amount.
-  const preview = useMemo(() => {
-    if (!isForeign || !canConvert || !fx || !AMOUNT_RE.test((amount ?? '').trim())) {
+  // Trip-currency amount for the entered value, or null when it can't be resolved yet.
+  const baseCents = useMemo(() => {
+    if (!AMOUNT_RE.test((amount ?? '').trim())) {
       return null
     }
-    const base = convertCents(toCents(amount), currency, tripCurrency, fx.rates)
-    return formatAmount(base, tripCurrency)
+    const cents = toCents(amount)
+    if (!isForeign) {
+      return cents
+    }
+    if (!canConvert || !fx) {
+      return null
+    }
+    return convertCents(cents, currency, tripCurrency, fx.rates)
   }, [amount, canConvert, currency, fx, isForeign, tripCurrency])
 
-  const blocked = isForeign && !canConvert
+  const participants = useMemo(() => {
+    if (!members) {
+      return []
+    }
+    return members
+      .filter((m) => stateFor(m.id).included)
+      .map((m) => ({ memberId: m.id, weight: stateFor(m.id).weight }))
+  }, [members, stateFor])
+
+  // Live per-member shares for the preview (memberId -> cents).
+  const shareByMember = useMemo(() => {
+    if (baseCents === null) {
+      return new Map<string, number>()
+    }
+    return new Map(computeSplits(baseCents, participants).map((s) => [s.memberId, s.shareCents]))
+  }, [baseCents, participants])
+
+  const blocked = (isForeign && !canConvert) || participants.length === 0
+
+  function toggle(memberId: string) {
+    setOverrides((s) => {
+      const cur = s[memberId] ?? { included: true, weight: 1 }
+      return { ...s, [memberId]: { ...cur, included: !cur.included } }
+    })
+  }
+
+  function setWeight(memberId: string, weight: number) {
+    setOverrides((s) => {
+      const cur = s[memberId] ?? { included: true, weight: 1 }
+      return { ...s, [memberId]: { ...cur, weight: Math.max(1, weight) } }
+    })
+  }
 
   async function onSubmit(values: CreateExpenseValues) {
     const amountCents = toCents(values.amount)
@@ -87,6 +142,12 @@ export default function AddExpenseScreen() {
       }
     }
 
+    const splits = computeSplits(baseAmountCents, participants)
+    if (splits.length === 0) {
+      Alert.alert('Select at least one person', 'An expense must be shared with someone.')
+      return
+    }
+
     try {
       await createExpense.mutateAsync({
         tripId,
@@ -95,6 +156,7 @@ export default function AddExpenseScreen() {
         currency,
         baseAmountCents,
         fxRate,
+        splits,
       })
       router.back()
     } catch (error) {
@@ -105,9 +167,9 @@ export default function AddExpenseScreen() {
     }
   }
 
-  // Wait for the trip so the currency selector starts on the trip's own currency
-  // (avoids the picker briefly defaulting to EUR while the trip loads).
-  if (!trip) {
+  // Wait for the trip + members so the currency starts on the trip's currency and the
+  // split list is fully populated before the user interacts.
+  if (!trip || !members) {
     return (
       <Screen title="Add expense">
         <View style={styles.center}>
@@ -157,12 +219,61 @@ export default function AddExpenseScreen() {
         )}
       />
 
-      {preview ? <Text style={styles.preview}>≈ {preview}</Text> : null}
-      {blocked ? (
+      {isForeign && !canConvert ? (
         <Text style={styles.warn}>Exchange rate for {currency} is unavailable.</Text>
       ) : null}
 
-      <Text style={styles.hint}>Split equally between all trip members.</Text>
+      <Text style={styles.sectionTitle}>Split between</Text>
+      {members.map((member) => {
+        const state = stateFor(member.id)
+        const included = state.included
+        const name = member.user_id === userId ? 'You' : (member.display_name ?? 'Member')
+        const share = shareByMember.get(member.id)
+        return (
+          <View key={member.id} style={styles.memberRow}>
+            <Pressable
+              style={styles.memberLeft}
+              onPress={() => toggle(member.id)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: included }}
+            >
+              <Ionicons
+                name={included ? 'checkbox' : 'square-outline'}
+                size={22}
+                color={included ? theme.colors.primary : theme.colors.muted}
+              />
+              <Text style={styles.memberName}>{name}</Text>
+            </Pressable>
+
+            {included ? (
+              <View style={styles.memberRight}>
+                <View style={styles.stepper}>
+                  <Pressable
+                    onPress={() => setWeight(member.id, state.weight - 1)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Decrease shares"
+                    hitSlop={6}
+                  >
+                    <Ionicons name="remove" size={18} color={theme.colors.foreground} />
+                  </Pressable>
+                  <Text style={styles.weight}>{state.weight}</Text>
+                  <Pressable
+                    onPress={() => setWeight(member.id, state.weight + 1)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Increase shares"
+                    hitSlop={6}
+                  >
+                    <Ionicons name="add" size={18} color={theme.colors.foreground} />
+                  </Pressable>
+                </View>
+                <Text style={styles.share}>
+                  {share === undefined ? '—' : formatAmount(share, tripCurrency)}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        )
+      })}
 
       <Button
         label={createExpense.isPending ? 'Adding…' : 'Add expense'}
@@ -179,17 +290,56 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  preview: {
-    fontSize: theme.fontSize.md,
-    fontWeight: '600',
-    color: theme.colors.primary,
-  },
   warn: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.warning,
   },
-  hint: {
+  sectionTitle: {
     fontSize: theme.fontSize.sm,
+    fontWeight: '700',
     color: theme.colors.muted,
+  },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.gap(2),
+  },
+  memberLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+    flex: 1,
+  },
+  memberName: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.foreground,
+  },
+  memberRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+    paddingHorizontal: theme.gap(2),
+    paddingVertical: theme.gap(1),
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  weight: {
+    minWidth: theme.gap(4),
+    textAlign: 'center',
+    fontWeight: '600',
+    color: theme.colors.foreground,
+  },
+  share: {
+    minWidth: theme.gap(16),
+    textAlign: 'right',
+    fontWeight: '600',
+    color: theme.colors.foreground,
   },
 }))
