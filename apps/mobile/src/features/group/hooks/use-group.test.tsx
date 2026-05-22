@@ -1,0 +1,62 @@
+import { renderHook, waitFor } from '@testing-library/react-native'
+
+import { createQueryWrapper } from '@/test-utils/query-wrapper'
+
+import * as api from '../api/group.api'
+import { tripMembersQueryKey, useJoinTrip, useTripMembers } from './use-group'
+
+jest.mock('@/lib/supabase')
+jest.mock('../api/group.api')
+
+const member = {
+  id: 'm1',
+  user_id: 'u1',
+  role: 'member' as const,
+  status: 'active' as const,
+  display_name: 'Alice',
+}
+
+beforeEach(() => {
+  jest.clearAllMocks()
+})
+
+describe('useTripMembers', () => {
+  it('fetches the member list for a trip', async () => {
+    jest.mocked(api.listTripMembers).mockResolvedValue([member])
+    const { wrapper } = createQueryWrapper()
+
+    const { result } = renderHook(() => useTripMembers('t1'), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toEqual([member])
+  })
+
+  it('is disabled when tripId is empty', () => {
+    const { wrapper } = createQueryWrapper()
+
+    const { result } = renderHook(() => useTripMembers(''), { wrapper })
+
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(api.listTripMembers).not.toHaveBeenCalled()
+  })
+})
+
+describe('useJoinTrip', () => {
+  it('invalidates trips on success', async () => {
+    jest.mocked(api.joinTripByCode).mockResolvedValue('t1')
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useJoinTrip(), { wrapper })
+    result.current.mutate('ABCD1234')
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips'] })
+  })
+})
+
+describe('tripMembersQueryKey', () => {
+  it('returns the expected key', () => {
+    expect(tripMembersQueryKey('t1')).toEqual(['trips', 't1', 'members'])
+  })
+})

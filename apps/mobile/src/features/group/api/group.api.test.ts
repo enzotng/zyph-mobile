@@ -1,0 +1,73 @@
+import { supabase } from '@/lib/supabase'
+import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
+
+import { joinTripByCode, listTripMembers } from './group.api'
+
+jest.mock('@/lib/supabase')
+
+const from = supabase.from as jest.Mock
+const rpc = supabase.rpc as jest.Mock
+
+// Raw shape returned by the Supabase join query.
+const rawMember = {
+  id: 'm1',
+  user_id: 'u1',
+  role: 'member' as const,
+  status: 'active' as const,
+  profiles: { display_name: 'Alice' },
+}
+
+const mappedMember = {
+  id: 'm1',
+  user_id: 'u1',
+  role: 'member' as const,
+  status: 'active' as const,
+  display_name: 'Alice',
+}
+
+beforeEach(() => {
+  jest.clearAllMocks()
+})
+
+describe('listTripMembers', () => {
+  it('returns members mapped with display_name from profiles join', async () => {
+    const builder = makeQueryBuilder({ data: [rawMember], error: null })
+    from.mockReturnValue(builder)
+
+    await expect(listTripMembers('t1')).resolves.toEqual([mappedMember])
+    expect(from).toHaveBeenCalledWith('trip_members')
+    expect(builder.eq).toHaveBeenCalledWith('trip_id', 't1')
+    expect(builder.eq).toHaveBeenCalledWith('status', 'active')
+    expect(builder.order).toHaveBeenCalledWith('joined_at', { ascending: true })
+  })
+
+  it('maps null profiles.display_name to null', async () => {
+    const memberWithNullProfile = { ...rawMember, profiles: { display_name: null } }
+    const builder = makeQueryBuilder({ data: [memberWithNullProfile], error: null })
+    from.mockReturnValue(builder)
+
+    const result = await listTripMembers('t1')
+    expect(result[0].display_name).toBeNull()
+  })
+
+  it('throws when the query errors', async () => {
+    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('list fail') }))
+
+    await expect(listTripMembers('t1')).rejects.toThrow('list fail')
+  })
+})
+
+describe('joinTripByCode', () => {
+  it('calls rpc join_trip_by_code and returns the trip id', async () => {
+    rpc.mockResolvedValue({ data: 't1', error: null })
+
+    await expect(joinTripByCode('ABCD1234')).resolves.toBe('t1')
+    expect(rpc).toHaveBeenCalledWith('join_trip_by_code', { _code: 'ABCD1234' })
+  })
+
+  it('throws when rpc errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('invalid code') })
+
+    await expect(joinTripByCode('WRONG')).rejects.toThrow('invalid code')
+  })
+})
