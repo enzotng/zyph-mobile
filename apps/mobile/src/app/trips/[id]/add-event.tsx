@@ -1,7 +1,10 @@
+import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { Alert } from 'react-native'
+import { Alert, Pressable, Text } from 'react-native'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { DateField } from '@/components/date-field'
@@ -9,19 +12,38 @@ import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { type CreateEventValues, createEventSchema, useCreateEvent } from '@/features/timeline'
 
+const ONE_HOUR_MS = 3_600_000
+
 export default function AddEventScreen() {
   const params = useLocalSearchParams<{ id: string }>()
   const tripId = (Array.isArray(params.id) ? params.id[0] : params.id) ?? ''
   const router = useRouter()
+  const { theme } = useUnistyles()
   const createEvent = useCreateEvent(tripId)
+  const [hasEnd, setHasEnd] = useState(false)
+
   const {
     control,
     handleSubmit,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<CreateEventValues>({
     resolver: zodResolver(createEventSchema),
-    defaultValues: { title: '', startsAt: new Date().toISOString(), notes: '' },
+    defaultValues: { title: '', startsAt: new Date().toISOString(), endsAt: '', notes: '' },
   })
+
+  function toggleEnd() {
+    // Keep form side effects out of the state updater (it can run twice in Strict Mode).
+    const next = !hasEnd
+    setHasEnd(next)
+    if (next && !getValues('endsAt')) {
+      const start = new Date(getValues('startsAt'))
+      setValue('endsAt', new Date(start.getTime() + ONE_HOUR_MS).toISOString())
+    } else if (!next) {
+      setValue('endsAt', '')
+    }
+  }
 
   async function onSubmit(values: CreateEventValues) {
     try {
@@ -29,6 +51,7 @@ export default function AddEventScreen() {
         tripId,
         title: values.title,
         startsAt: values.startsAt,
+        endsAt: values.endsAt || undefined,
         notes: values.notes,
       })
       router.back()
@@ -62,13 +85,42 @@ export default function AddEventScreen() {
         name="startsAt"
         render={({ field }) => (
           <DateField
-            label="Date"
+            label="Start"
             value={new Date(field.value)}
             onChange={(date) => field.onChange(date.toISOString())}
             error={errors.startsAt?.message}
           />
         )}
       />
+
+      <Pressable
+        style={styles.toggle}
+        onPress={toggleEnd}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: hasEnd }}
+      >
+        <Ionicons
+          name={hasEnd ? 'checkbox' : 'square-outline'}
+          size={22}
+          color={hasEnd ? theme.colors.primary : theme.colors.muted}
+        />
+        <Text style={styles.toggleLabel}>Add an end time</Text>
+      </Pressable>
+
+      {hasEnd ? (
+        <Controller
+          control={control}
+          name="endsAt"
+          render={({ field }) => (
+            <DateField
+              label="End"
+              value={new Date(field.value || getValues('startsAt'))}
+              onChange={(date) => field.onChange(date.toISOString())}
+              error={errors.endsAt?.message}
+            />
+          )}
+        />
+      ) : null}
 
       <Controller
         control={control}
@@ -94,3 +146,15 @@ export default function AddEventScreen() {
     </Screen>
   )
 }
+
+const styles = StyleSheet.create((theme) => ({
+  toggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+  },
+  toggleLabel: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.foreground,
+  },
+}))
