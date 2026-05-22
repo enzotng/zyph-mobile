@@ -1,4 +1,4 @@
-pnpm exec biome format --write --staged --no-errors-on-unmatched
+pnpm exec biome check --write --staged --no-errors-on-unmatched
 git update-index --again
 pnpm exec validate-branch-name
 gitleaks git --staged --no-banner --redact

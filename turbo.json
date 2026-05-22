@@ -14,8 +14,8 @@
       "outputs": []
     },
     "test": {
-      "inputs": ["src/**"],
-      "outputs": ["coverage/**"]
+      "inputs": ["src/**", "jest.config.js", "jest-setup.ts", "jest/**", "package.json"],
+      "outputs": []
     }
   }
 }
