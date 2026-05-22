@@ -46,3 +46,31 @@ export async function createTrip(input: CreateTripValues): Promise<Trip> {
   }
   return data
 }
+
+export type UpdateTripInput = CreateTripValues & { id: string }
+
+export async function updateTrip({
+  id,
+  title,
+  destination,
+  currency,
+}: UpdateTripInput): Promise<Trip> {
+  const { data, error } = await supabase
+    .from('trips')
+    .update({ title, destination: destination || null, currency })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) {
+    throw error
+  }
+  return data
+}
+
+export async function deleteTrip(id: string): Promise<void> {
+  // Cascades to members, events, expenses, splits and media via FK on delete cascade.
+  const { error } = await supabase.from('trips').delete().eq('id', id)
+  if (error) {
+    throw error
+  }
+}

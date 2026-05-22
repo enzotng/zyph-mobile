@@ -1,12 +1,12 @@
 import { FlashList } from '@shopify/flash-list'
-import { Link, useLocalSearchParams } from 'expo-router'
-import { ActivityIndicator, Pressable, Share, Text, View } from 'react-native'
+import { Link, useLocalSearchParams, useRouter } from 'expo-router'
+import { ActivityIndicator, Alert, Pressable, Share, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { useAuth } from '@/features/auth'
 import { formatAmount, useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
-import { useTrip } from '@/features/trips'
+import { useDeleteTrip, useTrip } from '@/features/trips'
 
 export default function TripDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>()
@@ -17,6 +17,8 @@ export default function TripDetailScreen() {
   const { data: members } = useTripMembers(tripId)
   const { session } = useAuth()
   const userId = session?.user.id
+  const router = useRouter()
+  const deleteTrip = useDeleteTrip()
 
   if (isLoading) {
     return (
@@ -52,6 +54,29 @@ export default function TripDetailScreen() {
     })
   }
 
+  const isOwner = trip.owner_id === userId
+
+  function confirmDelete() {
+    Alert.alert('Delete trip', 'This permanently removes the trip and all its data.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteTrip.mutateAsync(tripId)
+            router.replace('/')
+          } catch (error) {
+            Alert.alert(
+              'Could not delete',
+              error instanceof Error ? error.message : 'Please try again.',
+            )
+          }
+        },
+      },
+    ])
+  }
+
   return (
     <View style={styles.container}>
       <FlashList
@@ -62,6 +87,24 @@ export default function TripDetailScreen() {
           <View style={styles.head}>
             <Text style={styles.title}>{trip.title}</Text>
             {trip.destination ? <Text style={styles.subtitle}>{trip.destination}</Text> : null}
+
+            {isOwner ? (
+              <View style={styles.ownerActions}>
+                <Link
+                  href={{ pathname: '/trips/[id]/edit', params: { id: tripId } }}
+                  style={styles.link}
+                >
+                  Edit
+                </Link>
+                <Pressable
+                  onPress={confirmDelete}
+                  disabled={deleteTrip.isPending}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.deleteText}>Delete</Text>
+                </Pressable>
+              </View>
+            ) : null}
 
             <View style={styles.inviteRow}>
               <View>
@@ -205,6 +248,15 @@ const styles = StyleSheet.create((theme, rt) => ({
     color: theme.colors.primary,
     fontWeight: '600',
     paddingTop: theme.gap(3),
+  },
+  ownerActions: {
+    flexDirection: 'row',
+    gap: theme.gap(4),
+    paddingTop: theme.gap(2),
+  },
+  deleteText: {
+    color: theme.colors.destructive,
+    fontWeight: '600',
   },
   muted: {
     color: theme.colors.muted,
