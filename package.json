@@ -1,0 +1,36 @@
+{
+  "name": "zyph-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "biome format --write",
+    "format:check": "biome format",
+    "mobile": "pnpm --filter mobile",
+    "prepare": "husky",
+    "release": "commit-and-tag-version",
+    "release:patch": "commit-and-tag-version --release-as patch",
+    "release:minor": "commit-and-tag-version --release-as minor",
+    "release:major": "commit-and-tag-version --release-as major"
+  },
+  "validate-branch-name": {
+    "pattern": "^(main|preprod|develop)$|^(feat|fix|refactor|chore|docs|style|perf|test|build|ci|hotfix|release)/[a-z0-9-]+$",
+    "errorMsg": "branche invalide. format: <type>/<description-kebab-case>\\nexemples: feat/auth-mfa, fix/sync-conflict"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.15",
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
+    "commit-and-tag-version": "^12.7.3",
+    "husky": "^9.1.7",
+    "turbo": "^2.5.0",
+    "validate-branch-name": "^1.3.2"
+  }
+}

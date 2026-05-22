@@ -1,0 +1,21 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [".npmrc"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "lint": {
+      "inputs": ["src/**", "*.{js,ts,cjs,json}"]
+    },
+    "typecheck": {
+      "inputs": ["src/**", "tsconfig.json", "expo-env.d.ts", ".expo/types/**"],
+      "outputs": []
+    },
+    "test": {
+      "inputs": ["src/**"],
+      "outputs": ["coverage/**"]
+    }
+  }
+}
