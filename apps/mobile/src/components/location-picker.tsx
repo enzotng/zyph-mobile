@@ -16,7 +16,7 @@ type LocationPickerProps = {
 export function LocationPicker({ label, value, onChange }: LocationPickerProps) {
   const [locating, setLocating] = useState(false)
 
-  async function useMyLocation() {
+  async function requestCurrentLocation() {
     setLocating(true)
     try {
       const { status } = await Location.requestForegroundPermissionsAsync()
@@ -66,7 +66,7 @@ export function LocationPicker({ label, value, onChange }: LocationPickerProps) 
           {value ? 'Tap the map to adjust the pin.' : 'Tap the map to drop a pin.'}
         </Text>
         <Pressable
-          onPress={() => void useMyLocation()}
+          onPress={() => void requestCurrentLocation()}
           disabled={locating}
           accessibilityRole="button"
         >
