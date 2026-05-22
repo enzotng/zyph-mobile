@@ -48,6 +48,11 @@ export default function TripsScreen() {
 
       <View style={styles.footer}>
         <Button label="Create a trip" onPress={() => router.push('/trips/new')} />
+        <Button
+          label="Join by code"
+          variant="secondary"
+          onPress={() => router.push('/trips/join')}
+        />
       </View>
     </View>
   )
@@ -116,6 +121,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     color: theme.colors.foreground,
   },
   footer: {
+    gap: theme.gap(2),
     paddingVertical: theme.gap(3),
     paddingBottom: rt.insets.bottom + theme.gap(3),
   },

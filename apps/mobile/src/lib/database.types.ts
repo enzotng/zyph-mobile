@@ -371,6 +371,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      join_trip_by_code: { Args: { _code: string }; Returns: string }
     }
     Enums: {
       member_status: 'invited' | 'active'

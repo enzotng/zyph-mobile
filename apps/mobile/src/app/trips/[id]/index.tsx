@@ -1,10 +1,11 @@
 import { FlashList } from '@shopify/flash-list'
 import { Link, useLocalSearchParams } from 'expo-router'
-import { ActivityIndicator, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, Share, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { useAuth } from '@/features/auth'
 import { formatAmount, useExpenses, useTripBalances } from '@/features/expenses'
+import { useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
 
 export default function TripDetailScreen() {
@@ -13,6 +14,7 @@ export default function TripDetailScreen() {
   const { data: trip, isLoading, isError } = useTrip(tripId)
   const { data: expenses } = useExpenses(tripId)
   const { data: balances } = useTripBalances(tripId)
+  const { data: members } = useTripMembers(tripId)
   const { session } = useAuth()
   const userId = session?.user.id
 
@@ -32,6 +34,24 @@ export default function TripDetailScreen() {
     )
   }
 
+  const nameById = new Map((members ?? []).map((member) => [member.id, member.display_name]))
+
+  function labelFor(memberUserId: string | null, memberId: string): string {
+    if (memberUserId && memberUserId === userId) {
+      return 'You'
+    }
+    return nameById.get(memberId) ?? 'Member'
+  }
+
+  async function shareInvite() {
+    if (!trip) {
+      return
+    }
+    await Share.share({
+      message: `Join my trip "${trip.title}" on ZYPH with invite code: ${trip.invite_code}`,
+    })
+  }
+
   return (
     <View style={styles.container}>
       <FlashList
@@ -43,17 +63,39 @@ export default function TripDetailScreen() {
             <Text style={styles.title}>{trip.title}</Text>
             {trip.destination ? <Text style={styles.subtitle}>{trip.destination}</Text> : null}
 
+            <View style={styles.inviteRow}>
+              <View>
+                <Text style={styles.muted}>Invite code</Text>
+                <Text style={styles.code}>{trip.invite_code}</Text>
+              </View>
+              <Pressable onPress={() => void shareInvite()} accessibilityRole="button">
+                <Text style={styles.link}>Share</Text>
+              </Pressable>
+            </View>
+
+            {members && members.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Members</Text>
+                {members.map((member) => (
+                  <View key={member.id} style={styles.rowBetween}>
+                    <Text style={styles.body}>
+                      {member.user_id === userId ? 'You' : (member.display_name ?? 'Member')}
+                    </Text>
+                    <Text style={styles.muted}>{member.role}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
             {balances && balances.length > 0 ? (
-              <View style={styles.balances}>
+              <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Balances</Text>
                 {balances.map((balance) => (
-                  <View key={balance.member_id} style={styles.balanceRow}>
-                    <Text style={styles.expenseDesc}>
-                      {balance.user_id === userId ? 'You' : 'Member'}
-                    </Text>
+                  <View key={balance.member_id} style={styles.rowBetween}>
+                    <Text style={styles.body}>{labelFor(balance.user_id, balance.member_id)}</Text>
                     <Text
                       style={[
-                        styles.expenseAmount,
+                        styles.amount,
                         (balance.balance_cents ?? 0) < 0 ? styles.negative : null,
                       ]}
                     >
@@ -78,10 +120,8 @@ export default function TripDetailScreen() {
         ListEmptyComponent={<Text style={styles.muted}>No expenses yet.</Text>}
         renderItem={({ item }) => (
           <View style={styles.expenseRow}>
-            <Text style={styles.expenseDesc}>{item.description}</Text>
-            <Text style={styles.expenseAmount}>
-              {formatAmount(item.amount_cents, item.currency)}
-            </Text>
+            <Text style={styles.body}>{item.description}</Text>
+            <Text style={styles.amount}>{formatAmount(item.amount_cents, item.currency)}</Text>
           </View>
         )}
       />
@@ -115,6 +155,25 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontSize: theme.fontSize.md,
     color: theme.colors.muted,
   },
+  inviteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.gap(3),
+    paddingHorizontal: theme.gap(4),
+    marginTop: theme.gap(3),
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.card,
+  },
+  code: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: '700',
+    color: theme.colors.foreground,
+  },
+  section: {
+    gap: theme.gap(1),
+    paddingTop: theme.gap(4),
+  },
   sectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -126,25 +185,27 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontWeight: '600',
     color: theme.colors.foreground,
   },
-  link: {
-    color: theme.colors.primary,
-    fontWeight: '600',
-  },
-  balances: {
-    gap: theme.gap(1),
-    paddingTop: theme.gap(4),
-  },
-  balanceRow: {
+  rowBetween: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: theme.gap(1),
   },
-  negative: {
-    color: theme.colors.destructive,
+  link: {
+    color: theme.colors.primary,
+    fontWeight: '600',
   },
   muted: {
     color: theme.colors.muted,
-    paddingTop: theme.gap(3),
+  },
+  body: {
+    color: theme.colors.foreground,
+  },
+  amount: {
+    color: theme.colors.foreground,
+    fontWeight: '600',
+  },
+  negative: {
+    color: theme.colors.destructive,
   },
   list: {
     paddingBottom: rt.insets.bottom + theme.gap(4),
@@ -155,12 +216,5 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingVertical: theme.gap(3),
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-  },
-  expenseDesc: {
-    color: theme.colors.foreground,
-  },
-  expenseAmount: {
-    color: theme.colors.foreground,
-    fontWeight: '600',
   },
 }))
