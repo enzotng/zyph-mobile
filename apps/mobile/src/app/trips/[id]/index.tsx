@@ -3,6 +3,7 @@ import { Link, useLocalSearchParams, useRouter } from 'expo-router'
 import { ActivityIndicator, Alert, Pressable, Share, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
+import { Screen } from '@/components/screen'
 import { useAuth } from '@/features/auth'
 import { formatAmount, useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
@@ -22,17 +23,21 @@ export default function TripDetailScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator />
-      </View>
+      <Screen showBack>
+        <View style={styles.center}>
+          <ActivityIndicator />
+        </View>
+      </Screen>
     )
   }
 
   if (isError || !trip) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.subtitle}>Trip not found.</Text>
-      </View>
+      <Screen showBack>
+        <View style={styles.center}>
+          <Text style={styles.subtitle}>Trip not found.</Text>
+        </View>
+      </Screen>
     )
   }
 
@@ -78,14 +83,13 @@ export default function TripDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <Screen title={trip.title}>
       <FlashList
         data={expenses ?? []}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View style={styles.head}>
-            <Text style={styles.title}>{trip.title}</Text>
             {trip.destination ? <Text style={styles.subtitle}>{trip.destination}</Text> : null}
 
             {isOwner ? (
@@ -175,31 +179,19 @@ export default function TripDetailScreen() {
           </View>
         )}
       />
-    </View>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create((theme, rt) => ({
-  container: {
-    flex: 1,
-    paddingHorizontal: theme.gap(6),
-    paddingTop: rt.insets.top + theme.gap(4),
-    backgroundColor: theme.colors.background,
-  },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.background,
   },
   head: {
     gap: theme.gap(1),
     paddingBottom: theme.gap(3),
-  },
-  title: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: '700',
-    color: theme.colors.foreground,
   },
   subtitle: {
     fontSize: theme.fontSize.md,

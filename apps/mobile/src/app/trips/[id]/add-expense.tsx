@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Controller, useForm } from 'react-hook-form'
-import { Alert, Text, View } from 'react-native'
+import { Alert, Text } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import {
   type CreateExpenseValues,
@@ -47,9 +48,7 @@ export default function AddExpenseScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Add expense</Text>
-
+    <Screen title="Add expense" scroll>
       <Controller
         control={control}
         name="description"
@@ -88,23 +87,11 @@ export default function AddExpenseScreen() {
         onPress={handleSubmit(onSubmit)}
         disabled={createExpense.isPending}
       />
-    </View>
+    </Screen>
   )
 }
 
-const styles = StyleSheet.create((theme, rt) => ({
-  container: {
-    flex: 1,
-    gap: theme.gap(4),
-    paddingHorizontal: theme.gap(6),
-    paddingTop: rt.insets.top + theme.gap(4),
-    backgroundColor: theme.colors.background,
-  },
-  title: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: '700',
-    color: theme.colors.foreground,
-  },
+const styles = StyleSheet.create((theme) => ({
   hint: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,

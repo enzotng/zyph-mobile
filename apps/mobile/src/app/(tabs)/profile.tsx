@@ -3,6 +3,7 @@ import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { Screen } from '@/components/screen'
 import { signOut, useAuth } from '@/features/auth'
 import { useProfile } from '@/features/profile'
 import { getThemePreference, setThemePreference, type ThemePreference } from '@/lib/preferences'
@@ -32,9 +33,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Profile</Text>
-
+    <Screen title="Profile" showBack={false} scroll>
       <View style={styles.card}>
         <View style={styles.row}>
           <Text style={styles.label}>Name</Text>
@@ -69,23 +68,11 @@ export default function ProfileScreen() {
       </View>
 
       <Button label="Sign out" variant="secondary" onPress={onSignOut} disabled={signingOut} />
-    </View>
+    </Screen>
   )
 }
 
-const styles = StyleSheet.create((theme, rt) => ({
-  container: {
-    flex: 1,
-    gap: theme.gap(4),
-    paddingTop: rt.insets.top + theme.gap(4),
-    paddingHorizontal: theme.gap(6),
-    backgroundColor: theme.colors.background,
-  },
-  title: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: '700',
-    color: theme.colors.foreground,
-  },
+const styles = StyleSheet.create((theme) => ({
   card: {
     borderRadius: theme.radius.lg,
     borderWidth: 1,

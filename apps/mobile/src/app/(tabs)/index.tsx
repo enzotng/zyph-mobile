@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { Screen } from '@/components/screen'
 import { type Trip, useTrips } from '@/features/trips'
 
 export default function TripsScreen() {
@@ -11,9 +12,7 @@ export default function TripsScreen() {
   const { data: trips, isLoading, isError, refetch } = useTrips()
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>My trips</Text>
-
+    <Screen title="My trips" showBack={false}>
       {isLoading ? (
         <Text style={styles.muted}>Loading…</Text>
       ) : isError ? (
@@ -27,17 +26,19 @@ export default function TripsScreen() {
           <Text style={styles.muted}>Create your first trip to get started.</Text>
         </View>
       ) : (
-        <FlashList
-          data={trips}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <TripCard
-              trip={item}
-              onPress={() => router.push({ pathname: '/trips/[id]', params: { id: item.id } })}
-            />
-          )}
-        />
+        <View style={styles.listWrap}>
+          <FlashList
+            data={trips}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.list}
+            renderItem={({ item }) => (
+              <TripCard
+                trip={item}
+                onPress={() => router.push({ pathname: '/trips/[id]', params: { id: item.id } })}
+              />
+            )}
+          />
+        </View>
       )}
 
       <View style={styles.footer}>
@@ -48,7 +49,7 @@ export default function TripsScreen() {
           onPress={() => router.push('/trips/join')}
         />
       </View>
-    </View>
+    </Screen>
   )
 }
 
@@ -62,18 +63,6 @@ function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
 }
 
 const styles = StyleSheet.create((theme, rt) => ({
-  container: {
-    flex: 1,
-    paddingTop: rt.insets.top + theme.gap(2),
-    paddingHorizontal: theme.gap(6),
-    backgroundColor: theme.colors.background,
-  },
-  title: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: '700',
-    color: theme.colors.foreground,
-    paddingVertical: theme.gap(2),
-  },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -87,6 +76,9 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   muted: {
     color: theme.colors.muted,
+  },
+  listWrap: {
+    flex: 1,
   },
   list: {
     paddingVertical: theme.gap(3),
