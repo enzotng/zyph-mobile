@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
 
-import { joinTripByCode, listTripMembers } from './group.api'
+import { joinTripByCode, listTripMembers, regenerateInviteCode } from './group.api'
 
 jest.mock('@/lib/supabase')
 
@@ -69,5 +69,20 @@ describe('joinTripByCode', () => {
     rpc.mockResolvedValue({ data: null, error: makePostgrestError('invalid code') })
 
     await expect(joinTripByCode('WRONG')).rejects.toThrow('invalid code')
+  })
+})
+
+describe('regenerateInviteCode', () => {
+  it('calls rpc regenerate_invite_code and returns the new code', async () => {
+    rpc.mockResolvedValue({ data: 'newcode123456', error: null })
+
+    await expect(regenerateInviteCode('t1')).resolves.toBe('newcode123456')
+    expect(rpc).toHaveBeenCalledWith('regenerate_invite_code', { _trip_id: 't1' })
+  })
+
+  it('throws when rpc errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('not owner') })
+
+    await expect(regenerateInviteCode('t1')).rejects.toThrow('not owner')
   })
 })
