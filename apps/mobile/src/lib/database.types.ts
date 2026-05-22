@@ -217,6 +217,8 @@ export type Database = {
           created_by: string | null
           ends_at: string | null
           id: string
+          lat: number | null
+          lng: number | null
           location: unknown
           notes: string | null
           starts_at: string | null
@@ -230,6 +232,8 @@ export type Database = {
           created_by?: string | null
           ends_at?: string | null
           id?: string
+          lat?: number | null
+          lng?: number | null
           location?: unknown
           notes?: string | null
           starts_at?: string | null
@@ -243,6 +247,8 @@ export type Database = {
           created_by?: string | null
           ends_at?: string | null
           id?: string
+          lat?: number | null
+          lng?: number | null
           location?: unknown
           notes?: string | null
           starts_at?: string | null

@@ -40,7 +40,20 @@
       ],
       "react-native-edge-to-edge",
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-maps",
+        {
+          "requestLocationPermission": true,
+          "locationPermission": "Allow ZYPH to use your location to place trip events on the map."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow ZYPH to use your location to place trip events on the map."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

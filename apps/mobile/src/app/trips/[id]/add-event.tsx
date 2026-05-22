@@ -2,12 +2,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Alert, Pressable, Text } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { DateField } from '@/components/date-field'
+import { LocationPicker } from '@/components/location-picker'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { type CreateEventValues, createEventSchema, useCreateEvent } from '@/features/timeline'
@@ -34,6 +35,10 @@ export default function AddEventScreen() {
     defaultValues: { title: '', startsAt: new Date().toISOString(), endsAt: '', notes: '' },
   })
 
+  const lat = useWatch({ control, name: 'lat' })
+  const lng = useWatch({ control, name: 'lng' })
+  const coords = lat != null && lng != null ? { lat, lng } : null
+
   function toggleEnd() {
     // Keep form side effects out of the state updater (it can run twice in Strict Mode).
     const next = !hasEnd
@@ -54,6 +59,8 @@ export default function AddEventScreen() {
         startsAt: values.startsAt,
         endsAt: values.endsAt || undefined,
         notes: values.notes,
+        lat: values.lat,
+        lng: values.lng,
       })
       router.back()
     } catch (error) {
@@ -137,6 +144,15 @@ export default function AddEventScreen() {
             error={errors.notes?.message}
           />
         )}
+      />
+
+      <LocationPicker
+        label="Location"
+        value={coords}
+        onChange={(next) => {
+          setValue('lat', next.lat)
+          setValue('lng', next.lng)
+        }}
       />
 
       <Button

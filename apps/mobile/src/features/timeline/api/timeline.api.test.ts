@@ -91,8 +91,21 @@ describe('createEvent', () => {
       starts_at: '2024-06-01T10:00:00Z',
       ends_at: '2024-06-01T12:00:00Z',
       notes: 'Bring camera',
+      lat: null,
+      lng: null,
       created_by: 'u1',
     })
+  })
+
+  it('passes through coordinates when provided', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const builder = makeQueryBuilder({ data: event, error: null })
+    from.mockReturnValue(builder)
+
+    await createEvent({ ...input, lat: 48.8584, lng: 2.2945 })
+    expect(builder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ lat: 48.8584, lng: 2.2945 }),
+    )
   })
 
   it('sets ends_at to null when not provided', async () => {

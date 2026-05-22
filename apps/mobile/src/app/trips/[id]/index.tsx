@@ -187,12 +187,20 @@ export default function TripDetailScreen() {
               </Pressable>
             ) : null}
 
-            <Link
-              href={{ pathname: '/trips/[id]/timeline', params: { id: tripId } }}
-              style={styles.timelineLink}
-            >
-              View timeline →
-            </Link>
+            <View style={styles.navLinks}>
+              <Link
+                href={{ pathname: '/trips/[id]/timeline', params: { id: tripId } }}
+                style={styles.timelineLink}
+              >
+                View timeline →
+              </Link>
+              <Link
+                href={{ pathname: '/trips/[id]/map', params: { id: tripId } }}
+                style={styles.timelineLink}
+              >
+                View map →
+              </Link>
+            </View>
 
             {members && members.length > 0 ? (
               <View style={styles.section}>
@@ -378,10 +386,14 @@ const styles = StyleSheet.create((theme, rt) => ({
     color: theme.colors.primary,
     fontWeight: '600',
   },
+  navLinks: {
+    flexDirection: 'row',
+    gap: theme.gap(6),
+    paddingTop: theme.gap(3),
+  },
   timelineLink: {
     color: theme.colors.primary,
     fontWeight: '600',
-    paddingTop: theme.gap(3),
   },
   ownerActions: {
     flexDirection: 'row',

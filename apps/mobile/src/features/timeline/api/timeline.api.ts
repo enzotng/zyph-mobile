@@ -33,6 +33,8 @@ export type CreateEventInput = {
   startsAt: string
   endsAt?: string
   notes: string
+  lat?: number
+  lng?: number
 }
 
 export async function createEvent({
@@ -41,6 +43,8 @@ export async function createEvent({
   startsAt,
   endsAt,
   notes,
+  lat,
+  lng,
 }: CreateEventInput): Promise<TripEvent> {
   const { data: auth } = await supabase.auth.getSession()
   const userId = auth.session?.user.id
@@ -57,6 +61,8 @@ export async function createEvent({
       starts_at: startsAt,
       ends_at: endsAt || null,
       notes: notes || null,
+      lat: lat ?? null,
+      lng: lng ?? null,
       created_by: userId,
     })
     .select()
