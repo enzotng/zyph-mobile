@@ -1,51 +1,122 @@
-import { useState } from 'react'
-import { Alert, Text, View } from 'react-native'
+import { FlashList } from '@shopify/flash-list'
+import { useRouter } from 'expo-router'
+import { Pressable, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
-import { signOut, useAuth } from '@/features/auth'
+import { signOut } from '@/features/auth'
+import { type Trip, useTrips } from '@/features/trips'
 
-export default function HomeScreen() {
-  const { session } = useAuth()
-  const [signingOut, setSigningOut] = useState(false)
-
-  async function onSignOut() {
-    setSigningOut(true)
-    try {
-      await signOut()
-    } catch (error) {
-      Alert.alert('Sign out failed', error instanceof Error ? error.message : 'Please try again.')
-    } finally {
-      setSigningOut(false)
-    }
-  }
+export default function TripsScreen() {
+  const router = useRouter()
+  const { data: trips, isLoading, isError, refetch } = useTrips()
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>ZYPH</Text>
-      <Text style={styles.subtitle}>{session?.user.email ?? 'Offline-first travel'}</Text>
-      <Button label="Sign out" variant="secondary" onPress={onSignOut} disabled={signingOut} />
+      <View style={styles.header}>
+        <Text style={styles.title}>My trips</Text>
+        <Pressable onPress={() => void signOut()} accessibilityRole="button">
+          <Text style={styles.signOut}>Sign out</Text>
+        </Pressable>
+      </View>
+
+      {isLoading ? (
+        <Text style={styles.muted}>Loading…</Text>
+      ) : isError ? (
+        <View style={styles.center}>
+          <Text style={styles.muted}>Could not load your trips.</Text>
+          <Button label="Retry" variant="secondary" onPress={() => void refetch()} />
+        </View>
+      ) : !trips || trips.length === 0 ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyTitle}>No trips yet</Text>
+          <Text style={styles.muted}>Create your first trip to get started.</Text>
+        </View>
+      ) : (
+        <FlashList
+          data={trips}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
+            <TripCard
+              trip={item}
+              onPress={() => router.push({ pathname: '/trips/[id]', params: { id: item.id } })}
+            />
+          )}
+        />
+      )}
+
+      <View style={styles.footer}>
+        <Button label="Create a trip" onPress={() => router.push('/trips/new')} />
+      </View>
     </View>
+  )
+}
+
+function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
+  return (
+    <Pressable style={styles.card} onPress={onPress} accessibilityRole="button">
+      <Text style={styles.cardTitle}>{trip.title}</Text>
+      {trip.destination ? <Text style={styles.muted}>{trip.destination}</Text> : null}
+    </Pressable>
   )
 }
 
 const styles = StyleSheet.create((theme, rt) => ({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.gap(3),
-    paddingTop: rt.insets.top,
+    paddingTop: rt.insets.top + theme.gap(2),
     paddingHorizontal: theme.gap(6),
     backgroundColor: theme.colors.background,
   },
-  title: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: '700',
-    color: theme.colors.primary,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.gap(2),
   },
-  subtitle: {
-    fontSize: theme.fontSize.md,
+  title: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: '700',
+    color: theme.colors.foreground,
+  },
+  signOut: {
     color: theme.colors.muted,
+    fontWeight: '600',
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.gap(2),
+  },
+  emptyTitle: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: '600',
+    color: theme.colors.foreground,
+  },
+  muted: {
+    color: theme.colors.muted,
+  },
+  list: {
+    gap: theme.gap(3),
+    paddingVertical: theme.gap(3),
+  },
+  card: {
+    padding: theme.gap(4),
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+    gap: theme.gap(1),
+  },
+  cardTitle: {
+    fontSize: theme.fontSize.md,
+    fontWeight: '600',
+    color: theme.colors.foreground,
+  },
+  footer: {
+    paddingVertical: theme.gap(3),
+    paddingBottom: rt.insets.bottom + theme.gap(3),
   },
 }))
