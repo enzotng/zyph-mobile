@@ -7,6 +7,9 @@ export const createEventSchema = z
     // Empty string means "no end time" (point event).
     endsAt: z.string(),
     notes: z.string().trim().max(500),
+    // Optional map location, set via the picker (not a text field).
+    lat: z.number().optional(),
+    lng: z.number().optional(),
   })
   .refine((v) => !v.endsAt || new Date(v.endsAt) >= new Date(v.startsAt), {
     message: 'End must be after start',
