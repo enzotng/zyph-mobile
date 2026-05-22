@@ -1,5 +1,4 @@
-import DateTimePicker from '@react-native-community/datetimepicker'
-import { useState } from 'react'
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker'
 import { Platform, Pressable, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
@@ -11,41 +10,62 @@ type DateFieldProps = {
 }
 
 export function DateField({ label, value, onChange, error }: DateFieldProps) {
-  const [open, setOpen] = useState(false)
+  // iOS: the native compact control — a tappable date/time chip that pops the system
+  // popover. mode="datetime" lets the user set both the day and the time.
+  if (Platform.OS === 'ios') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.row}>
+          <Text style={styles.label}>{label}</Text>
+          <DateTimePicker
+            value={value}
+            mode="datetime"
+            display="compact"
+            onChange={(_event, date) => {
+              if (date) {
+                onChange(date)
+              }
+            }}
+          />
+        </View>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+      </View>
+    )
+  }
+
+  // Android: open the native date dialog, then the native time dialog (Android has no
+  // single date+time dialog), preserving the picked day when selecting the time.
+  function openAndroid() {
+    DateTimePickerAndroid.open({
+      value,
+      mode: 'date',
+      onChange: (_dateEvent, pickedDate) => {
+        if (!pickedDate) {
+          return
+        }
+        DateTimePickerAndroid.open({
+          value: pickedDate,
+          mode: 'time',
+          onChange: (_timeEvent, pickedDateTime) => {
+            if (pickedDateTime) {
+              onChange(pickedDateTime)
+            }
+          },
+        })
+      },
+    })
+  }
 
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <Pressable
         style={styles.input(Boolean(error))}
-        onPress={() => setOpen(true)}
+        onPress={openAndroid}
         accessibilityRole="button"
       >
-        <Text style={styles.value}>{value.toLocaleDateString()}</Text>
+        <Text style={styles.value}>{value.toLocaleString()}</Text>
       </Pressable>
-      {open ? (
-        <>
-          <DateTimePicker
-            value={value}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'inline' : 'default'}
-            onChange={(_event, date) => {
-              // Android dialog closes on pick; iOS stays inline until "Done".
-              if (Platform.OS === 'android') {
-                setOpen(false)
-              }
-              if (date) {
-                onChange(date)
-              }
-            }}
-          />
-          {Platform.OS === 'ios' ? (
-            <Pressable onPress={() => setOpen(false)} accessibilityRole="button">
-              <Text style={styles.done}>Done</Text>
-            </Pressable>
-          ) : null}
-        </>
-      ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   )
@@ -54,6 +74,12 @@ export function DateField({ label, value, onChange, error }: DateFieldProps) {
 const styles = StyleSheet.create((theme) => ({
   container: {
     gap: theme.gap(1),
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 40,
   },
   label: {
     fontSize: theme.fontSize.sm,
@@ -76,11 +102,5 @@ const styles = StyleSheet.create((theme) => ({
   error: {
     fontSize: theme.fontSize.xs,
     color: theme.colors.destructive,
-  },
-  done: {
-    alignSelf: 'flex-end',
-    paddingVertical: theme.gap(1),
-    color: theme.colors.primary,
-    fontWeight: '600',
   },
 }))
