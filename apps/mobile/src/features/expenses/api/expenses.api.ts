@@ -28,8 +28,13 @@ export async function listExpenses(tripId: string): Promise<Expense[]> {
 export type CreateExpenseInput = {
   tripId: string
   description: string
+  // Amount in the expense's own currency.
   amountCents: number
   currency: string
+  // Amount converted to the trip's currency at entry time; drives splits/balances.
+  baseAmountCents: number
+  // Frozen rate used for the conversion (currency -> trip currency); 1 when identical.
+  fxRate: number
 }
 
 export async function createExpense({
@@ -37,14 +42,21 @@ export async function createExpense({
   description,
   amountCents,
   currency,
+  baseAmountCents,
+  fxRate,
 }: CreateExpenseInput): Promise<Expense> {
   // Atomic server-side: inserts the expense + equal splits, enforces membership,
   // resolves the payer from auth.uid(). One round trip, one transaction.
+  // The server trusts the client-computed baseAmountCents/fxRate (it only validates
+  // sign): acceptable because trip members are mutually trusted and balances are
+  // informational (no money movement). Membership itself is server-enforced.
   const { data, error } = await supabase.rpc('create_expense_with_splits', {
     _trip_id: tripId,
     _description: description,
     _amount_cents: amountCents,
     _currency: currency,
+    _base_amount_cents: baseAmountCents,
+    _fx_rate: fxRate,
   })
   if (error) {
     throw error

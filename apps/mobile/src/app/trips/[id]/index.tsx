@@ -175,7 +175,14 @@ export default function TripDetailScreen() {
         renderItem={({ item }) => (
           <View style={styles.expenseRow}>
             <Text style={styles.body}>{item.description}</Text>
-            <Text style={styles.amount}>{formatAmount(item.amount_cents, item.currency)}</Text>
+            <View style={styles.amountCol}>
+              <Text style={styles.amount}>{formatAmount(item.amount_cents, item.currency)}</Text>
+              {item.currency !== trip.currency ? (
+                <Text style={styles.muted}>
+                  ≈ {formatAmount(item.base_amount_cents, trip.currency)}
+                </Text>
+              ) : null}
+            </View>
           </View>
         )}
       />
@@ -259,6 +266,9 @@ const styles = StyleSheet.create((theme, rt) => ({
   amount: {
     color: theme.colors.foreground,
     fontWeight: '600',
+  },
+  amountCol: {
+    alignItems: 'flex-end',
   },
   negative: {
     color: theme.colors.destructive,
