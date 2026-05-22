@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
+import { useQueryClient } from '@tanstack/react-query'
 import * as Linking from 'expo-linking'
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 
@@ -28,17 +29,22 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     // onAuthStateChange fires an initial event (INITIAL_SESSION) right after
     // subscribing, so it seeds the session and clears the loading state too.
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'SIGNED_OUT') {
+        // Drop all cached user data so the next account starts clean.
+        queryClient.clear()
+      }
       setSession(nextSession)
       setIsLoading(false)
     })
 
     return () => data.subscription.unsubscribe()
-  }, [])
+  }, [queryClient])
 
   useEffect(() => {
     void Linking.getInitialURL().then(exchangeCodeFromUrl)
