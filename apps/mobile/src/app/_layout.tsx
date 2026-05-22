@@ -6,6 +6,7 @@ import { ActivityIndicator, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { AuthProvider, useAuth } from '@/features/auth'
+import { hasSeenOnboarding } from '@/lib/preferences'
 import { queryClient } from '@/lib/query-client'
 
 function useProtectedRoute(session: Session | null, isLoading: boolean) {
@@ -16,8 +17,17 @@ function useProtectedRoute(session: Session | null, isLoading: boolean) {
     if (isLoading) {
       return
     }
+    const inOnboarding = segments[0] === 'onboarding'
+    if (!hasSeenOnboarding()) {
+      if (!inOnboarding) {
+        router.replace('/onboarding')
+      }
+      return
+    }
     const inAuthGroup = segments[0] === '(auth)'
-    if (!session && !inAuthGroup) {
+    if (inOnboarding) {
+      router.replace(session ? '/' : '/(auth)/sign-in')
+    } else if (!session && !inAuthGroup) {
       router.replace('/(auth)/sign-in')
     } else if (session && inAuthGroup) {
       router.replace('/')
