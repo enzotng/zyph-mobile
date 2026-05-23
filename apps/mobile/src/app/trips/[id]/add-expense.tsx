@@ -8,6 +8,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { CurrencySelect } from '@/components/currency-select'
+import { ReceiptScanner } from '@/components/receipt-scanner'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { useAuth } from '@/features/auth'
@@ -16,6 +17,7 @@ import {
   computeSplits,
   createExpenseSchema,
   formatAmount,
+  type ParsedReceipt,
   toCents,
   useCreateExpense,
 } from '@/features/expenses'
@@ -53,14 +55,33 @@ export default function AddExpenseScreen() {
     [overrides],
   )
 
+  const [scannerOpen, setScannerOpen] = useState(false)
+
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<CreateExpenseValues>({
     resolver: zodResolver(createExpenseSchema),
     defaultValues: { description: '', amount: '' },
   })
+
+  function applyScan(parsed: ParsedReceipt) {
+    setScannerOpen(false)
+    if (parsed.merchant) {
+      setValue('description', parsed.merchant.slice(0, 120), { shouldValidate: true })
+    }
+    if (parsed.amountCents !== null) {
+      setValue('amount', (parsed.amountCents / 100).toFixed(2), { shouldValidate: true })
+    }
+    if (parsed.currency && parsed.currency !== currency) {
+      // Only switch to a currency the FX provider knows about.
+      if (!fx || fx.rates[parsed.currency]) {
+        setPicked(parsed.currency)
+      }
+    }
+  }
 
   const amount = useWatch({ control, name: 'amount' })
 
@@ -182,6 +203,21 @@ export default function AddExpenseScreen() {
 
   return (
     <Screen title="Add expense" scroll>
+      <Pressable
+        onPress={() => setScannerOpen(true)}
+        accessibilityRole="button"
+        style={styles.scanBtn}
+      >
+        <Ionicons name="scan-outline" size={20} color={theme.colors.primary} />
+        <Text style={styles.scanLabel}>Scan receipt</Text>
+      </Pressable>
+
+      <ReceiptScanner
+        visible={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onResult={applyScan}
+      />
+
       <Controller
         control={control}
         name="description"
@@ -342,5 +378,20 @@ const styles = StyleSheet.create((theme) => ({
     textAlign: 'right',
     fontWeight: '600',
     color: theme.colors.foreground,
+  },
+  scanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+    alignSelf: 'flex-start',
+    paddingVertical: theme.gap(2),
+    paddingHorizontal: theme.gap(3),
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  scanLabel: {
+    color: theme.colors.primary,
+    fontWeight: '600',
   },
 }))
