@@ -1,14 +1,17 @@
 import { FlashList } from '@shopify/flash-list'
 import * as Clipboard from 'expo-clipboard'
 import { Link, useLocalSearchParams, useRouter } from 'expo-router'
+import { useMemo, useState } from 'react'
 import { ActivityIndicator, Alert, Pressable, Share, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
-import { categoryLabel } from '@/components/category-picker'
+import { CategoryPicker, categoryLabel } from '@/components/category-picker'
 import { Screen } from '@/components/screen'
+import { TextField } from '@/components/text-field'
 import { useAuth } from '@/features/auth'
 import {
   type ExpenseCategory,
+  filterExpenses,
   formatAmount,
   settleBalances,
   useExpenses,
@@ -37,6 +40,13 @@ export default function TripDetailScreen() {
   const regenerate = useRegenerateInviteCode(tripId)
   const leaveTripMutation = useLeaveTrip()
   const removeMember = useRemoveTripMember(tripId)
+
+  const [query, setQuery] = useState('')
+  const [filterCategory, setFilterCategory] = useState<ExpenseCategory | null>(null)
+  const filteredExpenses = useMemo(
+    () => filterExpenses(expenses ?? [], { query, category: filterCategory }),
+    [expenses, query, filterCategory],
+  )
 
   if (isLoading) {
     return (
@@ -194,10 +204,12 @@ export default function TripDetailScreen() {
     )
   }
 
+  const hasExpenses = (expenses ?? []).length > 0
+
   return (
     <Screen title={trip.title}>
       <FlashList
-        data={expenses ?? []}
+        data={filteredExpenses}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
@@ -360,9 +372,27 @@ export default function TripDetailScreen() {
                 Add
               </Link>
             </View>
+
+            {hasExpenses ? (
+              <View style={styles.filters}>
+                <TextField
+                  label="Search"
+                  placeholder="Search expenses"
+                  value={query}
+                  onChangeText={setQuery}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                />
+                <CategoryPicker value={filterCategory} onChange={setFilterCategory} />
+              </View>
+            ) : null}
           </View>
         }
-        ListEmptyComponent={<Text style={styles.muted}>No expenses yet.</Text>}
+        ListEmptyComponent={
+          <Text style={styles.muted}>
+            {hasExpenses ? 'No expenses match the filter.' : 'No expenses yet.'}
+          </Text>
+        }
         renderItem={({ item }) => (
           <Pressable
             style={styles.expenseRow}
@@ -510,6 +540,10 @@ const styles = StyleSheet.create((theme, rt) => ({
   leaveBtn: {
     alignSelf: 'flex-start',
     paddingTop: theme.gap(3),
+  },
+  filters: {
+    gap: theme.gap(2),
+    paddingTop: theme.gap(2),
   },
   muted: {
     color: theme.colors.muted,
