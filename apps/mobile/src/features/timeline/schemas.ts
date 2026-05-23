@@ -1,5 +1,13 @@
 import { z } from 'zod'
 
+export const gateLocationSchema = z.object({
+  label: z.string().trim().min(1).max(40),
+  lat: z.number(),
+  lng: z.number(),
+})
+
+export type GateLocationValues = z.infer<typeof gateLocationSchema>
+
 export const createEventSchema = z
   .object({
     title: z.string().trim().min(1, 'Title is required').max(120),
@@ -10,6 +18,8 @@ export const createEventSchema = z
     // Optional map location, set via the picker (not a text field).
     lat: z.number().optional(),
     lng: z.number().optional(),
+    // Optional precise gate / destination override (for AR wayfinder).
+    gateLocation: gateLocationSchema.nullable().optional(),
   })
   .refine((v) => !v.endsAt || new Date(v.endsAt) >= new Date(v.startsAt), {
     message: 'End must be after start',

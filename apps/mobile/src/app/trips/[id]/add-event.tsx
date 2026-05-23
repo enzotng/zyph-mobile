@@ -8,6 +8,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { DateField } from '@/components/date-field'
+import { GateLocationField } from '@/components/gate-location-field'
 import { LocationPicker } from '@/components/location-picker'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
@@ -61,6 +62,7 @@ export default function AddEventScreen() {
         notes: values.notes,
         lat: values.lat,
         lng: values.lng,
+        gateLocation: values.gateLocation ?? null,
       })
       router.back()
     } catch (error) {
@@ -153,6 +155,14 @@ export default function AddEventScreen() {
           setValue('lat', next.lat)
           setValue('lng', next.lng)
         }}
+      />
+
+      <Controller
+        control={control}
+        name="gateLocation"
+        render={({ field }) => (
+          <GateLocationField value={field.value ?? null} onChange={field.onChange} />
+        )}
       />
 
       <Button

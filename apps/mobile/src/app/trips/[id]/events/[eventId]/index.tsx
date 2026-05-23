@@ -142,6 +142,22 @@ export default function EventDetailScreen() {
           <Text style={styles.muted}>Completed</Text>
         ) : null}
         {event.notes ? <Text style={styles.notes}>{event.notes}</Text> : null}
+        {(() => {
+          const gate = event.gate_location as {
+            label?: string
+            lat?: number
+            lng?: number
+          } | null
+          if (!gate || typeof gate.lat !== 'number' || typeof gate.lng !== 'number') {
+            return null
+          }
+          return (
+            <View style={styles.gateRow}>
+              <Ionicons name="airplane" size={18} color={theme.colors.primary} />
+              <Text style={styles.body}>{gate.label || 'Gate'}</Text>
+            </View>
+          )
+        })()}
       </View>
 
       <View style={styles.actions}>
@@ -238,6 +254,12 @@ const styles = StyleSheet.create((theme) => ({
   notes: {
     paddingTop: theme.gap(2),
     color: theme.colors.foreground,
+  },
+  gateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+    paddingTop: theme.gap(2),
   },
   badgePrimary: {
     fontWeight: '700',

@@ -93,6 +93,7 @@ describe('createEvent', () => {
       notes: 'Bring camera',
       lat: null,
       lng: null,
+      gate_location: null,
       created_by: 'u1',
     })
   })
@@ -162,6 +163,7 @@ describe('updateEvent', () => {
       notes: 'Updated notes',
       lat: null,
       lng: null,
+      gate_location: null,
     })
     expect(builder.eq).toHaveBeenCalledWith('id', 'ev1')
   })

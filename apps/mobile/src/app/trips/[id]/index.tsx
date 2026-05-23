@@ -1,9 +1,10 @@
+import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
 import * as Clipboard from 'expo-clipboard'
 import { Link, useLocalSearchParams, useRouter } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Alert, Pressable, Share, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { CategoryPicker, categoryLabel } from '@/components/category-picker'
 import { Screen } from '@/components/screen'
@@ -24,6 +25,8 @@ import {
   useTripMembers,
 } from '@/features/group'
 import { useDeleteTrip, useTrip } from '@/features/trips'
+import { useShareLocation } from '@/features/wayfinder'
+import { getShareLocation, setShareLocation } from '@/lib/preferences'
 import { paramString } from '@/lib/routing'
 
 export default function TripDetailScreen() {
@@ -43,6 +46,28 @@ export default function TripDetailScreen() {
 
   const [query, setQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState<ExpenseCategory | null>(null)
+  const [sharing, setSharing] = useState(() => getShareLocation(tripId))
+  const { status: shareStatus } = useShareLocation({ tripId, enabled: sharing })
+  const { theme } = useUnistyles()
+
+  useEffect(() => {
+    setShareLocation(tripId, sharing)
+  }, [sharing, tripId])
+
+  function toggleSharing() {
+    if (sharing) {
+      setSharing(false)
+      return
+    }
+    Alert.alert(
+      'Share your location',
+      'Other members of this trip will see your live position while sharing is on. Turn it off any time to stop.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Share', onPress: () => setSharing(true) },
+      ],
+    )
+  }
   const filteredExpenses = useMemo(
     () => filterExpenses(expenses ?? [], { query, category: filterCategory }),
     [expenses, query, filterCategory],
@@ -275,7 +300,45 @@ export default function TripDetailScreen() {
               >
                 View map →
               </Link>
+              <Link
+                href={{ pathname: '/trips/[id]/pois', params: { id: tripId } }}
+                style={styles.timelineLink}
+              >
+                POIs →
+              </Link>
             </View>
+
+            <Pressable
+              onPress={toggleSharing}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: sharing }}
+              style={styles.shareRow}
+            >
+              <Ionicons
+                name={sharing ? 'location' : 'location-outline'}
+                size={22}
+                color={sharing ? theme.colors.primary : theme.colors.muted}
+              />
+              <View style={styles.shareInfo}>
+                <Text style={styles.body}>
+                  {sharing ? 'Sharing my location' : 'Share my location'}
+                </Text>
+                <Text style={styles.muted}>
+                  {shareStatus === 'denied'
+                    ? 'Permission denied. Enable Location in Settings.'
+                    : shareStatus === 'error'
+                      ? 'Could not start sharing. Tap to retry.'
+                      : sharing
+                        ? 'Other members can see you in real time.'
+                        : 'Off — your position stays private.'}
+                </Text>
+              </View>
+              <Ionicons
+                name={sharing ? 'toggle' : 'toggle-outline'}
+                size={28}
+                color={sharing ? theme.colors.primary : theme.colors.muted}
+              />
+            </Pressable>
 
             {members && members.length > 0 ? (
               <View style={styles.section}>
@@ -544,6 +607,20 @@ const styles = StyleSheet.create((theme, rt) => ({
   filters: {
     gap: theme.gap(2),
     paddingTop: theme.gap(2),
+  },
+  shareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+    paddingVertical: theme.gap(3),
+    paddingHorizontal: theme.gap(4),
+    marginTop: theme.gap(3),
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.card,
+  },
+  shareInfo: {
+    flex: 1,
+    gap: theme.gap(1),
   },
   muted: {
     color: theme.colors.muted,

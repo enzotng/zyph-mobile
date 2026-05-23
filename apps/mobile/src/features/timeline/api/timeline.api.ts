@@ -27,6 +27,12 @@ export async function getEvent(eventId: string): Promise<TripEvent | null> {
   return data
 }
 
+export type GateLocation = {
+  label: string
+  lat: number
+  lng: number
+}
+
 export type CreateEventInput = {
   tripId: string
   title: string
@@ -35,6 +41,7 @@ export type CreateEventInput = {
   notes: string
   lat?: number
   lng?: number
+  gateLocation?: GateLocation | null
 }
 
 export async function createEvent({
@@ -45,6 +52,7 @@ export async function createEvent({
   notes,
   lat,
   lng,
+  gateLocation,
 }: CreateEventInput): Promise<TripEvent> {
   const { data: auth } = await supabase.auth.getSession()
   const userId = auth.session?.user.id
@@ -63,6 +71,7 @@ export async function createEvent({
       notes: notes || null,
       lat: lat ?? null,
       lng: lng ?? null,
+      gate_location: gateLocation ?? null,
       created_by: userId,
     })
     .select()
@@ -81,6 +90,7 @@ export type UpdateEventInput = {
   notes: string
   lat?: number
   lng?: number
+  gateLocation?: GateLocation | null
 }
 
 export async function updateEvent({
@@ -91,6 +101,7 @@ export async function updateEvent({
   notes,
   lat,
   lng,
+  gateLocation,
 }: UpdateEventInput): Promise<TripEvent> {
   const { data, error } = await supabase
     .from('trip_events')
@@ -101,6 +112,7 @@ export async function updateEvent({
       notes: notes || null,
       lat: lat ?? null,
       lng: lng ?? null,
+      gate_location: gateLocation ?? null,
     })
     .eq('id', eventId)
     .select()
