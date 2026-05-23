@@ -1,7 +1,13 @@
 import { supabase } from '@/lib/supabase'
 import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
 
-import { joinTripByCode, listTripMembers, regenerateInviteCode } from './group.api'
+import {
+  joinTripByCode,
+  leaveTrip,
+  listTripMembers,
+  regenerateInviteCode,
+  removeTripMember,
+} from './group.api'
 
 jest.mock('@/lib/supabase')
 
@@ -84,5 +90,35 @@ describe('regenerateInviteCode', () => {
     rpc.mockResolvedValue({ data: null, error: makePostgrestError('not owner') })
 
     await expect(regenerateInviteCode('t1')).rejects.toThrow('not owner')
+  })
+})
+
+describe('leaveTrip', () => {
+  it('calls rpc leave_trip with the trip id', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(leaveTrip('t1')).resolves.toBeUndefined()
+    expect(rpc).toHaveBeenCalledWith('leave_trip', { _trip_id: 't1' })
+  })
+
+  it('throws when rpc errors (e.g. owner cannot leave)', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('owner cannot leave') })
+
+    await expect(leaveTrip('t1')).rejects.toThrow('owner cannot leave')
+  })
+})
+
+describe('removeTripMember', () => {
+  it('calls rpc remove_trip_member with the member id', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(removeTripMember('m1')).resolves.toBeUndefined()
+    expect(rpc).toHaveBeenCalledWith('remove_trip_member', { _member_id: 'm1' })
+  })
+
+  it('throws when rpc errors (non-owner caller)', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('only owner') })
+
+    await expect(removeTripMember('m1')).rejects.toThrow('only owner')
   })
 })

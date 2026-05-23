@@ -411,7 +411,9 @@ export type Database = {
         }[]
       }
       join_trip_by_code: { Args: { _code: string }; Returns: string }
+      leave_trip: { Args: { _trip_id: string }; Returns: undefined }
       regenerate_invite_code: { Args: { _trip_id: string }; Returns: string }
+      remove_trip_member: { Args: { _member_id: string }; Returns: undefined }
       update_expense_with_splits: {
         Args: {
           _amount_cents: number
@@ -446,7 +448,7 @@ export type Database = {
       }
     }
     Enums: {
-      member_status: 'invited' | 'active'
+      member_status: 'invited' | 'active' | 'removed'
       trip_role: 'owner' | 'member'
     }
     CompositeTypes: {
@@ -573,7 +575,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      member_status: ['invited', 'active'],
+      member_status: ['invited', 'active', 'removed'],
       trip_role: ['owner', 'member'],
     },
   },
