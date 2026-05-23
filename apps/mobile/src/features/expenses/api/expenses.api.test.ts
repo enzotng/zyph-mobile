@@ -107,7 +107,18 @@ describe('createExpense', () => {
         { member_id: 'm1', share_cents: 2500 },
         { member_id: 'm2', share_cents: 2500 },
       ],
+      _category: undefined,
     })
+  })
+
+  it('passes the category through when provided', async () => {
+    rpc.mockResolvedValue({ data: expense, error: null })
+
+    await createExpense({ ...input, category: 'food' })
+    expect(rpc).toHaveBeenCalledWith(
+      'create_expense_with_splits',
+      expect.objectContaining({ _category: 'food' }),
+    )
   })
 
   it('throws when rpc errors', async () => {
@@ -186,7 +197,18 @@ describe('updateExpense', () => {
         { member_id: 'm1', share_cents: 3000 },
         { member_id: 'm2', share_cents: 3000 },
       ],
+      _category: undefined,
     })
+  })
+
+  it('passes the category through when provided', async () => {
+    rpc.mockResolvedValue({ data: expense, error: null })
+
+    await updateExpense({ ...input, category: 'transport' })
+    expect(rpc).toHaveBeenCalledWith(
+      'update_expense_with_splits',
+      expect.objectContaining({ _category: 'transport' }),
+    )
   })
 
   it('throws when rpc errors', async () => {

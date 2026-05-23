@@ -4,9 +4,16 @@ import { Link, useLocalSearchParams, useRouter } from 'expo-router'
 import { ActivityIndicator, Alert, Pressable, Share, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
+import { categoryLabel } from '@/components/category-picker'
 import { Screen } from '@/components/screen'
 import { useAuth } from '@/features/auth'
-import { formatAmount, settleBalances, useExpenses, useTripBalances } from '@/features/expenses'
+import {
+  type ExpenseCategory,
+  formatAmount,
+  settleBalances,
+  useExpenses,
+  useTripBalances,
+} from '@/features/expenses'
 import {
   useLeaveTrip,
   useRegenerateInviteCode,
@@ -367,7 +374,14 @@ export default function TripDetailScreen() {
             }
             accessibilityRole="button"
           >
-            <Text style={styles.body}>{item.description}</Text>
+            <View style={styles.expenseInfo}>
+              <Text style={styles.body}>{item.description}</Text>
+              {item.category ? (
+                <Text style={styles.categoryBadge}>
+                  {categoryLabel(item.category as ExpenseCategory)}
+                </Text>
+              ) : null}
+            </View>
             <View style={styles.amountCol}>
               <Text style={styles.amount}>{formatAmount(item.amount_cents, item.currency)}</Text>
               {item.currency !== trip.currency ? (
@@ -515,6 +529,21 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   list: {
     paddingBottom: rt.insets.bottom + theme.gap(4),
+  },
+  expenseInfo: {
+    flex: 1,
+    gap: theme.gap(1),
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    fontSize: theme.fontSize.sm,
+    paddingHorizontal: theme.gap(2),
+    paddingVertical: theme.gap(1),
+    borderRadius: theme.radius.sm,
+    color: theme.colors.muted,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   expenseRow: {
     flexDirection: 'row',

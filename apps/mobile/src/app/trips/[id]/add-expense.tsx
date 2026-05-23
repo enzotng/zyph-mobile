@@ -7,6 +7,7 @@ import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { CategoryPicker } from '@/components/category-picker'
 import { CurrencySelect } from '@/components/currency-select'
 import { ReceiptScanner } from '@/components/receipt-scanner'
 import { Screen } from '@/components/screen'
@@ -16,6 +17,7 @@ import {
   type CreateExpenseValues,
   computeSplits,
   createExpenseSchema,
+  type ExpenseCategory,
   formatAmount,
   type ParsedReceipt,
   toCents,
@@ -56,6 +58,7 @@ export default function AddExpenseScreen() {
   )
 
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [category, setCategory] = useState<ExpenseCategory | null>(null)
 
   const {
     control,
@@ -179,6 +182,7 @@ export default function AddExpenseScreen() {
         baseAmountCents,
         fxRate,
         splits,
+        category,
       })
       router.back()
     } catch (error) {
@@ -239,6 +243,8 @@ export default function AddExpenseScreen() {
         currencies={currencies}
         onChange={setPicked}
       />
+
+      <CategoryPicker label="Category" value={category} onChange={setCategory} />
 
       <Controller
         control={control}

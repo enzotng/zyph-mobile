@@ -7,6 +7,7 @@ import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { CategoryPicker } from '@/components/category-picker'
 import { CurrencySelect } from '@/components/currency-select'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
@@ -15,6 +16,8 @@ import {
   type CreateExpenseValues,
   computeSplits,
   createExpenseSchema,
+  EXPENSE_CATEGORIES,
+  type ExpenseCategory,
   formatAmount,
   toCents,
   useExpense,
@@ -49,6 +52,17 @@ export default function EditExpenseScreen() {
   const tripCurrency = trip?.currency ?? 'EUR'
   const [picked, setPicked] = useState<string | null>(null)
   const currency = picked ?? expense?.currency ?? tripCurrency
+
+  // Same lazy pattern as currency: picked overrides the loaded value when the user changes it.
+  const [pickedCategory, setPickedCategory] = useState<ExpenseCategory | null | undefined>(
+    undefined,
+  )
+  const expenseCategory = (EXPENSE_CATEGORIES as readonly string[]).includes(
+    expense?.category ?? '',
+  )
+    ? (expense?.category as ExpenseCategory)
+    : null
+  const category = pickedCategory === undefined ? expenseCategory : pickedCategory
 
   // Only stores user changes; the effective state is derived by merging with the
   // loaded splits, so no async-to-state effect is needed.
@@ -177,6 +191,7 @@ export default function EditExpenseScreen() {
         baseAmountCents,
         fxRate,
         splits: splitInputs,
+        category,
       })
       router.back()
     } catch (error) {
@@ -220,6 +235,8 @@ export default function EditExpenseScreen() {
         currencies={currencies}
         onChange={setPicked}
       />
+
+      <CategoryPicker label="Category" value={category} onChange={setPickedCategory} />
 
       <Controller
         control={control}

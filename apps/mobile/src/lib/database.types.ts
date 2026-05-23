@@ -51,6 +51,7 @@ export type Database = {
         Row: {
           amount_cents: number
           base_amount_cents: number
+          category: string | null
           created_at: string
           created_by: string | null
           currency: string
@@ -66,6 +67,7 @@ export type Database = {
         Insert: {
           amount_cents: number
           base_amount_cents: number
+          category?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
@@ -81,6 +83,7 @@ export type Database = {
         Update: {
           amount_cents?: number
           base_amount_cents?: number
+          category?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
@@ -372,6 +375,7 @@ export type Database = {
         Args: {
           _amount_cents: number
           _base_amount_cents: number
+          _category?: string
           _currency: string
           _description: string
           _fx_rate: number
@@ -381,6 +385,7 @@ export type Database = {
         Returns: {
           amount_cents: number
           base_amount_cents: number
+          category: string | null
           created_at: string
           created_by: string | null
           currency: string
@@ -418,6 +423,7 @@ export type Database = {
         Args: {
           _amount_cents: number
           _base_amount_cents: number
+          _category?: string
           _currency: string
           _description: string
           _expense_id: string
@@ -427,6 +433,7 @@ export type Database = {
         Returns: {
           amount_cents: number
           base_amount_cents: number
+          category: string | null
           created_at: string
           created_by: string | null
           currency: string
