@@ -1,4 +1,5 @@
 export * from './api/expenses.api'
+export * from './filter'
 export * from './hooks/use-expenses'
 export * from './receipt-parser'
 export * from './schemas'
