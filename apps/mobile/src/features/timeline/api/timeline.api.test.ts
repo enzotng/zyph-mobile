@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
 
-import { createEvent, getEvent, listEvents } from './timeline.api'
+import { createEvent, deleteEvent, getEvent, listEvents, updateEvent } from './timeline.api'
 
 jest.mock('@/lib/supabase')
 
@@ -138,5 +138,75 @@ describe('createEvent', () => {
     from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('insert fail') }))
 
     await expect(createEvent(input)).rejects.toThrow('insert fail')
+  })
+})
+
+describe('updateEvent', () => {
+  const input = {
+    eventId: 'ev1',
+    title: 'Updated title',
+    startsAt: '2024-06-01T10:00:00Z',
+    endsAt: '2024-06-01T12:00:00Z',
+    notes: 'Updated notes',
+  }
+
+  it('updates event fields and returns the updated row', async () => {
+    const builder = makeQueryBuilder({ data: event, error: null })
+    from.mockReturnValue(builder)
+
+    await expect(updateEvent(input)).resolves.toEqual(event)
+    expect(builder.update).toHaveBeenCalledWith({
+      title: 'Updated title',
+      starts_at: '2024-06-01T10:00:00Z',
+      ends_at: '2024-06-01T12:00:00Z',
+      notes: 'Updated notes',
+      lat: null,
+      lng: null,
+    })
+    expect(builder.eq).toHaveBeenCalledWith('id', 'ev1')
+  })
+
+  it('passes through coordinates when provided', async () => {
+    const builder = makeQueryBuilder({ data: event, error: null })
+    from.mockReturnValue(builder)
+
+    await updateEvent({ ...input, lat: 48.8584, lng: 2.2945 })
+    expect(builder.update).toHaveBeenCalledWith(
+      expect.objectContaining({ lat: 48.8584, lng: 2.2945 }),
+    )
+  })
+
+  it('sets nullable fields to null when empty', async () => {
+    const builder = makeQueryBuilder({ data: event, error: null })
+    from.mockReturnValue(builder)
+
+    await updateEvent({ ...input, endsAt: undefined, notes: '' })
+    expect(builder.update).toHaveBeenCalledWith(
+      expect.objectContaining({ ends_at: null, notes: null }),
+    )
+  })
+
+  it('throws when the update errors', async () => {
+    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('update fail') }))
+
+    await expect(updateEvent(input)).rejects.toThrow('update fail')
+  })
+})
+
+describe('deleteEvent', () => {
+  it('deletes the event by id', async () => {
+    const builder = makeQueryBuilder({ data: null, error: null })
+    from.mockReturnValue(builder)
+
+    await expect(deleteEvent('ev1')).resolves.toBeUndefined()
+    expect(from).toHaveBeenCalledWith('trip_events')
+    expect(builder.delete).toHaveBeenCalled()
+    expect(builder.eq).toHaveBeenCalledWith('id', 'ev1')
+  })
+
+  it('throws on error', async () => {
+    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('delete fail') }))
+
+    await expect(deleteEvent('ev1')).rejects.toThrow('delete fail')
   })
 })

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { createEvent, getEvent, listEvents } from '../api/timeline.api'
+import { createEvent, deleteEvent, getEvent, listEvents, updateEvent } from '../api/timeline.api'
 
 export function eventsQueryKey(tripId: string) {
   return ['trips', tripId, 'events'] as const
@@ -32,6 +32,28 @@ export function useCreateEvent(tripId: string) {
     mutationFn: createEvent,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: eventsQueryKey(tripId) })
+    },
+  })
+}
+
+export function useUpdateEvent(tripId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateEvent,
+    onSuccess: (updated) => {
+      void queryClient.invalidateQueries({ queryKey: eventsQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: eventQueryKey(updated.id) })
+    },
+  })
+}
+
+export function useDeleteEvent(tripId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteEvent,
+    onSuccess: (_data, eventId) => {
+      void queryClient.invalidateQueries({ queryKey: eventsQueryKey(tripId) })
+      queryClient.removeQueries({ queryKey: eventQueryKey(eventId) })
     },
   })
 }

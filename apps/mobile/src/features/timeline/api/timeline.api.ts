@@ -72,3 +72,48 @@ export async function createEvent({
   }
   return data
 }
+
+export type UpdateEventInput = {
+  eventId: string
+  title: string
+  startsAt: string
+  endsAt?: string
+  notes: string
+  lat?: number
+  lng?: number
+}
+
+export async function updateEvent({
+  eventId,
+  title,
+  startsAt,
+  endsAt,
+  notes,
+  lat,
+  lng,
+}: UpdateEventInput): Promise<TripEvent> {
+  const { data, error } = await supabase
+    .from('trip_events')
+    .update({
+      title,
+      starts_at: startsAt,
+      ends_at: endsAt || null,
+      notes: notes || null,
+      lat: lat ?? null,
+      lng: lng ?? null,
+    })
+    .eq('id', eventId)
+    .select()
+    .single()
+  if (error) {
+    throw error
+  }
+  return data
+}
+
+export async function deleteEvent(eventId: string): Promise<void> {
+  const { error } = await supabase.from('trip_events').delete().eq('id', eventId)
+  if (error) {
+    throw error
+  }
+}

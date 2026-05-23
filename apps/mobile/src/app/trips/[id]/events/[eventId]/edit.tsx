@@ -1,0 +1,210 @@
+import { Ionicons } from '@expo/vector-icons'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useEffect } from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
+import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
+
+import { Button } from '@/components/button'
+import { DateField } from '@/components/date-field'
+import { LocationPicker } from '@/components/location-picker'
+import { Screen } from '@/components/screen'
+import { TextField } from '@/components/text-field'
+import {
+  type CreateEventValues,
+  createEventSchema,
+  useEvent,
+  useUpdateEvent,
+} from '@/features/timeline'
+import { paramString } from '@/lib/routing'
+
+export default function EditEventScreen() {
+  const params = useLocalSearchParams<{ id: string; eventId: string }>()
+  const tripId = paramString(params.id)
+  const eventId = paramString(params.eventId)
+  const router = useRouter()
+  const { theme } = useUnistyles()
+  const { data: event, isLoading } = useEvent(eventId)
+  const update = useUpdateEvent(tripId)
+
+  const {
+    control,
+    handleSubmit,
+    getValues,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<CreateEventValues>({
+    resolver: zodResolver(createEventSchema),
+    defaultValues: { title: '', startsAt: new Date().toISOString(), endsAt: '', notes: '' },
+  })
+
+  useEffect(() => {
+    if (!event) {
+      return
+    }
+    reset({
+      title: event.title,
+      startsAt: event.starts_at ?? new Date().toISOString(),
+      endsAt: event.ends_at ?? '',
+      notes: event.notes ?? '',
+      lat: event.lat ?? undefined,
+      lng: event.lng ?? undefined,
+    })
+  }, [event, reset])
+
+  const lat = useWatch({ control, name: 'lat' })
+  const lng = useWatch({ control, name: 'lng' })
+  const endsAt = useWatch({ control, name: 'endsAt' })
+  const coords = lat != null && lng != null ? { lat, lng } : null
+  const hasEnd = Boolean(endsAt)
+
+  function toggleEnd() {
+    if (hasEnd) {
+      setValue('endsAt', '')
+      return
+    }
+    const start = new Date(getValues('startsAt'))
+    setValue('endsAt', new Date(start.getTime() + 3_600_000).toISOString())
+  }
+
+  async function onSubmit(values: CreateEventValues) {
+    try {
+      await update.mutateAsync({
+        eventId,
+        title: values.title,
+        startsAt: values.startsAt,
+        endsAt: values.endsAt || undefined,
+        notes: values.notes,
+        lat: values.lat,
+        lng: values.lng,
+      })
+      router.back()
+    } catch (error) {
+      Alert.alert(
+        'Could not update event',
+        error instanceof Error ? error.message : 'Please try again.',
+      )
+    }
+  }
+
+  if (isLoading || !event) {
+    return (
+      <Screen title="Edit event" showBack>
+        <View style={styles.center}>
+          <ActivityIndicator />
+        </View>
+      </Screen>
+    )
+  }
+
+  return (
+    <Screen title="Edit event" scroll>
+      <Controller
+        control={control}
+        name="title"
+        render={({ field }) => (
+          <TextField
+            label="Title"
+            placeholder="Flight to Rome"
+            value={field.value}
+            onChangeText={field.onChange}
+            onBlur={field.onBlur}
+            error={errors.title?.message}
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="startsAt"
+        render={({ field }) => (
+          <DateField
+            label="Start"
+            value={new Date(field.value)}
+            onChange={(date) => field.onChange(date.toISOString())}
+            error={errors.startsAt?.message}
+          />
+        )}
+      />
+
+      <Pressable
+        style={styles.toggle}
+        onPress={toggleEnd}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: hasEnd }}
+      >
+        <Ionicons
+          name={hasEnd ? 'checkbox' : 'square-outline'}
+          size={22}
+          color={hasEnd ? theme.colors.primary : theme.colors.muted}
+        />
+        <Text style={styles.toggleLabel}>Add an end time</Text>
+      </Pressable>
+
+      {hasEnd ? (
+        <Controller
+          control={control}
+          name="endsAt"
+          render={({ field }) => (
+            <DateField
+              label="End"
+              value={new Date(field.value || getValues('startsAt'))}
+              onChange={(date) => field.onChange(date.toISOString())}
+              error={errors.endsAt?.message}
+            />
+          )}
+        />
+      ) : null}
+
+      <Controller
+        control={control}
+        name="notes"
+        render={({ field }) => (
+          <TextField
+            label="Notes"
+            placeholder="Optional"
+            multiline
+            value={field.value}
+            onChangeText={field.onChange}
+            onBlur={field.onBlur}
+            error={errors.notes?.message}
+          />
+        )}
+      />
+
+      <LocationPicker
+        label="Location"
+        value={coords}
+        onChange={(next) => {
+          setValue('lat', next.lat)
+          setValue('lng', next.lng)
+        }}
+      />
+
+      <Button
+        label={update.isPending ? 'Saving…' : 'Save changes'}
+        onPress={handleSubmit(onSubmit)}
+        disabled={update.isPending}
+      />
+    </Screen>
+  )
+}
+
+const styles = StyleSheet.create((theme) => ({
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+  },
+  toggleLabel: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.foreground,
+  },
+}))
