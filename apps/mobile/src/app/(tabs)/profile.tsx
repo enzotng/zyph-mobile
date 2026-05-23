@@ -1,3 +1,4 @@
+import { Link } from 'expo-router'
 import { useState } from 'react'
 import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
@@ -48,6 +49,10 @@ export default function ProfileScreen() {
           <Text style={styles.value}>{profile?.preferred_currency ?? '—'}</Text>
         </View>
       </View>
+
+      <Link href="/profile/edit" style={styles.editLink}>
+        Edit profile
+      </Link>
 
       <Text style={styles.sectionTitle}>Theme</Text>
       <View style={styles.segment}>
@@ -122,6 +127,11 @@ const styles = StyleSheet.create((theme) => ({
   },
   segmentTextActive: {
     color: theme.colors.primaryForeground,
+    fontWeight: '600',
+  },
+  editLink: {
+    alignSelf: 'flex-start',
+    color: theme.colors.primary,
     fontWeight: '600',
   },
 }))
