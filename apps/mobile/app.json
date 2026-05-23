@@ -53,6 +53,12 @@
         {
           "locationWhenInUsePermission": "Allow ZYPH to use your location to place trip events on the map."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow ZYPH to access your camera to scan expense receipts."
+        }
       ]
     ],
     "experiments": {
