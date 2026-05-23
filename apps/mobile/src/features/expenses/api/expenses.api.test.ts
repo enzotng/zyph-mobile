@@ -1,7 +1,15 @@
 import { supabase } from '@/lib/supabase'
 import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
 
-import { createExpense, getTripBalances, listExpenses } from './expenses.api'
+import {
+  createExpense,
+  deleteExpense,
+  getExpense,
+  getTripBalances,
+  listExpenseSplits,
+  listExpenses,
+  updateExpense,
+} from './expenses.api'
 
 jest.mock('@/lib/supabase')
 
@@ -106,5 +114,102 @@ describe('createExpense', () => {
     rpc.mockResolvedValue({ data: null, error: makePostgrestError('create fail') })
 
     await expect(createExpense(input)).rejects.toThrow('create fail')
+  })
+})
+
+describe('getExpense', () => {
+  it('returns the expense by id, filtered out when deleted', async () => {
+    const builder = makeQueryBuilder({ data: expense, error: null })
+    from.mockReturnValue(builder)
+
+    await expect(getExpense('e1')).resolves.toEqual(expense)
+    expect(builder.eq).toHaveBeenCalledWith('id', 'e1')
+    expect(builder.is).toHaveBeenCalledWith('deleted_at', null)
+    expect(builder.maybeSingle).toHaveBeenCalled()
+  })
+
+  it('returns null when not found', async () => {
+    from.mockReturnValue(makeQueryBuilder({ data: null, error: null }))
+    await expect(getExpense('missing')).resolves.toBeNull()
+  })
+
+  it('throws on error', async () => {
+    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('get fail') }))
+    await expect(getExpense('e1')).rejects.toThrow('get fail')
+  })
+})
+
+describe('listExpenseSplits', () => {
+  const split = { id: 's1', expense_id: 'e1', member_id: 'm1', share_cents: 2500 }
+
+  it('returns splits for an expense', async () => {
+    const builder = makeQueryBuilder({ data: [split], error: null })
+    from.mockReturnValue(builder)
+
+    await expect(listExpenseSplits('e1')).resolves.toEqual([split])
+    expect(from).toHaveBeenCalledWith('expense_splits')
+    expect(builder.eq).toHaveBeenCalledWith('expense_id', 'e1')
+  })
+
+  it('throws on error', async () => {
+    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('splits fail') }))
+    await expect(listExpenseSplits('e1')).rejects.toThrow('splits fail')
+  })
+})
+
+describe('updateExpense', () => {
+  const input = {
+    expenseId: 'e1',
+    description: 'Updated dinner',
+    amountCents: 6000,
+    currency: 'EUR',
+    baseAmountCents: 6000,
+    fxRate: 1,
+    splits: [
+      { memberId: 'm1', shareCents: 3000 },
+      { memberId: 'm2', shareCents: 3000 },
+    ],
+  }
+
+  it('calls rpc update_expense_with_splits with mapped arguments', async () => {
+    rpc.mockResolvedValue({ data: expense, error: null })
+
+    await expect(updateExpense(input)).resolves.toEqual(expense)
+    expect(rpc).toHaveBeenCalledWith('update_expense_with_splits', {
+      _expense_id: 'e1',
+      _description: 'Updated dinner',
+      _amount_cents: 6000,
+      _currency: 'EUR',
+      _base_amount_cents: 6000,
+      _fx_rate: 1,
+      _splits: [
+        { member_id: 'm1', share_cents: 3000 },
+        { member_id: 'm2', share_cents: 3000 },
+      ],
+    })
+  })
+
+  it('throws when rpc errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('update fail') })
+    await expect(updateExpense(input)).rejects.toThrow('update fail')
+  })
+})
+
+describe('deleteExpense', () => {
+  it('soft-deletes by setting deleted_at', async () => {
+    const builder = makeQueryBuilder({ data: null, error: null })
+    from.mockReturnValue(builder)
+
+    await expect(deleteExpense('e1')).resolves.toBeUndefined()
+    expect(from).toHaveBeenCalledWith('expenses')
+    expect(builder.update).toHaveBeenCalledWith(
+      expect.objectContaining({ deleted_at: expect.any(String) }),
+    )
+    expect(builder.eq).toHaveBeenCalledWith('id', 'e1')
+  })
+
+  it('throws on error', async () => {
+    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('del fail') }))
+    await expect(deleteExpense('e1')).rejects.toThrow('del fail')
   })
 })

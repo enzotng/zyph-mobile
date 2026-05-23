@@ -277,7 +277,16 @@ export default function TripDetailScreen() {
         }
         ListEmptyComponent={<Text style={styles.muted}>No expenses yet.</Text>}
         renderItem={({ item }) => (
-          <View style={styles.expenseRow}>
+          <Pressable
+            style={styles.expenseRow}
+            onPress={() =>
+              router.push({
+                pathname: '/trips/[id]/expenses/[expenseId]',
+                params: { id: tripId, expenseId: item.id },
+              })
+            }
+            accessibilityRole="button"
+          >
             <Text style={styles.body}>{item.description}</Text>
             <View style={styles.amountCol}>
               <Text style={styles.amount}>{formatAmount(item.amount_cents, item.currency)}</Text>
@@ -287,7 +296,7 @@ export default function TripDetailScreen() {
                 </Text>
               ) : null}
             </View>
-          </View>
+          </Pressable>
         )}
       />
     </Screen>
