@@ -26,6 +26,17 @@ export async function listExpenses(tripId: string): Promise<Expense[]> {
   return data
 }
 
+export const EXPENSE_CATEGORIES = [
+  'food',
+  'transport',
+  'lodging',
+  'activity',
+  'shopping',
+  'other',
+] as const
+
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
+
 export type CreateExpenseInput = {
   tripId: string
   description: string
@@ -39,6 +50,7 @@ export type CreateExpenseInput = {
   // Per-member shares (in trip currency); must sum to baseAmountCents. The server
   // validates membership + the sum.
   splits: ExpenseSplit[]
+  category?: ExpenseCategory | null
 }
 
 export async function createExpense({
@@ -49,6 +61,7 @@ export async function createExpense({
   baseAmountCents,
   fxRate,
   splits,
+  category,
 }: CreateExpenseInput): Promise<Expense> {
   // Atomic server-side: inserts the expense + the provided splits, enforces membership,
   // resolves the payer from auth.uid(). One round trip, one transaction.
@@ -63,6 +76,7 @@ export async function createExpense({
     _base_amount_cents: baseAmountCents,
     _fx_rate: fxRate,
     _splits: splits.map((s) => ({ member_id: s.memberId, share_cents: s.shareCents })),
+    _category: category ?? undefined,
   })
   if (error) {
     throw error
@@ -104,6 +118,7 @@ export type UpdateExpenseInput = {
   baseAmountCents: number
   fxRate: number
   splits: ExpenseSplit[]
+  category?: ExpenseCategory | null
 }
 
 export async function updateExpense({
@@ -114,6 +129,7 @@ export async function updateExpense({
   baseAmountCents,
   fxRate,
   splits,
+  category,
 }: UpdateExpenseInput): Promise<Expense> {
   const { data, error } = await supabase.rpc('update_expense_with_splits', {
     _expense_id: expenseId,
@@ -123,6 +139,7 @@ export async function updateExpense({
     _base_amount_cents: baseAmountCents,
     _fx_rate: fxRate,
     _splits: splits.map((s) => ({ member_id: s.memberId, share_cents: s.shareCents })),
+    _category: category ?? undefined,
   })
   if (error) {
     throw error

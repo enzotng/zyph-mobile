@@ -2,9 +2,16 @@ import { Link, useLocalSearchParams, useRouter } from 'expo-router'
 import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
+import { categoryLabel } from '@/components/category-picker'
 import { Screen } from '@/components/screen'
 import { useAuth } from '@/features/auth'
-import { formatAmount, useDeleteExpense, useExpense, useExpenseSplits } from '@/features/expenses'
+import {
+  type ExpenseCategory,
+  formatAmount,
+  useDeleteExpense,
+  useExpense,
+  useExpenseSplits,
+} from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
 import { paramString } from '@/lib/routing'
@@ -81,6 +88,11 @@ export default function ExpenseDetailScreen() {
           </Text>
         ) : null}
         <Text style={styles.muted}>Paid by {labelFor(expense.paid_by)}</Text>
+        {expense.category ? (
+          <Text style={styles.muted}>
+            Category: {categoryLabel(expense.category as ExpenseCategory)}
+          </Text>
+        ) : null}
         <Text style={styles.muted}>{new Date(expense.created_at).toLocaleString()}</Text>
       </View>
 
