@@ -412,6 +412,38 @@ export type Database = {
       }
       join_trip_by_code: { Args: { _code: string }; Returns: string }
       regenerate_invite_code: { Args: { _trip_id: string }; Returns: string }
+      update_expense_with_splits: {
+        Args: {
+          _amount_cents: number
+          _base_amount_cents: number
+          _currency: string
+          _description: string
+          _expense_id: string
+          _fx_rate: number
+          _splits: Json
+        }
+        Returns: {
+          amount_cents: number
+          base_amount_cents: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          description: string
+          fx_rate: number
+          id: string
+          paid_by: string | null
+          trip_id: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'expenses'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       member_status: 'invited' | 'active'

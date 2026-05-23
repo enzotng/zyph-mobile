@@ -69,3 +69,75 @@ export async function createExpense({
   }
   return data
 }
+
+export type ExpenseSplitRow = Database['public']['Tables']['expense_splits']['Row']
+
+export async function getExpense(expenseId: string): Promise<Expense | null> {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('*')
+    .eq('id', expenseId)
+    .is('deleted_at', null)
+    .maybeSingle()
+  if (error) {
+    throw error
+  }
+  return data
+}
+
+export async function listExpenseSplits(expenseId: string): Promise<ExpenseSplitRow[]> {
+  const { data, error } = await supabase
+    .from('expense_splits')
+    .select('*')
+    .eq('expense_id', expenseId)
+  if (error) {
+    throw error
+  }
+  return data
+}
+
+export type UpdateExpenseInput = {
+  expenseId: string
+  description: string
+  amountCents: number
+  currency: string
+  baseAmountCents: number
+  fxRate: number
+  splits: ExpenseSplit[]
+}
+
+export async function updateExpense({
+  expenseId,
+  description,
+  amountCents,
+  currency,
+  baseAmountCents,
+  fxRate,
+  splits,
+}: UpdateExpenseInput): Promise<Expense> {
+  const { data, error } = await supabase.rpc('update_expense_with_splits', {
+    _expense_id: expenseId,
+    _description: description,
+    _amount_cents: amountCents,
+    _currency: currency,
+    _base_amount_cents: baseAmountCents,
+    _fx_rate: fxRate,
+    _splits: splits.map((s) => ({ member_id: s.memberId, share_cents: s.shareCents })),
+  })
+  if (error) {
+    throw error
+  }
+  return data
+}
+
+export async function deleteExpense(expenseId: string): Promise<void> {
+  // Soft delete; list queries filter on deleted_at is null. Splits stay tied to the
+  // expense row so balances stop counting it but history is preserved.
+  const { error } = await supabase
+    .from('expenses')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', expenseId)
+  if (error) {
+    throw error
+  }
+}
