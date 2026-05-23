@@ -7,7 +7,12 @@ import { StyleSheet } from 'react-native-unistyles'
 import { Screen } from '@/components/screen'
 import { useAuth } from '@/features/auth'
 import { formatAmount, settleBalances, useExpenses, useTripBalances } from '@/features/expenses'
-import { useRegenerateInviteCode, useTripMembers } from '@/features/group'
+import {
+  useLeaveTrip,
+  useRegenerateInviteCode,
+  useRemoveTripMember,
+  useTripMembers,
+} from '@/features/group'
 import { useDeleteTrip, useTrip } from '@/features/trips'
 import { paramString } from '@/lib/routing'
 
@@ -23,6 +28,8 @@ export default function TripDetailScreen() {
   const router = useRouter()
   const deleteTrip = useDeleteTrip()
   const regenerate = useRegenerateInviteCode(tripId)
+  const leaveTripMutation = useLeaveTrip()
+  const removeMember = useRemoveTripMember(tripId)
 
   if (isLoading) {
     return (
@@ -131,6 +138,55 @@ export default function TripDetailScreen() {
     ])
   }
 
+  function confirmLeave() {
+    Alert.alert(
+      'Leave trip',
+      'You will no longer see this trip or its expenses. Past expenses you paid for or owe stay on the books.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await leaveTripMutation.mutateAsync(tripId)
+              router.replace('/')
+            } catch (error) {
+              Alert.alert(
+                'Could not leave',
+                error instanceof Error ? error.message : 'Please try again.',
+              )
+            }
+          },
+        },
+      ],
+    )
+  }
+
+  function confirmRemove(memberId: string, name: string) {
+    Alert.alert(
+      'Remove member',
+      `${name} will lose access to this trip. Past expenses they paid for or owe stay on the books.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeMember.mutateAsync(memberId)
+            } catch (error) {
+              Alert.alert(
+                'Could not remove',
+                error instanceof Error ? error.message : 'Please try again.',
+              )
+            }
+          },
+        },
+      ],
+    )
+  }
+
   return (
     <Screen title={trip.title}>
       <FlashList
@@ -208,6 +264,7 @@ export default function TripDetailScreen() {
                 {members.map((member) => {
                   const name = member.user_id === userId ? 'You' : (member.display_name ?? 'Member')
                   const initial = name.charAt(0).toUpperCase()
+                  const canRemove = isOwner && member.role !== 'owner' && member.user_id !== userId
                   return (
                     <View key={member.id} style={styles.memberRow}>
                       <View style={styles.memberInfo}>
@@ -218,11 +275,34 @@ export default function TripDetailScreen() {
                       </View>
                       {member.role === 'owner' ? (
                         <Text style={styles.ownerBadge}>Owner</Text>
+                      ) : canRemove ? (
+                        <Pressable
+                          onPress={() => confirmRemove(member.id, name)}
+                          disabled={removeMember.isPending}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove ${name}`}
+                          hitSlop={6}
+                        >
+                          <Text style={styles.deleteText}>Remove</Text>
+                        </Pressable>
                       ) : null}
                     </View>
                   )
                 })}
               </View>
+            ) : null}
+
+            {!isOwner ? (
+              <Pressable
+                onPress={confirmLeave}
+                disabled={leaveTripMutation.isPending}
+                accessibilityRole="button"
+                style={styles.leaveBtn}
+              >
+                <Text style={styles.deleteText}>
+                  {leaveTripMutation.isPending ? 'Leaving…' : 'Leave trip'}
+                </Text>
+              </Pressable>
             ) : null}
 
             {balances && balances.length > 0 ? (
@@ -412,6 +492,10 @@ const styles = StyleSheet.create((theme, rt) => ({
   deleteText: {
     color: theme.colors.destructive,
     fontWeight: '600',
+  },
+  leaveBtn: {
+    alignSelf: 'flex-start',
+    paddingTop: theme.gap(3),
   },
   muted: {
     color: theme.colors.muted,

@@ -6,7 +6,9 @@ import * as api from '../api/group.api'
 import {
   tripMembersQueryKey,
   useJoinTrip,
+  useLeaveTrip,
   useRegenerateInviteCode,
+  useRemoveTripMember,
   useTripMembers,
 } from './use-group'
 
@@ -73,6 +75,37 @@ describe('useRegenerateInviteCode', () => {
     expect(api.regenerateInviteCode).toHaveBeenCalledWith('t1')
     expect(result.current.data).toBe('newcode123456')
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips', 't1'], exact: true })
+  })
+})
+
+describe('useLeaveTrip', () => {
+  it('invalidates trips on success', async () => {
+    jest.mocked(api.leaveTrip).mockResolvedValue(undefined)
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useLeaveTrip(), { wrapper })
+    result.current.mutate('t1')
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(api.leaveTrip).toHaveBeenCalledWith('t1', expect.anything())
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips'] })
+  })
+})
+
+describe('useRemoveTripMember', () => {
+  it('invalidates members and balances for the trip on success', async () => {
+    jest.mocked(api.removeTripMember).mockResolvedValue(undefined)
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useRemoveTripMember('t1'), { wrapper })
+    result.current.mutate('m1')
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(api.removeTripMember).toHaveBeenCalledWith('m1', expect.anything())
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: tripMembersQueryKey('t1') })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips', 't1', 'balances'] })
   })
 })
 

@@ -41,3 +41,17 @@ export async function regenerateInviteCode(tripId: string): Promise<string> {
   }
   return data
 }
+
+export async function leaveTrip(tripId: string): Promise<void> {
+  const { error } = await supabase.rpc('leave_trip', { _trip_id: tripId })
+  if (error) {
+    throw error
+  }
+}
+
+export async function removeTripMember(memberId: string): Promise<void> {
+  const { error } = await supabase.rpc('remove_trip_member', { _member_id: memberId })
+  if (error) {
+    throw error
+  }
+}
