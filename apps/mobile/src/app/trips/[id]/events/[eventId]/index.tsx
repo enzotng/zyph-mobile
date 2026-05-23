@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as DocumentPicker from 'expo-document-picker'
-import { useLocalSearchParams } from 'expo-router'
+import { Link, useLocalSearchParams, useRouter } from 'expo-router'
 import { ActivityIndicator, Alert, Linking, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -14,7 +14,7 @@ import {
   useEventDocuments,
   useUploadDocument,
 } from '@/features/media'
-import { eventStatus, formatCountdown, useEvent } from '@/features/timeline'
+import { eventStatus, formatCountdown, useDeleteEvent, useEvent } from '@/features/timeline'
 import { paramString } from '@/lib/routing'
 
 export default function EventDetailScreen() {
@@ -22,11 +22,34 @@ export default function EventDetailScreen() {
   const tripId = paramString(params.id)
   const eventId = paramString(params.eventId)
   const { theme } = useUnistyles()
+  const router = useRouter()
 
   const { data: event, isLoading } = useEvent(eventId)
   const { data: documents } = useEventDocuments(eventId)
   const upload = useUploadDocument(eventId)
   const del = useDeleteDocument(eventId)
+  const deleteEvent = useDeleteEvent(tripId)
+
+  function confirmDeleteEvent() {
+    Alert.alert('Delete event', 'This permanently removes the event and detaches its documents.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteEvent.mutateAsync(eventId)
+            router.back()
+          } catch (error) {
+            Alert.alert(
+              'Could not delete',
+              error instanceof Error ? error.message : 'Please try again.',
+            )
+          }
+        },
+      },
+    ])
+  }
 
   async function addDocument() {
     const result = await DocumentPicker.getDocumentAsync({
@@ -119,6 +142,25 @@ export default function EventDetailScreen() {
           <Text style={styles.muted}>Completed</Text>
         ) : null}
         {event.notes ? <Text style={styles.notes}>{event.notes}</Text> : null}
+      </View>
+
+      <View style={styles.actions}>
+        <Link
+          href={{
+            pathname: '/trips/[id]/events/[eventId]/edit',
+            params: { id: tripId, eventId },
+          }}
+          style={styles.link}
+        >
+          Edit
+        </Link>
+        <Pressable
+          onPress={confirmDeleteEvent}
+          disabled={deleteEvent.isPending}
+          accessibilityRole="button"
+        >
+          <Text style={styles.deleteText}>Delete</Text>
+        </Pressable>
       </View>
 
       <View style={styles.sectionRow}>
@@ -231,5 +273,14 @@ const styles = StyleSheet.create((theme) => ({
   docInfo: {
     flex: 1,
     gap: theme.gap(1),
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: theme.gap(4),
+    paddingTop: theme.gap(1),
+  },
+  deleteText: {
+    color: theme.colors.destructive,
+    fontWeight: '600',
   },
 }))

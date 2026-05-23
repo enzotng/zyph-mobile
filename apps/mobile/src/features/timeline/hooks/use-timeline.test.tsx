@@ -3,7 +3,15 @@ import { renderHook, waitFor } from '@testing-library/react-native'
 import { createQueryWrapper } from '@/test-utils/query-wrapper'
 
 import * as api from '../api/timeline.api'
-import { eventQueryKey, eventsQueryKey, useCreateEvent, useEvent, useEvents } from './use-timeline'
+import {
+  eventQueryKey,
+  eventsQueryKey,
+  useCreateEvent,
+  useDeleteEvent,
+  useEvent,
+  useEvents,
+  useUpdateEvent,
+} from './use-timeline'
 
 jest.mock('@/lib/supabase')
 jest.mock('../api/timeline.api')
@@ -86,6 +94,42 @@ describe('useCreateEvent', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(invalidate).toHaveBeenCalledWith({ queryKey: eventsQueryKey('t1') })
+  })
+})
+
+describe('useUpdateEvent', () => {
+  it('invalidates list and single event on success', async () => {
+    jest.mocked(api.updateEvent).mockResolvedValue(event)
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useUpdateEvent('t1'), { wrapper })
+    result.current.mutate({
+      eventId: 'ev1',
+      title: 'Updated',
+      startsAt: '2024-06-01T10:00:00Z',
+      notes: '',
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: eventsQueryKey('t1') })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: eventQueryKey('ev1') })
+  })
+})
+
+describe('useDeleteEvent', () => {
+  it('invalidates the list and removes the single-event cache on success', async () => {
+    jest.mocked(api.deleteEvent).mockResolvedValue(undefined)
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+    const remove = jest.spyOn(queryClient, 'removeQueries')
+
+    const { result } = renderHook(() => useDeleteEvent('t1'), { wrapper })
+    result.current.mutate('ev1')
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: eventsQueryKey('t1') })
+    expect(remove).toHaveBeenCalledWith({ queryKey: eventQueryKey('ev1') })
   })
 })
 
