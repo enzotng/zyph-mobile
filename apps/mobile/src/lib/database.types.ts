@@ -8,6 +8,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      expense_item_assignments: {
+        Row: {
+          id: string
+          item_id: string
+          member_id: string
+          share: number
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          member_id: string
+          share?: number
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          member_id?: string
+          share?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'expense_item_assignments_item_id_fkey'
+            columns: ['item_id']
+            isOneToOne: false
+            referencedRelation: 'expense_items'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'expense_item_assignments_member_id_fkey'
+            columns: ['member_id']
+            isOneToOne: false
+            referencedRelation: 'trip_members'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      expense_items: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          expense_id: string
+          id: string
+          label: string
+          position: number
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          expense_id: string
+          id?: string
+          label: string
+          position?: number
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          expense_id?: string
+          id?: string
+          label?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'expense_items_expense_id_fkey'
+            columns: ['expense_id']
+            isOneToOne: false
+            referencedRelation: 'expenses'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       expense_splits: {
         Row: {
           created_at: string
@@ -509,16 +580,84 @@ export type Database = {
       leave_trip: { Args: { _trip_id: string }; Returns: undefined }
       regenerate_invite_code: { Args: { _trip_id: string }; Returns: string }
       remove_trip_member: { Args: { _member_id: string }; Returns: undefined }
-      update_expense_with_splits: {
+      update_expense_with_splits:
+        | {
+            Args: {
+              _amount_cents: number
+              _base_amount_cents: number
+              _currency: string
+              _description: string
+              _expense_id: string
+              _fx_rate: number
+              _splits: Json
+            }
+            Returns: {
+              amount_cents: number
+              base_amount_cents: number
+              category: string | null
+              created_at: string
+              created_by: string | null
+              currency: string
+              deleted_at: string | null
+              description: string
+              fx_rate: number
+              id: string
+              paid_by: string | null
+              trip_id: string
+              updated_at: string
+              version: number
+            }
+            SetofOptions: {
+              from: '*'
+              to: 'expenses'
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              _amount_cents: number
+              _base_amount_cents: number
+              _category?: string
+              _currency: string
+              _description: string
+              _expense_id: string
+              _fx_rate: number
+              _splits: Json
+            }
+            Returns: {
+              amount_cents: number
+              base_amount_cents: number
+              category: string | null
+              created_at: string
+              created_by: string | null
+              currency: string
+              deleted_at: string | null
+              description: string
+              fx_rate: number
+              id: string
+              paid_by: string | null
+              trip_id: string
+              updated_at: string
+              version: number
+            }
+            SetofOptions: {
+              from: '*'
+              to: 'expenses'
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      upsert_expense_with_items: {
         Args: {
           _amount_cents: number
+          _assignments: Json
           _base_amount_cents: number
-          _category?: string
           _currency: string
           _description: string
           _expense_id: string
           _fx_rate: number
-          _splits: Json
+          _items: Json
         }
         Returns: {
           amount_cents: number

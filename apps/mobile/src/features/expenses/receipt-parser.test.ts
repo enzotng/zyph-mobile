@@ -1,4 +1,4 @@
-import { parseReceipt } from './receipt-parser'
+import { parseReceipt, parseReceiptItems } from './receipt-parser'
 
 describe('parseReceipt', () => {
   it('parses a typical French receipt with TOTAL TTC', () => {
@@ -81,5 +81,128 @@ describe('parseReceipt', () => {
   it('picks the TOTAL line amount even when an item is larger', () => {
     const text = ['SHOP', 'Big Item   99,00 €', 'TOTAL TTC   12,00 €'].join('\n')
     expect(parseReceipt(text).amountCents).toBe(1200)
+  })
+})
+
+describe('parseReceiptItems', () => {
+  it('extracts items from a typical French restaurant ticket', () => {
+    const text = [
+      'LE BISTROT DU COIN',
+      '15/06/2026',
+      '',
+      'Salade Caesar           12,00',
+      'Burger Royal            18,50',
+      'Coca Cola                3,50',
+      'Cafe Latte               4,00',
+      'Tarte Tatin              8,50',
+      '',
+      'SOUS-TOTAL              46,50',
+      'TVA 10%                  4,50',
+      'TOTAL TTC               51,00 €',
+    ].join('\n')
+
+    const result = parseReceiptItems(text)
+    expect(result.amountCents).toBe(5100)
+    expect(result.items.map((i) => i.label)).toEqual([
+      'Salade Caesar',
+      'Burger Royal',
+      'Coca Cola',
+      'Cafe Latte',
+      'Tarte Tatin',
+    ])
+    expect(result.items.map((i) => i.amountCents)).toEqual([1200, 1850, 350, 400, 850])
+  })
+
+  it('keeps the quantity prefix in the label when greater than 1', () => {
+    const text = [
+      'SHOP',
+      '2 x Croissant            3,00',
+      '1 x Pain au chocolat     1,50',
+      'TOTAL                    4,50',
+    ].join('\n')
+
+    const items = parseReceiptItems(text).items
+    expect(items).toHaveLength(2)
+    expect(items[0].label).toBe('2 × Croissant')
+    expect(items[1].label).toBe('Pain au chocolat')
+  })
+
+  it('parses an English/USD receipt with $ symbol', () => {
+    const text = [
+      "TONY'S DINER",
+      '03/15/2026',
+      '',
+      'Burger              $18.00',
+      'Fries                $4.50',
+      'Soda                 $2.00',
+      '',
+      'Subtotal            $24.50',
+      'Tax                  $2.00',
+      'TOTAL               $26.50',
+    ].join('\n')
+
+    const result = parseReceiptItems(text)
+    expect(result.currency).toBe('USD')
+    expect(result.items).toHaveLength(3)
+    expect(result.items[0]).toEqual({ label: 'Burger', amountCents: 1800 })
+    expect(result.items[1]).toEqual({ label: 'Fries', amountCents: 450 })
+    expect(result.items[2]).toEqual({ label: 'Soda', amountCents: 200 })
+  })
+
+  it('skips TVA, taxes, service, discount and payment lines', () => {
+    const text = [
+      'Pizza Margherita     12,00',
+      'Vin rouge             8,00',
+      'SOUS-TOTAL           20,00',
+      'TVA 10%               2,00',
+      'Service inclus        2,20',
+      'Remise               -1,00',
+      'TOTAL TTC            23,20',
+      'PAIEMENT CB          23,20',
+      'Rendu                 0,00',
+    ].join('\n')
+
+    const items = parseReceiptItems(text).items
+    expect(items.map((i) => i.label)).toEqual(['Pizza Margherita', 'Vin rouge'])
+  })
+
+  it('returns an empty items array when OCR fails to detect any', () => {
+    const text = 'TOTAL  12,00 €'
+    expect(parseReceiptItems(text).items).toEqual([])
+  })
+
+  it('drops malformed lines with non-monetary trailing numbers', () => {
+    const text = [
+      'BOULANGERIE PAUL',
+      '15032026',
+      'Croissant      1,20',
+      'TOTAL          1,20',
+    ].join('\n')
+
+    const items = parseReceiptItems(text).items
+    expect(items).toHaveLength(1)
+    expect(items[0].label).toBe('Croissant')
+  })
+
+  it('keeps the total amount and currency from parseReceipt', () => {
+    const text = ['SHOP', 'Item A   5,00', 'Item B   7,00', 'TOTAL   12,00 €'].join('\n')
+    const result = parseReceiptItems(text)
+    expect(result.amountCents).toBe(1200)
+    expect(result.currency).toBe('EUR')
+    expect(result.items).toHaveLength(2)
+  })
+
+  it('does not pick up dates that look like amounts', () => {
+    const text = ['SHOP', '15.03.2026', 'Salade  10,00', 'TOTAL  10,00'].join('\n')
+    const items = parseReceiptItems(text).items
+    expect(items).toHaveLength(1)
+    expect(items[0].label).toBe('Salade')
+  })
+
+  it('handles thousand separator in item amount', () => {
+    const text = ['SHOP', 'TV LED 4K       1.299,99', 'TOTAL TTC      1.299,99'].join('\n')
+    const items = parseReceiptItems(text).items
+    expect(items).toHaveLength(1)
+    expect(items[0].amountCents).toBe(129999)
   })
 })
