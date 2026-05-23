@@ -187,6 +187,41 @@ export type Database = {
           },
         ]
       }
+      member_locations: {
+        Row: {
+          accuracy_m: number | null
+          heading_deg: number | null
+          lat: number
+          lng: number
+          trip_member_id: string
+          updated_at: string
+        }
+        Insert: {
+          accuracy_m?: number | null
+          heading_deg?: number | null
+          lat: number
+          lng: number
+          trip_member_id: string
+          updated_at?: string
+        }
+        Update: {
+          accuracy_m?: number | null
+          heading_deg?: number | null
+          lat?: number
+          lng?: number
+          trip_member_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'member_locations_trip_member_id_fkey'
+            columns: ['trip_member_id']
+            isOneToOne: true
+            referencedRelation: 'trip_members'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -219,6 +254,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           ends_at: string | null
+          gate_location: Json | null
           id: string
           lat: number | null
           lng: number | null
@@ -234,6 +270,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           ends_at?: string | null
+          gate_location?: Json | null
           id?: string
           lat?: number | null
           lng?: number | null
@@ -249,6 +286,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           ends_at?: string | null
+          gate_location?: Json | null
           id?: string
           lat?: number | null
           lng?: number | null
@@ -319,6 +357,57 @@ export type Database = {
           },
         ]
       }
+      trip_pois: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          icon: string
+          id: string
+          label: string
+          lat: number
+          lng: number
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          icon?: string
+          id?: string
+          label: string
+          lat: number
+          lng: number
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          icon?: string
+          id?: string
+          label?: string
+          lat?: number
+          lng?: number
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'trip_pois_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'trip_pois_trip_id_fkey'
+            columns: ['trip_id']
+            isOneToOne: false
+            referencedRelation: 'trips'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       trips: {
         Row: {
           created_at: string
@@ -371,6 +460,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clear_member_location: { Args: { _trip_id: string }; Returns: undefined }
       create_expense_with_splits: {
         Args: {
           _amount_cents: number
@@ -452,6 +542,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      upsert_member_location: {
+        Args: {
+          _accuracy_m?: number
+          _heading_deg?: number
+          _lat: number
+          _lng: number
+          _trip_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
