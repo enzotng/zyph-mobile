@@ -306,6 +306,12 @@ export default function TripDetailScreen() {
               >
                 POIs →
               </Link>
+              <Link
+                href={{ pathname: '/trips/[id]/ar', params: { id: tripId } }}
+                style={styles.timelineLink}
+              >
+                AR view →
+              </Link>
             </View>
 
             <Pressable
