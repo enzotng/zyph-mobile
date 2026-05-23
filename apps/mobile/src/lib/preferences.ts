@@ -9,6 +9,18 @@ export type ThemePreference = 'system' | 'light' | 'dark'
 const THEME_KEY = 'theme'
 const ONBOARDING_KEY = 'onboardingSeen'
 
+function shareLocationKey(tripId: string): string {
+  return `shareLocation:${tripId}`
+}
+
+export function getShareLocation(tripId: string): boolean {
+  return storage.getBoolean(shareLocationKey(tripId)) ?? false
+}
+
+export function setShareLocation(tripId: string, enabled: boolean): void {
+  storage.set(shareLocationKey(tripId), enabled)
+}
+
 export function hasSeenOnboarding(): boolean {
   return storage.getBoolean(ONBOARDING_KEY) ?? false
 }

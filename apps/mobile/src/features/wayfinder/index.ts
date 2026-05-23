@@ -16,6 +16,8 @@ export {
   updatePoi,
   upsertMemberLocation,
 } from './api/wayfinder.api'
+export type { ShareLocationStatus } from './hooks/use-share-location'
+export { useShareLocation } from './hooks/use-share-location'
 export {
   memberLocationsQueryKey,
   poiQueryKey,
