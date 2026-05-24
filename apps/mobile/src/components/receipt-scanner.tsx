@@ -5,14 +5,14 @@ import { useRef, useState } from 'react'
 import { ActivityIndicator, Alert, Modal, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { type ParsedReceipt, parseReceipt } from '@/features/expenses'
+import { type ParsedReceiptItems, parseReceiptItems } from '@/features/expenses'
 
 import { Button } from './button'
 
 type ReceiptScannerProps = {
   visible: boolean
   onClose: () => void
-  onResult: (parsed: ParsedReceipt) => void
+  onResult: (parsed: ParsedReceiptItems) => void
 }
 
 export function ReceiptScanner({ visible, onClose, onResult }: ReceiptScannerProps) {
@@ -33,7 +33,7 @@ export function ReceiptScanner({ visible, onClose, onResult }: ReceiptScannerPro
         throw new Error('No picture URI returned')
       }
       const result = await TextRecognition.recognize(picture.uri)
-      const parsed = parseReceipt(result.text)
+      const parsed = parseReceiptItems(result.text)
       onResult(parsed)
     } catch {
       Alert.alert('Scan failed', 'Could not read this receipt. Try again with better lighting.')

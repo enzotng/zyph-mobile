@@ -19,7 +19,7 @@ import {
   createExpenseSchema,
   type ExpenseCategory,
   formatAmount,
-  type ParsedReceipt,
+  type ParsedReceiptItems,
   toCents,
   useCreateExpense,
 } from '@/features/expenses'
@@ -70,7 +70,7 @@ export default function AddExpenseScreen() {
     defaultValues: { description: '', amount: '' },
   })
 
-  function applyScan(parsed: ParsedReceipt) {
+  function applyScan(parsed: ParsedReceiptItems) {
     setScannerOpen(false)
     if (parsed.merchant) {
       setValue('description', parsed.merchant.slice(0, 120), { shouldValidate: true })
@@ -78,11 +78,27 @@ export default function AddExpenseScreen() {
     if (parsed.amountCents !== null) {
       setValue('amount', (parsed.amountCents / 100).toFixed(2), { shouldValidate: true })
     }
+    let resolvedCurrency = currency
     if (parsed.currency && parsed.currency !== currency) {
-      // Only switch to a currency the FX provider knows about.
-      if (!fx || fx.rates[parsed.currency]) {
+      // `rates[code]` can legitimately be 0 (degenerate) — check for explicit presence.
+      const known = !fx || fx.rates[parsed.currency] !== undefined
+      if (known) {
         setPicked(parsed.currency)
+        resolvedCurrency = parsed.currency
       }
+    }
+    // Smart Split: if line items were detected, jump to the attribution screen.
+    if (parsed.items.length >= 2 && parsed.amountCents !== null) {
+      router.push({
+        pathname: '/trips/[id]/attribute-expense',
+        params: {
+          id: tripId,
+          items: JSON.stringify(parsed.items),
+          amountCents: String(parsed.amountCents),
+          currency: resolvedCurrency,
+          description: parsed.merchant?.slice(0, 120) ?? 'Receipt',
+        },
+      })
     }
   }
 

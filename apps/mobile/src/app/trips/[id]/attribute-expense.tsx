@@ -1,0 +1,569 @@
+import { Ionicons } from '@expo/vector-icons'
+import { FlashList } from '@shopify/flash-list'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useMemo, useState } from 'react'
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
+
+import { Button } from '@/components/button'
+import { Screen } from '@/components/screen'
+import { useAuth } from '@/features/auth'
+import {
+  buildEqualAssignments,
+  computeMemberTotalsCents,
+  deleteExpense,
+  formatAmount,
+  type ParsedItem,
+  type SmartSplitItem,
+  useCreateExpense,
+  useUpsertExpenseWithItems,
+} from '@/features/expenses'
+import { convertCents, crossRate, useFxRates } from '@/features/fx'
+import { useTripMembers } from '@/features/group'
+import { useTrip } from '@/features/trips'
+import { paramString } from '@/lib/routing'
+
+const MAX_INLINE_CHIPS = 4
+
+export default function AttributeExpenseScreen() {
+  const params = useLocalSearchParams<{
+    id: string
+    items: string
+    amountCents: string
+    currency: string
+    description: string
+  }>()
+  const tripId = paramString(params.id)
+  const router = useRouter()
+  const { theme } = useUnistyles()
+  const { session } = useAuth()
+  const userId = session?.user.id
+  const { data: trip } = useTrip(tripId)
+  const { data: members } = useTripMembers(tripId)
+  const { data: fx } = useFxRates()
+  const createExpense = useCreateExpense(tripId)
+  const upsertWithItems = useUpsertExpenseWithItems(tripId)
+
+  const parsedItems = useMemo<ParsedItem[]>(() => {
+    try {
+      const raw = JSON.parse(paramString(params.items) || '[]')
+      return Array.isArray(raw) ? raw : []
+    } catch {
+      return []
+    }
+  }, [params.items])
+
+  const totalCents = Number.parseInt(paramString(params.amountCents) || '0', 10)
+  const expenseCurrency = paramString(params.currency) || 'EUR'
+  const initialDescription = paramString(params.description) || 'Receipt'
+
+  // assignmentsByPosition[i] = set of member ids assigned to item i.
+  const [assignmentsByPosition, setAssignmentsByPosition] = useState<Record<number, Set<string>>>(
+    () => {
+      // Default: every item assigned to the current user (so user only re-taps to remove).
+      const init: Record<number, Set<string>> = {}
+      return init
+    },
+  )
+  const [description, setDescription] = useState(initialDescription)
+  const [sheetOpenForPosition, setSheetOpenForPosition] = useState<number | null>(null)
+
+  const items: SmartSplitItem[] = useMemo(
+    () =>
+      parsedItems.map((item, position) => ({
+        label: item.label,
+        amountCents: item.amountCents,
+        position,
+      })),
+    [parsedItems],
+  )
+
+  const itemsTotal = useMemo(() => items.reduce((sum, i) => sum + i.amountCents, 0), [items])
+
+  const delta = itemsTotal - totalCents
+
+  const assignments = useMemo(() => {
+    const out: { position: number; memberId: string; share: number }[] = []
+    for (const [posStr, set] of Object.entries(assignmentsByPosition)) {
+      const position = Number.parseInt(posStr, 10)
+      const memberIds = Array.from(set)
+      if (memberIds.length === 0) continue
+      const built = buildEqualAssignments([position], memberIds)
+      out.push(...built)
+    }
+    return out
+  }, [assignmentsByPosition])
+
+  const memberTotals = useMemo(
+    () => computeMemberTotalsCents(items, assignments),
+    [items, assignments],
+  )
+
+  const unassignedCount = useMemo(() => {
+    let count = 0
+    for (let i = 0; i < items.length; i++) {
+      const set = assignmentsByPosition[i]
+      if (!set || set.size === 0) count++
+    }
+    return count
+  }, [items.length, assignmentsByPosition])
+
+  function toggleAssignment(position: number, memberId: string) {
+    setAssignmentsByPosition((prev) => {
+      const set = new Set(prev[position] ?? new Set<string>())
+      if (set.has(memberId)) {
+        set.delete(memberId)
+      } else {
+        set.add(memberId)
+      }
+      return { ...prev, [position]: set }
+    })
+  }
+
+  if (!trip || !members) {
+    return (
+      <Screen title="Attribution" showBack>
+        <View style={styles.center}>
+          <ActivityIndicator />
+        </View>
+      </Screen>
+    )
+  }
+
+  if (items.length === 0) {
+    return (
+      <Screen title="Attribution" showBack>
+        <View style={styles.center}>
+          <Text style={styles.muted}>No items detected from the receipt.</Text>
+          <Pressable onPress={() => router.back()} accessibilityRole="button">
+            <Text style={styles.link}>Go back</Text>
+          </Pressable>
+        </View>
+      </Screen>
+    )
+  }
+
+  const tripCurrency = trip.currency
+  const isForeign = expenseCurrency !== tripCurrency
+  const fxRate = isForeign && fx ? crossRate(expenseCurrency, tripCurrency, fx.rates) : 1
+  const canConvert = !isForeign || (fx && fx.rates[expenseCurrency] !== undefined)
+  const baseAmountCents =
+    isForeign && fx ? convertCents(totalCents, expenseCurrency, tripCurrency, fx.rates) : totalCents
+
+  const currentUserMember = members.find((m) => m.user_id === userId)
+
+  async function onSave() {
+    if (unassignedCount > 0) {
+      Alert.alert(
+        'Unassigned items',
+        `${unassignedCount} item(s) have no member assigned. Assign or remove them first.`,
+      )
+      return
+    }
+    if (!currentUserMember) {
+      Alert.alert('Membership error', 'Could not resolve your trip membership.')
+      return
+    }
+    if (isForeign && !canConvert) {
+      Alert.alert('Conversion failed', `Exchange rate for ${expenseCurrency} is unavailable.`)
+      return
+    }
+    // Two-step save: create the expense (bootstrap split) then replace it with the
+    // item-driven split. If step 2 fails, soft-delete the orphan expense so we
+    // don't leave a corrupt placeholder in the trip's expense list.
+    let createdId: string | null = null
+    try {
+      const created = await createExpense.mutateAsync({
+        tripId,
+        description,
+        amountCents: totalCents,
+        currency: expenseCurrency,
+        baseAmountCents,
+        fxRate,
+        splits: [{ memberId: currentUserMember.id, shareCents: baseAmountCents }],
+      })
+      createdId = created.id
+      await upsertWithItems.mutateAsync({
+        expenseId: created.id,
+        description,
+        amountCents: totalCents,
+        currency: expenseCurrency,
+        baseAmountCents,
+        fxRate,
+        items,
+        assignments,
+      })
+      router.replace({ pathname: '/trips/[id]', params: { id: tripId } })
+    } catch (error) {
+      if (createdId) {
+        // Compensate the orphan expense from step 1.
+        await deleteExpense(createdId).catch(() => {})
+      }
+      Alert.alert(
+        'Could not save attribution',
+        error instanceof Error ? error.message : 'Please try again.',
+      )
+    }
+  }
+
+  const isPending = createExpense.isPending || upsertWithItems.isPending
+
+  return (
+    <Screen title="Smart Split" showBack>
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerLabel}>OCR total</Text>
+          <Text style={styles.headerValue}>{formatAmount(totalCents, expenseCurrency)}</Text>
+        </View>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerLabel}>Items sum</Text>
+          <Text style={[styles.headerValue, delta !== 0 ? { color: theme.colors.warning } : null]}>
+            {formatAmount(itemsTotal, expenseCurrency)}
+            {delta !== 0 ? `  (${delta > 0 ? '+' : ''}${(delta / 100).toFixed(2)})` : ''}
+          </Text>
+        </View>
+      </View>
+
+      <FlashList
+        data={items}
+        keyExtractor={(item) => `${item.position}`}
+        contentContainerStyle={styles.list}
+        renderItem={({ item, index }) => {
+          const set = assignmentsByPosition[index] ?? new Set<string>()
+          const inlineMembers = members.slice(0, MAX_INLINE_CHIPS)
+          const remainder = members.length - inlineMembers.length
+          const isUnassigned = set.size === 0
+          return (
+            <View style={[styles.itemCard, isUnassigned ? styles.itemCardUnassigned : null]}>
+              <View style={styles.itemRow}>
+                <Text style={styles.itemLabel} numberOfLines={2}>
+                  {item.label}
+                </Text>
+                <Text style={styles.itemAmount}>
+                  {formatAmount(item.amountCents, expenseCurrency)}
+                </Text>
+              </View>
+              <View style={styles.chipsRow}>
+                {inlineMembers.map((member) => {
+                  const selected = set.has(member.id)
+                  const name = member.user_id === userId ? 'You' : (member.display_name ?? 'M')
+                  const initial = name.charAt(0).toUpperCase()
+                  return (
+                    <MemberChip
+                      key={member.id}
+                      initial={initial}
+                      selected={selected}
+                      onPress={() => toggleAssignment(index, member.id)}
+                    />
+                  )
+                })}
+                {remainder > 0 ? (
+                  <Pressable
+                    onPress={() => setSheetOpenForPosition(index)}
+                    accessibilityRole="button"
+                    style={styles.moreChip}
+                  >
+                    <Text style={styles.moreChipText}>+{remainder}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              {set.size > 1 ? (
+                <Text style={styles.itemShared}>
+                  Shared between {set.size} ·{' '}
+                  {formatAmount(item.amountCents / set.size, expenseCurrency)} each
+                </Text>
+              ) : null}
+            </View>
+          )
+        }}
+        ListFooterComponent={
+          <View style={styles.footerSpacer}>
+            <Text style={styles.muted}>
+              Tip: tap several members on a single item to split it equally.
+            </Text>
+          </View>
+        }
+      />
+
+      <View style={styles.summary}>
+        <Text style={styles.summaryTitle}>Per person ({tripCurrency})</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.summaryRow}
+        >
+          {members.map((member) => {
+            const expenseCentsForMember = memberTotals.get(member.id) ?? 0
+            // Convert from expense currency to trip currency for the live preview.
+            const cents =
+              isForeign && fx
+                ? convertCents(expenseCentsForMember, expenseCurrency, tripCurrency, fx.rates)
+                : expenseCentsForMember
+            const name = member.user_id === userId ? 'You' : (member.display_name ?? 'M')
+            return (
+              <View key={member.id} style={styles.summaryPill}>
+                <Text style={styles.summaryName}>{name}</Text>
+                <Text style={styles.summaryValue}>{formatAmount(cents, tripCurrency)}</Text>
+              </View>
+            )
+          })}
+        </ScrollView>
+        {unassignedCount > 0 ? (
+          <Text style={styles.warn}>
+            {unassignedCount} item{unassignedCount > 1 ? 's' : ''} still unassigned.
+          </Text>
+        ) : null}
+        <Button
+          label={isPending ? 'Saving…' : 'Save Smart Split'}
+          onPress={onSave}
+          disabled={isPending || unassignedCount > 0 || (isForeign && !canConvert)}
+        />
+      </View>
+
+      <Modal
+        visible={sheetOpenForPosition !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSheetOpenForPosition(null)}
+      >
+        <Pressable style={styles.sheetBackdrop} onPress={() => setSheetOpenForPosition(null)}>
+          <Pressable style={styles.sheetBody} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.sheetTitle}>Assign to…</Text>
+            <ScrollView contentContainerStyle={styles.sheetList}>
+              {members.map((member) => {
+                if (sheetOpenForPosition === null) return null
+                const set = assignmentsByPosition[sheetOpenForPosition] ?? new Set<string>()
+                const selected = set.has(member.id)
+                const name = member.user_id === userId ? 'You' : (member.display_name ?? 'M')
+                return (
+                  <Pressable
+                    key={member.id}
+                    style={styles.sheetRow}
+                    onPress={() => toggleAssignment(sheetOpenForPosition, member.id)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: selected }}
+                  >
+                    <Ionicons
+                      name={selected ? 'checkbox' : 'square-outline'}
+                      size={22}
+                      color={selected ? theme.colors.primary : theme.colors.muted}
+                    />
+                    <Text style={styles.sheetRowText}>{name}</Text>
+                  </Pressable>
+                )
+              })}
+            </ScrollView>
+            <Button label="Done" onPress={() => setSheetOpenForPosition(null)} />
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </Screen>
+  )
+}
+
+function MemberChip({
+  initial,
+  selected,
+  onPress,
+}: {
+  initial: string
+  selected: boolean
+  onPress: () => void
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      style={[styles.chip, selected ? styles.chipActive : null]}
+    >
+      <Text style={[styles.chipText, selected ? styles.chipTextActive : null]}>{initial}</Text>
+    </Pressable>
+  )
+}
+
+const styles = StyleSheet.create((theme) => ({
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.gap(2),
+  },
+  muted: {
+    color: theme.colors.muted,
+  },
+  link: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  warn: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.warning,
+    paddingVertical: theme.gap(1),
+  },
+  header: {
+    gap: theme.gap(1),
+    paddingVertical: theme.gap(3),
+    paddingHorizontal: theme.gap(4),
+    marginBottom: theme.gap(2),
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.card,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  headerLabel: {
+    color: theme.colors.muted,
+    fontSize: theme.fontSize.sm,
+    fontWeight: '600',
+  },
+  headerValue: {
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.md,
+    fontWeight: '700',
+  },
+  list: {
+    paddingBottom: theme.gap(4),
+  },
+  itemCard: {
+    gap: theme.gap(2),
+    paddingVertical: theme.gap(3),
+    paddingHorizontal: theme.gap(4),
+    marginBottom: theme.gap(2),
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+  },
+  itemCardUnassigned: {
+    borderColor: theme.colors.warning,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: theme.gap(2),
+  },
+  itemLabel: {
+    flex: 1,
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.md,
+    fontWeight: '600',
+  },
+  itemAmount: {
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.md,
+    fontWeight: '700',
+  },
+  itemShared: {
+    color: theme.colors.muted,
+    fontSize: theme.fontSize.sm,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.gap(2),
+  },
+  chip: {
+    width: theme.gap(9),
+    height: theme.gap(9),
+    borderRadius: theme.gap(5),
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+  },
+  chipActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  chipText: {
+    fontWeight: '700',
+    color: theme.colors.foreground,
+  },
+  chipTextActive: {
+    color: theme.colors.primaryForeground,
+  },
+  moreChip: {
+    paddingHorizontal: theme.gap(3),
+    height: theme.gap(9),
+    borderRadius: theme.gap(5),
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+  },
+  moreChipText: {
+    fontWeight: '700',
+    color: theme.colors.foreground,
+  },
+  footerSpacer: {
+    paddingVertical: theme.gap(4),
+  },
+  summary: {
+    gap: theme.gap(2),
+    paddingTop: theme.gap(3),
+    paddingHorizontal: theme.gap(2),
+  },
+  summaryTitle: {
+    color: theme.colors.muted,
+    fontSize: theme.fontSize.sm,
+    fontWeight: '700',
+  },
+  summaryRow: {
+    gap: theme.gap(2),
+    paddingBottom: theme.gap(2),
+  },
+  summaryPill: {
+    alignItems: 'center',
+    paddingHorizontal: theme.gap(3),
+    paddingVertical: theme.gap(2),
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  summaryName: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+    fontWeight: '600',
+  },
+  summaryValue: {
+    fontSize: theme.fontSize.md,
+    fontWeight: '700',
+    color: theme.colors.foreground,
+  },
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  sheetBody: {
+    backgroundColor: theme.colors.background,
+    borderTopLeftRadius: theme.radius.lg,
+    borderTopRightRadius: theme.radius.lg,
+    padding: theme.gap(4),
+    gap: theme.gap(3),
+    maxHeight: '70%',
+  },
+  sheetTitle: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: '700',
+    color: theme.colors.foreground,
+  },
+  sheetList: {
+    gap: theme.gap(2),
+  },
+  sheetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+    paddingVertical: theme.gap(2),
+  },
+  sheetRowText: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.foreground,
+  },
+}))
