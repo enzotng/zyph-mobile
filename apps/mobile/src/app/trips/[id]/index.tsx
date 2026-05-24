@@ -3,7 +3,7 @@ import { FlashList } from '@shopify/flash-list'
 import * as Clipboard from 'expo-clipboard'
 import { Link, useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Alert, Pressable, Share, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, ScrollView, Share, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { CategoryPicker, categoryLabel } from '@/components/category-picker'
@@ -287,7 +287,11 @@ export default function TripDetailScreen() {
               </Pressable>
             ) : null}
 
-            <View style={styles.navLinks}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.navLinks}
+            >
               <Link
                 href={{ pathname: '/trips/[id]/timeline', params: { id: tripId } }}
                 style={styles.timelineLink}
@@ -312,7 +316,13 @@ export default function TripDetailScreen() {
               >
                 AR view →
               </Link>
-            </View>
+              <Link
+                href={{ pathname: '/trips/[id]/import-email', params: { id: tripId } }}
+                style={styles.timelineLink}
+              >
+                Smart Import →
+              </Link>
+            </ScrollView>
 
             <Pressable
               onPress={toggleSharing}
