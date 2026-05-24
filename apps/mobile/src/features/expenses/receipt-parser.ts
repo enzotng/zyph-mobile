@@ -101,19 +101,30 @@ function extractDate(text: string): string | null {
   return null
 }
 
+const SUBTOTAL_KEYWORDS = ['sous-total', 'sous total', 'subtotal']
+
 function extractAmount(lines: string[]): number | null {
-  // Pass 1: look for a TOTAL-keyword line and pick its largest amount.
+  // Pass 1: collect amounts from lines with a TOTAL keyword, skipping subtotals.
+  const totalCents: number[] = []
   for (const line of lines) {
     const lower = line.toLowerCase()
+    if (SUBTOTAL_KEYWORDS.some((kw) => lower.includes(kw))) {
+      continue
+    }
     if (TOTAL_KEYWORDS.some((kw) => lower.includes(kw))) {
       const matches = line.match(AMOUNT_RE)
-      if (matches && matches.length > 0) {
-        const cents = matches.map(normalizeAmount).filter((n): n is number => n !== null)
-        if (cents.length > 0) {
-          return Math.max(...cents)
+      if (matches) {
+        for (const m of matches) {
+          const cents = normalizeAmount(m)
+          if (cents !== null) {
+            totalCents.push(cents)
+          }
         }
       }
     }
+  }
+  if (totalCents.length > 0) {
+    return Math.max(...totalCents)
   }
   // Pass 2: fall back to the largest amount in the document.
   const allCents: number[] = []
@@ -158,4 +169,107 @@ export function parseReceipt(text: string): ParsedReceipt {
     currency: detectCurrency(text),
     date: extractDate(text),
   }
+}
+
+export type ParsedItem = {
+  label: string
+  amountCents: number
+}
+
+export type ParsedReceiptItems = ParsedReceipt & {
+  items: ParsedItem[]
+}
+
+// Lines that look like a single article: optional "qty x" prefix, label words,
+// then a money amount possibly flanked by a currency symbol on either side.
+const ITEM_LINE_RE =
+  /^(?:(\d+)\s*[xX×]\s*)?(.+?)\s+[€$£¥]?\s*(\d{1,4}(?:[ .,]\d{3})*[.,]\d{2})\s*[€$£¥]?$/
+
+// Phrases that mark a line as a total / tax / payment / discount — not an item.
+const NON_ITEM_KEYWORDS = [
+  'total ttc',
+  'montant total',
+  'total a payer',
+  'total à payer',
+  'grand total',
+  'subtotal',
+  'sous-total',
+  'sous total',
+  'total',
+  'amount due',
+  'amount',
+  'somme',
+  'a payer',
+  'à payer',
+  'tva',
+  'tax',
+  'taxe',
+  'service',
+  'pourboire',
+  'tip',
+  'remise',
+  'discount',
+  'rabais',
+  'rendu',
+  'change',
+  'monnaie',
+  'cb',
+  'carte',
+  'espece',
+  'espèce',
+  'cash',
+  'paiement',
+  'payment',
+  'reglement',
+  'règlement',
+  'remboursement',
+  'refund',
+  'ticket',
+  'merci',
+  'thank you',
+  'merchant',
+  'commercant',
+  'commerçant',
+]
+
+function isItemLineLabel(label: string): boolean {
+  const lower = label.toLowerCase()
+  if (lower.length < 2) {
+    return false
+  }
+  // A label must contain at least one letter (filters out lines that are purely
+  // numeric like dates, ticket ids, etc.).
+  if (!/[a-zA-Zàâçéèêëîïôûùüÿœ]/.test(label)) {
+    return false
+  }
+  return !NON_ITEM_KEYWORDS.some((kw) => lower.includes(kw))
+}
+
+export function parseReceiptItems(text: string): ParsedReceiptItems {
+  const base = parseReceipt(text)
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+
+  const items: ParsedItem[] = []
+  for (const line of lines) {
+    const match = line.match(ITEM_LINE_RE)
+    if (!match) {
+      continue
+    }
+    const [, quantity, rawLabel, rawAmount] = match
+    const label = rawLabel.trim()
+    if (!isItemLineLabel(label)) {
+      continue
+    }
+    const cents = normalizeAmount(rawAmount)
+    if (cents === null || cents <= 0) {
+      continue
+    }
+    const display = quantity && quantity !== '1' ? `${quantity} × ${label}` : label
+    items.push({ label: display, amountCents: cents })
+  }
+
+  return { ...base, items }
 }
