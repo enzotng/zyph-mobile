@@ -1,6 +1,8 @@
 import {
+  buildAssignmentsByPosition,
   buildEqualAssignments,
   computeMemberTotalsCents,
+  groupMembersByItemId,
   type SmartSplitAssignment,
   smartSplitAssignmentSchema,
   smartSplitInputSchema,
@@ -166,5 +168,86 @@ describe('computeMemberTotalsCents', () => {
     ]
     const totals = computeMemberTotalsCents(items, assignments)
     expect(totals.get(m1)! + totals.get(m2)!).toBe(1000)
+  })
+})
+
+describe('groupMembersByItemId', () => {
+  const m1 = '00000000-0000-0000-0000-000000000001'
+  const m2 = '00000000-0000-0000-0000-000000000002'
+
+  it('returns an empty map for no assignments', () => {
+    expect(groupMembersByItemId([]).size).toBe(0)
+  })
+
+  it('groups members under their item id', () => {
+    const out = groupMembersByItemId([
+      { item_id: 'a', member_id: m1 },
+      { item_id: 'a', member_id: m2 },
+      { item_id: 'b', member_id: m1 },
+    ])
+    expect(out.get('a')).toEqual([m1, m2])
+    expect(out.get('b')).toEqual([m1])
+  })
+
+  it('de-duplicates a member assigned twice to the same item', () => {
+    const out = groupMembersByItemId([
+      { item_id: 'a', member_id: m1 },
+      { item_id: 'a', member_id: m1 },
+    ])
+    expect(out.get('a')).toEqual([m1])
+  })
+})
+
+describe('buildAssignmentsByPosition', () => {
+  const m1 = '00000000-0000-0000-0000-000000000001'
+  const m2 = '00000000-0000-0000-0000-000000000002'
+
+  it('maps assignments back to item positions', () => {
+    const items = [
+      { id: 'i0', position: 0 },
+      { id: 'i1', position: 1 },
+    ]
+    const assignments = [
+      { item_id: 'i0', member_id: m1 },
+      { item_id: 'i1', member_id: m1 },
+      { item_id: 'i1', member_id: m2 },
+    ]
+    expect(buildAssignmentsByPosition(items, assignments)).toEqual({
+      0: [m1],
+      1: [m1, m2],
+    })
+  })
+
+  it('omits items that have no assignment', () => {
+    const items = [
+      { id: 'i0', position: 0 },
+      { id: 'i1', position: 1 },
+    ]
+    const assignments = [{ item_id: 'i0', member_id: m1 }]
+    expect(buildAssignmentsByPosition(items, assignments)).toEqual({ 0: [m1] })
+  })
+
+  it('ignores assignments whose item is not in the list', () => {
+    const items = [{ id: 'i0', position: 0 }]
+    const assignments = [
+      { item_id: 'i0', member_id: m1 },
+      { item_id: 'ghost', member_id: m2 },
+    ]
+    expect(buildAssignmentsByPosition(items, assignments)).toEqual({ 0: [m1] })
+  })
+
+  it('honours the item position field rather than array order', () => {
+    const items = [
+      { id: 'i0', position: 5 },
+      { id: 'i1', position: 2 },
+    ]
+    const assignments = [
+      { item_id: 'i0', member_id: m1 },
+      { item_id: 'i1', member_id: m2 },
+    ]
+    expect(buildAssignmentsByPosition(items, assignments)).toEqual({
+      5: [m1],
+      2: [m2],
+    })
   })
 })

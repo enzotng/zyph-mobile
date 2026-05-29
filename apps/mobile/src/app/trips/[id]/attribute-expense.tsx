@@ -7,8 +7,10 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
+import { TextField } from '@/components/text-field'
 import { useAuth } from '@/features/auth'
 import {
+  buildAssignmentsByPosition,
   buildEqualAssignments,
   computeMemberTotalsCents,
   deleteExpense,
@@ -16,6 +18,9 @@ import {
   type ParsedItem,
   type SmartSplitItem,
   useCreateExpense,
+  useExpense,
+  useExpenseItemAssignments,
+  useExpenseItems,
   useUpsertExpenseWithItems,
 } from '@/features/expenses'
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
@@ -25,24 +30,37 @@ import { paramString } from '@/lib/routing'
 
 const MAX_INLINE_CHIPS = 4
 
+type AttributionMode = 'create' | 'edit'
+
+type EditorProps = {
+  tripId: string
+  mode: AttributionMode
+  expenseId: string | null
+  items: SmartSplitItem[]
+  totalCents: number
+  expenseCurrency: string
+  initialDescription: string
+  // position → member ids already assigned (pre-fill when re-editing).
+  initialAssignmentsByPosition: Record<number, string[]>
+}
+
+// Resolves the attribution editor inputs from one of two sources:
+// - create mode: the OCR scan params handed over by add-expense (synchronous)
+// - edit mode: the persisted expense + items + assignments (async, loaded here)
+// then mounts the editor with concrete, ready data so its state is seeded
+// synchronously (no async-to-state effect).
 export default function AttributeExpenseScreen() {
   const params = useLocalSearchParams<{
     id: string
-    items: string
-    amountCents: string
-    currency: string
-    description: string
+    items?: string
+    amountCents?: string
+    currency?: string
+    description?: string
+    expenseId?: string
   }>()
   const tripId = paramString(params.id)
-  const router = useRouter()
-  const { theme } = useUnistyles()
-  const { session } = useAuth()
-  const userId = session?.user.id
-  const { data: trip } = useTrip(tripId)
-  const { data: members } = useTripMembers(tripId)
-  const { data: fx } = useFxRates()
-  const createExpense = useCreateExpense(tripId)
-  const upsertWithItems = useUpsertExpenseWithItems(tripId)
+  const expenseId = paramString(params.expenseId)
+  const isEdit = expenseId.length > 0
 
   const parsedItems = useMemo<ParsedItem[]>(() => {
     try {
@@ -53,30 +71,104 @@ export default function AttributeExpenseScreen() {
     }
   }, [params.items])
 
-  const totalCents = Number.parseInt(paramString(params.amountCents) || '0', 10)
-  const expenseCurrency = paramString(params.currency) || 'EUR'
-  const initialDescription = paramString(params.description) || 'Receipt'
+  const { data: expense, isLoading: expenseLoading } = useExpense(expenseId)
+  const { data: itemRows, isLoading: itemsLoading } = useExpenseItems(expenseId)
+  const { data: assignmentRows, isLoading: assignmentsLoading } =
+    useExpenseItemAssignments(expenseId)
 
-  // assignmentsByPosition[i] = set of member ids assigned to item i.
+  if (isEdit) {
+    if (
+      expenseLoading ||
+      itemsLoading ||
+      assignmentsLoading ||
+      !expense ||
+      !itemRows ||
+      !assignmentRows
+    ) {
+      return (
+        <Screen title="Edit Smart Split" showBack>
+          <View style={styles.center}>
+            <ActivityIndicator />
+          </View>
+        </Screen>
+      )
+    }
+    // Re-key stored positions to a contiguous 0..n-1 range matching array order
+    // (itemRows arrive sorted by position asc). The editor and
+    // computeMemberTotalsCents treat position as the array index, so normalising
+    // here keeps the two in lockstep even if stored positions ever go sparse.
+    const normalizedRows = itemRows.map((row, index) => ({ ...row, position: index }))
+    return (
+      <AttributionEditor
+        key={expenseId}
+        tripId={tripId}
+        mode="edit"
+        expenseId={expenseId}
+        items={normalizedRows.map((row) => ({
+          label: row.label,
+          amountCents: row.amount_cents,
+          position: row.position,
+        }))}
+        totalCents={expense.amount_cents}
+        expenseCurrency={expense.currency}
+        initialDescription={expense.description}
+        initialAssignmentsByPosition={buildAssignmentsByPosition(normalizedRows, assignmentRows)}
+      />
+    )
+  }
+
+  return (
+    <AttributionEditor
+      key="create"
+      tripId={tripId}
+      mode="create"
+      expenseId={null}
+      items={parsedItems.map((item, position) => ({
+        label: item.label,
+        amountCents: item.amountCents,
+        position,
+      }))}
+      totalCents={Number.parseInt(paramString(params.amountCents) || '0', 10)}
+      expenseCurrency={paramString(params.currency) || 'EUR'}
+      initialDescription={paramString(params.description) || 'Receipt'}
+      initialAssignmentsByPosition={{}}
+    />
+  )
+}
+
+function AttributionEditor({
+  tripId,
+  mode,
+  expenseId,
+  items,
+  totalCents,
+  expenseCurrency,
+  initialDescription,
+  initialAssignmentsByPosition,
+}: EditorProps) {
+  const router = useRouter()
+  const { theme } = useUnistyles()
+  const { session } = useAuth()
+  const userId = session?.user.id
+  const { data: trip } = useTrip(tripId)
+  const { data: members } = useTripMembers(tripId)
+  const { data: fx } = useFxRates()
+  const createExpense = useCreateExpense(tripId)
+  const upsertWithItems = useUpsertExpenseWithItems(tripId)
+
+  // assignmentsByPosition[i] = set of member ids assigned to item i. Seeded from
+  // the persisted assignments when re-editing, empty for a fresh scan.
   const [assignmentsByPosition, setAssignmentsByPosition] = useState<Record<number, Set<string>>>(
     () => {
-      // Default: every item assigned to the current user (so user only re-taps to remove).
       const init: Record<number, Set<string>> = {}
+      for (const [pos, ids] of Object.entries(initialAssignmentsByPosition)) {
+        init[Number.parseInt(pos, 10)] = new Set(ids)
+      }
       return init
     },
   )
   const [description, setDescription] = useState(initialDescription)
   const [sheetOpenForPosition, setSheetOpenForPosition] = useState<number | null>(null)
-
-  const items: SmartSplitItem[] = useMemo(
-    () =>
-      parsedItems.map((item, position) => ({
-        label: item.label,
-        amountCents: item.amountCents,
-        position,
-      })),
-    [parsedItems],
-  )
 
   const itemsTotal = useMemo(() => items.reduce((sum, i) => sum + i.amountCents, 0), [items])
 
@@ -168,9 +260,35 @@ export default function AttributeExpenseScreen() {
       Alert.alert('Conversion failed', `Exchange rate for ${expenseCurrency} is unavailable.`)
       return
     }
-    // Two-step save: create the expense (bootstrap split) then replace it with the
-    // item-driven split. If step 2 fails, soft-delete the orphan expense so we
-    // don't leave a corrupt placeholder in the trip's expense list.
+
+    // Edit mode: the expense already exists, so a single atomic upsert replaces
+    // its items + assignments + derived splits. The RPC runs in one transaction,
+    // so a failure leaves the previous attribution intact — no rollback needed.
+    if (mode === 'edit' && expenseId) {
+      try {
+        await upsertWithItems.mutateAsync({
+          expenseId,
+          description,
+          amountCents: totalCents,
+          currency: expenseCurrency,
+          baseAmountCents,
+          fxRate,
+          items,
+          assignments,
+        })
+        router.back()
+      } catch (error) {
+        Alert.alert(
+          'Could not save attribution',
+          error instanceof Error ? error.message : 'Please try again.',
+        )
+      }
+      return
+    }
+
+    // Create mode — two-step save: create the expense (bootstrap split) then
+    // replace it with the item-driven split. If step 2 fails, soft-delete the
+    // orphan expense so we don't leave a corrupt placeholder in the trip.
     let createdId: string | null = null
     try {
       const created = await createExpense.mutateAsync({
@@ -207,12 +325,22 @@ export default function AttributeExpenseScreen() {
   }
 
   const isPending = createExpense.isPending || upsertWithItems.isPending
+  const totalLabel = mode === 'edit' ? 'Total' : 'OCR total'
 
   return (
-    <Screen title="Smart Split" showBack>
+    <Screen title={mode === 'edit' ? 'Edit Smart Split' : 'Smart Split'} showBack>
+      <View style={styles.descriptionField}>
+        <TextField
+          label="Description"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Receipt"
+        />
+      </View>
+
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Text style={styles.headerLabel}>OCR total</Text>
+          <Text style={styles.headerLabel}>{totalLabel}</Text>
           <Text style={styles.headerValue}>{formatAmount(totalCents, expenseCurrency)}</Text>
         </View>
         <View style={styles.headerRow}>
@@ -314,7 +442,7 @@ export default function AttributeExpenseScreen() {
           </Text>
         ) : null}
         <Button
-          label={isPending ? 'Saving…' : 'Save Smart Split'}
+          label={isPending ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Save Smart Split'}
           onPress={onSave}
           disabled={isPending || unassignedCount > 0 || (isForeign && !canConvert)}
         />
@@ -400,6 +528,9 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     color: theme.colors.warning,
     paddingVertical: theme.gap(1),
+  },
+  descriptionField: {
+    paddingBottom: theme.gap(2),
   },
   header: {
     gap: theme.gap(1),
