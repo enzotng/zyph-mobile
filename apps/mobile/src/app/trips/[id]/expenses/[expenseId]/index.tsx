@@ -8,8 +8,11 @@ import { useAuth } from '@/features/auth'
 import {
   type ExpenseCategory,
   formatAmount,
+  groupMembersByItemId,
   useDeleteExpense,
   useExpense,
+  useExpenseItemAssignments,
+  useExpenseItems,
   useExpenseSplits,
 } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
@@ -26,9 +29,14 @@ export default function ExpenseDetailScreen() {
 
   const { data: expense, isLoading } = useExpense(expenseId)
   const { data: splits } = useExpenseSplits(expenseId)
+  const { data: items } = useExpenseItems(expenseId)
+  const { data: itemAssignments } = useExpenseItemAssignments(expenseId)
   const { data: trip } = useTrip(tripId)
   const { data: members } = useTripMembers(tripId)
   const deleteExpense = useDeleteExpense(tripId)
+
+  const hasItems = Boolean(items && items.length > 0)
+  const membersByItemId = groupMembersByItemId(itemAssignments ?? [])
 
   function labelFor(memberId: string | null): string {
     if (!memberId) {
@@ -98,13 +106,20 @@ export default function ExpenseDetailScreen() {
 
       <View style={styles.actions}>
         <Link
-          href={{
-            pathname: '/trips/[id]/expenses/[expenseId]/edit',
-            params: { id: tripId, expenseId },
-          }}
+          href={
+            hasItems
+              ? {
+                  pathname: '/trips/[id]/attribute-expense',
+                  params: { id: tripId, expenseId },
+                }
+              : {
+                  pathname: '/trips/[id]/expenses/[expenseId]/edit',
+                  params: { id: tripId, expenseId },
+                }
+          }
           style={styles.link}
         >
-          Edit
+          {hasItems ? 'Edit split' : 'Edit'}
         </Link>
         <Pressable
           onPress={confirmDelete}
@@ -114,6 +129,26 @@ export default function ExpenseDetailScreen() {
           <Text style={styles.deleteText}>Delete</Text>
         </Pressable>
       </View>
+
+      {hasItems ? (
+        <>
+          <Text style={styles.sectionTitle}>Items</Text>
+          {items?.map((item) => {
+            const names = (membersByItemId.get(item.id) ?? []).map((id) => labelFor(id)).join(' · ')
+            return (
+              <View key={item.id} style={styles.itemBlock}>
+                <View style={styles.itemTopRow}>
+                  <Text style={styles.body}>{item.label}</Text>
+                  <Text style={styles.amountValue}>
+                    {formatAmount(item.amount_cents, expense.currency)}
+                  </Text>
+                </View>
+                <Text style={styles.itemMembers}>{names.length > 0 ? names : 'Unassigned'}</Text>
+              </View>
+            )
+          })}
+        </>
+      ) : null}
 
       <Text style={styles.sectionTitle}>Splits</Text>
       {!splits || splits.length === 0 ? (
@@ -171,6 +206,20 @@ const styles = StyleSheet.create((theme) => ({
     paddingVertical: theme.gap(2),
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+  },
+  itemBlock: {
+    gap: theme.gap(1),
+    paddingVertical: theme.gap(2),
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  itemTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  itemMembers: {
+    color: theme.colors.muted,
+    fontSize: theme.fontSize.sm,
   },
   actions: {
     flexDirection: 'row',

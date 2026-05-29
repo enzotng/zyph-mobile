@@ -107,3 +107,42 @@ export function computeMemberTotalsCents(
   }
   return totals
 }
+
+// Group raw assignment rows by their item, returning the de-duplicated member
+// ids per item id (insertion order preserved). Used to render the per-item
+// breakdown on the expense detail screen.
+export function groupMembersByItemId(
+  assignments: { item_id: string; member_id: string }[],
+): Map<string, string[]> {
+  const byItem = new Map<string, string[]>()
+  for (const assignment of assignments) {
+    const list = byItem.get(assignment.item_id)
+    if (list) {
+      if (!list.includes(assignment.member_id)) {
+        list.push(assignment.member_id)
+      }
+    } else {
+      byItem.set(assignment.item_id, [assignment.member_id])
+    }
+  }
+  return byItem
+}
+
+// Rebuild the position → member-ids shape the attribution editor works with,
+// from the persisted items + assignment rows. Items carry the canonical
+// position; assignments reference items by id. Items with no assignment are
+// omitted. Used to pre-fill the editor when re-editing an existing Smart Split.
+export function buildAssignmentsByPosition(
+  items: { id: string; position: number }[],
+  assignments: { item_id: string; member_id: string }[],
+): Record<number, string[]> {
+  const byItem = groupMembersByItemId(assignments)
+  const out: Record<number, string[]> = {}
+  for (const item of items) {
+    const members = byItem.get(item.id)
+    if (members && members.length > 0) {
+      out[item.position] = members
+    }
+  }
+  return out
+}
