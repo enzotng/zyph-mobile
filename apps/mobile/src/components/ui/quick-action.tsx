@@ -1,0 +1,68 @@
+import { Ionicons } from '@expo/vector-icons'
+import { Pressable, Text, View } from 'react-native'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
+
+import { withAlpha } from '@/lib/color'
+
+import { Squircle } from './squircle'
+
+type QuickActionProps = {
+  icon: keyof typeof Ionicons.glyphMap
+  label: string
+  onPress?: () => void
+  tone?: string
+}
+
+export function QuickAction({ icon, label, onPress, tone }: QuickActionProps) {
+  const { theme } = useUnistyles()
+
+  const resolvedColor = tone ?? theme.colors.primary
+  const iconBg = withAlpha(resolvedColor, 0.14)
+
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Squircle style={styles.tile}>
+        <View style={[styles.iconWrapper, { backgroundColor: iconBg }]}>
+          <Ionicons name={icon} size={22} color={resolvedColor} />
+        </View>
+        <Text style={styles.label} numberOfLines={1}>
+          {label}
+        </Text>
+      </Squircle>
+    </Pressable>
+  )
+}
+
+const styles = StyleSheet.create((theme) => ({
+  pressable: {
+    flex: 1,
+  },
+  pressed: {
+    opacity: 0.85,
+  },
+  tile: {
+    alignItems: 'center',
+    gap: theme.gap(2),
+    paddingVertical: theme.gap(4),
+    paddingHorizontal: theme.gap(2),
+  },
+  iconWrapper: {
+    width: 42,
+    height: 42,
+    borderRadius: theme.radius.md,
+    borderCurve: 'continuous',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: theme.colors.foreground,
+    textAlign: 'center',
+  },
+}))
