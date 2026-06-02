@@ -8,6 +8,22 @@ const shared = {
   gap: (v: number) => v * 4,
   radius: { sm: 12, md: 20, lg: 32, xl: 40, full: 9999 },
   fontSize: { xs: 12, sm: 14, md: 16, lg: 20, xl: 28, xxl: 34 },
+  // Brand type: Space Grotesk for display/titles/numbers, Plus Jakarta Sans for body.
+  // Names match the keys registered via useFonts in app/_layout.tsx (vendored .ttf).
+  fonts: {
+    display: {
+      regular: 'SpaceGrotesk_400Regular',
+      medium: 'SpaceGrotesk_500Medium',
+      semibold: 'SpaceGrotesk_600SemiBold',
+      bold: 'SpaceGrotesk_700Bold',
+    },
+    sans: {
+      regular: 'PlusJakartaSans_400Regular',
+      medium: 'PlusJakartaSans_500Medium',
+      semibold: 'PlusJakartaSans_600SemiBold',
+      bold: 'PlusJakartaSans_700Bold',
+    },
+  },
 } as const
 
 // ZYPH brand palette (v2 indigo/sky). Indigo marks interactive/active surfaces;

@@ -97,6 +97,7 @@ const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: size === 'sm' ? theme.gap(4) : theme.gap(6),
   }),
   label: (size: ButtonSize) => ({
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     fontSize: size === 'sm' ? theme.fontSize.sm : theme.fontSize.md,
   }),

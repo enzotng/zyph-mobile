@@ -77,9 +77,11 @@ const styles = StyleSheet.create((theme) => ({
   label: {
     fontSize: theme.fontSize.sm,
     textAlign: 'center',
+    fontFamily: theme.fonts.sans.regular,
   },
   labelActive: {
     color: theme.colors.foreground,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
   },
   labelInactive: {

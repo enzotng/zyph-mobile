@@ -36,8 +36,9 @@ export function Amount({
   return <Text style={[styles.amount, { fontSize: size, color }]}>{text}</Text>
 }
 
-const styles = StyleSheet.create(() => ({
+const styles = StyleSheet.create((theme) => ({
   amount: {
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
   },
 }))

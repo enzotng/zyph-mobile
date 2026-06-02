@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { useFonts } from 'expo-font'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { useEffect } from 'react'
 import { ActivityIndicator, View } from 'react-native'
@@ -36,11 +37,24 @@ function useProtectedRoute(session: Session | null, isLoading: boolean) {
   }, [session, isLoading, segments, router])
 }
 
+// Vendored brand fonts (.ttf in assets/fonts). Keys must match theme.fonts.* in unistyles.ts.
+const BRAND_FONTS = {
+  SpaceGrotesk_400Regular: require('../../assets/fonts/SpaceGrotesk_400Regular.ttf'),
+  SpaceGrotesk_500Medium: require('../../assets/fonts/SpaceGrotesk_500Medium.ttf'),
+  SpaceGrotesk_600SemiBold: require('../../assets/fonts/SpaceGrotesk_600SemiBold.ttf'),
+  SpaceGrotesk_700Bold: require('../../assets/fonts/SpaceGrotesk_700Bold.ttf'),
+  PlusJakartaSans_400Regular: require('../../assets/fonts/PlusJakartaSans_400Regular.ttf'),
+  PlusJakartaSans_500Medium: require('../../assets/fonts/PlusJakartaSans_500Medium.ttf'),
+  PlusJakartaSans_600SemiBold: require('../../assets/fonts/PlusJakartaSans_600SemiBold.ttf'),
+  PlusJakartaSans_700Bold: require('../../assets/fonts/PlusJakartaSans_700Bold.ttf'),
+}
+
 function RootNavigator() {
   const { session, isLoading } = useAuth()
+  const [fontsLoaded] = useFonts(BRAND_FONTS)
   useProtectedRoute(session, isLoading)
 
-  if (isLoading) {
+  if (isLoading || !fontsLoaded) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator />

@@ -60,6 +60,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   label: {
     fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.bold,
     fontWeight: '700',
   },
 }))

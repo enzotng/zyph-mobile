@@ -102,6 +102,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   label: {
     fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.medium,
     fontWeight: '500',
     variants: {
       selected: {
@@ -125,6 +126,7 @@ const styles = StyleSheet.create((theme) => ({
     borderWidth: 1.5,
   },
   memberInitial: {
+    fontFamily: theme.fonts.sans.bold,
     fontWeight: '700',
     fontSize: theme.fontSize.sm,
   },

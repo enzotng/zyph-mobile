@@ -35,6 +35,7 @@ const styles = StyleSheet.create((theme) => ({
   title: {
     fontSize: theme.fontSize.lg,
     fontWeight: '700',
+    fontFamily: theme.fonts.display.bold,
     color: theme.colors.foreground,
   },
   actionPressable: {
@@ -46,6 +47,7 @@ const styles = StyleSheet.create((theme) => ({
   action: {
     fontSize: theme.fontSize.sm,
     fontWeight: '600',
+    fontFamily: theme.fonts.sans.semibold,
     color: theme.colors.primary,
   },
   pressed: {

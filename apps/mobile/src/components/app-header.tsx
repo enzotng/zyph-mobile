@@ -62,6 +62,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     flex: 1,
     textAlign: 'center',
     fontSize: theme.fontSize.lg,
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
     color: theme.colors.foreground,
   },

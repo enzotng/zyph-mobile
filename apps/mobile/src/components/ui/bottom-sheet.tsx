@@ -125,6 +125,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   title: {
     fontSize: theme.fontSize.lg,
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
     color: theme.colors.foreground,
     marginBottom: theme.gap(3),

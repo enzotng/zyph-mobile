@@ -62,12 +62,14 @@ const styles = StyleSheet.create((theme) => ({
   },
   title: {
     fontSize: theme.fontSize.lg,
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
     color: theme.colors.foreground,
     textAlign: 'center',
   },
   body: {
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.sans.regular,
     color: theme.colors.muted,
     textAlign: 'center',
     maxWidth: 260,
