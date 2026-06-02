@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, Text } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { withAlpha } from '@/lib/color'
@@ -27,9 +27,16 @@ export function QuickAction({ icon, label, onPress, tone }: QuickActionProps) {
       accessibilityLabel={label}
     >
       <Squircle style={styles.tile}>
-        <View style={[styles.iconWrapper, { backgroundColor: iconBg }]}>
+        <Squircle
+          width={42}
+          height={42}
+          radius={theme.radius.md}
+          color={iconBg}
+          borderWidth={0}
+          style={styles.iconWrapper}
+        >
           <Ionicons name={icon} size={22} color={resolvedColor} />
-        </View>
+        </Squircle>
         <Text style={styles.label} numberOfLines={1}>
           {label}
         </Text>
@@ -54,8 +61,6 @@ const styles = StyleSheet.create((theme) => ({
   iconWrapper: {
     width: 42,
     height: 42,
-    borderRadius: theme.radius.md,
-    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },

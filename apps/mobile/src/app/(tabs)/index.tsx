@@ -1,10 +1,11 @@
 import { FlashList } from '@shopify/flash-list'
 import { useRouter } from 'expo-router'
 import { Pressable, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
+import { Squircle } from '@/components/ui'
 import { type Trip, useTrips } from '@/features/trips'
 
 export default function TripsScreen() {
@@ -54,10 +55,19 @@ export default function TripsScreen() {
 }
 
 function TripCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
+  const { theme } = useUnistyles()
   return (
-    <Pressable style={styles.card} onPress={onPress} accessibilityRole="button">
-      <Text style={styles.cardTitle}>{trip.title}</Text>
-      {trip.destination ? <Text style={styles.muted}>{trip.destination}</Text> : null}
+    <Pressable onPress={onPress} accessibilityRole="button">
+      <Squircle
+        color={theme.colors.card}
+        borderColor={theme.colors.border}
+        borderWidth={1}
+        radius={theme.radius.lg}
+        style={styles.card}
+      >
+        <Text style={styles.cardTitle}>{trip.title}</Text>
+        {trip.destination ? <Text style={styles.muted}>{trip.destination}</Text> : null}
+      </Squircle>
     </Pressable>
   )
 }
@@ -86,10 +96,6 @@ const styles = StyleSheet.create((theme, rt) => ({
   card: {
     padding: theme.gap(4),
     marginBottom: theme.gap(3),
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
     gap: theme.gap(1),
   },
   cardTitle: {

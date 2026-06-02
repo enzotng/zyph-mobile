@@ -11,6 +11,7 @@ import { CategoryPicker } from '@/components/category-picker'
 import { CurrencySelect } from '@/components/currency-select'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
+import { Squircle } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
@@ -282,7 +283,13 @@ export default function EditExpenseScreen() {
 
             {included ? (
               <View style={styles.memberRight}>
-                <View style={styles.stepper}>
+                <Squircle
+                  color="transparent"
+                  borderColor={theme.colors.border}
+                  borderWidth={1}
+                  radius={theme.radius.md}
+                  style={styles.stepper}
+                >
                   <Pressable
                     onPress={() => setWeight(member.id, state.weight - 1)}
                     accessibilityRole="button"
@@ -300,9 +307,9 @@ export default function EditExpenseScreen() {
                   >
                     <Ionicons name="add" size={18} color={theme.colors.foreground} />
                   </Pressable>
-                </View>
+                </Squircle>
                 <Text style={styles.share}>
-                  {share === undefined ? '—' : formatAmount(share, tripCurrency)}
+                  {share === undefined ? '-' : formatAmount(share, tripCurrency)}
                 </Text>
               </View>
             ) : null}
@@ -361,9 +368,6 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(2),
     paddingHorizontal: theme.gap(2),
     paddingVertical: theme.gap(1),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   weight: {
     minWidth: theme.gap(4),

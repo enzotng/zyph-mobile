@@ -8,6 +8,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
+import { Squircle } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   buildAssignmentsByPosition,
@@ -263,7 +264,7 @@ function AttributionEditor({
 
     // Edit mode: the expense already exists, so a single atomic upsert replaces
     // its items + assignments + derived splits. The RPC runs in one transaction,
-    // so a failure leaves the previous attribution intact — no rollback needed.
+    // so a failure leaves the previous attribution intact - no rollback needed.
     if (mode === 'edit' && expenseId) {
       try {
         await upsertWithItems.mutateAsync({
@@ -286,7 +287,7 @@ function AttributionEditor({
       return
     }
 
-    // Create mode — two-step save: create the expense (bootstrap split) then
+    // Create mode - two-step save: create the expense (bootstrap split) then
     // replace it with the item-driven split. If step 2 fails, soft-delete the
     // orphan expense so we don't leave a corrupt placeholder in the trip.
     let createdId: string | null = null
@@ -338,7 +339,12 @@ function AttributionEditor({
         />
       </View>
 
-      <View style={styles.header}>
+      <Squircle
+        color={theme.colors.card}
+        borderWidth={0}
+        radius={theme.radius.lg}
+        style={styles.header}
+      >
         <View style={styles.headerRow}>
           <Text style={styles.headerLabel}>{totalLabel}</Text>
           <Text style={styles.headerValue}>{formatAmount(totalCents, expenseCurrency)}</Text>
@@ -350,7 +356,7 @@ function AttributionEditor({
             {delta !== 0 ? `  (${delta > 0 ? '+' : ''}${(delta / 100).toFixed(2)})` : ''}
           </Text>
         </View>
-      </View>
+      </Squircle>
 
       <FlashList
         data={items}
@@ -362,7 +368,13 @@ function AttributionEditor({
           const remainder = members.length - inlineMembers.length
           const isUnassigned = set.size === 0
           return (
-            <View style={[styles.itemCard, isUnassigned ? styles.itemCardUnassigned : null]}>
+            <Squircle
+              color={theme.colors.card}
+              borderColor={isUnassigned ? theme.colors.warning : theme.colors.border}
+              borderWidth={1}
+              radius={theme.radius.md}
+              style={styles.itemCard}
+            >
               <View style={styles.itemRow}>
                 <Text style={styles.itemLabel} numberOfLines={2}>
                   {item.label}
@@ -401,7 +413,7 @@ function AttributionEditor({
                   {formatAmount(item.amountCents / set.size, expenseCurrency)} each
                 </Text>
               ) : null}
-            </View>
+            </Squircle>
           )
         }}
         ListFooterComponent={
@@ -429,10 +441,17 @@ function AttributionEditor({
                 : expenseCentsForMember
             const name = member.user_id === userId ? 'You' : (member.display_name ?? 'M')
             return (
-              <View key={member.id} style={styles.summaryPill}>
+              <Squircle
+                key={member.id}
+                color={theme.colors.card}
+                borderColor={theme.colors.border}
+                borderWidth={1}
+                radius={theme.radius.md}
+                style={styles.summaryPill}
+              >
                 <Text style={styles.summaryName}>{name}</Text>
                 <Text style={styles.summaryValue}>{formatAmount(cents, tripCurrency)}</Text>
-              </View>
+              </Squircle>
             )
           })}
         </ScrollView>
@@ -456,32 +475,40 @@ function AttributionEditor({
       >
         <Pressable style={styles.sheetBackdrop} onPress={() => setSheetOpenForPosition(null)}>
           <Pressable style={styles.sheetBody} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.sheetTitle}>Assign to…</Text>
-            <ScrollView contentContainerStyle={styles.sheetList}>
-              {members.map((member) => {
-                if (sheetOpenForPosition === null) return null
-                const set = assignmentsByPosition[sheetOpenForPosition] ?? new Set<string>()
-                const selected = set.has(member.id)
-                const name = member.user_id === userId ? 'You' : (member.display_name ?? 'M')
-                return (
-                  <Pressable
-                    key={member.id}
-                    style={styles.sheetRow}
-                    onPress={() => toggleAssignment(sheetOpenForPosition, member.id)}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: selected }}
-                  >
-                    <Ionicons
-                      name={selected ? 'checkbox' : 'square-outline'}
-                      size={22}
-                      color={selected ? theme.colors.primary : theme.colors.muted}
-                    />
-                    <Text style={styles.sheetRowText}>{name}</Text>
-                  </Pressable>
-                )
-              })}
-            </ScrollView>
-            <Button label="Done" onPress={() => setSheetOpenForPosition(null)} />
+            <Squircle
+              corners="top"
+              color={theme.colors.background}
+              borderWidth={0}
+              radius={theme.radius.lg}
+              style={styles.sheetSurface}
+            >
+              <Text style={styles.sheetTitle}>Assign to…</Text>
+              <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetList}>
+                {members.map((member) => {
+                  if (sheetOpenForPosition === null) return null
+                  const set = assignmentsByPosition[sheetOpenForPosition] ?? new Set<string>()
+                  const selected = set.has(member.id)
+                  const name = member.user_id === userId ? 'You' : (member.display_name ?? 'M')
+                  return (
+                    <Pressable
+                      key={member.id}
+                      style={styles.sheetRow}
+                      onPress={() => toggleAssignment(sheetOpenForPosition, member.id)}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: selected }}
+                    >
+                      <Ionicons
+                        name={selected ? 'checkbox' : 'square-outline'}
+                        size={22}
+                        color={selected ? theme.colors.primary : theme.colors.muted}
+                      />
+                      <Text style={styles.sheetRowText}>{name}</Text>
+                    </Pressable>
+                  )
+                })}
+              </ScrollView>
+              <Button label="Done" onPress={() => setSheetOpenForPosition(null)} />
+            </Squircle>
           </Pressable>
         </Pressable>
       </Modal>
@@ -537,8 +564,6 @@ const styles = StyleSheet.create((theme) => ({
     paddingVertical: theme.gap(3),
     paddingHorizontal: theme.gap(4),
     marginBottom: theme.gap(2),
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.card,
   },
   headerRow: {
     flexDirection: 'row',
@@ -562,13 +587,6 @@ const styles = StyleSheet.create((theme) => ({
     paddingVertical: theme.gap(3),
     paddingHorizontal: theme.gap(4),
     marginBottom: theme.gap(2),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
-  },
-  itemCardUnassigned: {
-    borderColor: theme.colors.warning,
   },
   itemRow: {
     flexDirection: 'row',
@@ -651,10 +669,6 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     paddingHorizontal: theme.gap(3),
     paddingVertical: theme.gap(2),
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.card,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   summaryName: {
     fontSize: theme.fontSize.sm,
@@ -672,12 +686,15 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: 'flex-end',
   },
   sheetBody: {
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: theme.radius.lg,
-    borderTopRightRadius: theme.radius.lg,
+    maxHeight: '70%',
+  },
+  sheetSurface: {
+    flexShrink: 1,
     padding: theme.gap(4),
     gap: theme.gap(3),
-    maxHeight: '70%',
+  },
+  sheetScroll: {
+    flexShrink: 1,
   },
   sheetTitle: {
     fontSize: theme.fontSize.lg,

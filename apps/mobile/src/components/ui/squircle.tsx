@@ -37,6 +37,9 @@ type SquircleProps = {
   color?: string
   borderColor?: string
   borderWidth?: number
+  // Provide both to skip onLayout measurement - a perf win for fixed-size, per-row tiles.
+  width?: number
+  height?: number
   style?: StyleProp<ViewStyle>
 }
 
@@ -50,23 +53,28 @@ export function Squircle({
   color,
   borderColor,
   borderWidth = 1,
+  width,
+  height,
   style,
 }: SquircleProps) {
   const { theme } = useUnistyles()
-  const [size, setSize] = useState({ width: 0, height: 0 })
+  const hasFixedSize = width !== undefined && height !== undefined
+  const [measured, setMeasured] = useState({ width: 0, height: 0 })
+  const size = width !== undefined && height !== undefined ? { width, height } : measured
 
   const baseRadius = radius ?? theme.radius.lg
   const fill = color ?? theme.colors.card
   const stroke = borderColor ?? theme.colors.border
 
   function onLayout(event: LayoutChangeEvent) {
-    const { width, height } = event.nativeEvent.layout
-    setSize({ width, height })
+    const layout = event.nativeEvent.layout
+    setMeasured({ width: layout.width, height: layout.height })
   }
 
-  // Rebuild the Skia paths only when the geometry changes, not on every render.
-  // The radius spec is derived inline so the memo deps stay primitive.
-  const fillPath = useMemo(() => {
+  // One outline serves both the fill and the centered stroke (rebuilt only when the
+  // geometry changes). Inset by half the border width so the stroke is not clipped at
+  // the canvas edge. The radius spec is derived inline so the memo deps stay primitive.
+  const path = useMemo(() => {
     if (size.width === 0) {
       return null
     }
@@ -74,27 +82,22 @@ export function Squircle({
       corners === 'top'
         ? { topLeft: baseRadius, topRight: baseRadius, bottomRight: 0, bottomLeft: 0 }
         : baseRadius
-    return buildPath(size.width, size.height, spec, smoothing, 0)
-  }, [size.width, size.height, baseRadius, corners, smoothing])
-
-  const borderPath = useMemo(() => {
-    if (size.width === 0 || borderWidth <= 0) {
-      return null
-    }
-    const spec: number | Partial<CornerRadii> =
-      corners === 'top'
-        ? { topLeft: baseRadius, topRight: baseRadius, bottomRight: 0, bottomLeft: 0 }
-        : baseRadius
-    return buildPath(size.width, size.height, spec, smoothing, borderWidth / 2)
+    return buildPath(
+      size.width,
+      size.height,
+      spec,
+      smoothing,
+      borderWidth > 0 ? borderWidth / 2 : 0,
+    )
   }, [size.width, size.height, baseRadius, corners, smoothing, borderWidth])
 
   return (
-    <View style={style} onLayout={onLayout}>
-      {fillPath ? (
+    <View style={style} onLayout={hasFixedSize ? undefined : onLayout}>
+      {path ? (
         <Canvas style={styles.canvas}>
-          <Path path={fillPath} color={fill} />
-          {borderPath ? (
-            <Path path={borderPath} style="stroke" strokeWidth={borderWidth} color={stroke} />
+          <Path path={path} color={fill} />
+          {borderWidth > 0 ? (
+            <Path path={path} style="stroke" strokeWidth={borderWidth} color={stroke} />
           ) : null}
         </Canvas>
       ) : null}

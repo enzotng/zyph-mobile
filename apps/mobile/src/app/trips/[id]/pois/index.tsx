@@ -2,10 +2,11 @@ import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
 import { Link, useLocalSearchParams, useRouter } from 'expo-router'
 import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { poiIconName } from '@/components/poi-icon-picker'
 import { Screen } from '@/components/screen'
+import { Squircle } from '@/components/ui'
 import { useDeletePoi, usePois } from '@/features/wayfinder'
 import { paramString } from '@/lib/routing'
 
@@ -13,6 +14,7 @@ export default function PoisScreen() {
   const params = useLocalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
+  const { theme } = useUnistyles()
   const { data: pois, isLoading, isError } = usePois(tripId)
   const deletePoi = useDeletePoi(tripId)
 
@@ -87,9 +89,16 @@ export default function PoisScreen() {
             }
             accessibilityRole="button"
           >
-            <View style={styles.iconWrap}>
+            <Squircle
+              color={theme.colors.card}
+              borderWidth={0}
+              radius={theme.radius.md}
+              width={theme.gap(10)}
+              height={theme.gap(10)}
+              style={styles.iconWrap}
+            >
               <Ionicons name={poiIconName(item.icon)} size={20} />
-            </View>
+            </Squircle>
             <Text style={styles.label}>{item.label}</Text>
             <Pressable
               onPress={() => confirmDelete(item.id, item.label)}
@@ -140,8 +149,6 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: 'center',
     width: theme.gap(10),
     height: theme.gap(10),
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.card,
   },
   label: {
     flex: 1,

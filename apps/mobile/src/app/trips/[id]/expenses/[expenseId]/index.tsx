@@ -1,9 +1,10 @@
 import { Link, useLocalSearchParams, useRouter } from 'expo-router'
 import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { categoryLabel } from '@/components/category-picker'
 import { Screen } from '@/components/screen'
+import { Squircle } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type ExpenseCategory,
@@ -24,6 +25,7 @@ export default function ExpenseDetailScreen() {
   const tripId = paramString(params.id)
   const expenseId = paramString(params.expenseId)
   const router = useRouter()
+  const { theme } = useUnistyles()
   const { session } = useAuth()
   const userId = session?.user.id
 
@@ -87,7 +89,13 @@ export default function ExpenseDetailScreen() {
 
   return (
     <Screen title={expense.description} scroll>
-      <View style={styles.card}>
+      <Squircle
+        color={theme.colors.card}
+        borderColor={theme.colors.border}
+        borderWidth={1}
+        radius={theme.radius.lg}
+        style={styles.card}
+      >
         <Text style={styles.amount}>{formatAmount(expense.amount_cents, expense.currency)}</Text>
         {isForeign ? (
           <Text style={styles.muted}>
@@ -102,7 +110,7 @@ export default function ExpenseDetailScreen() {
           </Text>
         ) : null}
         <Text style={styles.muted}>{new Date(expense.created_at).toLocaleString()}</Text>
-      </View>
+      </Squircle>
 
       <View style={styles.actions}>
         <Link
@@ -174,10 +182,6 @@ const styles = StyleSheet.create((theme) => ({
   card: {
     gap: theme.gap(1),
     padding: theme.gap(4),
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
   },
   amount: {
     fontSize: theme.fontSize.xl,

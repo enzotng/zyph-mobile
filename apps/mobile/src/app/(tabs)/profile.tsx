@@ -1,10 +1,11 @@
 import { Link } from 'expo-router'
 import { useState } from 'react'
 import { Alert, Pressable, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
+import { Squircle } from '@/components/ui'
 import { signOut, useAuth } from '@/features/auth'
 import { useProfile } from '@/features/profile'
 import { getThemePreference, setThemePreference, type ThemePreference } from '@/lib/preferences'
@@ -12,6 +13,7 @@ import { getThemePreference, setThemePreference, type ThemePreference } from '@/
 const THEME_OPTIONS: ThemePreference[] = ['system', 'light', 'dark']
 
 export default function ProfileScreen() {
+  const { theme } = useUnistyles()
   const { session } = useAuth()
   const { data: profile } = useProfile()
   const [signingOut, setSigningOut] = useState(false)
@@ -35,20 +37,26 @@ export default function ProfileScreen() {
 
   return (
     <Screen title="Profile" showBack={false} scroll>
-      <View style={styles.card}>
+      <Squircle
+        color={theme.colors.card}
+        borderColor={theme.colors.border}
+        borderWidth={1}
+        radius={theme.radius.lg}
+        style={styles.card}
+      >
         <View style={styles.row}>
           <Text style={styles.label}>Name</Text>
-          <Text style={styles.value}>{profile?.display_name ?? '—'}</Text>
+          <Text style={styles.value}>{profile?.display_name ?? '-'}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>{session?.user.email ?? '—'}</Text>
+          <Text style={styles.value}>{session?.user.email ?? '-'}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Currency</Text>
-          <Text style={styles.value}>{profile?.preferred_currency ?? '—'}</Text>
+          <Text style={styles.value}>{profile?.preferred_currency ?? '-'}</Text>
         </View>
-      </View>
+      </Squircle>
 
       <Link href="/profile/edit" style={styles.editLink}>
         Edit profile
@@ -66,15 +74,23 @@ export default function ProfileScreen() {
         {THEME_OPTIONS.map((option) => (
           <Pressable
             key={option}
-            style={[styles.segmentItem, themePref === option ? styles.segmentItemActive : null]}
+            style={styles.segmentItemWrapper}
             onPress={() => selectTheme(option)}
             accessibilityRole="button"
           >
-            <Text
-              style={[styles.segmentText, themePref === option ? styles.segmentTextActive : null]}
+            <Squircle
+              color={themePref === option ? theme.colors.primary : theme.colors.card}
+              borderColor={themePref === option ? theme.colors.primary : theme.colors.border}
+              borderWidth={1}
+              radius={theme.radius.md}
+              style={styles.segmentItem}
             >
-              {option}
-            </Text>
+              <Text
+                style={[styles.segmentText, themePref === option ? styles.segmentTextActive : null]}
+              >
+                {option}
+              </Text>
+            </Squircle>
           </Pressable>
         ))}
       </View>
@@ -86,10 +102,6 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create((theme) => ({
   card: {
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
     paddingHorizontal: theme.gap(4),
   },
   row: {
@@ -115,18 +127,12 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     gap: theme.gap(2),
   },
-  segmentItem: {
+  segmentItemWrapper: {
     flex: 1,
+  },
+  segmentItem: {
     alignItems: 'center',
     paddingVertical: theme.gap(3),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
-  },
-  segmentItemActive: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary,
   },
   segmentText: {
     color: theme.colors.foreground,
