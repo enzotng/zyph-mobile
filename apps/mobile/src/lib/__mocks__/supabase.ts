@@ -17,4 +17,7 @@ export const supabase = {
   storage: {
     from: jest.fn(),
   },
+  functions: {
+    invoke: jest.fn(),
+  },
 }
