@@ -25,6 +25,11 @@ export const fr: Translations = {
       body: 'Créez votre premier voyage pour commencer.',
     },
     error: 'Impossible de charger vos voyages.',
+    errorTitle: 'Connexion perdue',
+    add: 'Nouveau voyage',
+    owed: 'On te doit {{amount}}',
+    owe: 'Tu dois {{amount}}',
+    settled: 'Comptes équilibrés',
   },
   tabs: {
     trips: 'Voyages',

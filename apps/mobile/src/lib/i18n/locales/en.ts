@@ -23,6 +23,11 @@ export const en = {
       body: 'Create your first trip to get started.',
     },
     error: 'Could not load your trips.',
+    errorTitle: 'Connection lost',
+    add: 'New trip',
+    owed: "You're owed {{amount}}",
+    owe: 'You owe {{amount}}',
+    settled: 'All settled up',
   },
   tabs: {
     trips: 'Trips',
