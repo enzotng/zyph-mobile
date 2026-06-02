@@ -1,6 +1,8 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker'
 import { Platform, Pressable, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
+
+import { Squircle } from '@/components/ui/squircle'
 
 type DateFieldProps = {
   label: string
@@ -10,6 +12,8 @@ type DateFieldProps = {
 }
 
 export function DateField({ label, value, onChange, error }: DateFieldProps) {
+  const { theme } = useUnistyles()
+
   // iOS: the native compact control — a tappable date/time chip that pops the system
   // popover. mode="datetime" lets the user set both the day and the time.
   if (Platform.OS === 'ios') {
@@ -59,12 +63,15 @@ export function DateField({ label, value, onChange, error }: DateFieldProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      <Pressable
-        style={styles.input(Boolean(error))}
-        onPress={openAndroid}
-        accessibilityRole="button"
-      >
-        <Text style={styles.value}>{value.toLocaleString()}</Text>
+      <Pressable onPress={openAndroid} accessibilityRole="button">
+        <Squircle
+          radius={theme.radius.md}
+          color={theme.colors.card}
+          borderColor={error ? theme.colors.destructive : theme.colors.border}
+          style={styles.input}
+        >
+          <Text style={styles.value}>{value.toLocaleString()}</Text>
+        </Squircle>
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
@@ -86,15 +93,11 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '600',
     color: theme.colors.foreground,
   },
-  input: (hasError: boolean) => ({
+  input: {
     height: 48,
     justifyContent: 'center',
     paddingHorizontal: theme.gap(3),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: hasError ? theme.colors.destructive : theme.colors.border,
-    backgroundColor: theme.colors.card,
-  }),
+  },
   value: {
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,

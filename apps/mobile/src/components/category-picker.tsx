@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, Text } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { Squircle } from '@/components/ui/squircle'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/features/expenses'
 
 type CategoryPickerProps = {
@@ -19,6 +20,28 @@ const LABELS: Record<ExpenseCategory, string> = {
 }
 
 export function CategoryPicker({ label, value, onChange }: CategoryPickerProps) {
+  const { theme } = useUnistyles()
+
+  function renderChip(key: string, text: string, selected: boolean, onPress: () => void) {
+    return (
+      <Pressable
+        key={key}
+        onPress={onPress}
+        accessibilityRole="radio"
+        accessibilityState={{ selected }}
+      >
+        <Squircle
+          radius={theme.radius.md}
+          color={selected ? theme.colors.primary : theme.colors.card}
+          borderColor={selected ? theme.colors.primary : theme.colors.border}
+          style={styles.chip}
+        >
+          <Text style={[styles.chipText, selected ? styles.chipTextActive : null]}>{text}</Text>
+        </Squircle>
+      </Pressable>
+    )
+  }
+
   return (
     <>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -28,30 +51,10 @@ export function CategoryPicker({ label, value, onChange }: CategoryPickerProps) 
         contentContainerStyle={styles.row}
         accessibilityRole="radiogroup"
       >
-        <Pressable
-          onPress={() => onChange(null)}
-          accessibilityRole="radio"
-          accessibilityState={{ selected: value === null }}
-          style={[styles.chip, value === null ? styles.chipActive : null]}
-        >
-          <Text style={[styles.chipText, value === null ? styles.chipTextActive : null]}>None</Text>
-        </Pressable>
-        {EXPENSE_CATEGORIES.map((category) => {
-          const selected = category === value
-          return (
-            <Pressable
-              key={category}
-              onPress={() => onChange(category)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected }}
-              style={[styles.chip, selected ? styles.chipActive : null]}
-            >
-              <Text style={[styles.chipText, selected ? styles.chipTextActive : null]}>
-                {LABELS[category]}
-              </Text>
-            </Pressable>
-          )
-        })}
+        {renderChip('none', 'None', value === null, () => onChange(null))}
+        {EXPENSE_CATEGORIES.map((category) =>
+          renderChip(category, LABELS[category], category === value, () => onChange(category)),
+        )}
       </ScrollView>
     </>
   )
@@ -77,14 +80,6 @@ const styles = StyleSheet.create((theme) => ({
   chip: {
     paddingHorizontal: theme.gap(3),
     paddingVertical: theme.gap(2),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
-  },
-  chipActive: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary,
   },
   chipText: {
     color: theme.colors.foreground,

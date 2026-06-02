@@ -1,5 +1,7 @@
 import { Pressable, ScrollView, Text } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
+
+import { Squircle } from '@/components/ui/squircle'
 
 type CurrencySelectProps = {
   label?: string
@@ -9,6 +11,8 @@ type CurrencySelectProps = {
 }
 
 export function CurrencySelect({ label, value, currencies, onChange }: CurrencySelectProps) {
+  const { theme } = useUnistyles()
+
   return (
     <>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -23,12 +27,18 @@ export function CurrencySelect({ label, value, currencies, onChange }: CurrencyS
           return (
             <Pressable
               key={code}
-              style={[styles.chip, active ? styles.chipActive : null]}
               onPress={() => onChange(code)}
               accessibilityRole="radio"
               accessibilityState={{ selected: active }}
             >
-              <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{code}</Text>
+              <Squircle
+                radius={theme.radius.md}
+                color={active ? theme.colors.primary : theme.colors.card}
+                borderColor={active ? theme.colors.primary : theme.colors.border}
+                style={styles.chip}
+              >
+                <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{code}</Text>
+              </Squircle>
             </Pressable>
           )
         })}
@@ -50,14 +60,6 @@ const styles = StyleSheet.create((theme) => ({
   chip: {
     paddingVertical: theme.gap(2),
     paddingHorizontal: theme.gap(4),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
-  },
-  chipActive: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary,
   },
   chipText: {
     fontWeight: '600',
