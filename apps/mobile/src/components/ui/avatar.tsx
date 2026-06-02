@@ -117,6 +117,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   initial: {
     color: theme.colors.primaryForeground,
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
   },
   stack: {
@@ -130,6 +131,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   overflowText: {
     color: theme.colors.muted,
+    fontFamily: theme.fonts.display.semibold,
     fontWeight: '600',
   },
 }))

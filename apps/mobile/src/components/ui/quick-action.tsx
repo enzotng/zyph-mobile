@@ -66,6 +66,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   label: {
     fontSize: 12.5,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     color: theme.colors.foreground,
     textAlign: 'center',

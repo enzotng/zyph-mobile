@@ -118,13 +118,16 @@ const styles = StyleSheet.create((theme) => ({
   title: (danger: boolean) => ({
     fontSize: theme.fontSize.md,
     color: danger ? theme.colors.destructive : theme.colors.foreground,
+    fontFamily: theme.fonts.sans.regular,
   }),
   subtitle: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
+    fontFamily: theme.fonts.sans.regular,
   },
   detail: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
+    fontFamily: theme.fonts.sans.regular,
   },
 }))

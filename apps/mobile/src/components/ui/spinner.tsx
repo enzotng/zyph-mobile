@@ -27,5 +27,6 @@ const styles = StyleSheet.create((theme) => ({
   label: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
+    fontFamily: theme.fonts.sans.regular,
   },
 }))

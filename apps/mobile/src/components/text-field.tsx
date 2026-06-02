@@ -58,6 +58,7 @@ const styles = StyleSheet.create((theme) => ({
   label: {
     fontSize: theme.fontSize.sm,
     fontWeight: '600',
+    fontFamily: theme.fonts.sans.semibold,
     color: theme.colors.foreground,
   },
   input: {
@@ -65,9 +66,11 @@ const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: theme.gap(3),
     color: theme.colors.foreground,
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.sans.regular,
   },
   error: {
     fontSize: theme.fontSize.xs,
     color: theme.colors.destructive,
+    fontFamily: theme.fonts.sans.regular,
   },
 }))
