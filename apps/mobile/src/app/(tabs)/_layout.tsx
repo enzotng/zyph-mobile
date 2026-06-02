@@ -1,38 +1,49 @@
 import { Ionicons } from '@expo/vector-icons'
 import { Tabs } from 'expo-router'
-import { useUnistyles } from 'react-native-unistyles'
+
+import { type FloatingTab, FloatingTabBar } from '@/components/layout/floating-tab-bar'
+
+const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  index: 'airplane',
+  profile: 'person-circle',
+}
 
 export default function TabsLayout() {
-  const { theme } = useUnistyles()
-
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.muted,
-        tabBarStyle: {
-          backgroundColor: theme.colors.background,
-          borderTopColor: theme.colors.border,
-        },
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => {
+        const activeName = props.state.routes[props.state.index]?.name ?? ''
+        const tabs: FloatingTab[] = props.state.routes.map((route) => ({
+          key: route.key,
+          name: route.name,
+          label: props.descriptors[route.key]?.options.title ?? route.name,
+          icon: TAB_ICONS[route.name] ?? 'ellipse',
+        }))
+        return (
+          <FloatingTabBar
+            tabs={tabs}
+            activeName={activeName}
+            onSelect={(name) => {
+              const route = props.state.routes.find((r) => r.name === name)
+              if (!route) {
+                return
+              }
+              const event = props.navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              })
+              if (activeName !== name && !event.defaultPrevented) {
+                props.navigation.navigate(route.name)
+              }
+            }}
+          />
+        )
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Trips',
-          tabBarIcon: ({ color, size }) => <Ionicons name="airplane" color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-circle" color={color} size={size} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="index" options={{ title: 'Trips' }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
   )
 }
