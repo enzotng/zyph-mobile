@@ -1,98 +1,86 @@
 import { Ionicons } from '@expo/vector-icons'
-import * as Clipboard from 'expo-clipboard'
-import { Link, useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
-import { ActivityIndicator, Alert, Pressable, Share, Text, View } from 'react-native'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { Button } from '@/components/button'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
-import { Squircle } from '@/components/ui'
-import { useAuth } from '@/features/auth'
-import { formatAmount, settleBalances, useTripBalances } from '@/features/expenses'
 import {
-  useLeaveTrip,
-  useRegenerateInviteCode,
-  useRemoveTripMember,
-  useTripMembers,
-} from '@/features/group'
-import { useDeleteTrip, useTrip } from '@/features/trips'
-import { useShareLocation } from '@/features/wayfinder'
-import { getShareLocation, setShareLocation } from '@/lib/preferences'
+  AvatarStack,
+  Badge,
+  Card,
+  CityImage,
+  QuickAction,
+  SectionTitle,
+  Spinner,
+  Squircle,
+} from '@/components/ui'
+import { useAuth } from '@/features/auth'
+import {
+  type ExpenseCategory,
+  formatAmount,
+  settleBalances,
+  useExpenses,
+  useTripBalances,
+} from '@/features/expenses'
+import { useTripMembers } from '@/features/group'
+import { eventStatus, formatCountdown, useEvents } from '@/features/timeline'
+import { useTrip } from '@/features/trips'
+import { withAlpha } from '@/lib/color'
 import { paramString } from '@/lib/routing'
 
-export default function TripOverviewScreen() {
+const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
+  food: 'restaurant',
+  transport: 'car',
+  lodging: 'bed',
+  activity: 'ticket',
+  shopping: 'bag-handle',
+  other: 'pricetag',
+}
+
+export default function TripDashboardScreen() {
   const params = useLocalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
-  const { data: trip, isLoading, isError } = useTrip(tripId)
-  const { data: balances } = useTripBalances(tripId)
-  const { data: members } = useTripMembers(tripId)
+  const router = useRouter()
+  const { theme } = useUnistyles()
+  const { t } = useTranslation()
   const { session } = useAuth()
   const userId = session?.user.id
-  const router = useRouter()
-  const deleteTrip = useDeleteTrip()
-  const regenerate = useRegenerateInviteCode(tripId)
-  const leaveTripMutation = useLeaveTrip()
-  const removeMember = useRemoveTripMember(tripId)
-  const { theme } = useUnistyles()
 
-  const [sharing, setSharing] = useState(() => getShareLocation(tripId))
-  const { status: shareStatus } = useShareLocation({ tripId, enabled: sharing })
+  const { data: trip, isLoading } = useTrip(tripId)
+  const { data: balances } = useTripBalances(tripId)
+  const { data: members } = useTripMembers(tripId)
+  const { data: events } = useEvents(tripId)
+  const { data: expenses } = useExpenses(tripId)
+  // Snapshot once on mount; the countdown badge does not need to tick on this screen.
+  const [now] = useState(() => Date.now())
 
-  useEffect(() => {
-    setShareLocation(tripId, sharing)
-  }, [sharing, tripId])
-
-  function toggleSharing() {
-    if (sharing) {
-      setSharing(false)
-      return
-    }
-    Alert.alert(
-      'Share your location',
-      'Other members of this trip will see your live position while sharing is on. Turn it off any time to stop.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Share', onPress: () => setSharing(true) },
-      ],
-    )
+  function goGroup() {
+    router.push({ pathname: '/trips/[id]/group', params: { id: tripId } })
+  }
+  function goTab(name: 'timeline' | 'expenses' | 'pois') {
+    router.navigate({ pathname: `/trips/[id]/${name}`, params: { id: tripId } })
   }
 
-  if (isLoading) {
+  if (isLoading || !trip) {
     return (
       <Screen showBack>
         <View style={styles.center}>
-          <ActivityIndicator />
+          <Spinner label={t('common.loading')} />
         </View>
       </Screen>
     )
   }
 
-  if (isError || !trip) {
-    return (
-      <Screen showBack>
-        <View style={styles.center}>
-          <Text style={styles.subtitle}>Trip not found.</Text>
-        </View>
-      </Screen>
-    )
-  }
-
-  const nameById = new Map((members ?? []).map((member) => [member.id, member.display_name]))
-  const userIdByMember = new Map(
-    (balances ?? []).map((balance) => [balance.member_id, balance.user_id]),
-  )
-
-  function labelFor(memberUserId: string | null, memberId: string): string {
-    if (memberUserId && memberUserId === userId) {
-      return 'You'
-    }
-    return nameById.get(memberId) ?? 'Member'
-  }
-
-  function labelForMember(memberId: string): string {
-    return labelFor(userIdByMember.get(memberId) ?? null, memberId)
-  }
+  const currency = trip.currency
+  const myMember = (members ?? []).find((member) => member.user_id === userId)
+  const myBalance =
+    (balances ?? []).find((balance) => balance.user_id === userId)?.balance_cents ?? 0
+  const settled = myBalance === 0
+  const positive = myBalance > 0
 
   const settlements = settleBalances(
     (balances ?? []).map((balance) => ({
@@ -100,287 +88,226 @@ export default function TripOverviewScreen() {
       balanceCents: balance.balance_cents ?? 0,
     })),
   )
+  const debtorNames = myMember
+    ? settlements
+        .filter((settlement) => settlement.toMemberId === myMember.id)
+        .map(
+          (settlement) =>
+            (members ?? []).find((member) => member.id === settlement.fromMemberId)?.display_name ??
+            'Member',
+        )
+    : []
 
-  async function shareInvite() {
-    if (!trip) {
-      return
-    }
-    await Share.share({
-      message: `Join my trip "${trip.title}" on ZYPH with invite code: ${trip.invite_code}`,
-    })
-  }
+  const balanceTone = settled
+    ? theme.colors.foreground
+    : positive
+      ? theme.colors.success
+      : theme.colors.destructive
+  const balanceSub = settled
+    ? t('trip.settledSub')
+    : positive
+      ? t('trip.owedSub', { names: debtorNames.join(', ') })
+      : t('trip.oweSub')
 
-  async function copyInvite() {
-    if (!trip) {
-      return
-    }
-    await Clipboard.setStringAsync(trip.invite_code)
-    Alert.alert('Copied', 'Invite code copied to clipboard.')
-  }
+  const avatarMembers = (members ?? []).map((member) => ({
+    id: member.id,
+    name: member.display_name ?? undefined,
+  }))
 
-  function confirmRegenerate() {
-    Alert.alert(
-      'Regenerate invite code',
-      'The current code stops working. People who already joined keep their access.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Regenerate',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await regenerate.mutateAsync()
-            } catch (error) {
-              Alert.alert(
-                'Could not regenerate',
-                error instanceof Error ? error.message : 'Please try again.',
-              )
-            }
-          },
-        },
-      ],
-    )
-  }
+  const nextEvent = (events ?? []).find(
+    (event) => eventStatus(event.starts_at, event.ends_at, now).kind === 'upcoming',
+  )
+  const nextStatus = nextEvent ? eventStatus(nextEvent.starts_at, nextEvent.ends_at, now) : null
 
-  const isOwner = trip.owner_id === userId
+  const recent = (expenses ?? []).slice(0, 3)
 
-  function confirmDelete() {
-    Alert.alert('Delete trip', 'This permanently removes the trip and all its data.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteTrip.mutateAsync(tripId)
-            router.replace('/')
-          } catch (error) {
-            Alert.alert(
-              'Could not delete',
-              error instanceof Error ? error.message : 'Please try again.',
-            )
-          }
-        },
-      },
-    ])
-  }
-
-  function confirmLeave() {
-    Alert.alert(
-      'Leave trip',
-      'You will no longer see this trip or its expenses. Past expenses you paid for or owe stay on the books.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await leaveTripMutation.mutateAsync(tripId)
-              router.replace('/')
-            } catch (error) {
-              Alert.alert(
-                'Could not leave',
-                error instanceof Error ? error.message : 'Please try again.',
-              )
-            }
-          },
-        },
-      ],
-    )
-  }
-
-  function confirmRemove(memberId: string, name: string) {
-    Alert.alert(
-      'Remove member',
-      `${name} will lose access to this trip. Past expenses they paid for or owe stay on the books.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeMember.mutateAsync(memberId)
-            } catch (error) {
-              Alert.alert(
-                'Could not remove',
-                error instanceof Error ? error.message : 'Please try again.',
-              )
-            }
-          },
-        },
-      ],
-    )
+  function payerName(memberId: string | null): string {
+    const member = (members ?? []).find((m) => m.id === memberId)
+    return member?.display_name ?? 'Member'
   }
 
   return (
-    <Screen title={trip.title} showBack scroll>
-      {trip.destination ? <Text style={styles.subtitle}>{trip.destination}</Text> : null}
-
-      {isOwner ? (
-        <View style={styles.ownerActions}>
-          <Link href={{ pathname: '/trips/[id]/edit', params: { id: tripId } }} style={styles.link}>
-            Edit
-          </Link>
-          <Pressable
-            onPress={confirmDelete}
-            disabled={deleteTrip.isPending}
-            accessibilityRole="button"
-          >
-            <Text style={styles.deleteText}>Delete</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      <Squircle
-        color={theme.colors.card}
-        borderWidth={0}
-        radius={theme.radius.lg}
-        style={styles.inviteRow}
-      >
-        <View style={styles.inviteInfo}>
-          <Text style={styles.muted}>Invite code</Text>
-          <Text style={styles.code}>{trip.invite_code}</Text>
-        </View>
-        <View style={styles.inviteActions}>
-          <Pressable onPress={() => void copyInvite()} accessibilityRole="button">
-            <Text style={styles.link}>Copy</Text>
-          </Pressable>
-          <Pressable onPress={() => void shareInvite()} accessibilityRole="button">
-            <Text style={styles.link}>Share</Text>
-          </Pressable>
-        </View>
-      </Squircle>
-
-      {isOwner ? (
+    <Screen
+      title={trip.title}
+      showBack
+      scroll
+      right={
         <Pressable
-          onPress={confirmRegenerate}
-          disabled={regenerate.isPending}
+          onPress={goGroup}
           accessibilityRole="button"
-          style={styles.regenerate}
+          accessibilityLabel={t('trip.manage')}
+          hitSlop={8}
         >
-          <Text style={styles.muted}>
-            {regenerate.isPending ? 'Regenerating…' : 'Regenerate code'}
-          </Text>
+          <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.foreground} />
         </Pressable>
-      ) : null}
-
-      <Pressable
-        onPress={toggleSharing}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: sharing }}
-      >
-        <Squircle
-          color={theme.colors.card}
-          borderWidth={0}
-          radius={theme.radius.lg}
-          style={styles.shareRow}
-        >
-          <Ionicons
-            name={sharing ? 'location' : 'location-outline'}
-            size={22}
-            color={sharing ? theme.colors.primary : theme.colors.muted}
-          />
-          <View style={styles.shareInfo}>
-            <Text style={styles.body}>{sharing ? 'Sharing my location' : 'Share my location'}</Text>
-            <Text style={styles.muted}>
-              {shareStatus === 'denied'
-                ? 'Permission denied. Enable Location in Settings.'
-                : shareStatus === 'error'
-                  ? 'Could not start sharing. Tap to retry.'
-                  : sharing
-                    ? 'Other members can see you in real time.'
-                    : 'Off - your position stays private.'}
-            </Text>
-          </View>
-          <Ionicons
-            name={sharing ? 'toggle' : 'toggle-outline'}
-            size={28}
-            color={sharing ? theme.colors.primary : theme.colors.muted}
-          />
-        </Squircle>
-      </Pressable>
-
-      {members && members.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Members ({members.length})</Text>
-          {members.map((member) => {
-            const name = member.user_id === userId ? 'You' : (member.display_name ?? 'Member')
-            const initial = name.charAt(0).toUpperCase()
-            const canRemove = isOwner && member.role !== 'owner' && member.user_id !== userId
-            return (
-              <View key={member.id} style={styles.memberRow}>
-                <View style={styles.memberInfo}>
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{initial}</Text>
-                  </View>
-                  <Text style={styles.body}>{name}</Text>
-                </View>
-                {member.role === 'owner' ? (
-                  <Text style={styles.ownerBadge}>Owner</Text>
-                ) : canRemove ? (
-                  <Pressable
-                    onPress={() => confirmRemove(member.id, name)}
-                    disabled={removeMember.isPending}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove ${name}`}
-                    hitSlop={6}
-                  >
-                    <Text style={styles.deleteText}>Remove</Text>
-                  </Pressable>
-                ) : null}
+      }
+    >
+      {/* Cover hero */}
+      <CityImage uri={trip.cover_photo_url} seed={trip.destination ?? trip.title} height={132}>
+        <View style={styles.coverOverlay}>
+          <View style={styles.coverInfo}>
+            {trip.destination ? (
+              <View style={styles.coverRow}>
+                <Ionicons name="location" size={14} color="#FFFFFF" />
+                <Text style={styles.coverDestination}>{trip.destination}</Text>
               </View>
-            )
-          })}
+            ) : null}
+          </View>
+          <Pressable onPress={goGroup} style={styles.manage} accessibilityRole="button">
+            {avatarMembers.length > 0 ? <AvatarStack members={avatarMembers} size={32} /> : null}
+            <Text style={styles.manageLabel}>{t('trip.manage')}</Text>
+          </Pressable>
+        </View>
+      </CityImage>
+
+      {/* Balance hero */}
+      <Card>
+        <View style={styles.balanceRow}>
+          <View style={styles.balanceInfo}>
+            <Text style={styles.balanceLabel}>
+              {settled ? t('trip.settled') : positive ? t('trip.owed') : t('trip.owe')}
+            </Text>
+            <Text style={[styles.balanceAmount, { color: balanceTone }]}>
+              {formatAmount(Math.abs(myBalance), currency)}
+            </Text>
+            <Text style={styles.balanceSub}>{balanceSub}</Text>
+          </View>
+          <Squircle
+            width={48}
+            height={48}
+            radius={theme.radius.md}
+            borderWidth={0}
+            color={withAlpha(settled ? theme.colors.success : theme.colors.primary, 0.12)}
+            style={styles.balanceIcon}
+          >
+            <Ionicons
+              name={settled ? 'checkmark-done' : 'git-compare-outline'}
+              size={24}
+              color={settled ? theme.colors.success : theme.colors.primary}
+            />
+          </Squircle>
+        </View>
+        <View style={styles.balanceButton}>
+          <Button
+            label={settled ? t('trip.viewBalances') : t('trip.settle')}
+            icon="git-compare-outline"
+            variant={settled ? 'secondary' : 'primary'}
+            onPress={goGroup}
+          />
+        </View>
+      </Card>
+
+      {/* Quick actions */}
+      <View style={styles.quickActions}>
+        <QuickAction
+          icon="scan"
+          label={t('trip.scan')}
+          onPress={() =>
+            router.push({ pathname: '/trips/[id]/add-expense', params: { id: tripId } })
+          }
+        />
+        <QuickAction
+          icon="add-circle"
+          label={t('trip.expense')}
+          onPress={() =>
+            router.push({ pathname: '/trips/[id]/add-expense', params: { id: tripId } })
+          }
+        />
+        <QuickAction
+          icon="map"
+          label={t('trip.map')}
+          onPress={() => router.push({ pathname: '/trips/[id]/map', params: { id: tripId } })}
+        />
+        <QuickAction
+          icon="navigate"
+          label={t('trip.ar')}
+          onPress={() => router.push({ pathname: '/trips/[id]/ar', params: { id: tripId } })}
+        />
+      </View>
+
+      {/* Next event */}
+      {nextEvent && nextStatus?.kind === 'upcoming' ? (
+        <View>
+          <SectionTitle action={t('tabs.timeline')} onAction={() => goTab('timeline')}>
+            {t('trip.upcoming')}
+          </SectionTitle>
+          <View style={styles.blockBody}>
+            <Card onPress={() => goTab('timeline')}>
+              <View style={styles.eventRow}>
+                <Squircle
+                  width={44}
+                  height={44}
+                  radius={theme.radius.md}
+                  borderWidth={0}
+                  color={withAlpha(theme.colors.primary, 0.12)}
+                  style={styles.eventIcon}
+                >
+                  <Ionicons name="calendar" size={22} color={theme.colors.primary} />
+                </Squircle>
+                <View style={styles.eventInfo}>
+                  <Text style={styles.eventTitle} numberOfLines={1}>
+                    {nextEvent.title}
+                  </Text>
+                  {nextEvent.notes ? (
+                    <Text style={styles.eventNotes} numberOfLines={1}>
+                      {nextEvent.notes}
+                    </Text>
+                  ) : null}
+                </View>
+                <Badge label={formatCountdown(nextStatus)} tone="primary" icon="time-outline" />
+              </View>
+            </Card>
+          </View>
         </View>
       ) : null}
 
-      {!isOwner ? (
-        <Pressable
-          onPress={confirmLeave}
-          disabled={leaveTripMutation.isPending}
-          accessibilityRole="button"
-          style={styles.leaveBtn}
-        >
-          <Text style={styles.deleteText}>
-            {leaveTripMutation.isPending ? 'Leaving…' : 'Leave trip'}
-          </Text>
-        </Pressable>
-      ) : null}
-
-      {balances && balances.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Balances</Text>
-          {balances.map((balance) => (
-            <View key={balance.member_id} style={styles.rowBetween}>
-              <Text style={styles.body}>{labelFor(balance.user_id, balance.member_id)}</Text>
-              <Text
-                style={[styles.amount, (balance.balance_cents ?? 0) < 0 ? styles.negative : null]}
+      {/* Recent expenses */}
+      {recent.length > 0 ? (
+        <View>
+          <SectionTitle action={t('trip.viewAll')} onAction={() => goTab('expenses')}>
+            {t('trip.recent')}
+          </SectionTitle>
+          <View style={styles.recentBody}>
+            {recent.map((expense, index) => (
+              <Pressable
+                key={expense.id}
+                onPress={() =>
+                  router.push({
+                    pathname: '/trips/[id]/expenses/[expenseId]',
+                    params: { id: tripId, expenseId: expense.id },
+                  })
+                }
+                style={[styles.expenseRow, index === recent.length - 1 && styles.expenseRowLast]}
+                accessibilityRole="button"
               >
-                {formatAmount(balance.balance_cents ?? 0, trip.currency)}
-              </Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {settlements.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Settle up</Text>
-          {settlements.map((settlement) => (
-            <View
-              key={`${settlement.fromMemberId}-${settlement.toMemberId}`}
-              style={styles.rowBetween}
-            >
-              <Text style={styles.body}>
-                {labelForMember(settlement.fromMemberId)} → {labelForMember(settlement.toMemberId)}
-              </Text>
-              <Text style={styles.amount}>
-                {formatAmount(settlement.amountCents, trip.currency)}
-              </Text>
-            </View>
-          ))}
+                <Squircle
+                  width={40}
+                  height={40}
+                  radius={theme.radius.md}
+                  borderWidth={0}
+                  color={withAlpha(theme.colors.muted, 0.12)}
+                  style={styles.expenseIcon}
+                >
+                  <Ionicons
+                    name={CATEGORY_ICON[expense.category as ExpenseCategory] ?? 'pricetag'}
+                    size={19}
+                    color={theme.colors.muted}
+                  />
+                </Squircle>
+                <View style={styles.expenseInfo}>
+                  <Text style={styles.expenseDescription} numberOfLines={1}>
+                    {expense.description}
+                  </Text>
+                  <Text style={styles.expensePaidBy}>
+                    {t('trip.paidBy', { name: payerName(expense.paid_by) })}
+                  </Text>
+                </View>
+                <Text style={styles.expenseAmount}>
+                  {formatAmount(expense.amount_cents, expense.currency)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
       ) : null}
 
@@ -395,111 +322,159 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  subtitle: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.muted,
-  },
-  ownerActions: {
+  coverOverlay: {
+    position: 'absolute',
+    left: theme.gap(3.5),
+    right: theme.gap(3.5),
+    bottom: theme.gap(3),
     flexDirection: 'row',
-    gap: theme.gap(4),
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: theme.gap(2.5),
   },
-  inviteRow: {
+  coverInfo: {
+    flexShrink: 1,
+    gap: theme.gap(0.75),
+  },
+  coverRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(1.25),
+  },
+  coverDestination: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  manage: {
+    alignItems: 'center',
+    gap: theme.gap(1),
+  },
+  manageLabel: {
+    fontFamily: theme.fonts.sans.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.xs,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  balanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: theme.gap(3),
-    paddingHorizontal: theme.gap(4),
+    gap: theme.gap(3),
   },
-  inviteInfo: {
+  balanceInfo: {
     flexShrink: 1,
   },
-  inviteActions: {
-    flexDirection: 'row',
-    gap: theme.gap(4),
+  balanceLabel: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
   },
-  regenerate: {
-    alignSelf: 'flex-start',
-  },
-  code: {
-    fontSize: theme.fontSize.lg,
+  balanceAmount: {
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
+    fontSize: theme.fontSize.xxl,
+    letterSpacing: -0.5,
+    marginTop: 2,
+  },
+  balanceSub: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+    marginTop: 3,
+  },
+  balanceIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 48,
+    height: 48,
+  },
+  balanceButton: {
+    marginTop: theme.gap(3.5),
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: theme.gap(2.5),
+  },
+  blockBody: {
+    marginTop: theme.gap(2.5),
+  },
+  eventRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+  },
+  eventIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 44,
+    height: 44,
+  },
+  eventInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  eventTitle: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
   },
-  shareRow: {
+  eventNotes: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+    marginTop: 2,
+  },
+  recentBody: {
+    marginTop: theme.gap(1),
+  },
+  expenseRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(3),
     paddingVertical: theme.gap(3),
-    paddingHorizontal: theme.gap(4),
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
-  shareInfo: {
-    flex: 1,
-    gap: theme.gap(1),
+  expenseRowLast: {
+    borderBottomWidth: 0,
   },
-  section: {
-    gap: theme.gap(1),
-  },
-  sectionTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: '600',
-    color: theme.colors.foreground,
-  },
-  rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: theme.gap(1),
-  },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.gap(1),
-  },
-  memberInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(2),
-  },
-  avatar: {
+  expenseIcon: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: theme.gap(8),
-    height: theme.gap(8),
-    borderRadius: theme.gap(4),
-    backgroundColor: theme.colors.primary,
+    width: 40,
+    height: 40,
   },
-  avatarText: {
-    fontWeight: '700',
-    color: theme.colors.primaryForeground,
+  expenseInfo: {
+    flex: 1,
+    minWidth: 0,
   },
-  ownerBadge: {
+  expenseDescription: {
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.foreground,
+  },
+  expensePaidBy: {
+    fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.sm,
-    fontWeight: '600',
-    color: theme.colors.primary,
-  },
-  link: {
-    color: theme.colors.primary,
-    fontWeight: '600',
-  },
-  deleteText: {
-    color: theme.colors.destructive,
-    fontWeight: '600',
-  },
-  leaveBtn: {
-    alignSelf: 'flex-start',
-  },
-  muted: {
     color: theme.colors.muted,
+    marginTop: 3,
   },
-  body: {
+  expenseAmount: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
-  },
-  amount: {
-    color: theme.colors.foreground,
-    fontWeight: '600',
-  },
-  negative: {
-    color: theme.colors.destructive,
   },
   spacer: {
     height: FLOATING_TAB_BAR_CLEARANCE,
