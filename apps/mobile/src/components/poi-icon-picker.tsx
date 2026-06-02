@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { Squircle } from '@/components/ui/squircle'
 import { POI_ICONS, type PoiIcon } from '@/features/wayfinder'
 
 const IONICON_MAP: Record<PoiIcon, keyof typeof Ionicons.glyphMap> = {
@@ -40,13 +41,19 @@ export function PoiIconPicker({ label, value, onChange }: Props) {
               onPress={() => onChange(icon)}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              style={[styles.chip, selected ? styles.chipActive : null]}
             >
-              <Ionicons
-                name={IONICON_MAP[icon]}
-                size={20}
-                color={selected ? theme.colors.primaryForeground : theme.colors.foreground}
-              />
+              <Squircle
+                radius={theme.radius.md}
+                color={selected ? theme.colors.primary : theme.colors.card}
+                borderColor={selected ? theme.colors.primary : theme.colors.border}
+                style={styles.chip}
+              >
+                <Ionicons
+                  name={IONICON_MAP[icon]}
+                  size={20}
+                  color={selected ? theme.colors.primaryForeground : theme.colors.foreground}
+                />
+              </Squircle>
             </Pressable>
           )
         })}
@@ -74,13 +81,5 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: 'center',
     width: theme.gap(11),
     height: theme.gap(11),
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.card,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  chipActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
   },
 }))

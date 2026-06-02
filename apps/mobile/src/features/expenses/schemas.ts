@@ -18,6 +18,6 @@ export function toCents(amount: string): number {
   return Number.parseInt(intPart, 10) * 100 + (Number.isNaN(cents) ? 0 : cents)
 }
 
-export function formatAmount(cents: number, currency: string): string {
-  return `${(cents / 100).toFixed(2)} ${currency}`
-}
+// Canonical money formatting now lives in lib/money; re-exported here to keep
+// the existing `@/features/expenses` import surface stable.
+export { formatAmount } from '@/lib/money'

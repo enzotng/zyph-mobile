@@ -1,6 +1,8 @@
-import { type ComponentProps, forwardRef } from 'react'
+import { type ComponentProps, forwardRef, useState } from 'react'
 import { Text, TextInput, View } from 'react-native'
-import { StyleSheet, UnistylesRuntime } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
+
+import { Squircle } from '@/components/ui/squircle'
 
 type TextFieldProps = ComponentProps<typeof TextInput> & {
   label: string
@@ -8,18 +10,42 @@ type TextFieldProps = ComponentProps<typeof TextInput> & {
 }
 
 export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
-  { label, error, ...props },
+  { label, error, onFocus, onBlur, style, ...props },
   ref,
 ) {
+  const { theme } = useUnistyles()
+  const [focused, setFocused] = useState(false)
+
+  const borderColor = error
+    ? theme.colors.destructive
+    : focused
+      ? theme.colors.primary
+      : theme.colors.border
+
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        ref={ref}
-        style={styles.input(Boolean(error))}
-        placeholderTextColor={UnistylesRuntime.getTheme().colors.muted}
-        {...props}
-      />
+      <Squircle
+        radius={theme.radius.md}
+        color={theme.colors.card}
+        borderColor={borderColor}
+        borderWidth={1.5}
+      >
+        <TextInput
+          ref={ref}
+          placeholderTextColor={theme.colors.muted}
+          {...props}
+          style={[styles.input, style]}
+          onFocus={(event) => {
+            setFocused(true)
+            onFocus?.(event)
+          }}
+          onBlur={(event) => {
+            setFocused(false)
+            onBlur?.(event)
+          }}
+        />
+      </Squircle>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   )
@@ -34,16 +60,12 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '600',
     color: theme.colors.foreground,
   },
-  input: (hasError: boolean) => ({
-    height: 48,
+  input: {
+    minHeight: 48,
     paddingHorizontal: theme.gap(3),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: hasError ? theme.colors.destructive : theme.colors.border,
-    backgroundColor: theme.colors.card,
     color: theme.colors.foreground,
     fontSize: theme.fontSize.md,
-  }),
+  },
   error: {
     fontSize: theme.fontSize.xs,
     color: theme.colors.destructive,
