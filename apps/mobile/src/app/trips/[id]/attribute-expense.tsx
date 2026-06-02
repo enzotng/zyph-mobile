@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Squircle } from '@/components/ui'
+import { BottomSheet, Squircle } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   buildAssignmentsByPosition,
@@ -467,51 +467,37 @@ function AttributionEditor({
         />
       </View>
 
-      <Modal
-        visible={sheetOpenForPosition !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSheetOpenForPosition(null)}
+      <BottomSheet
+        open={sheetOpenForPosition !== null}
+        onClose={() => setSheetOpenForPosition(null)}
+        title="Assign to…"
       >
-        <Pressable style={styles.sheetBackdrop} onPress={() => setSheetOpenForPosition(null)}>
-          <Pressable style={styles.sheetBody} onPress={(e) => e.stopPropagation()}>
-            <Squircle
-              corners="top"
-              color={theme.colors.background}
-              borderWidth={0}
-              radius={theme.radius.lg}
-              style={styles.sheetSurface}
-            >
-              <Text style={styles.sheetTitle}>Assign to…</Text>
-              <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetList}>
-                {members.map((member) => {
-                  if (sheetOpenForPosition === null) return null
-                  const set = assignmentsByPosition[sheetOpenForPosition] ?? new Set<string>()
-                  const selected = set.has(member.id)
-                  const name = member.user_id === userId ? 'You' : (member.display_name ?? 'M')
-                  return (
-                    <Pressable
-                      key={member.id}
-                      style={styles.sheetRow}
-                      onPress={() => toggleAssignment(sheetOpenForPosition, member.id)}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: selected }}
-                    >
-                      <Ionicons
-                        name={selected ? 'checkbox' : 'square-outline'}
-                        size={22}
-                        color={selected ? theme.colors.primary : theme.colors.muted}
-                      />
-                      <Text style={styles.sheetRowText}>{name}</Text>
-                    </Pressable>
-                  )
-                })}
-              </ScrollView>
-              <Button label="Done" onPress={() => setSheetOpenForPosition(null)} />
-            </Squircle>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetList}>
+          {members.map((member) => {
+            if (sheetOpenForPosition === null) return null
+            const set = assignmentsByPosition[sheetOpenForPosition] ?? new Set<string>()
+            const selected = set.has(member.id)
+            const name = member.user_id === userId ? 'You' : (member.display_name ?? 'M')
+            return (
+              <Pressable
+                key={member.id}
+                style={styles.sheetRow}
+                onPress={() => toggleAssignment(sheetOpenForPosition, member.id)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: selected }}
+              >
+                <Ionicons
+                  name={selected ? 'checkbox' : 'square-outline'}
+                  size={22}
+                  color={selected ? theme.colors.primary : theme.colors.muted}
+                />
+                <Text style={styles.sheetRowText}>{name}</Text>
+              </Pressable>
+            )
+          })}
+        </ScrollView>
+        <Button label="Done" onPress={() => setSheetOpenForPosition(null)} />
+      </BottomSheet>
     </Screen>
   )
 }
@@ -680,26 +666,8 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '700',
     color: theme.colors.foreground,
   },
-  sheetBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  sheetBody: {
-    maxHeight: '70%',
-  },
-  sheetSurface: {
-    flexShrink: 1,
-    padding: theme.gap(4),
-    gap: theme.gap(3),
-  },
   sheetScroll: {
     flexShrink: 1,
-  },
-  sheetTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: '700',
-    color: theme.colors.foreground,
   },
   sheetList: {
     gap: theme.gap(2),
