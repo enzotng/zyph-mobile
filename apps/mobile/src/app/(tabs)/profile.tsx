@@ -54,6 +54,13 @@ export default function ProfileScreen() {
         Edit profile
       </Link>
 
+      {/* Dev-only entry to preview the UI kit; inert in production builds. */}
+      {__DEV__ ? (
+        <Link href="/ui-kit" style={styles.editLink}>
+          UI kit (dev)
+        </Link>
+      ) : null}
+
       <Text style={styles.sectionTitle}>Theme</Text>
       <View style={styles.segment}>
         {THEME_OPTIONS.map((option) => (
