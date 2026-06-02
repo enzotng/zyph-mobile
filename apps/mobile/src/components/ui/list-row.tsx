@@ -5,6 +5,8 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { withAlpha } from '@/lib/color'
 
+import { Squircle } from './squircle'
+
 type ListRowProps = {
   icon?: keyof typeof Ionicons.glyphMap
   iconColor?: string
@@ -37,9 +39,16 @@ export function ListRow({
   const inner = (
     <>
       {icon ? (
-        <View style={[styles.iconTile, { backgroundColor: withAlpha(resolvedIconColor, 0.12) }]}>
+        <Squircle
+          width={38}
+          height={38}
+          radius={theme.radius.md}
+          color={withAlpha(resolvedIconColor, 0.12)}
+          borderWidth={0}
+          style={styles.iconTile}
+        >
           <Ionicons name={icon} size={20} color={resolvedIconColor} />
-        </View>
+        </Squircle>
       ) : null}
 
       <View style={styles.content}>
@@ -99,8 +108,6 @@ const styles = StyleSheet.create((theme) => ({
   iconTile: {
     width: 38,
     height: 38,
-    borderRadius: theme.radius.md,
-    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },

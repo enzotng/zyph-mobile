@@ -18,7 +18,7 @@ jest.mock('expo-linking', () => ({
   addEventListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
 }))
 
-// The manual mock doesn't include exchangeCodeForSession — add it so the PKCE path can be tested.
+// The manual mock doesn't include exchangeCodeForSession - add it so the PKCE path can be tested.
 const exchangeCode = jest.fn().mockResolvedValue({ data: {}, error: null })
 ;(supabase.auth as unknown as Record<string, unknown>).exchangeCodeForSession = exchangeCode
 

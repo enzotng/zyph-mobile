@@ -12,6 +12,7 @@ import { CurrencySelect } from '@/components/currency-select'
 import { ReceiptScanner } from '@/components/receipt-scanner'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
+import { Squircle } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
@@ -80,7 +81,7 @@ export default function AddExpenseScreen() {
     }
     let resolvedCurrency = currency
     if (parsed.currency && parsed.currency !== currency) {
-      // `rates[code]` can legitimately be 0 (degenerate) — check for explicit presence.
+      // `rates[code]` can legitimately be 0 (degenerate) - check for explicit presence.
       const known = !fx || fx.rates[parsed.currency] !== undefined
       if (known) {
         setPicked(parsed.currency)
@@ -228,8 +229,16 @@ export default function AddExpenseScreen() {
         accessibilityRole="button"
         style={styles.scanBtn}
       >
-        <Ionicons name="scan-outline" size={20} color={theme.colors.primary} />
-        <Text style={styles.scanLabel}>Scan receipt</Text>
+        <Squircle
+          color="transparent"
+          borderColor={theme.colors.border}
+          borderWidth={1}
+          radius={theme.radius.md}
+          style={styles.scanBtnSurface}
+        >
+          <Ionicons name="scan-outline" size={20} color={theme.colors.primary} />
+          <Text style={styles.scanLabel}>Scan receipt</Text>
+        </Squircle>
       </Pressable>
 
       <ReceiptScanner
@@ -306,7 +315,13 @@ export default function AddExpenseScreen() {
 
             {included ? (
               <View style={styles.memberRight}>
-                <View style={styles.stepper}>
+                <Squircle
+                  color="transparent"
+                  borderColor={theme.colors.border}
+                  borderWidth={1}
+                  radius={theme.radius.md}
+                  style={styles.stepper}
+                >
                   <Pressable
                     onPress={() => setWeight(member.id, state.weight - 1)}
                     accessibilityRole="button"
@@ -324,9 +339,9 @@ export default function AddExpenseScreen() {
                   >
                     <Ionicons name="add" size={18} color={theme.colors.foreground} />
                   </Pressable>
-                </View>
+                </Squircle>
                 <Text style={styles.share}>
-                  {share === undefined ? '—' : formatAmount(share, tripCurrency)}
+                  {share === undefined ? '-' : formatAmount(share, tripCurrency)}
                 </Text>
               </View>
             ) : null}
@@ -385,9 +400,6 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(2),
     paddingHorizontal: theme.gap(2),
     paddingVertical: theme.gap(1),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   weight: {
     minWidth: theme.gap(4),
@@ -402,15 +414,14 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.foreground,
   },
   scanBtn: {
+    alignSelf: 'flex-start',
+  },
+  scanBtnSurface: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(2),
-    alignSelf: 'flex-start',
     paddingVertical: theme.gap(2),
     paddingHorizontal: theme.gap(3),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   scanLabel: {
     color: theme.colors.primary,

@@ -9,6 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { CategoryPicker, categoryLabel } from '@/components/category-picker'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
+import { Squircle } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type ExpenseCategory,
@@ -259,7 +260,12 @@ export default function TripDetailScreen() {
               </View>
             ) : null}
 
-            <View style={styles.inviteRow}>
+            <Squircle
+              color={theme.colors.card}
+              borderWidth={0}
+              radius={theme.radius.lg}
+              style={styles.inviteRow}
+            >
               <View style={styles.inviteInfo}>
                 <Text style={styles.muted}>Invite code</Text>
                 <Text style={styles.code}>{trip.invite_code}</Text>
@@ -272,7 +278,7 @@ export default function TripDetailScreen() {
                   <Text style={styles.link}>Share</Text>
                 </Pressable>
               </View>
-            </View>
+            </Squircle>
 
             {isOwner ? (
               <Pressable
@@ -318,32 +324,39 @@ export default function TripDetailScreen() {
               onPress={toggleSharing}
               accessibilityRole="switch"
               accessibilityState={{ checked: sharing }}
-              style={styles.shareRow}
+              style={styles.shareRowPress}
             >
-              <Ionicons
-                name={sharing ? 'location' : 'location-outline'}
-                size={22}
-                color={sharing ? theme.colors.primary : theme.colors.muted}
-              />
-              <View style={styles.shareInfo}>
-                <Text style={styles.body}>
-                  {sharing ? 'Sharing my location' : 'Share my location'}
-                </Text>
-                <Text style={styles.muted}>
-                  {shareStatus === 'denied'
-                    ? 'Permission denied. Enable Location in Settings.'
-                    : shareStatus === 'error'
-                      ? 'Could not start sharing. Tap to retry.'
-                      : sharing
-                        ? 'Other members can see you in real time.'
-                        : 'Off — your position stays private.'}
-                </Text>
-              </View>
-              <Ionicons
-                name={sharing ? 'toggle' : 'toggle-outline'}
-                size={28}
-                color={sharing ? theme.colors.primary : theme.colors.muted}
-              />
+              <Squircle
+                color={theme.colors.card}
+                borderWidth={0}
+                radius={theme.radius.lg}
+                style={styles.shareRow}
+              >
+                <Ionicons
+                  name={sharing ? 'location' : 'location-outline'}
+                  size={22}
+                  color={sharing ? theme.colors.primary : theme.colors.muted}
+                />
+                <View style={styles.shareInfo}>
+                  <Text style={styles.body}>
+                    {sharing ? 'Sharing my location' : 'Share my location'}
+                  </Text>
+                  <Text style={styles.muted}>
+                    {shareStatus === 'denied'
+                      ? 'Permission denied. Enable Location in Settings.'
+                      : shareStatus === 'error'
+                        ? 'Could not start sharing. Tap to retry.'
+                        : sharing
+                          ? 'Other members can see you in real time.'
+                          : 'Off - your position stays private.'}
+                  </Text>
+                </View>
+                <Ionicons
+                  name={sharing ? 'toggle' : 'toggle-outline'}
+                  size={28}
+                  color={sharing ? theme.colors.primary : theme.colors.muted}
+                />
+              </Squircle>
             </Pressable>
 
             {members && members.length > 0 ? (
@@ -476,9 +489,17 @@ export default function TripDetailScreen() {
             <View style={styles.expenseInfo}>
               <Text style={styles.body}>{item.description}</Text>
               {item.category ? (
-                <Text style={styles.categoryBadge}>
-                  {categoryLabel(item.category as ExpenseCategory)}
-                </Text>
+                <Squircle
+                  color={theme.colors.card}
+                  borderColor={theme.colors.border}
+                  borderWidth={1}
+                  radius={theme.radius.sm}
+                  style={styles.categoryBadge}
+                >
+                  <Text style={styles.categoryBadgeText}>
+                    {categoryLabel(item.category as ExpenseCategory)}
+                  </Text>
+                </Squircle>
               ) : null}
             </View>
             <View style={styles.amountCol}>
@@ -517,8 +538,6 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingVertical: theme.gap(3),
     paddingHorizontal: theme.gap(4),
     marginTop: theme.gap(3),
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.card,
   },
   inviteInfo: {
     flexShrink: 1,
@@ -614,15 +633,15 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(2),
     paddingTop: theme.gap(2),
   },
+  shareRowPress: {
+    marginTop: theme.gap(3),
+  },
   shareRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(3),
     paddingVertical: theme.gap(3),
     paddingHorizontal: theme.gap(4),
-    marginTop: theme.gap(3),
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.card,
   },
   shareInfo: {
     flex: 1,
@@ -653,14 +672,12 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   categoryBadge: {
     alignSelf: 'flex-start',
-    fontSize: theme.fontSize.sm,
     paddingHorizontal: theme.gap(2),
     paddingVertical: theme.gap(1),
-    borderRadius: theme.radius.sm,
+  },
+  categoryBadgeText: {
+    fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
-    backgroundColor: theme.colors.card,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   expenseRow: {
     flexDirection: 'row',

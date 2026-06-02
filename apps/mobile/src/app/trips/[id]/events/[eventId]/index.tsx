@@ -6,6 +6,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
+import { Squircle } from '@/components/ui'
 import {
   formatFileSize,
   getDocumentUrl,
@@ -127,7 +128,13 @@ export default function EventDetailScreen() {
 
   return (
     <Screen title={event.title} scroll>
-      <View style={styles.card}>
+      <Squircle
+        color={theme.colors.card}
+        borderColor={theme.colors.border}
+        borderWidth={1}
+        radius={theme.radius.lg}
+        style={styles.card}
+      >
         {event.starts_at ? (
           <Text style={styles.body}>{new Date(event.starts_at).toLocaleString()}</Text>
         ) : null}
@@ -158,7 +165,7 @@ export default function EventDetailScreen() {
             </View>
           )
         })()}
-      </View>
+      </Squircle>
 
       <View style={styles.actions}>
         <Link
@@ -239,10 +246,6 @@ const styles = StyleSheet.create((theme) => ({
   card: {
     gap: theme.gap(1),
     padding: theme.gap(4),
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
   },
   body: {
     fontSize: theme.fontSize.md,

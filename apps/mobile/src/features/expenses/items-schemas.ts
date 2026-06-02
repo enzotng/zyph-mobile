@@ -33,7 +33,7 @@ export const smartSplitInputSchema = z
   .superRefine((value, ctx) => {
     const itemCount = value.items.length
     const positions = new Set(value.assignments.map((a) => a.position))
-    // Accumulate every issue we find — don't early-return so the user sees the
+    // Accumulate every issue we find - don't early-return so the user sees the
     // full picture in one validation pass.
     for (let i = 0; i < itemCount; i++) {
       if (!positions.has(i)) {

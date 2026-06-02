@@ -90,7 +90,7 @@ export default function ArScreen() {
       <View style={styles.center}>
         <Ionicons name="compass-outline" size={48} color={theme.colors.muted} />
         <Text style={styles.message}>
-          Add events with locations or POIs first — AR needs at least one target.
+          Add events with locations or POIs first - AR needs at least one target.
         </Text>
         <Pressable onPress={() => router.back()} accessibilityRole="button" style={styles.backCta}>
           <Text style={styles.link}>Go back</Text>
