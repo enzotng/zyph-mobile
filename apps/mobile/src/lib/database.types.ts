@@ -481,6 +481,9 @@ export type Database = {
       }
       trips: {
         Row: {
+          cover_photo_author: string | null
+          cover_photo_author_url: string | null
+          cover_photo_url: string | null
           created_at: string
           currency: string
           destination: string | null
@@ -493,6 +496,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cover_photo_author?: string | null
+          cover_photo_author_url?: string | null
+          cover_photo_url?: string | null
           created_at?: string
           currency?: string
           destination?: string | null
@@ -505,6 +511,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cover_photo_author?: string | null
+          cover_photo_author_url?: string | null
+          cover_photo_url?: string | null
           created_at?: string
           currency?: string
           destination?: string | null
@@ -565,6 +574,13 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      get_my_trip_balances: {
+        Args: never
+        Returns: {
+          balance_cents: number
+          trip_id: string
+        }[]
       }
       get_trip_balances: {
         Args: { _trip_id: string }

@@ -6,11 +6,15 @@ jest.mock('@/lib/supabase')
 
 const from = supabase.from as jest.Mock
 const getSession = supabase.auth.getSession as jest.Mock
+const rpc = supabase.rpc as jest.Mock
+const invoke = supabase.functions.invoke as jest.Mock
 
 const trip = { id: 't1', owner_id: 'u1', title: 'Lisbon', destination: 'PT', currency: 'EUR' }
 
 beforeEach(() => {
   jest.clearAllMocks()
+  rpc.mockResolvedValue({ data: [], error: null })
+  invoke.mockResolvedValue({ data: { url: null, author: null, authorUrl: null }, error: null })
 })
 
 describe('listTrips', () => {
@@ -18,7 +22,7 @@ describe('listTrips', () => {
     const builder = makeQueryBuilder({ data: [trip], error: null })
     from.mockReturnValue(builder)
 
-    await expect(listTrips()).resolves.toEqual([trip])
+    await expect(listTrips()).resolves.toEqual([{ ...trip, members: [], myBalanceCents: 0 }])
     expect(from).toHaveBeenCalledWith('trips')
     expect(builder.order).toHaveBeenCalledWith('created_at', { ascending: false })
   })
