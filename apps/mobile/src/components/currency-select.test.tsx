@@ -49,7 +49,7 @@ describe('CurrencySelect', () => {
   it('marks non-selected chips with accessibilityState selected=false', () => {
     render(<CurrencySelect value="USD" currencies={CURRENCIES} onChange={jest.fn()} />)
 
-    // EUR is not selected — querying selected:true should not find it
+    // EUR is not selected - querying selected:true should not find it
     expect(screen.queryByRole('radio', { name: 'EUR', selected: true })).toBeNull()
   })
 

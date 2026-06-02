@@ -14,7 +14,7 @@ type DateFieldProps = {
 export function DateField({ label, value, onChange, error }: DateFieldProps) {
   const { theme } = useUnistyles()
 
-  // iOS: the native compact control — a tappable date/time chip that pops the system
+  // iOS: the native compact control - a tappable date/time chip that pops the system
   // popover. mode="datetime" lets the user set both the day and the time.
   if (Platform.OS === 'ios') {
     return (

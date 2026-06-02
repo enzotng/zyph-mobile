@@ -2,8 +2,8 @@ import { formatFileSize } from './format'
 
 describe('formatFileSize', () => {
   it('returns a dash for empty or invalid sizes', () => {
-    expect(formatFileSize(null)).toBe('—')
-    expect(formatFileSize(0)).toBe('—')
+    expect(formatFileSize(null)).toBe('-')
+    expect(formatFileSize(0)).toBe('-')
   })
 
   it('shows bytes without decimals', () => {

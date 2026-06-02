@@ -23,8 +23,8 @@ describe('formatDistance', () => {
   })
 
   it('returns a dash for invalid input', () => {
-    expect(formatDistance(Number.NaN)).toBe('—')
-    expect(formatDistance(-1)).toBe('—')
+    expect(formatDistance(Number.NaN)).toBe('-')
+    expect(formatDistance(-1)).toBe('-')
   })
 })
 
@@ -42,6 +42,6 @@ describe('formatWalkingTime', () => {
   })
 
   it('returns dash for invalid input', () => {
-    expect(formatWalkingTime(Number.NaN)).toBe('—')
+    expect(formatWalkingTime(Number.NaN)).toBe('-')
   })
 })

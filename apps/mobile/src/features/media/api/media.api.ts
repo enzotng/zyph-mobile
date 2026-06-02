@@ -24,7 +24,7 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<TripDo
     throw new Error('You must be signed in.')
   }
 
-  // First path segment is the trip id — Storage RLS checks membership against it.
+  // First path segment is the trip id - Storage RLS checks membership against it.
   const path = `${input.tripId}/${Date.now()}-${Math.floor(Math.random() * 1e6)}.pdf`
   // expo-document-picker copies to cache (file://), so File().arrayBuffer() is reliable
   // on both platforms; guard against a 0-byte read producing a silent empty upload.

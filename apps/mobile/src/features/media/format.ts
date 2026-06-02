@@ -1,7 +1,7 @@
 // Human-readable file size, e.g. 1536 -> "1.5 KB".
 export function formatFileSize(bytes: number | null): string {
   if (!bytes || bytes <= 0) {
-    return '—'
+    return '-'
   }
   const units = ['B', 'KB', 'MB', 'GB']
   let value = bytes

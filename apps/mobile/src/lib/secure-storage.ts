@@ -31,7 +31,7 @@ function getEncryptedStorage(): Promise<MMKV> {
         createMMKV({ id: 'zyph-auth', encryptionKey, encryptionType: 'AES-256' }),
       )
       .catch((error: unknown) => {
-        // Don't cache a rejected promise — allow a retry on the next access.
+        // Don't cache a rejected promise - allow a retry on the next access.
         storagePromise = null
         throw error
       })
