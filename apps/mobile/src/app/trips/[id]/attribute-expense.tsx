@@ -312,7 +312,7 @@ function AttributionEditor({
         items,
         assignments,
       })
-      router.replace({ pathname: '/trips/[id]', params: { id: tripId } })
+      router.replace({ pathname: '/trips/[id]/expenses', params: { id: tripId } })
     } catch (error) {
       if (createdId) {
         // Compensate the orphan expense from step 1.

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
 import {
   eventStatus,
@@ -13,11 +14,13 @@ import {
   type TimelineItem,
   useEvents,
 } from '@/features/timeline'
+import { useTrip } from '@/features/trips'
 import { paramString } from '@/lib/routing'
 
 export default function TimelineScreen() {
   const params = useLocalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
+  const { data: trip } = useTrip(tripId)
   const { data: events, isLoading, isError } = useEvents(tripId)
   const { theme } = useUnistyles()
   const router = useRouter()
@@ -66,7 +69,8 @@ export default function TimelineScreen() {
 
   return (
     <Screen
-      title="Timeline"
+      title={trip?.title}
+      showBack
       right={
         <Link href={{ pathname: '/trips/[id]/add-event', params: { id: tripId } }} asChild>
           <Pressable accessibilityRole="button" accessibilityLabel="Add event" hitSlop={8}>
@@ -99,7 +103,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     color: theme.colors.muted,
   },
   list: {
-    paddingBottom: rt.insets.bottom + theme.gap(4),
+    paddingBottom: rt.insets.bottom + FLOATING_TAB_BAR_CLEARANCE,
   },
   dayHeader: {
     fontSize: theme.fontSize.sm,
