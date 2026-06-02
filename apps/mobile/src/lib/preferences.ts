@@ -5,8 +5,10 @@ import { UnistylesRuntime } from 'react-native-unistyles'
 const storage = createMMKV({ id: 'zyph-preferences' })
 
 export type ThemePreference = 'system' | 'light' | 'dark'
+export type LanguagePreference = 'system' | 'en' | 'fr'
 
 const THEME_KEY = 'theme'
+const LANGUAGE_KEY = 'language'
 const ONBOARDING_KEY = 'onboardingSeen'
 
 function shareLocationKey(tripId: string): string {
@@ -37,6 +39,17 @@ export function getThemePreference(): ThemePreference {
 export function setThemePreference(preference: ThemePreference): void {
   storage.set(THEME_KEY, preference)
   applyThemePreference(preference)
+}
+
+// 'system' follows the device locale; otherwise force the chosen language.
+// Storage only - applying the language lives in lib/i18n to avoid an import cycle.
+export function getLanguagePreference(): LanguagePreference {
+  const value = storage.getString(LANGUAGE_KEY)
+  return value === 'en' || value === 'fr' ? value : 'system'
+}
+
+export function setLanguagePreference(preference: LanguagePreference): void {
+  storage.set(LANGUAGE_KEY, preference)
 }
 
 // 'system' follows the OS theme (adaptive); otherwise force the chosen theme.

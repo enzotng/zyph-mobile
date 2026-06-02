@@ -6,6 +6,7 @@ import { ActivityIndicator, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { AuthProvider, useAuth } from '@/features/auth'
+import '@/lib/i18n'
 import { hasSeenOnboarding } from '@/lib/preferences'
 import { queryClient } from '@/lib/query-client'
 
