@@ -4,6 +4,7 @@ import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
 import { Squircle } from '@/components/ui'
 import { signOut, useAuth } from '@/features/auth'
@@ -96,6 +97,8 @@ export default function ProfileScreen() {
       </View>
 
       <Button label="Sign out" variant="secondary" onPress={onSignOut} disabled={signingOut} />
+
+      <View style={styles.spacer} />
     </Screen>
   )
 }
@@ -146,5 +149,8 @@ const styles = StyleSheet.create((theme) => ({
     alignSelf: 'flex-start',
     color: theme.colors.primary,
     fontWeight: '600',
+  },
+  spacer: {
+    height: FLOATING_TAB_BAR_CLEARANCE,
   },
 }))
