@@ -1,4 +1,5 @@
-import { Link } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { Link, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
@@ -6,21 +7,27 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
-import { Squircle } from '@/components/ui'
+import { Avatar, ListRow, Segmented, Squircle } from '@/components/ui'
 import { signOut, useAuth } from '@/features/auth'
 import { useProfile } from '@/features/profile'
 import { getThemePreference, setThemePreference, type ThemePreference } from '@/lib/preferences'
 
-const THEME_OPTIONS: ThemePreference[] = ['system', 'light', 'dark']
+const THEME_OPTIONS = [
+  { value: 'system', label: 'Système' },
+  { value: 'light', label: 'Clair' },
+  { value: 'dark', label: 'Sombre' },
+] as const
 
 export default function ProfileScreen() {
   const { theme } = useUnistyles()
+  const router = useRouter()
   const { session } = useAuth()
   const { data: profile } = useProfile()
   const [signingOut, setSigningOut] = useState(false)
   const [themePref, setThemePref] = useState<ThemePreference>(getThemePreference())
 
-  function selectTheme(preference: ThemePreference) {
+  function selectTheme(value: string) {
+    const preference = value as ThemePreference
     setThemePref(preference)
     setThemePreference(preference)
   }
@@ -30,73 +37,96 @@ export default function ProfileScreen() {
     try {
       await signOut()
     } catch (error) {
-      Alert.alert('Sign out failed', error instanceof Error ? error.message : 'Please try again.')
+      Alert.alert(
+        'Déconnexion impossible',
+        error instanceof Error ? error.message : 'Veuillez réessayer.',
+      )
     } finally {
       setSigningOut(false)
     }
   }
 
-  return (
-    <Screen title="Profile" showBack={false} scroll>
-      <Squircle
-        color={theme.colors.card}
-        borderColor={theme.colors.border}
-        borderWidth={1}
-        radius={theme.radius.lg}
-        style={styles.card}
-      >
-        <View style={styles.row}>
-          <Text style={styles.label}>Name</Text>
-          <Text style={styles.value}>{profile?.display_name ?? '-'}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>{session?.user.email ?? '-'}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Currency</Text>
-          <Text style={styles.value}>{profile?.preferred_currency ?? '-'}</Text>
-        </View>
-      </Squircle>
+  const displayName = profile?.display_name ?? 'Mon profil'
+  const email = session?.user.email ?? '-'
+  const currency = profile?.preferred_currency ?? 'EUR'
 
-      <Link href="/profile/edit" style={styles.editLink}>
-        Edit profile
-      </Link>
+  return (
+    <Screen title="Profil" showBack={false} scroll>
+      {/* Profile header */}
+      <Pressable
+        onPress={() => router.push('/profile/edit')}
+        style={({ pressed }) => [styles.hero, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel="Modifier le profil"
+      >
+        <Avatar name={displayName} size={60} tint={theme.colors.primary} />
+        <View style={styles.heroInfo}>
+          <Text style={styles.heroName} numberOfLines={1}>
+            {displayName}
+          </Text>
+          <Text style={styles.heroEmail} numberOfLines={1}>
+            {email}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
+      </Pressable>
+
+      {/* Account */}
+      <View style={styles.group}>
+        <Text style={styles.groupTitle}>Compte</Text>
+        <Squircle
+          color={theme.colors.card}
+          borderColor={theme.colors.border}
+          borderWidth={1}
+          radius={theme.radius.lg}
+          style={styles.groupCard}
+        >
+          <ListRow
+            icon="person-outline"
+            title="Nom affiché"
+            detail={displayName}
+            onPress={() => router.push('/profile/edit')}
+          />
+          <ListRow
+            icon="cash-outline"
+            iconColor={theme.colors.success}
+            title="Devise par défaut"
+            detail={currency}
+            onPress={() => router.push('/profile/edit')}
+          />
+          <ListRow
+            icon="notifications-outline"
+            iconColor={theme.colors.warning}
+            title="Notifications"
+            detail="Activées"
+            last
+          />
+        </Squircle>
+      </View>
+
+      {/* Appearance */}
+      <View style={styles.group}>
+        <Text style={styles.groupTitle}>Apparence</Text>
+        <Segmented value={themePref} onChange={selectTheme} options={[...THEME_OPTIONS]} />
+        <Text style={styles.groupHint}>
+          « Système » suit le réglage clair/sombre de l’appareil.
+        </Text>
+      </View>
 
       {/* Dev-only entry to preview the UI kit; inert in production builds. */}
       {__DEV__ ? (
-        <Link href="/ui-kit" style={styles.editLink}>
+        <Link href="/ui-kit" style={styles.devLink}>
           UI kit (dev)
         </Link>
       ) : null}
 
-      <Text style={styles.sectionTitle}>Theme</Text>
-      <View style={styles.segment}>
-        {THEME_OPTIONS.map((option) => (
-          <Pressable
-            key={option}
-            style={styles.segmentItemWrapper}
-            onPress={() => selectTheme(option)}
-            accessibilityRole="button"
-          >
-            <Squircle
-              color={themePref === option ? theme.colors.primary : theme.colors.card}
-              borderColor={themePref === option ? theme.colors.primary : theme.colors.border}
-              borderWidth={1}
-              radius={theme.radius.md}
-              style={styles.segmentItem}
-            >
-              <Text
-                style={[styles.segmentText, themePref === option ? styles.segmentTextActive : null]}
-              >
-                {option}
-              </Text>
-            </Squircle>
-          </Pressable>
-        ))}
-      </View>
-
-      <Button label="Sign out" variant="secondary" onPress={onSignOut} disabled={signingOut} />
+      <Button
+        label="Se déconnecter"
+        variant="destructive"
+        icon="log-out-outline"
+        onPress={onSignOut}
+        disabled={signingOut}
+      />
 
       <View style={styles.spacer} />
     </Screen>
@@ -104,51 +134,56 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create((theme) => ({
-  card: {
-    paddingHorizontal: theme.gap(4),
-  },
-  row: {
+  hero: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: theme.gap(3),
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    alignItems: 'center',
+    gap: theme.gap(3.5),
   },
-  label: {
-    color: theme.colors.muted,
+  pressed: {
+    opacity: 0.85,
   },
-  value: {
-    color: theme.colors.foreground,
-    fontWeight: '600',
+  heroInfo: {
+    flex: 1,
+    minWidth: 0,
   },
-  sectionTitle: {
-    fontSize: theme.fontSize.sm,
+  heroName: {
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
-    color: theme.colors.muted,
+    fontSize: theme.fontSize.xl,
+    color: theme.colors.foreground,
   },
-  segment: {
-    flexDirection: 'row',
+  heroEmail: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+    marginTop: 2,
+  },
+  group: {
     gap: theme.gap(2),
   },
-  segmentItemWrapper: {
-    flex: 1,
+  groupTitle: {
+    fontFamily: theme.fonts.sans.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.sm,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: theme.colors.muted,
   },
-  segmentItem: {
-    alignItems: 'center',
-    paddingVertical: theme.gap(3),
+  groupCard: {
+    paddingHorizontal: theme.gap(4),
   },
-  segmentText: {
-    color: theme.colors.foreground,
-    textTransform: 'capitalize',
+  groupHint: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
+    paddingLeft: 2,
   },
-  segmentTextActive: {
-    color: theme.colors.primaryForeground,
-    fontWeight: '600',
-  },
-  editLink: {
+  devLink: {
     alignSelf: 'flex-start',
-    color: theme.colors.primary,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
   },
   spacer: {
     height: FLOATING_TAB_BAR_CLEARANCE,

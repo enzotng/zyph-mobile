@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Alert, Pressable, Text } from 'react-native'
@@ -18,7 +18,7 @@ import { paramString } from '@/lib/routing'
 const ONE_HOUR_MS = 3_600_000
 
 export default function AddEventScreen() {
-  const params = useLocalSearchParams<{ id: string }>()
+  const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
   const { theme } = useUnistyles()
@@ -67,21 +67,21 @@ export default function AddEventScreen() {
       router.back()
     } catch (error) {
       Alert.alert(
-        'Could not add event',
-        error instanceof Error ? error.message : 'Please try again.',
+        "Ajout de l'événement impossible",
+        error instanceof Error ? error.message : 'Veuillez réessayer.',
       )
     }
   }
 
   return (
-    <Screen title="Add event" scroll>
+    <Screen title="Nouvel événement" showBack scroll>
       <Controller
         control={control}
         name="title"
         render={({ field }) => (
           <TextField
-            label="Title"
-            placeholder="Flight to Rome"
+            label="Titre"
+            placeholder="Dîner, vol, visite…"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -95,7 +95,7 @@ export default function AddEventScreen() {
         name="startsAt"
         render={({ field }) => (
           <DateField
-            label="Start"
+            label="Début"
             value={new Date(field.value)}
             onChange={(date) => field.onChange(date.toISOString())}
             error={errors.startsAt?.message}
@@ -114,7 +114,7 @@ export default function AddEventScreen() {
           size={22}
           color={hasEnd ? theme.colors.primary : theme.colors.muted}
         />
-        <Text style={styles.toggleLabel}>Add an end time</Text>
+        <Text style={styles.toggleLabel}>Ajouter une heure de fin</Text>
       </Pressable>
 
       {hasEnd ? (
@@ -123,7 +123,7 @@ export default function AddEventScreen() {
           name="endsAt"
           render={({ field }) => (
             <DateField
-              label="End"
+              label="Fin"
               value={new Date(field.value || getValues('startsAt'))}
               onChange={(date) => field.onChange(date.toISOString())}
               error={errors.endsAt?.message}
@@ -138,7 +138,7 @@ export default function AddEventScreen() {
         render={({ field }) => (
           <TextField
             label="Notes"
-            placeholder="Optional"
+            placeholder="Table pour 4, code porte…"
             multiline
             value={field.value}
             onChangeText={field.onChange}
@@ -149,7 +149,7 @@ export default function AddEventScreen() {
       />
 
       <LocationPicker
-        label="Location"
+        label="Lieu"
         value={coords}
         onChange={(next) => {
           setValue('lat', next.lat)
@@ -166,7 +166,8 @@ export default function AddEventScreen() {
       />
 
       <Button
-        label={createEvent.isPending ? 'Adding…' : 'Add event'}
+        label={createEvent.isPending ? 'Ajout…' : 'Ajouter à la timeline'}
+        icon="add"
         onPress={handleSubmit(onSubmit)}
         disabled={createEvent.isPending}
       />

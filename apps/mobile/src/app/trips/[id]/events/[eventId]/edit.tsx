@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useEffect } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
@@ -21,7 +21,7 @@ import {
 import { paramString } from '@/lib/routing'
 
 export default function EditEventScreen() {
-  const params = useLocalSearchParams<{ id: string; eventId: string }>()
+  const params = useGlobalSearchParams<{ id: string; eventId: string }>()
   const tripId = paramString(params.id)
   const eventId = paramString(params.eventId)
   const router = useRouter()
@@ -90,31 +90,31 @@ export default function EditEventScreen() {
       router.back()
     } catch (error) {
       Alert.alert(
-        'Could not update event',
-        error instanceof Error ? error.message : 'Please try again.',
+        "Mise à jour de l'événement impossible",
+        error instanceof Error ? error.message : 'Veuillez réessayer.',
       )
     }
   }
 
   if (isLoading || !event) {
     return (
-      <Screen title="Edit event" showBack>
+      <Screen title="Modifier l'événement" showBack>
         <View style={styles.center}>
-          <ActivityIndicator />
+          <ActivityIndicator color={theme.colors.primary} />
         </View>
       </Screen>
     )
   }
 
   return (
-    <Screen title="Edit event" scroll>
+    <Screen title="Modifier l'événement" showBack scroll>
       <Controller
         control={control}
         name="title"
         render={({ field }) => (
           <TextField
-            label="Title"
-            placeholder="Flight to Rome"
+            label="Titre"
+            placeholder="Dîner, vol, visite…"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -128,7 +128,7 @@ export default function EditEventScreen() {
         name="startsAt"
         render={({ field }) => (
           <DateField
-            label="Start"
+            label="Début"
             value={new Date(field.value)}
             onChange={(date) => field.onChange(date.toISOString())}
             error={errors.startsAt?.message}
@@ -147,7 +147,7 @@ export default function EditEventScreen() {
           size={22}
           color={hasEnd ? theme.colors.primary : theme.colors.muted}
         />
-        <Text style={styles.toggleLabel}>Add an end time</Text>
+        <Text style={styles.toggleLabel}>Ajouter une heure de fin</Text>
       </Pressable>
 
       {hasEnd ? (
@@ -156,7 +156,7 @@ export default function EditEventScreen() {
           name="endsAt"
           render={({ field }) => (
             <DateField
-              label="End"
+              label="Fin"
               value={new Date(field.value || getValues('startsAt'))}
               onChange={(date) => field.onChange(date.toISOString())}
               error={errors.endsAt?.message}
@@ -171,7 +171,7 @@ export default function EditEventScreen() {
         render={({ field }) => (
           <TextField
             label="Notes"
-            placeholder="Optional"
+            placeholder="Table pour 4, code porte…"
             multiline
             value={field.value}
             onChangeText={field.onChange}
@@ -182,7 +182,7 @@ export default function EditEventScreen() {
       />
 
       <LocationPicker
-        label="Location"
+        label="Lieu"
         value={coords}
         onChange={(next) => {
           setValue('lat', next.lat)
@@ -199,7 +199,7 @@ export default function EditEventScreen() {
       />
 
       <Button
-        label={update.isPending ? 'Saving…' : 'Save changes'}
+        label={update.isPending ? 'Enregistrement…' : 'Enregistrer'}
         onPress={handleSubmit(onSubmit)}
         disabled={update.isPending}
       />
