@@ -36,7 +36,11 @@ export function EmptyState({ icon, title, body, cta, onCta }: EmptyStateProps) {
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.body}>{body}</Text>
 
-      {cta !== undefined && <Button label={cta} onPress={onCta} block={false} />}
+      {cta !== undefined && (
+        <View style={styles.ctaWrap}>
+          <Button label={cta} onPress={onCta} block={false} />
+        </View>
+      )}
     </View>
   )
 }
@@ -73,5 +77,9 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.muted,
     textAlign: 'center',
     maxWidth: 260,
+  },
+  ctaWrap: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
   },
 }))

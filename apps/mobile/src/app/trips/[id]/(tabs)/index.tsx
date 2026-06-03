@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
@@ -42,7 +42,7 @@ const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
 }
 
 export default function TripDashboardScreen() {
-  const params = useLocalSearchParams<{ id: string }>()
+  const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
   const { theme } = useUnistyles()
@@ -50,7 +50,7 @@ export default function TripDashboardScreen() {
   const { session } = useAuth()
   const userId = session?.user.id
 
-  const { data: trip, isLoading } = useTrip(tripId)
+  const { data: trip, isLoading, isError } = useTrip(tripId)
   const { data: balances } = useTripBalances(tripId)
   const { data: members } = useTripMembers(tripId)
   const { data: events } = useEvents(tripId)
@@ -65,11 +65,21 @@ export default function TripDashboardScreen() {
     router.navigate({ pathname: `/trips/[id]/${name}`, params: { id: tripId } })
   }
 
-  if (isLoading || !trip) {
+  if (isLoading) {
     return (
       <Screen showBack>
         <View style={styles.center}>
           <Spinner label={t('common.loading')} />
+        </View>
+      </Screen>
+    )
+  }
+
+  if (isError || !trip) {
+    return (
+      <Screen title={t('trip.notFound')} showBack>
+        <View style={styles.center}>
+          <Text style={styles.notFound}>{t('trip.notFound')}</Text>
         </View>
       </Screen>
     )
@@ -321,6 +331,11 @@ const styles = StyleSheet.create((theme) => ({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  notFound: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.muted,
   },
   coverOverlay: {
     position: 'absolute',

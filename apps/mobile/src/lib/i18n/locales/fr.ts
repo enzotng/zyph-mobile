@@ -33,6 +33,7 @@ export const fr: Translations = {
   },
   trip: {
     manage: 'Gérer',
+    notFound: 'Voyage introuvable',
     owed: 'On te doit',
     owe: 'Tu dois',
     settled: 'Comptes équilibrés',
@@ -49,6 +50,20 @@ export const fr: Translations = {
     expense: 'Dépense',
     map: 'Carte',
     ar: 'AR',
+    searchExpenses: 'Rechercher une dépense',
+    noExpenses: 'Aucune dépense',
+    noExpensesBody: 'Ajoutez une dépense ou scannez un ticket pour démarrer le partage.',
+    noResults: 'Aucun résultat pour ce filtre.',
+    all: 'Tout',
+    newExpense: 'Nouvelle dépense',
+  },
+  categories: {
+    food: 'Restauration',
+    transport: 'Transport',
+    lodging: 'Hébergement',
+    activity: 'Activité',
+    shopping: 'Achats',
+    other: 'Autre',
   },
   tabs: {
     trips: 'Voyages',

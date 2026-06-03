@@ -5,7 +5,8 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Squircle } from '@/components/ui/squircle'
 
 type TextFieldProps = ComponentProps<typeof TextInput> & {
-  label: string
+  // Optional: search-style fields render placeholder-only (no label).
+  label?: string
   error?: string | undefined
 }
 
@@ -24,7 +25,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       <Squircle
         radius={theme.radius.md}
         color={theme.colors.card}

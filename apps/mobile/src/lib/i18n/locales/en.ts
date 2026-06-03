@@ -31,6 +31,7 @@ export const en = {
   },
   trip: {
     manage: 'Manage',
+    notFound: 'Trip not found',
     owed: "You're owed",
     owe: 'You owe',
     settled: 'All settled up',
@@ -47,6 +48,20 @@ export const en = {
     expense: 'Expense',
     map: 'Map',
     ar: 'AR',
+    searchExpenses: 'Search an expense',
+    noExpenses: 'No expenses yet',
+    noExpensesBody: 'Add an expense or scan a receipt to start splitting.',
+    noResults: 'No results for this filter.',
+    all: 'All',
+    newExpense: 'New expense',
+  },
+  categories: {
+    food: 'Food',
+    transport: 'Transport',
+    lodging: 'Lodging',
+    activity: 'Activity',
+    shopping: 'Shopping',
+    other: 'Other',
   },
   tabs: {
     trips: 'Trips',
