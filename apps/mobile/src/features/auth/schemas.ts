@@ -1,24 +1,33 @@
+import type { TFunction } from 'i18next'
 import { z } from 'zod'
 
-export const emailSchema = z.string().trim().toLowerCase().email('Enter a valid email address')
+export function makeEmailSchema(t: TFunction) {
+  return z.string().trim().toLowerCase().email(t('auth.validation.email'))
+}
 
 // Min 8 chars with at least one letter and one digit (mirrors the Supabase policy).
-export const passwordSchema = z
-  .string()
-  .min(8, 'At least 8 characters')
-  .regex(/[a-zA-Z]/, 'Include at least one letter')
-  .regex(/[0-9]/, 'Include at least one number')
+export function makePasswordSchema(t: TFunction) {
+  return z
+    .string()
+    .min(8, t('auth.validation.passwordMin'))
+    .regex(/[a-zA-Z]/, t('auth.validation.passwordLetter'))
+    .regex(/[0-9]/, t('auth.validation.passwordNumber'))
+}
 
-export const signInSchema = z.object({
-  email: emailSchema,
-  password: z.string().min(1, 'Password is required'),
-})
+export function makeSignInSchema(t: TFunction) {
+  return z.object({
+    email: makeEmailSchema(t),
+    password: z.string().min(1, t('auth.validation.passwordRequired')),
+  })
+}
 
-export const signUpSchema = z.object({
-  email: emailSchema,
-  password: passwordSchema,
-  displayName: z.string().trim().min(1, 'Name is required').max(60),
-})
+export function makeSignUpSchema(t: TFunction) {
+  return z.object({
+    email: makeEmailSchema(t),
+    password: makePasswordSchema(t),
+    displayName: z.string().trim().min(1, t('auth.validation.nameRequired')).max(60),
+  })
+}
 
-export type SignInValues = z.infer<typeof signInSchema>
-export type SignUpValues = z.infer<typeof signUpSchema>
+export type SignInValues = z.infer<ReturnType<typeof makeSignInSchema>>
+export type SignUpValues = z.infer<ReturnType<typeof makeSignUpSchema>>

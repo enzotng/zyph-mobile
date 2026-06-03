@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
@@ -13,6 +13,7 @@ import { Chip, EmptyState, Squircle } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   EXPENSE_CATEGORIES,
+  type Expense,
   type ExpenseCategory,
   filterExpenses,
   formatAmount,
@@ -66,12 +67,64 @@ export default function TripExpensesScreen() {
       ? theme.colors.success
       : theme.colors.destructive
 
+  const memberNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const member of members ?? []) {
+      if (member.display_name) map.set(member.id, member.display_name)
+    }
+    return map
+  }, [members])
+
+  const payerName = useCallback(
+    (memberId: string | null): string =>
+      (memberId ? memberNameById.get(memberId) : undefined) ?? t('common.member'),
+    [memberNameById, t],
+  )
+
   function goAdd() {
     router.push({ pathname: '/trips/[id]/add-expense', params: { id: tripId } })
   }
-  function payerName(memberId: string | null): string {
-    return (members ?? []).find((member) => member.id === memberId)?.display_name ?? 'Member'
-  }
+
+  const renderItem = useCallback(
+    ({ item }: { item: Expense }) => (
+      <Pressable
+        style={styles.row}
+        onPress={() =>
+          router.push({
+            pathname: '/trips/[id]/expenses/[expenseId]',
+            params: { id: tripId, expenseId: item.id },
+          })
+        }
+        accessibilityRole="button"
+        accessibilityLabel={`${item.description}, ${formatAmount(item.amount_cents, item.currency)}`}
+      >
+        <Squircle
+          width={40}
+          height={40}
+          radius={theme.radius.md}
+          borderWidth={0}
+          color={withAlpha(theme.colors.muted, 0.12)}
+          style={styles.rowTile}
+        >
+          <Ionicons
+            name={CATEGORY_ICON[item.category as ExpenseCategory] ?? 'pricetag'}
+            size={19}
+            color={theme.colors.muted}
+          />
+        </Squircle>
+        <View style={styles.rowInfo}>
+          <Text style={styles.rowDescription} numberOfLines={1}>
+            {item.description}
+          </Text>
+          <Text style={styles.rowPaidBy}>
+            {t('trip.paidBy', { name: payerName(item.paid_by) })}
+          </Text>
+        </View>
+        <Text style={styles.rowAmount}>{formatAmount(item.amount_cents, item.currency)}</Text>
+      </Pressable>
+    ),
+    [router, tripId, theme, t, payerName],
+  )
 
   return (
     <Screen
@@ -108,6 +161,7 @@ export default function TripExpensesScreen() {
                   router.push({ pathname: '/trips/[id]/group', params: { id: tripId } })
                 }
                 accessibilityRole="button"
+                accessibilityLabel={t('trip.viewBalances')}
               >
                 <Squircle
                   color={theme.colors.card}
@@ -134,7 +188,10 @@ export default function TripExpensesScreen() {
                       </Text>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.primary} />
+                  <View style={styles.stripRight}>
+                    <Text style={styles.settleUp}>{t('expenses.settleUp')}</Text>
+                    <Ionicons name="chevron-forward" size={18} color={theme.colors.primary} />
+                  </View>
                 </Squircle>
               </Pressable>
 
@@ -169,42 +226,7 @@ export default function TripExpensesScreen() {
             </View>
           }
           ListEmptyComponent={<Text style={styles.noResults}>{t('trip.noResults')}</Text>}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.row}
-              onPress={() =>
-                router.push({
-                  pathname: '/trips/[id]/expenses/[expenseId]',
-                  params: { id: tripId, expenseId: item.id },
-                })
-              }
-              accessibilityRole="button"
-            >
-              <Squircle
-                width={40}
-                height={40}
-                radius={theme.radius.md}
-                borderWidth={0}
-                color={withAlpha(theme.colors.muted, 0.12)}
-                style={styles.rowTile}
-              >
-                <Ionicons
-                  name={CATEGORY_ICON[item.category as ExpenseCategory] ?? 'pricetag'}
-                  size={19}
-                  color={theme.colors.muted}
-                />
-              </Squircle>
-              <View style={styles.rowInfo}>
-                <Text style={styles.rowDescription} numberOfLines={1}>
-                  {item.description}
-                </Text>
-                <Text style={styles.rowPaidBy}>
-                  {t('trip.paidBy', { name: payerName(item.paid_by) })}
-                </Text>
-              </View>
-              <Text style={styles.rowAmount}>{formatAmount(item.amount_cents, item.currency)}</Text>
-            </Pressable>
-          )}
+          renderItem={renderItem}
         />
       )}
     </Screen>
@@ -230,6 +252,16 @@ const styles = StyleSheet.create((theme, rt) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(2.5),
+  },
+  stripRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(1),
+  },
+  settleUp: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
   },
   stripTile: {
     alignItems: 'center',

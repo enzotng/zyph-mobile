@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { Tabs } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 
 import { type FloatingTab, FloatingTabBar } from '@/components/layout/floating-tab-bar'
 
@@ -9,6 +10,8 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 }
 
 export default function TabsLayout() {
+  const { t } = useTranslation()
+
   return (
     <Tabs
       screenOptions={{ headerShown: false }}
@@ -42,8 +45,8 @@ export default function TabsLayout() {
         )
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Trips' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      <Tabs.Screen name="index" options={{ title: t('tabs.trips') }} />
+      <Tabs.Screen name="profile" options={{ title: t('tabs.profile') }} />
     </Tabs>
   )
 }

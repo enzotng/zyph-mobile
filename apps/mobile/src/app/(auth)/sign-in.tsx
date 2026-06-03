@@ -1,23 +1,26 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from 'expo-router'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { Alert, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { ZyphMark } from '@/components/brand/zyph-mark'
 import { Button } from '@/components/button'
 import { TextField } from '@/components/text-field'
-import { type SignInValues, signIn, signInSchema } from '@/features/auth'
+import { makeSignInSchema, type SignInValues, signIn } from '@/features/auth'
 
 export default function SignInScreen() {
+  const { t } = useTranslation()
   const [submitting, setSubmitting] = useState(false)
+  const schema = useMemo(() => makeSignInSchema(t), [t])
   const {
     control,
     handleSubmit,
     formState: { errors },
   } = useForm<SignInValues>({
-    resolver: zodResolver(signInSchema),
+    resolver: zodResolver(schema),
     defaultValues: { email: '', password: '' },
   })
 
@@ -28,8 +31,8 @@ export default function SignInScreen() {
       // La navigation est gérée par la garde d'authentification après la mise à jour de la session.
     } catch (error) {
       Alert.alert(
-        'Connexion impossible',
-        error instanceof Error ? error.message : 'Veuillez réessayer.',
+        t('auth.signIn.errorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     } finally {
       setSubmitting(false)
@@ -41,8 +44,8 @@ export default function SignInScreen() {
       <BrandLockup />
 
       <View style={styles.heading}>
-        <Text style={styles.title}>Bon retour</Text>
-        <Text style={styles.subtitle}>Connectez-vous pour retrouver vos voyages.</Text>
+        <Text style={styles.title}>{t('auth.signIn.title')}</Text>
+        <Text style={styles.subtitle}>{t('auth.signIn.subtitle')}</Text>
       </View>
 
       <Controller
@@ -50,8 +53,8 @@ export default function SignInScreen() {
         name="email"
         render={({ field }) => (
           <TextField
-            label="E-mail"
-            placeholder="vous@exemple.com"
+            label={t('auth.fields.email')}
+            placeholder={t('auth.fields.emailPlaceholder')}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
@@ -68,7 +71,7 @@ export default function SignInScreen() {
         name="password"
         render={({ field }) => (
           <TextField
-            label="Mot de passe"
+            label={t('auth.fields.password')}
             placeholder="••••••••"
             secureTextEntry
             autoComplete="current-password"
@@ -82,16 +85,16 @@ export default function SignInScreen() {
 
       <View style={styles.action}>
         <Button
-          label={submitting ? 'Connexion…' : 'Se connecter'}
+          label={submitting ? t('auth.signIn.submitting') : t('auth.signIn.submit')}
           onPress={handleSubmit(onSubmit)}
           disabled={submitting}
         />
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.muted}>Pas encore de compte ?</Text>
+        <Text style={styles.muted}>{t('auth.signIn.noAccount')}</Text>
         <Link href="/(auth)/sign-up" style={styles.link}>
-          Créer un compte
+          {t('auth.signIn.createAccount')}
         </Link>
       </View>
     </View>

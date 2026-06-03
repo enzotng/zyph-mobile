@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
@@ -41,12 +41,44 @@ const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
   other: 'pricetag',
 }
 
+// Maps a trip-event type to an icon; falls back to 'calendar' for unknown types.
+const EVENT_TYPE_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  flight: 'airplane',
+  transport: 'car',
+  lodging: 'bed',
+  activity: 'ticket',
+  food: 'restaurant',
+  event: 'calendar',
+}
+
+function eventIcon(type: string | null | undefined): keyof typeof Ionicons.glyphMap {
+  return (type && EVENT_TYPE_ICON[type]) || 'calendar'
+}
+
+// Formats a trip date range using the app i18n language, collapsing a shared
+// month so it reads "14 - 16 juin" rather than "14 juin - 16 juin".
+function formatTripDates(start: string | null, end: string | null, locale: string): string | null {
+  if (!start) {
+    return null
+  }
+  const startDate = new Date(start)
+  const fullOpts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
+  if (!end || end === start) {
+    return startDate.toLocaleDateString(locale, fullOpts)
+  }
+  const endDate = new Date(end)
+  const sameMonth =
+    startDate.getFullYear() === endDate.getFullYear() && startDate.getMonth() === endDate.getMonth()
+  const startLabel = startDate.toLocaleDateString(locale, sameMonth ? { day: 'numeric' } : fullOpts)
+  return `${startLabel} - ${endDate.toLocaleDateString(locale, fullOpts)}`
+}
+
 export default function TripDashboardScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
   const { theme } = useUnistyles()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { session } = useAuth()
   const userId = session?.user.id
 
@@ -58,10 +90,73 @@ export default function TripDashboardScreen() {
   // Snapshot once on mount; the countdown badge does not need to tick on this screen.
   const [now] = useState(() => Date.now())
 
+  const myMember = useMemo(
+    () => (members ?? []).find((member) => member.user_id === userId),
+    [members, userId],
+  )
+
+  // Suggested settlements derived from the trip balances.
+  const settlements = useMemo(
+    () =>
+      settleBalances(
+        (balances ?? []).map((balance) => ({
+          memberId: balance.member_id,
+          balanceCents: balance.balance_cents ?? 0,
+        })),
+      ),
+    [balances],
+  )
+
+  // memberId -> display name, for payer lookups without a per-row members.find.
+  const nameById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const member of members ?? []) {
+      if (member.display_name) {
+        map.set(member.id, member.display_name)
+      }
+    }
+    return map
+  }, [members])
+
+  const debtorNames = useMemo(
+    () =>
+      myMember
+        ? settlements
+            .filter((settlement) => settlement.toMemberId === myMember.id)
+            .map((settlement) => nameById.get(settlement.fromMemberId) ?? t('common.member'))
+        : [],
+    [myMember, settlements, nameById, t],
+  )
+
+  const avatarMembers = useMemo(
+    () =>
+      (members ?? []).map((member) => ({
+        id: member.id,
+        name: member.display_name ?? undefined,
+      })),
+    [members],
+  )
+
+  const nextEvent = useMemo(
+    () =>
+      (events ?? []).find(
+        (event) => eventStatus(event.starts_at, event.ends_at, now).kind === 'upcoming',
+      ),
+    [events, now],
+  )
+
+  const recent = useMemo(() => (expenses ?? []).slice(0, 3), [expenses])
+
+  const dates = useMemo(
+    () => (trip ? formatTripDates(trip.start_date, trip.end_date, i18n.language) : null),
+    [trip, i18n.language],
+  )
+
   function goGroup() {
     router.push({ pathname: '/trips/[id]/group', params: { id: tripId } })
   }
   function goTab(name: 'timeline' | 'expenses' | 'pois') {
+    // navigate (not push) is intentional: switch tabs in place instead of stacking tab routes.
     router.navigate({ pathname: `/trips/[id]/${name}`, params: { id: tripId } })
   }
 
@@ -86,27 +181,10 @@ export default function TripDashboardScreen() {
   }
 
   const currency = trip.currency
-  const myMember = (members ?? []).find((member) => member.user_id === userId)
   const myBalance =
     (balances ?? []).find((balance) => balance.user_id === userId)?.balance_cents ?? 0
   const settled = myBalance === 0
   const positive = myBalance > 0
-
-  const settlements = settleBalances(
-    (balances ?? []).map((balance) => ({
-      memberId: balance.member_id,
-      balanceCents: balance.balance_cents ?? 0,
-    })),
-  )
-  const debtorNames = myMember
-    ? settlements
-        .filter((settlement) => settlement.toMemberId === myMember.id)
-        .map(
-          (settlement) =>
-            (members ?? []).find((member) => member.id === settlement.fromMemberId)?.display_name ??
-            'Member',
-        )
-    : []
 
   const balanceTone = settled
     ? theme.colors.foreground
@@ -119,21 +197,10 @@ export default function TripDashboardScreen() {
       ? t('trip.owedSub', { names: debtorNames.join(', ') })
       : t('trip.oweSub')
 
-  const avatarMembers = (members ?? []).map((member) => ({
-    id: member.id,
-    name: member.display_name ?? undefined,
-  }))
-
-  const nextEvent = (events ?? []).find(
-    (event) => eventStatus(event.starts_at, event.ends_at, now).kind === 'upcoming',
-  )
   const nextStatus = nextEvent ? eventStatus(nextEvent.starts_at, nextEvent.ends_at, now) : null
 
-  const recent = (expenses ?? []).slice(0, 3)
-
   function payerName(memberId: string | null): string {
-    const member = (members ?? []).find((m) => m.id === memberId)
-    return member?.display_name ?? 'Member'
+    return (memberId && nameById.get(memberId)) || t('common.member')
   }
 
   return (
@@ -154,6 +221,7 @@ export default function TripDashboardScreen() {
     >
       {/* Cover hero */}
       <CityImage uri={trip.cover_photo_url} seed={trip.destination ?? trip.title} height={132}>
+        <View style={styles.coverScrim} pointerEvents="none" />
         <View style={styles.coverOverlay}>
           <View style={styles.coverInfo}>
             {trip.destination ? (
@@ -162,8 +230,19 @@ export default function TripDashboardScreen() {
                 <Text style={styles.coverDestination}>{trip.destination}</Text>
               </View>
             ) : null}
+            {dates ? (
+              <View style={styles.coverRow}>
+                <Ionicons name="calendar-outline" size={14} color="#FFFFFF" />
+                <Text style={styles.coverDates}>{dates}</Text>
+              </View>
+            ) : null}
           </View>
-          <Pressable onPress={goGroup} style={styles.manage} accessibilityRole="button">
+          <Pressable
+            onPress={goGroup}
+            style={styles.manage}
+            accessibilityRole="button"
+            accessibilityLabel={t('trip.manage')}
+          >
             {avatarMembers.length > 0 ? <AvatarStack members={avatarMembers} size={32} /> : null}
             <Text style={styles.manageLabel}>{t('trip.manage')}</Text>
           </Pressable>
@@ -252,7 +331,11 @@ export default function TripDashboardScreen() {
                   color={withAlpha(theme.colors.primary, 0.12)}
                   style={styles.eventIcon}
                 >
-                  <Ionicons name="calendar" size={22} color={theme.colors.primary} />
+                  <Ionicons
+                    name={eventIcon(nextEvent.type)}
+                    size={22}
+                    color={theme.colors.primary}
+                  />
                 </Squircle>
                 <View style={styles.eventInfo}>
                   <Text style={styles.eventTitle} numberOfLines={1}>
@@ -264,7 +347,7 @@ export default function TripDashboardScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <Badge label={formatCountdown(nextStatus)} tone="primary" icon="time-outline" />
+                <Badge label={formatCountdown(nextStatus, t)} tone="primary" icon="time-outline" />
               </View>
             </Card>
           </View>
@@ -289,6 +372,7 @@ export default function TripDashboardScreen() {
                 }
                 style={[styles.expenseRow, index === recent.length - 1 && styles.expenseRowLast]}
                 accessibilityRole="button"
+                accessibilityLabel={`${expense.description}, ${formatAmount(expense.amount_cents, expense.currency)}`}
               >
                 <Squircle
                   width={40}
@@ -337,6 +421,14 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.md,
     color: theme.colors.muted,
   },
+  coverScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '60%',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+  },
   coverOverlay: {
     position: 'absolute',
     left: theme.gap(3.5),
@@ -361,6 +453,14 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '600',
     fontSize: theme.fontSize.sm,
     color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  coverDates: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: 'rgba(255, 255, 255, 0.9)',
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,

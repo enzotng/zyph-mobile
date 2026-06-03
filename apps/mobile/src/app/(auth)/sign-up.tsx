@@ -2,23 +2,25 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { Alert, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { ZyphMark } from '@/components/brand/zyph-mark'
 import { Button } from '@/components/button'
 import { TextField } from '@/components/text-field'
-import { type SignUpValues, signUp, signUpSchema } from '@/features/auth'
+import { makeSignUpSchema, type SignUpValues, signUp } from '@/features/auth'
 
 export default function SignUpScreen() {
   const router = useRouter()
+  const { t } = useTranslation()
   const [submitting, setSubmitting] = useState(false)
   const {
     control,
     handleSubmit,
     formState: { errors },
   } = useForm<SignUpValues>({
-    resolver: zodResolver(signUpSchema),
+    resolver: zodResolver(makeSignUpSchema(t)),
     defaultValues: { displayName: '', email: '', password: '' },
   })
 
@@ -33,8 +35,8 @@ export default function SignUpScreen() {
       }
     } catch (error) {
       Alert.alert(
-        'Inscription impossible',
-        error instanceof Error ? error.message : 'Veuillez réessayer.',
+        t('auth.signUp.errorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     } finally {
       setSubmitting(false)
@@ -46,8 +48,8 @@ export default function SignUpScreen() {
       <BrandLockup />
 
       <View style={styles.heading}>
-        <Text style={styles.title}>Créez votre compte</Text>
-        <Text style={styles.subtitle}>Rejoignez ZYPH et voyagez léger à plusieurs.</Text>
+        <Text style={styles.title}>{t('auth.signUp.title')}</Text>
+        <Text style={styles.subtitle}>{t('auth.signUp.subtitle')}</Text>
       </View>
 
       <Controller
@@ -55,8 +57,8 @@ export default function SignUpScreen() {
         name="displayName"
         render={({ field }) => (
           <TextField
-            label="Nom"
-            placeholder="Votre nom"
+            label={t('auth.fields.name')}
+            placeholder={t('auth.fields.namePlaceholder')}
             autoCapitalize="words"
             value={field.value}
             onChangeText={field.onChange}
@@ -71,8 +73,8 @@ export default function SignUpScreen() {
         name="email"
         render={({ field }) => (
           <TextField
-            label="E-mail"
-            placeholder="vous@exemple.com"
+            label={t('auth.fields.email')}
+            placeholder={t('auth.fields.emailPlaceholder')}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
@@ -89,7 +91,7 @@ export default function SignUpScreen() {
         name="password"
         render={({ field }) => (
           <TextField
-            label="Mot de passe"
+            label={t('auth.fields.password')}
             placeholder="••••••••"
             secureTextEntry
             autoComplete="new-password"
@@ -103,16 +105,16 @@ export default function SignUpScreen() {
 
       <View style={styles.action}>
         <Button
-          label={submitting ? 'Création…' : "S'inscrire"}
+          label={submitting ? t('auth.signUp.submitting') : t('auth.signUp.submit')}
           onPress={handleSubmit(onSubmit)}
           disabled={submitting}
         />
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.muted}>Vous avez déjà un compte ?</Text>
+        <Text style={styles.muted}>{t('auth.signUp.hasAccount')}</Text>
         <Link href="/(auth)/sign-in" style={styles.link}>
-          Se connecter
+          {t('auth.signIn.submit')}
         </Link>
       </View>
     </View>

@@ -1,14 +1,15 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
-import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useMemo, useState } from 'react'
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native'
+import { useGlobalSearchParams, useRouter } from 'expo-router'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { BottomSheet, Squircle } from '@/components/ui'
+import { BottomSheet, Spinner, Squircle } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   buildAssignmentsByPosition,
@@ -51,7 +52,8 @@ type EditorProps = {
 // then mounts the editor with concrete, ready data so its state is seeded
 // synchronously (no async-to-state effect).
 export default function AttributeExpenseScreen() {
-  const params = useLocalSearchParams<{
+  const { t } = useTranslation()
+  const params = useGlobalSearchParams<{
     id: string
     items?: string
     amountCents?: string
@@ -87,9 +89,9 @@ export default function AttributeExpenseScreen() {
       !assignmentRows
     ) {
       return (
-        <Screen title="Edit Smart Split" showBack>
+        <Screen title={t('smartSplit.editTitle')} showBack>
           <View style={styles.center}>
-            <ActivityIndicator />
+            <Spinner />
           </View>
         </Screen>
       )
@@ -131,7 +133,7 @@ export default function AttributeExpenseScreen() {
       }))}
       totalCents={Number.parseInt(paramString(params.amountCents) || '0', 10)}
       expenseCurrency={paramString(params.currency) || 'EUR'}
-      initialDescription={paramString(params.description) || 'Receipt'}
+      initialDescription={paramString(params.description) || t('smartSplit.defaultDescription')}
       initialAssignmentsByPosition={{}}
     />
   )
@@ -147,6 +149,7 @@ function AttributionEditor({
   initialDescription,
   initialAssignmentsByPosition,
 }: EditorProps) {
+  const { t } = useTranslation()
   const router = useRouter()
   const { theme } = useUnistyles()
   const { session } = useAuth()
@@ -201,7 +204,7 @@ function AttributionEditor({
     return count
   }, [items.length, assignmentsByPosition])
 
-  function toggleAssignment(position: number, memberId: string) {
+  const toggleAssignment = useCallback((position: number, memberId: string) => {
     setAssignmentsByPosition((prev) => {
       const set = new Set(prev[position] ?? new Set<string>())
       if (set.has(memberId)) {
@@ -211,13 +214,87 @@ function AttributionEditor({
       }
       return { ...prev, [position]: set }
     })
-  }
+  }, [])
+
+  // Stable inline-chip slice computed once, not per FlashList row.
+  const inlineMembers = useMemo(() => (members ?? []).slice(0, MAX_INLINE_CHIPS), [members])
+  const remainder = (members?.length ?? 0) - inlineMembers.length
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: SmartSplitItem; index: number }) => {
+      const set = assignmentsByPosition[index] ?? new Set<string>()
+      const isUnassigned = set.size === 0
+      return (
+        <Squircle
+          color={theme.colors.card}
+          borderColor={isUnassigned ? theme.colors.warning : theme.colors.border}
+          borderWidth={1}
+          radius={theme.radius.md}
+          style={styles.itemCard}
+        >
+          <View style={styles.itemRow}>
+            <Text style={styles.itemLabel} numberOfLines={2}>
+              {item.label}
+            </Text>
+            <Text style={styles.itemAmount}>{formatAmount(item.amountCents, expenseCurrency)}</Text>
+          </View>
+          <View style={styles.chipsRow}>
+            {inlineMembers.map((member) => {
+              const selected = set.has(member.id)
+              const name =
+                member.user_id === userId
+                  ? t('common.you')
+                  : (member.display_name ?? t('common.member'))
+              const initial = name.charAt(0).toUpperCase()
+              return (
+                <MemberChip
+                  key={member.id}
+                  initial={initial}
+                  label={name}
+                  selected={selected}
+                  onPress={() => toggleAssignment(index, member.id)}
+                />
+              )
+            })}
+            {remainder > 0 ? (
+              <Pressable
+                onPress={() => setSheetOpenForPosition(index)}
+                accessibilityRole="button"
+                accessibilityLabel={t('smartSplit.moreMembers', { count: remainder })}
+                style={styles.moreChip}
+              >
+                <Text style={styles.moreChipText}>+{remainder}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {set.size > 1 ? (
+            <Text style={styles.itemShared}>
+              {t('smartSplit.sharedBetween', {
+                count: set.size,
+                amount: formatAmount(item.amountCents / set.size, expenseCurrency),
+              })}
+            </Text>
+          ) : null}
+        </Squircle>
+      )
+    },
+    [
+      assignmentsByPosition,
+      expenseCurrency,
+      inlineMembers,
+      remainder,
+      t,
+      theme,
+      toggleAssignment,
+      userId,
+    ],
+  )
 
   if (!trip || !members) {
     return (
-      <Screen title="Attribution" showBack>
+      <Screen title={t('smartSplit.attribution')} showBack>
         <View style={styles.center}>
-          <ActivityIndicator />
+          <Spinner />
         </View>
       </Screen>
     )
@@ -225,11 +302,11 @@ function AttributionEditor({
 
   if (items.length === 0) {
     return (
-      <Screen title="Attribution" showBack>
+      <Screen title={t('smartSplit.attribution')} showBack>
         <View style={styles.center}>
-          <Text style={styles.muted}>No items detected from the receipt.</Text>
+          <Text style={styles.muted}>{t('smartSplit.noItems')}</Text>
           <Pressable onPress={() => router.back()} accessibilityRole="button">
-            <Text style={styles.link}>Go back</Text>
+            <Text style={styles.link}>{t('smartSplit.goBack')}</Text>
           </Pressable>
         </View>
       </Screen>
@@ -248,17 +325,20 @@ function AttributionEditor({
   async function onSave() {
     if (unassignedCount > 0) {
       Alert.alert(
-        'Unassigned items',
-        `${unassignedCount} item(s) have no member assigned. Assign or remove them first.`,
+        t('smartSplit.unassignedTitle'),
+        t('smartSplit.unassignedBody', { count: unassignedCount }),
       )
       return
     }
     if (!currentUserMember) {
-      Alert.alert('Membership error', 'Could not resolve your trip membership.')
+      Alert.alert(t('smartSplit.membershipErrorTitle'), t('smartSplit.membershipErrorBody'))
       return
     }
     if (isForeign && !canConvert) {
-      Alert.alert('Conversion failed', `Exchange rate for ${expenseCurrency} is unavailable.`)
+      Alert.alert(
+        t('smartSplit.conversionFailed'),
+        t('smartSplit.rateUnavailable', { currency: expenseCurrency }),
+      )
       return
     }
 
@@ -280,8 +360,8 @@ function AttributionEditor({
         router.back()
       } catch (error) {
         Alert.alert(
-          'Could not save attribution',
-          error instanceof Error ? error.message : 'Please try again.',
+          t('smartSplit.saveError'),
+          error instanceof Error ? error.message : t('common.tryAgain'),
         )
       }
       return
@@ -319,23 +399,23 @@ function AttributionEditor({
         await deleteExpense(createdId).catch(() => {})
       }
       Alert.alert(
-        'Could not save attribution',
-        error instanceof Error ? error.message : 'Please try again.',
+        t('smartSplit.saveError'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     }
   }
 
   const isPending = createExpense.isPending || upsertWithItems.isPending
-  const totalLabel = mode === 'edit' ? 'Total' : 'OCR total'
+  const totalLabel = mode === 'edit' ? t('smartSplit.total') : t('smartSplit.ocrTotal')
 
   return (
-    <Screen title={mode === 'edit' ? 'Edit Smart Split' : 'Smart Split'} showBack>
+    <Screen title={mode === 'edit' ? t('smartSplit.editTitle') : t('smartSplit.title')} showBack>
       <View style={styles.descriptionField}>
         <TextField
-          label="Description"
+          label={t('smartSplit.description')}
           value={description}
           onChangeText={setDescription}
-          placeholder="Receipt"
+          placeholder={t('smartSplit.descriptionPlaceholder')}
         />
       </View>
 
@@ -350,7 +430,7 @@ function AttributionEditor({
           <Text style={styles.headerValue}>{formatAmount(totalCents, expenseCurrency)}</Text>
         </View>
         <View style={styles.headerRow}>
-          <Text style={styles.headerLabel}>Items sum</Text>
+          <Text style={styles.headerLabel}>{t('smartSplit.itemsSum')}</Text>
           <Text style={[styles.headerValue, delta !== 0 ? { color: theme.colors.warning } : null]}>
             {formatAmount(itemsTotal, expenseCurrency)}
             {delta !== 0 ? `  (${delta > 0 ? '+' : ''}${(delta / 100).toFixed(2)})` : ''}
@@ -362,71 +442,18 @@ function AttributionEditor({
         data={items}
         keyExtractor={(item) => `${item.position}`}
         contentContainerStyle={styles.list}
-        renderItem={({ item, index }) => {
-          const set = assignmentsByPosition[index] ?? new Set<string>()
-          const inlineMembers = members.slice(0, MAX_INLINE_CHIPS)
-          const remainder = members.length - inlineMembers.length
-          const isUnassigned = set.size === 0
-          return (
-            <Squircle
-              color={theme.colors.card}
-              borderColor={isUnassigned ? theme.colors.warning : theme.colors.border}
-              borderWidth={1}
-              radius={theme.radius.md}
-              style={styles.itemCard}
-            >
-              <View style={styles.itemRow}>
-                <Text style={styles.itemLabel} numberOfLines={2}>
-                  {item.label}
-                </Text>
-                <Text style={styles.itemAmount}>
-                  {formatAmount(item.amountCents, expenseCurrency)}
-                </Text>
-              </View>
-              <View style={styles.chipsRow}>
-                {inlineMembers.map((member) => {
-                  const selected = set.has(member.id)
-                  const name = member.user_id === userId ? 'You' : (member.display_name ?? 'M')
-                  const initial = name.charAt(0).toUpperCase()
-                  return (
-                    <MemberChip
-                      key={member.id}
-                      initial={initial}
-                      selected={selected}
-                      onPress={() => toggleAssignment(index, member.id)}
-                    />
-                  )
-                })}
-                {remainder > 0 ? (
-                  <Pressable
-                    onPress={() => setSheetOpenForPosition(index)}
-                    accessibilityRole="button"
-                    style={styles.moreChip}
-                  >
-                    <Text style={styles.moreChipText}>+{remainder}</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-              {set.size > 1 ? (
-                <Text style={styles.itemShared}>
-                  Shared between {set.size} ·{' '}
-                  {formatAmount(item.amountCents / set.size, expenseCurrency)} each
-                </Text>
-              ) : null}
-            </Squircle>
-          )
-        }}
+        renderItem={renderItem}
         ListFooterComponent={
           <View style={styles.footerSpacer}>
-            <Text style={styles.muted}>
-              Tip: tap several members on a single item to split it equally.
-            </Text>
+            <Text style={styles.muted}>{t('smartSplit.tip')}</Text>
           </View>
         }
       />
 
       <View style={styles.summary}>
-        <Text style={styles.summaryTitle}>Per person ({tripCurrency})</Text>
+        <Text style={styles.summaryTitle}>
+          {t('smartSplit.perPerson', { currency: tripCurrency })}
+        </Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -439,7 +466,10 @@ function AttributionEditor({
               isForeign && fx
                 ? convertCents(expenseCentsForMember, expenseCurrency, tripCurrency, fx.rates)
                 : expenseCentsForMember
-            const name = member.user_id === userId ? 'You' : (member.display_name ?? 'M')
+            const name =
+              member.user_id === userId
+                ? t('common.you')
+                : (member.display_name ?? t('common.member'))
             return (
               <Squircle
                 key={member.id}
@@ -457,11 +487,17 @@ function AttributionEditor({
         </ScrollView>
         {unassignedCount > 0 ? (
           <Text style={styles.warn}>
-            {unassignedCount} item{unassignedCount > 1 ? 's' : ''} still unassigned.
+            {t('smartSplit.unassignedCount', { count: unassignedCount })}
           </Text>
         ) : null}
         <Button
-          label={isPending ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Save Smart Split'}
+          label={
+            isPending
+              ? t('smartSplit.saving')
+              : mode === 'edit'
+                ? t('smartSplit.saveChanges')
+                : t('smartSplit.save')
+          }
           onPress={onSave}
           disabled={isPending || unassignedCount > 0 || (isForeign && !canConvert)}
         />
@@ -470,14 +506,17 @@ function AttributionEditor({
       <BottomSheet
         open={sheetOpenForPosition !== null}
         onClose={() => setSheetOpenForPosition(null)}
-        title="Assign to…"
+        title={t('smartSplit.assignTo')}
       >
         <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetList}>
           {members.map((member) => {
             if (sheetOpenForPosition === null) return null
             const set = assignmentsByPosition[sheetOpenForPosition] ?? new Set<string>()
             const selected = set.has(member.id)
-            const name = member.user_id === userId ? 'You' : (member.display_name ?? 'M')
+            const name =
+              member.user_id === userId
+                ? t('common.you')
+                : (member.display_name ?? t('common.member'))
             return (
               <Pressable
                 key={member.id}
@@ -496,7 +535,7 @@ function AttributionEditor({
             )
           })}
         </ScrollView>
-        <Button label="Done" onPress={() => setSheetOpenForPosition(null)} />
+        <Button label={t('common.done')} onPress={() => setSheetOpenForPosition(null)} />
       </BottomSheet>
     </Screen>
   )
@@ -504,10 +543,12 @@ function AttributionEditor({
 
 function MemberChip({
   initial,
+  label,
   selected,
   onPress,
 }: {
   initial: string
+  label: string
   selected: boolean
   onPress: () => void
 }) {
@@ -515,6 +556,7 @@ function MemberChip({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ selected }}
       style={[styles.chip, selected ? styles.chipActive : null]}
     >
@@ -532,9 +574,11 @@ const styles = StyleSheet.create((theme) => ({
   },
   muted: {
     color: theme.colors.muted,
+    fontFamily: theme.fonts.sans.regular,
   },
   link: {
     color: theme.colors.primary,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
   },
   warn: {
@@ -558,11 +602,13 @@ const styles = StyleSheet.create((theme) => ({
   headerLabel: {
     color: theme.colors.muted,
     fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
   },
   headerValue: {
     color: theme.colors.foreground,
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
   },
   list: {
@@ -583,16 +629,19 @@ const styles = StyleSheet.create((theme) => ({
     flex: 1,
     color: theme.colors.foreground,
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
   },
   itemAmount: {
     color: theme.colors.foreground,
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
   },
   itemShared: {
     color: theme.colors.muted,
     fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.regular,
   },
   chipsRow: {
     flexDirection: 'row',
@@ -614,6 +663,7 @@ const styles = StyleSheet.create((theme) => ({
     borderColor: theme.colors.primary,
   },
   chipText: {
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '700',
     color: theme.colors.foreground,
   },
@@ -631,6 +681,7 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.card,
   },
   moreChipText: {
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '700',
     color: theme.colors.foreground,
   },
@@ -645,6 +696,7 @@ const styles = StyleSheet.create((theme) => ({
   summaryTitle: {
     color: theme.colors.muted,
     fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '700',
   },
   summaryRow: {
@@ -659,10 +711,12 @@ const styles = StyleSheet.create((theme) => ({
   summaryName: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
   },
   summaryValue: {
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
     color: theme.colors.foreground,
   },
@@ -681,5 +735,6 @@ const styles = StyleSheet.create((theme) => ({
   sheetRowText: {
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
+    fontFamily: theme.fonts.sans.regular,
   },
 }))

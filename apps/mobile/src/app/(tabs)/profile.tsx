@@ -1,30 +1,32 @@
 import { Ionicons } from '@expo/vector-icons'
-import { Link, useRouter } from 'expo-router'
+import { useRouter } from 'expo-router'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
-import { Avatar, ListRow, Segmented, Squircle } from '@/components/ui'
+import { Avatar, ListRow, Segmented, Spinner, Squircle } from '@/components/ui'
 import { signOut, useAuth } from '@/features/auth'
 import { useProfile } from '@/features/profile'
 import { getThemePreference, setThemePreference, type ThemePreference } from '@/lib/preferences'
 
-const THEME_OPTIONS = [
-  { value: 'system', label: 'Système' },
-  { value: 'light', label: 'Clair' },
-  { value: 'dark', label: 'Sombre' },
-] as const
-
 export default function ProfileScreen() {
+  const { t } = useTranslation()
   const { theme } = useUnistyles()
   const router = useRouter()
   const { session } = useAuth()
-  const { data: profile } = useProfile()
+  const { data: profile, isLoading, isError, refetch } = useProfile()
   const [signingOut, setSigningOut] = useState(false)
   const [themePref, setThemePref] = useState<ThemePreference>(getThemePreference())
+
+  const themeOptions = [
+    { value: 'system', label: t('profile.theme.system') },
+    { value: 'light', label: t('profile.theme.light') },
+    { value: 'dark', label: t('profile.theme.dark') },
+  ]
 
   function selectTheme(value: string) {
     const preference = value as ThemePreference
@@ -38,26 +40,46 @@ export default function ProfileScreen() {
       await signOut()
     } catch (error) {
       Alert.alert(
-        'Déconnexion impossible',
-        error instanceof Error ? error.message : 'Veuillez réessayer.',
+        t('profile.signOutErrorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     } finally {
       setSigningOut(false)
     }
   }
 
-  const displayName = profile?.display_name ?? 'Mon profil'
+  const displayName = profile?.display_name ?? t('profile.fallbackName')
   const email = session?.user.email ?? '-'
   const currency = profile?.preferred_currency ?? 'EUR'
 
+  if (isLoading && !profile) {
+    return (
+      <Screen title={t('profile.title')} showBack={false}>
+        <View style={styles.statusCenter}>
+          <Spinner />
+        </View>
+      </Screen>
+    )
+  }
+
+  if (isError && !profile) {
+    return (
+      <Screen title={t('profile.title')} showBack={false}>
+        <View style={styles.statusCenter}>
+          <Button label={t('common.tryAgain')} variant="secondary" onPress={() => void refetch()} />
+        </View>
+      </Screen>
+    )
+  }
+
   return (
-    <Screen title="Profil" showBack={false} scroll>
+    <Screen title={t('profile.title')} showBack={false} scroll>
       {/* Profile header */}
       <Pressable
         onPress={() => router.push('/profile/edit')}
         style={({ pressed }) => [styles.hero, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel="Modifier le profil"
+        accessibilityLabel={t('profile.editProfile')}
       >
         <Avatar name={displayName} size={60} tint={theme.colors.primary} />
         <View style={styles.heroInfo}>
@@ -73,7 +95,7 @@ export default function ProfileScreen() {
 
       {/* Account */}
       <View style={styles.group}>
-        <Text style={styles.groupTitle}>Compte</Text>
+        <Text style={styles.groupTitle}>{t('profile.section.account')}</Text>
         <Squircle
           color={theme.colors.card}
           borderColor={theme.colors.border}
@@ -83,22 +105,22 @@ export default function ProfileScreen() {
         >
           <ListRow
             icon="person-outline"
-            title="Nom affiché"
+            title={t('profile.displayName')}
             detail={displayName}
             onPress={() => router.push('/profile/edit')}
           />
           <ListRow
             icon="cash-outline"
             iconColor={theme.colors.success}
-            title="Devise par défaut"
+            title={t('profile.defaultCurrency')}
             detail={currency}
             onPress={() => router.push('/profile/edit')}
           />
           <ListRow
             icon="notifications-outline"
             iconColor={theme.colors.warning}
-            title="Notifications"
-            detail="Activées"
+            title={t('profile.notifications')}
+            detail={t('profile.notificationsOn')}
             last
           />
         </Squircle>
@@ -106,22 +128,13 @@ export default function ProfileScreen() {
 
       {/* Appearance */}
       <View style={styles.group}>
-        <Text style={styles.groupTitle}>Apparence</Text>
-        <Segmented value={themePref} onChange={selectTheme} options={[...THEME_OPTIONS]} />
-        <Text style={styles.groupHint}>
-          « Système » suit le réglage clair/sombre de l’appareil.
-        </Text>
+        <Text style={styles.groupTitle}>{t('profile.section.appearance')}</Text>
+        <Segmented value={themePref} onChange={selectTheme} options={themeOptions} />
+        <Text style={styles.groupHint}>{t('profile.appearanceHint')}</Text>
       </View>
 
-      {/* Dev-only entry to preview the UI kit; inert in production builds. */}
-      {__DEV__ ? (
-        <Link href="/ui-kit" style={styles.devLink}>
-          UI kit (dev)
-        </Link>
-      ) : null}
-
       <Button
-        label="Se déconnecter"
+        label={t('profile.signOut')}
         variant="destructive"
         icon="log-out-outline"
         onPress={onSignOut}
@@ -178,12 +191,11 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.muted,
     paddingLeft: 2,
   },
-  devLink: {
-    alignSelf: 'flex-start',
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.primary,
+  statusCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.gap(3),
   },
   spacer: {
     height: FLOATING_TAB_BAR_CLEARANCE,

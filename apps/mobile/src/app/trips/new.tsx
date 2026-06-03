@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'expo-router'
 import { Controller, useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { Alert, ScrollView, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -35,6 +36,7 @@ function FieldIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
 }
 
 export default function NewTripScreen() {
+  const { t } = useTranslation()
   const router = useRouter()
   const createTrip = useCreateTrip()
   const {
@@ -53,14 +55,14 @@ export default function NewTripScreen() {
       router.replace({ pathname: '/trips/[id]', params: { id: trip.id } })
     } catch (error) {
       Alert.alert(
-        'Création impossible',
-        error instanceof Error ? error.message : 'Veuillez réessayer.',
+        t('newTrip.errorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     }
   }
 
   return (
-    <Screen title="Nouveau voyage" showBack>
+    <Screen title={t('newTrip.title')} showBack>
       <View style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.body}
@@ -75,8 +77,8 @@ export default function NewTripScreen() {
                 <FieldIcon name="airplane-outline" />
                 <View style={styles.fieldInput}>
                   <TextField
-                    label="Titre"
-                    placeholder="Week-end à Lisbonne"
+                    label={t('tripForm.title')}
+                    placeholder={t('tripForm.titlePlaceholder')}
                     value={field.value}
                     onChangeText={field.onChange}
                     onBlur={field.onBlur}
@@ -95,8 +97,8 @@ export default function NewTripScreen() {
                 <FieldIcon name="location-outline" />
                 <View style={styles.fieldInput}>
                   <TextField
-                    label="Destination"
-                    placeholder="Lisbonne, Portugal"
+                    label={t('tripForm.destination')}
+                    placeholder={t('tripForm.destinationPlaceholder')}
                     value={field.value}
                     onChangeText={field.onChange}
                     onBlur={field.onBlur}
@@ -112,7 +114,7 @@ export default function NewTripScreen() {
             name="currency"
             render={({ field }) => (
               <View>
-                <Text style={styles.label}>Devise</Text>
+                <Text style={styles.label}>{t('tripForm.currency')}</Text>
                 <Segmented
                   options={CURRENCY_OPTIONS}
                   value={field.value}
@@ -128,7 +130,7 @@ export default function NewTripScreen() {
 
         <View style={styles.footer}>
           <Button
-            label={createTrip.isPending ? 'Création…' : 'Créer le voyage'}
+            label={createTrip.isPending ? t('newTrip.submitting') : t('newTrip.submit')}
             onPress={handleSubmit(onSubmit)}
             disabled={createTrip.isPending || !isValid}
           />

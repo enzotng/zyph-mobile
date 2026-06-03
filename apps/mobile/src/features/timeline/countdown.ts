@@ -1,3 +1,5 @@
+import type { TFunction } from 'i18next'
+
 export type EventStatus =
   | { kind: 'upcoming'; days: number; hours: number; minutes: number }
   | { kind: 'in_progress' }
@@ -37,16 +39,19 @@ export function eventStatus(
 }
 
 // Human-readable lead time, showing the two most significant non-zero units.
-export function formatCountdown(status: Extract<EventStatus, { kind: 'upcoming' }>): string {
+export function formatCountdown(
+  status: Extract<EventStatus, { kind: 'upcoming' }>,
+  t: TFunction,
+): string {
   const { days, hours, minutes } = status
   if (days > 0) {
-    return `in ${days}d ${hours}h`
+    return t('countdown.inDaysHours', { days, hours })
   }
   if (hours > 0) {
-    return `in ${hours}h ${minutes}m`
+    return t('countdown.inHoursMinutes', { hours, minutes })
   }
   if (minutes > 0) {
-    return `in ${minutes}m`
+    return t('countdown.inMinutes', { minutes })
   }
-  return 'starting now'
+  return t('countdown.now')
 }

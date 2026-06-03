@@ -3,6 +3,24 @@
 // automatically, so no extra import is required here.
 // Add global mocks (e.g. react-native-reanimated) here as features need them.
 
+// Bind react-i18next so useTranslation().t returns real strings in tests (English).
+// We init a minimal instance directly to avoid the app module's expo-localization /
+// preferences dependencies; locale resources are the source of truth.
+import i18n from 'i18next'
+import { initReactI18next } from 'react-i18next'
+import { en } from '@/lib/i18n/locales/en'
+import { fr } from '@/lib/i18n/locales/fr'
+
+if (!i18n.isInitialized) {
+  void i18n.use(initReactI18next).init({
+    resources: { en: { translation: en }, fr: { translation: fr } },
+    lng: 'en',
+    fallbackLng: 'en',
+    interpolation: { escapeValue: false },
+    returnNull: false,
+  })
+}
+
 // Lightweight Skia mock: the CanvasKit/WASM runtime is not loaded in unit tests. Canvas
 // and Path render to nothing and Skia.Path.Make() returns a no-op path, so Skia-backed
 // components (Squircle, the Wayfinder overlay) can render in tests without the native module.

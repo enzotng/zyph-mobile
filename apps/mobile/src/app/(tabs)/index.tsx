@@ -3,7 +3,7 @@ import { FlashList } from '@shopify/flash-list'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, RefreshControl, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -22,23 +22,29 @@ import { type TripCard, useTrips } from '@/features/trips'
 import { formatAmount } from '@/lib/money'
 
 // "14 - 16 juin" when both dates exist; null hides the date row (trips have no dates yet).
-function formatTripDates(start: string | null, end: string | null): string | null {
+// Month names follow the app i18n language (not the device locale). When start and end
+// share the same month and year, the month is shown once ("14 - 16 juin").
+function formatTripDates(start: string | null, end: string | null, locale: string): string | null {
   if (!start) {
     return null
   }
-  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
-  const startLabel = new Date(start).toLocaleDateString(undefined, opts)
+  const startDate = new Date(start)
+  const fullOpts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
   if (!end || end === start) {
-    return startLabel
+    return startDate.toLocaleDateString(locale, fullOpts)
   }
-  return `${startLabel} - ${new Date(end).toLocaleDateString(undefined, opts)}`
+  const endDate = new Date(end)
+  const sameMonth =
+    startDate.getFullYear() === endDate.getFullYear() && startDate.getMonth() === endDate.getMonth()
+  const startLabel = startDate.toLocaleDateString(locale, sameMonth ? { day: 'numeric' } : fullOpts)
+  return `${startLabel} - ${endDate.toLocaleDateString(locale, fullOpts)}`
 }
 
 export default function TripsScreen() {
   const router = useRouter()
   const { theme } = useUnistyles()
   const { t } = useTranslation()
-  const { data: trips, isLoading, isError, refetch } = useTrips()
+  const { data: trips, isLoading, isError, isRefetching, refetch } = useTrips()
   const [addOpen, setAddOpen] = useState(false)
 
   return (
@@ -82,6 +88,13 @@ export default function TripsScreen() {
             data={trips}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefetching}
+                onRefresh={() => void refetch()}
+                tintColor={theme.colors.primary}
+              />
+            }
             renderItem={({ item }) => (
               <TripListCard
                 trip={item}
@@ -119,7 +132,7 @@ export default function TripsScreen() {
 
 function TripListCard({ trip, onPress }: { trip: TripCard; onPress: () => void }) {
   const { theme } = useUnistyles()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const balance = trip.myBalanceCents
   const tone = balance > 0 ? 'success' : balance < 0 ? 'destructive' : 'muted'
@@ -130,7 +143,7 @@ function TripListCard({ trip, onPress }: { trip: TripCard; onPress: () => void }
         ? t('trips.owe', { amount: formatAmount(Math.abs(balance), trip.currency) })
         : t('trips.settled')
 
-  const dates = formatTripDates(trip.start_date, trip.end_date)
+  const dates = formatTripDates(trip.start_date, trip.end_date, i18n.language)
   const members = trip.members.map((member) => ({
     id: member.id,
     name: member.display_name ?? undefined,
@@ -150,6 +163,7 @@ function TripListCard({ trip, onPress }: { trip: TripCard; onPress: () => void }
           height={126}
           corners="top"
         >
+          <View pointerEvents="none" style={styles.coverScrim} />
           <View style={styles.coverOverlay}>
             <View style={styles.coverText}>
               <Text style={styles.title} numberOfLines={1}>
@@ -205,6 +219,16 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   pressed: {
     opacity: 0.85,
+  },
+  // Dark band behind the white cover text so contrast holds even over the bright
+  // fallback tint (the CityImage gradient scrim only covers loaded photos).
+  coverScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '55%',
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
   },
   coverOverlay: {
     position: 'absolute',

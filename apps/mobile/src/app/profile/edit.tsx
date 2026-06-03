@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'expo-router'
-import { useMemo } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { Alert, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -14,33 +14,33 @@ import { Avatar, Spinner } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import { useFxRates } from '@/features/fx'
 import {
+  makeUpdateProfileSchema,
   type UpdateProfileValues,
-  updateProfileSchema,
   useProfile,
   useUpdateProfile,
 } from '@/features/profile'
 
 export default function EditProfileScreen() {
   const { theme } = useUnistyles()
+  const { t } = useTranslation()
   const router = useRouter()
   const { session } = useAuth()
   const { data: profile, isLoading } = useProfile()
   const { data: fx } = useFxRates()
   const update = useUpdateProfile()
 
-  const currencies = useMemo(() => {
-    if (!fx) {
-      return ['EUR']
-    }
-    return Object.keys(fx.rates).sort()
-  }, [fx])
+  // React Compiler memoizes this automatically; a manual useMemo here trips
+  // react-hooks/preserve-manual-memoization (it infers `profile`, not the property).
+  const base = fx ? Object.keys(fx.rates) : ['EUR']
+  const withCurrent = profile?.preferred_currency ? [profile.preferred_currency, ...base] : base
+  const currencies = Array.from(new Set(withCurrent)).sort()
 
   const {
     control,
     handleSubmit,
     formState: { errors },
   } = useForm<UpdateProfileValues>({
-    resolver: zodResolver(updateProfileSchema),
+    resolver: zodResolver(makeUpdateProfileSchema(t)),
     // RHF syncs from the loaded profile when it arrives; no useEffect needed.
     values: profile
       ? {
@@ -59,26 +59,28 @@ export default function EditProfileScreen() {
       router.back()
     } catch (error) {
       Alert.alert(
-        'Enregistrement impossible',
-        error instanceof Error ? error.message : 'Veuillez réessayer.',
+        t('profile.saveErrorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     }
   }
 
   if (isLoading || !profile) {
     return (
-      <Screen title="Modifier le profil" showBack scroll>
+      <Screen title={t('profile.editProfile')} showBack scroll>
         <View style={styles.center}>
-          <Spinner label="Chargement…" />
+          <Spinner label={t('common.loading')} />
         </View>
       </Screen>
     )
   }
 
-  const displayName = watchedName?.trim() ? watchedName : (profile.display_name ?? 'Profil')
+  const displayName = watchedName?.trim()
+    ? watchedName
+    : (profile.display_name ?? t('profile.fallbackName'))
 
   return (
-    <Screen title="Modifier le profil" showBack scroll>
+    <Screen title={t('profile.editProfile')} showBack scroll>
       {/* Avatar hero */}
       <View style={styles.avatarWrap}>
         <View style={styles.avatarStack}>
@@ -94,8 +96,8 @@ export default function EditProfileScreen() {
         name="displayName"
         render={({ field }) => (
           <TextField
-            label="Nom affiché"
-            placeholder="Votre nom"
+            label={t('profile.displayName')}
+            placeholder={t('profile.namePlaceholder')}
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -105,7 +107,7 @@ export default function EditProfileScreen() {
       />
 
       <TextField
-        label="E-mail"
+        label={t('profile.email')}
         value={session?.user.email ?? ''}
         editable={false}
         autoCapitalize="none"
@@ -117,7 +119,7 @@ export default function EditProfileScreen() {
         name="preferredCurrency"
         render={({ field }) => (
           <CurrencySelect
-            label="Devise par défaut"
+            label={t('profile.defaultCurrency')}
             value={field.value}
             currencies={currencies}
             onChange={field.onChange}
@@ -126,7 +128,7 @@ export default function EditProfileScreen() {
       />
 
       <Button
-        label={update.isPending ? 'Enregistrement…' : 'Enregistrer'}
+        label={update.isPending ? t('common.saving') : t('common.save')}
         onPress={handleSubmit(onSubmit)}
         disabled={update.isPending}
       />

@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as Clipboard from 'expo-clipboard'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Share, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -31,6 +32,7 @@ export default function TripGroupScreen() {
   const { session } = useAuth()
   const userId = session?.user.id
   const router = useRouter()
+  const { t } = useTranslation()
   const deleteTrip = useDeleteTrip()
   const regenerate = useRegenerateInviteCode(tripId)
   const leaveTripMutation = useLeaveTrip()
@@ -45,6 +47,41 @@ export default function TripGroupScreen() {
     setShareLocation(tripId, sharing)
   }, [sharing, tripId])
 
+  const nameById = useMemo(
+    () => new Map((members ?? []).map((member) => [member.id, member.display_name])),
+    [members],
+  )
+  const userIdByMember = useMemo(
+    () => new Map((balances ?? []).map((balance) => [balance.member_id, balance.user_id])),
+    [balances],
+  )
+
+  const labelFor = useCallback(
+    (memberUserId: string | null, memberId: string): string => {
+      if (memberUserId && memberUserId === userId) {
+        return t('common.you')
+      }
+      return nameById.get(memberId) ?? t('common.member')
+    },
+    [nameById, userId, t],
+  )
+
+  const labelForMember = useCallback(
+    (memberId: string): string => labelFor(userIdByMember.get(memberId) ?? null, memberId),
+    [labelFor, userIdByMember],
+  )
+
+  const settlements = useMemo(
+    () =>
+      settleBalances(
+        (balances ?? []).map((balance) => ({
+          memberId: balance.member_id,
+          balanceCents: balance.balance_cents ?? 0,
+        })),
+      ),
+    [balances],
+  )
+
   function toggleSharing() {
     if (sharing) {
       setSharing(false)
@@ -54,15 +91,15 @@ export default function TripGroupScreen() {
       'Partager ta position',
       'Les autres membres de ce voyage verront ta position en direct tant que le partage est actif. Désactive-le à tout moment pour arrêter.',
       [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Partager', onPress: () => setSharing(true) },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('group.share'), onPress: () => setSharing(true) },
       ],
     )
   }
 
   if (isLoading) {
     return (
-      <Screen title="Groupe & soldes" showBack>
+      <Screen title={t('group.title')} showBack>
         <View style={styles.center}>
           <Spinner />
         </View>
@@ -72,43 +109,20 @@ export default function TripGroupScreen() {
 
   if (isError || !trip) {
     return (
-      <Screen title="Groupe & soldes" showBack>
+      <Screen title={t('group.title')} showBack>
         <View style={styles.center}>
-          <Text style={styles.notFound}>Voyage introuvable.</Text>
+          <Text style={styles.notFound}>{t('group.notFound')}</Text>
         </View>
       </Screen>
     )
   }
-
-  const nameById = new Map((members ?? []).map((member) => [member.id, member.display_name]))
-  const userIdByMember = new Map(
-    (balances ?? []).map((balance) => [balance.member_id, balance.user_id]),
-  )
-
-  function labelFor(memberUserId: string | null, memberId: string): string {
-    if (memberUserId && memberUserId === userId) {
-      return 'Toi'
-    }
-    return nameById.get(memberId) ?? 'Membre'
-  }
-
-  function labelForMember(memberId: string): string {
-    return labelFor(userIdByMember.get(memberId) ?? null, memberId)
-  }
-
-  const settlements = settleBalances(
-    (balances ?? []).map((balance) => ({
-      memberId: balance.member_id,
-      balanceCents: balance.balance_cents ?? 0,
-    })),
-  )
 
   async function shareInvite() {
     if (!trip) {
       return
     }
     await Share.share({
-      message: `Rejoins mon voyage "${trip.title}" sur ZYPH avec le code d'invitation : ${trip.invite_code}`,
+      message: t('group.shareInvite', { title: trip.title, code: trip.invite_code }),
     })
   }
 
@@ -123,12 +137,12 @@ export default function TripGroupScreen() {
 
   function confirmRegenerate() {
     Alert.alert(
-      "Régénérer le code d'invitation",
+      'Régénérer le code d’invitation',
       'Le code actuel cessera de fonctionner. Les personnes déjà inscrites conservent leur accès.',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Régénérer',
+          text: t('group.regenerate'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -136,7 +150,7 @@ export default function TripGroupScreen() {
             } catch (error) {
               Alert.alert(
                 'Régénération impossible',
-                error instanceof Error ? error.message : 'Veuillez réessayer.',
+                error instanceof Error ? error.message : t('common.tryAgain'),
               )
             }
           },
@@ -149,12 +163,12 @@ export default function TripGroupScreen() {
 
   function confirmDelete() {
     Alert.alert(
-      'Supprimer le voyage',
+      t('group.deleteTrip'),
       'Cette action supprime définitivement le voyage et toutes ses données.',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -163,7 +177,7 @@ export default function TripGroupScreen() {
             } catch (error) {
               Alert.alert(
                 'Suppression impossible',
-                error instanceof Error ? error.message : 'Veuillez réessayer.',
+                error instanceof Error ? error.message : t('common.tryAgain'),
               )
             }
           },
@@ -174,10 +188,10 @@ export default function TripGroupScreen() {
 
   function confirmLeave() {
     Alert.alert(
-      'Quitter le voyage',
+      t('group.leaveTrip'),
       'Tu ne verras plus ce voyage ni ses dépenses. Les dépenses passées que tu as payées ou que tu dois restent comptabilisées.',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
           text: 'Quitter',
           style: 'destructive',
@@ -188,7 +202,7 @@ export default function TripGroupScreen() {
             } catch (error) {
               Alert.alert(
                 'Impossible de quitter',
-                error instanceof Error ? error.message : 'Veuillez réessayer.',
+                error instanceof Error ? error.message : t('common.tryAgain'),
               )
             }
           },
@@ -200,11 +214,11 @@ export default function TripGroupScreen() {
   function confirmRemove(memberId: string, name: string) {
     Alert.alert(
       'Retirer le membre',
-      `${name} perdra l'accès à ce voyage. Les dépenses passées payées ou dues restent comptabilisées.`,
+      `${name} perdra l’accès à ce voyage. Les dépenses passées payées ou dues restent comptabilisées.`,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Retirer',
+          text: t('group.remove'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -212,7 +226,7 @@ export default function TripGroupScreen() {
             } catch (error) {
               Alert.alert(
                 'Retrait impossible',
-                error instanceof Error ? error.message : 'Veuillez réessayer.',
+                error instanceof Error ? error.message : t('common.tryAgain'),
               )
             }
           },
@@ -227,7 +241,7 @@ export default function TripGroupScreen() {
 
   return (
     <Screen
-      title="Groupe & soldes"
+      title={t('group.title')}
       showBack
       scroll
       right={
@@ -247,7 +261,7 @@ export default function TripGroupScreen() {
       <Card>
         <View style={styles.inviteRow}>
           <View style={styles.inviteInfo}>
-            <Text style={styles.inviteLabel}>Code d’invitation</Text>
+            <Text style={styles.inviteLabel}>{t('group.inviteCode')}</Text>
             <Text style={styles.code}>{trip.invite_code}</Text>
           </View>
           <Squircle
@@ -263,7 +277,7 @@ export default function TripGroupScreen() {
         </View>
         <View style={styles.inviteActions}>
           <Button
-            label={copied ? 'Copié !' : 'Copier'}
+            label={copied ? t('group.copied') : t('group.copy')}
             icon={copied ? 'checkmark' : 'copy-outline'}
             variant="secondary"
             size="sm"
@@ -271,7 +285,7 @@ export default function TripGroupScreen() {
             onPress={() => void copyInvite()}
           />
           <Button
-            label="Partager"
+            label={t('group.share')}
             icon="share-outline"
             variant="secondary"
             size="sm"
@@ -280,7 +294,7 @@ export default function TripGroupScreen() {
           />
           {isOwner ? (
             <Button
-              label={regenerate.isPending ? 'Régénération…' : 'Régénérer'}
+              label={regenerate.isPending ? t('group.regenerating') : t('group.regenerate')}
               icon="refresh-outline"
               variant="ghost"
               size="sm"
@@ -294,7 +308,7 @@ export default function TripGroupScreen() {
 
       {/* Settle up */}
       <View>
-        <SectionTitle>Règlements suggérés</SectionTitle>
+        <SectionTitle>{t('group.suggestedSettlements')}</SectionTitle>
         <View style={styles.blockBody}>
           {hasSettlements ? (
             <View style={styles.settleList}>
@@ -311,7 +325,7 @@ export default function TripGroupScreen() {
                       <Text style={styles.settleName}>
                         {labelForMember(settlement.fromMemberId)}
                       </Text>
-                      {' doit à '}
+                      {` ${t('group.owesTo')} `}
                       <Text style={styles.settleName}>{labelForMember(settlement.toMemberId)}</Text>
                     </Text>
                     <Amount
@@ -332,7 +346,9 @@ export default function TripGroupScreen() {
               style={styles.settledBanner}
             >
               <Ionicons name="checkmark-circle" size={22} color={theme.colors.success} />
-              <Text style={styles.settledText}>Tout le monde est à jour.</Text>
+              <Text style={styles.settledText} numberOfLines={2}>
+                {t('group.allUpToDate')}
+              </Text>
             </Squircle>
           )}
         </View>
@@ -341,7 +357,7 @@ export default function TripGroupScreen() {
       {/* Balances */}
       {hasBalances ? (
         <View>
-          <SectionTitle>Soldes</SectionTitle>
+          <SectionTitle>{t('group.balances')}</SectionTitle>
           <View style={styles.listBody}>
             {balances.map((balance, index) => (
               <View
@@ -369,10 +385,13 @@ export default function TripGroupScreen() {
       {/* Members */}
       {hasMembers ? (
         <View>
-          <SectionTitle>{`Membres (${members.length})`}</SectionTitle>
+          <SectionTitle>{t('group.members', { count: members.length })}</SectionTitle>
           <View style={styles.listBody}>
             {members.map((member, index) => {
-              const name = member.user_id === userId ? 'Toi' : (member.display_name ?? 'Membre')
+              const name =
+                member.user_id === userId
+                  ? t('common.you')
+                  : (member.display_name ?? t('common.member'))
               const canRemove = isOwner && member.role !== 'owner' && member.user_id !== userId
               return (
                 <View
@@ -384,7 +403,7 @@ export default function TripGroupScreen() {
                     <Text style={styles.memberName}>{name}</Text>
                   </View>
                   {member.role === 'owner' ? (
-                    <Badge label="Organisateur" tone="primary" />
+                    <Badge label={t('group.organizer')} tone="primary" />
                   ) : canRemove ? (
                     <Pressable
                       onPress={() => confirmRemove(member.id, name)}
@@ -394,7 +413,7 @@ export default function TripGroupScreen() {
                       hitSlop={6}
                       style={({ pressed }) => (pressed ? styles.pressed : undefined)}
                     >
-                      <Text style={styles.removeText}>Retirer</Text>
+                      <Text style={styles.removeText}>{t('group.remove')}</Text>
                     </Pressable>
                   ) : null}
                 </View>
@@ -408,6 +427,7 @@ export default function TripGroupScreen() {
       <Pressable
         onPress={toggleSharing}
         accessibilityRole="switch"
+        accessibilityLabel={t('group.shareLocationToggle')}
         accessibilityState={{ checked: sharing }}
         style={({ pressed }) => (pressed ? styles.pressed : undefined)}
       >
@@ -420,9 +440,9 @@ export default function TripGroupScreen() {
             />
             <View style={styles.shareInfo}>
               <Text style={styles.shareTitle}>
-                {sharing ? 'Position partagée' : 'Partager ma position'}
+                {sharing ? 'Position partagée' : t('group.shareLocationToggle')}
               </Text>
-              <Text style={styles.shareSub}>
+              <Text style={styles.shareSub} numberOfLines={2}>
                 {shareStatus === 'denied'
                   ? 'Autorisation refusée. Active la localisation dans les Réglages.'
                   : shareStatus === 'error'
@@ -447,10 +467,12 @@ export default function TripGroupScreen() {
           onPress={confirmDelete}
           disabled={deleteTrip.isPending}
           accessibilityRole="button"
+          accessibilityLabel={t('group.deleteTrip')}
+          accessibilityState={{ disabled: deleteTrip.isPending }}
           style={({ pressed }) => [styles.dangerBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.dangerText}>
-            {deleteTrip.isPending ? 'Suppression…' : 'Supprimer le voyage'}
+          <Text style={styles.dangerText} numberOfLines={1}>
+            {deleteTrip.isPending ? 'Suppression…' : t('group.deleteTrip')}
           </Text>
         </Pressable>
       ) : (
@@ -458,10 +480,12 @@ export default function TripGroupScreen() {
           onPress={confirmLeave}
           disabled={leaveTripMutation.isPending}
           accessibilityRole="button"
+          accessibilityLabel={t('group.leaveTrip')}
+          accessibilityState={{ disabled: leaveTripMutation.isPending }}
           style={({ pressed }) => [styles.dangerBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.dangerText}>
-            {leaveTripMutation.isPending ? 'En cours…' : 'Quitter le voyage'}
+          <Text style={styles.dangerText} numberOfLines={1}>
+            {leaveTripMutation.isPending ? 'En cours…' : t('group.leaveTrip')}
           </Text>
         </Pressable>
       )}
