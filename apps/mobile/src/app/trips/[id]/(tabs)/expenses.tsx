@@ -1,122 +1,212 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { Pressable, ScrollView, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { CategoryPicker, categoryLabel } from '@/components/category-picker'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Squircle } from '@/components/ui'
+import { Chip, EmptyState, Squircle } from '@/components/ui'
+import { useAuth } from '@/features/auth'
 import {
+  EXPENSE_CATEGORIES,
   type ExpenseCategory,
   filterExpenses,
   formatAmount,
   useExpenses,
+  useTripBalances,
 } from '@/features/expenses'
+import { useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
+import { withAlpha } from '@/lib/color'
 import { paramString } from '@/lib/routing'
 
+const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
+  food: 'restaurant',
+  transport: 'car',
+  lodging: 'bed',
+  activity: 'ticket',
+  shopping: 'bag-handle',
+  other: 'pricetag',
+}
+
 export default function TripExpensesScreen() {
-  const params = useLocalSearchParams<{ id: string }>()
+  const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
   const { theme } = useUnistyles()
+  const { t } = useTranslation()
+  const { session } = useAuth()
+  const userId = session?.user.id
+
   const { data: trip } = useTrip(tripId)
   const { data: expenses } = useExpenses(tripId)
+  const { data: balances } = useTripBalances(tripId)
+  const { data: members } = useTripMembers(tripId)
 
   const [query, setQuery] = useState('')
-  const [filterCategory, setFilterCategory] = useState<ExpenseCategory | null>(null)
+  const [category, setCategory] = useState<ExpenseCategory | null>(null)
 
-  const filteredExpenses = useMemo(
-    () => filterExpenses(expenses ?? [], { query, category: filterCategory }),
-    [expenses, query, filterCategory],
+  const filtered = useMemo(
+    () => filterExpenses(expenses ?? [], { query, category }),
+    [expenses, query, category],
   )
-
   const hasExpenses = (expenses ?? []).length > 0
-  const tripCurrency = trip?.currency
+
+  const myBalance = (balances ?? []).find((b) => b.user_id === userId)?.balance_cents ?? 0
+  const settled = myBalance === 0
+  const positive = myBalance > 0
+  const balanceLabel = settled ? t('trip.settled') : positive ? t('trip.owed') : t('trip.owe')
+  const balanceColor = settled
+    ? theme.colors.foreground
+    : positive
+      ? theme.colors.success
+      : theme.colors.destructive
+
+  function goAdd() {
+    router.push({ pathname: '/trips/[id]/add-expense', params: { id: tripId } })
+  }
+  function payerName(memberId: string | null): string {
+    return (members ?? []).find((member) => member.id === memberId)?.display_name ?? 'Member'
+  }
 
   return (
     <Screen
-      title={trip?.title}
+      title={t('tabs.expenses')}
       showBack
       right={
         <Pressable
-          onPress={() =>
-            router.push({ pathname: '/trips/[id]/add-expense', params: { id: tripId } })
-          }
+          onPress={goAdd}
           accessibilityRole="button"
-          accessibilityLabel="Add expense"
+          accessibilityLabel={t('trip.newExpense')}
           hitSlop={8}
         >
-          <Ionicons name="add" size={26} color={theme.colors.foreground} />
+          <Ionicons name="add" size={26} color={theme.colors.primary} />
         </Pressable>
       }
     >
-      <FlashList
-        data={filteredExpenses}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        ListHeaderComponent={
-          hasExpenses ? (
-            <View style={styles.filters}>
+      {!hasExpenses ? (
+        <EmptyState
+          icon="card-outline"
+          title={t('trip.noExpenses')}
+          body={t('trip.noExpensesBody')}
+          cta={t('trip.newExpense')}
+          onCta={goAdd}
+        />
+      ) : (
+        <FlashList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <Pressable
+                onPress={() =>
+                  router.push({ pathname: '/trips/[id]/group', params: { id: tripId } })
+                }
+                accessibilityRole="button"
+              >
+                <Squircle
+                  color={theme.colors.card}
+                  borderColor={theme.colors.border}
+                  borderWidth={1}
+                  radius={theme.radius.lg}
+                  style={styles.strip}
+                >
+                  <View style={styles.stripLeft}>
+                    <Squircle
+                      width={36}
+                      height={36}
+                      radius={theme.radius.md}
+                      borderWidth={0}
+                      color={withAlpha(theme.colors.primary, 0.12)}
+                      style={styles.stripTile}
+                    >
+                      <Ionicons name="git-compare-outline" size={19} color={theme.colors.primary} />
+                    </Squircle>
+                    <View>
+                      <Text style={styles.stripLabel}>{balanceLabel}</Text>
+                      <Text style={[styles.stripAmount, { color: balanceColor }]}>
+                        {formatAmount(Math.abs(myBalance), trip?.currency ?? 'EUR')}
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.primary} />
+                </Squircle>
+              </Pressable>
+
               <TextField
-                label="Search"
-                placeholder="Search expenses"
+                placeholder={t('trip.searchExpenses')}
                 value={query}
                 onChangeText={setQuery}
                 autoCorrect={false}
                 autoCapitalize="none"
               />
-              <CategoryPicker value={filterCategory} onChange={setFilterCategory} />
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chips}
+              >
+                <Chip
+                  label={t('trip.all')}
+                  selected={category === null}
+                  onPress={() => setCategory(null)}
+                />
+                {EXPENSE_CATEGORIES.map((key) => (
+                  <Chip
+                    key={key}
+                    label={t(`categories.${key}`)}
+                    icon={CATEGORY_ICON[key]}
+                    selected={category === key}
+                    onPress={() => setCategory(key)}
+                  />
+                ))}
+              </ScrollView>
             </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          <Text style={styles.muted}>
-            {hasExpenses ? 'No expenses match the filter.' : 'No expenses yet.'}
-          </Text>
-        }
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.expenseRow}
-            onPress={() =>
-              router.push({
-                pathname: '/trips/[id]/expenses/[expenseId]',
-                params: { id: tripId, expenseId: item.id },
-              })
-            }
-            accessibilityRole="button"
-          >
-            <View style={styles.expenseInfo}>
-              <Text style={styles.body}>{item.description}</Text>
-              {item.category ? (
-                <Squircle
-                  color={theme.colors.card}
-                  borderColor={theme.colors.border}
-                  borderWidth={1}
-                  radius={theme.radius.sm}
-                  style={styles.categoryBadge}
-                >
-                  <Text style={styles.categoryBadgeText}>
-                    {categoryLabel(item.category as ExpenseCategory)}
-                  </Text>
-                </Squircle>
-              ) : null}
-            </View>
-            <View style={styles.amountCol}>
-              <Text style={styles.amount}>{formatAmount(item.amount_cents, item.currency)}</Text>
-              {tripCurrency && item.currency !== tripCurrency ? (
-                <Text style={styles.muted}>
-                  ≈ {formatAmount(item.base_amount_cents, tripCurrency)}
+          }
+          ListEmptyComponent={<Text style={styles.noResults}>{t('trip.noResults')}</Text>}
+          renderItem={({ item }) => (
+            <Pressable
+              style={styles.row}
+              onPress={() =>
+                router.push({
+                  pathname: '/trips/[id]/expenses/[expenseId]',
+                  params: { id: tripId, expenseId: item.id },
+                })
+              }
+              accessibilityRole="button"
+            >
+              <Squircle
+                width={40}
+                height={40}
+                radius={theme.radius.md}
+                borderWidth={0}
+                color={withAlpha(theme.colors.muted, 0.12)}
+                style={styles.rowTile}
+              >
+                <Ionicons
+                  name={CATEGORY_ICON[item.category as ExpenseCategory] ?? 'pricetag'}
+                  size={19}
+                  color={theme.colors.muted}
+                />
+              </Squircle>
+              <View style={styles.rowInfo}>
+                <Text style={styles.rowDescription} numberOfLines={1}>
+                  {item.description}
                 </Text>
-              ) : null}
-            </View>
-          </Pressable>
-        )}
-      />
+                <Text style={styles.rowPaidBy}>
+                  {t('trip.paidBy', { name: payerName(item.paid_by) })}
+                </Text>
+              </View>
+              <Text style={styles.rowAmount}>{formatAmount(item.amount_cents, item.currency)}</Text>
+            </Pressable>
+          )}
+        />
+      )}
     </Screen>
   )
 }
@@ -125,41 +215,84 @@ const styles = StyleSheet.create((theme, rt) => ({
   list: {
     paddingBottom: rt.insets.bottom + FLOATING_TAB_BAR_CLEARANCE,
   },
-  filters: {
-    gap: theme.gap(2),
-    paddingBottom: theme.gap(3),
+  header: {
+    gap: theme.gap(3),
+    paddingBottom: theme.gap(2),
   },
-  muted: {
-    color: theme.colors.muted,
+  strip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.gap(3),
+    paddingHorizontal: theme.gap(3.5),
   },
-  body: {
-    color: theme.colors.foreground,
+  stripLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2.5),
   },
-  expenseInfo: {
-    flex: 1,
-    gap: theme.gap(1),
+  stripTile: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 36,
+    height: 36,
   },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: theme.gap(2),
-    paddingVertical: theme.gap(1),
-  },
-  categoryBadgeText: {
+  stripLabel: {
+    fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
   },
-  expenseRow: {
+  stripAmount: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.md,
+    marginTop: 1,
+  },
+  chips: {
+    gap: theme.gap(2),
+    paddingVertical: theme.gap(0.5),
+  },
+  noResults: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+    textAlign: 'center',
+    paddingVertical: theme.gap(8),
+  },
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: theme.gap(3),
     paddingVertical: theme.gap(3),
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  amount: {
-    color: theme.colors.foreground,
-    fontWeight: '600',
+  rowTile: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
+    height: 40,
   },
-  amountCol: {
-    alignItems: 'flex-end',
+  rowInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  rowDescription: {
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.foreground,
+  },
+  rowPaidBy: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+    marginTop: 3,
+  },
+  rowAmount: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.foreground,
   },
 }))

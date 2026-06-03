@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
-import { Link, useLocalSearchParams, useRouter } from 'expo-router'
+import { Link, useGlobalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
@@ -18,7 +18,7 @@ import { useTrip } from '@/features/trips'
 import { paramString } from '@/lib/routing'
 
 export default function TimelineScreen() {
-  const params = useLocalSearchParams<{ id: string }>()
+  const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const { data: trip } = useTrip(tripId)
   const { data: events, isLoading, isError } = useEvents(tripId)

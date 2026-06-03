@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
@@ -12,7 +12,7 @@ import { useDeletePoi, usePois } from '@/features/wayfinder'
 import { paramString } from '@/lib/routing'
 
 export default function PoisScreen() {
-  const params = useLocalSearchParams<{ id: string }>()
+  const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
   const { theme } = useUnistyles()

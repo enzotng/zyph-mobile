@@ -60,7 +60,8 @@
           "cameraPermission": "Allow ZYPH to access your camera to scan expense receipts."
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,
