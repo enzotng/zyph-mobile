@@ -143,6 +143,71 @@ describe('AuthProvider', () => {
     expect(mmkvQueryPersister.removeClient).toHaveBeenCalled()
   })
 
+  it('starts with recovering=false', () => {
+    onAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: jest.fn() } } })
+
+    const { wrapper } = buildWrapper()
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    expect(result.current.recovering).toBe(false)
+  })
+
+  it('sets recovering=true on PASSWORD_RECOVERY', async () => {
+    const { wrapper, getAuthCallback } = buildWrapper()
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    act(() => {
+      getAuthCallback()?.('PASSWORD_RECOVERY', mockSession)
+    })
+
+    await waitFor(() => expect(result.current.recovering).toBe(true))
+  })
+
+  it('clears recovering on USER_UPDATED (password set)', async () => {
+    const { wrapper, getAuthCallback } = buildWrapper()
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    act(() => {
+      getAuthCallback()?.('PASSWORD_RECOVERY', mockSession)
+    })
+    await waitFor(() => expect(result.current.recovering).toBe(true))
+
+    act(() => {
+      getAuthCallback()?.('USER_UPDATED', mockSession)
+    })
+    await waitFor(() => expect(result.current.recovering).toBe(false))
+  })
+
+  it('clears recovering on SIGNED_OUT', async () => {
+    const { wrapper, getAuthCallback } = buildWrapper()
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    act(() => {
+      getAuthCallback()?.('PASSWORD_RECOVERY', mockSession)
+    })
+    await waitFor(() => expect(result.current.recovering).toBe(true))
+
+    act(() => {
+      getAuthCallback()?.('SIGNED_OUT', null)
+    })
+    await waitFor(() => expect(result.current.recovering).toBe(false))
+  })
+
+  it('clears recovering when clearRecovery() is called (deterministic end of reset flow)', async () => {
+    const { wrapper, getAuthCallback } = buildWrapper()
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    act(() => {
+      getAuthCallback()?.('PASSWORD_RECOVERY', mockSession)
+    })
+    await waitFor(() => expect(result.current.recovering).toBe(true))
+
+    act(() => {
+      result.current.clearRecovery()
+    })
+    await waitFor(() => expect(result.current.recovering).toBe(false))
+  })
+
   it('unsubscribes from onAuthStateChange when unmounted', () => {
     const { wrapper, unsubscribe } = buildWrapper()
     const { unmount } = renderHook(() => useAuth(), { wrapper })

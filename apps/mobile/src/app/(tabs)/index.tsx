@@ -88,6 +88,8 @@ export default function HomeScreen() {
             body={t('trips.empty.body')}
             cta={t('trips.create')}
             onCta={() => router.push('/trips/new')}
+            secondaryCta={t('trips.join')}
+            onSecondaryCta={() => router.push('/trips/join')}
           />
         </View>
       ) : (
@@ -111,7 +113,10 @@ export default function HomeScreen() {
               onPress={() => router.push({ pathname: '/trips/[id]', params: { id: next.id } })}
             />
           ) : (
-            <NoUpcomingCard onCreate={() => router.push('/trips/new')} />
+            <NoUpcomingCard
+              onCreate={() => router.push('/trips/new')}
+              onJoin={() => router.push('/trips/join')}
+            />
           )}
 
           {upcoming.length > 0 ? (
@@ -149,7 +154,7 @@ export default function HomeScreen() {
 }
 
 // Hero fallback when no trip is upcoming or in progress.
-function NoUpcomingCard({ onCreate }: { onCreate: () => void }) {
+function NoUpcomingCard({ onCreate, onJoin }: { onCreate: () => void; onJoin: () => void }) {
   const { t } = useTranslation()
   const { theme } = useUnistyles()
   return (
@@ -157,7 +162,10 @@ function NoUpcomingCard({ onCreate }: { onCreate: () => void }) {
       <Ionicons name="airplane-outline" size={34} color={theme.colors.primary} />
       <Text style={styles.ctaTitle}>{t('home.noUpcomingTitle')}</Text>
       <Text style={styles.ctaBody}>{t('home.noUpcomingBody')}</Text>
-      <Button label={t('trips.create')} icon="add" onPress={onCreate} />
+      <View style={styles.ctaActions}>
+        <Button label={t('trips.create')} icon="add" onPress={onCreate} />
+        <Button label={t('trips.join')} icon="enter-outline" variant="secondary" onPress={onJoin} />
+      </View>
     </Surface>
   )
 }
@@ -213,5 +221,9 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
     marginBottom: theme.gap(1),
+  },
+  ctaActions: {
+    alignSelf: 'stretch',
+    gap: theme.gap(2),
   },
 }))

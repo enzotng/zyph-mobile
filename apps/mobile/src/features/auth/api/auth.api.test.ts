@@ -2,7 +2,15 @@ import * as Linking from 'expo-linking'
 import * as WebBrowser from 'expo-web-browser'
 
 import { supabase } from '@/lib/supabase'
-import { AUTH_REDIRECT_URL, signIn, signInWithGoogle, signOut, signUp } from './auth.api'
+import {
+  AUTH_REDIRECT_URL,
+  requestPasswordReset,
+  signIn,
+  signInWithGoogle,
+  signOut,
+  signUp,
+  updatePassword,
+} from './auth.api'
 
 jest.mock('@/lib/supabase')
 jest.mock('expo-web-browser')
@@ -16,6 +24,8 @@ const exchangeMock = supabase.auth.exchangeCodeForSession as jest.Mock
 const getSessionMock = supabase.auth.getSession as jest.Mock
 const openAuthMock = WebBrowser.openAuthSessionAsync as jest.Mock
 const parseMock = Linking.parse as jest.Mock
+const resetPasswordMock = supabase.auth.resetPasswordForEmail as jest.Mock
+const updateUserMock = supabase.auth.updateUser as jest.Mock
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -74,6 +84,36 @@ describe('signOut', () => {
     signOutMock.mockResolvedValue({ error: new Error('offline') })
 
     await expect(signOut()).rejects.toThrow('offline')
+  })
+})
+
+describe('requestPasswordReset', () => {
+  it('sends a reset email with the auth redirect', async () => {
+    resetPasswordMock.mockResolvedValue({ data: {}, error: null })
+
+    await expect(requestPasswordReset('a@b.co')).resolves.toBeUndefined()
+    expect(resetPasswordMock).toHaveBeenCalledWith('a@b.co', { redirectTo: AUTH_REDIRECT_URL })
+  })
+
+  it('throws on error', async () => {
+    resetPasswordMock.mockResolvedValue({ data: null, error: new Error('rate limited') })
+
+    await expect(requestPasswordReset('a@b.co')).rejects.toThrow('rate limited')
+  })
+})
+
+describe('updatePassword', () => {
+  it('updates the user password', async () => {
+    updateUserMock.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null })
+
+    await expect(updatePassword('pw123456')).resolves.toBeUndefined()
+    expect(updateUserMock).toHaveBeenCalledWith({ password: 'pw123456' })
+  })
+
+  it('throws on error', async () => {
+    updateUserMock.mockResolvedValue({ data: null, error: new Error('weak password') })
+
+    await expect(updatePassword('pw123456')).rejects.toThrow('weak password')
   })
 })
 

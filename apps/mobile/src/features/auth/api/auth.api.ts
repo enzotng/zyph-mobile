@@ -37,6 +37,25 @@ export async function signOut() {
   }
 }
 
+// Send a password-reset email. The recovery link returns to the auth deep link, where the PKCE
+// code is exchanged and Supabase emits a PASSWORD_RECOVERY event (see use-auth).
+export async function requestPasswordReset(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: AUTH_REDIRECT_URL,
+  })
+  if (error) {
+    throw error
+  }
+}
+
+// Set a new password for the recovery session. Emits USER_UPDATED, which ends the recovery flow.
+export async function updatePassword(password: string) {
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) {
+    throw error
+  }
+}
+
 // Google OAuth via the PKCE flow: Supabase hands us the provider URL, we open it in an
 // auth session, then exchange the returned code for a session. Resolves { cancelled: true }
 // if the user backs out of the browser. Requires the Google provider enabled in Supabase.

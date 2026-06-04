@@ -54,6 +54,8 @@ export default function AllTripsScreen() {
           body={t('trips.empty.body')}
           cta={t('trips.create')}
           onCta={() => router.push('/trips/new')}
+          secondaryCta={t('trips.join')}
+          onSecondaryCta={() => router.push('/trips/join')}
         />
       ) : (
         <View style={styles.listWrap}>

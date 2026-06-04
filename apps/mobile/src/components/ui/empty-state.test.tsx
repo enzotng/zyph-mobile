@@ -58,4 +58,39 @@ describe('EmptyState', () => {
     fireEvent.press(screen.getByText('Create a trip'))
     expect(onCta).toHaveBeenCalledTimes(1)
   })
+
+  it('renders the secondary CTA button when secondaryCta is provided', () => {
+    render(
+      <EmptyState
+        icon="airplane-outline"
+        title="No trips yet"
+        body="Start by creating your first trip."
+        cta="Create a trip"
+        onCta={() => {}}
+        secondaryCta="Join by code"
+        onSecondaryCta={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('Join by code')).toBeOnTheScreen()
+  })
+
+  it('calls onSecondaryCta when the secondary CTA button is pressed', () => {
+    const onSecondaryCta = jest.fn()
+
+    render(
+      <EmptyState
+        icon="airplane-outline"
+        title="No trips yet"
+        body="Start by creating your first trip."
+        cta="Create a trip"
+        onCta={() => {}}
+        secondaryCta="Join by code"
+        onSecondaryCta={onSecondaryCta}
+      />,
+    )
+
+    fireEvent.press(screen.getByText('Join by code'))
+    expect(onSecondaryCta).toHaveBeenCalledTimes(1)
+  })
 })
