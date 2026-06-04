@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, ScrollView, Text, View } from 'react-native'
+import { ScreenCornerRadius } from 'react-native-screen-corner-radius'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -28,7 +30,7 @@ import {
 } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
 import { eventStatus, eventTypeIcon, formatCountdown, useEvents } from '@/features/timeline'
-import { isoDayToDate, useTrip } from '@/features/trips'
+import { formatTripDates, useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { paramString } from '@/lib/routing'
 
@@ -41,22 +43,36 @@ const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
   other: 'pricetag',
 }
 
-// Formats a trip date range using the app i18n language, collapsing a shared
-// month so it reads "14 - 16 juin" rather than "14 juin - 16 juin".
-function formatTripDates(start: string | null, end: string | null, locale: string): string | null {
-  if (!start) {
-    return null
-  }
-  const startDate = isoDayToDate(start)
-  const fullOpts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
-  if (!end || end === start) {
-    return startDate.toLocaleDateString(locale, fullOpts)
-  }
-  const endDate = isoDayToDate(end)
-  const sameMonth =
-    startDate.getFullYear() === endDate.getFullYear() && startDate.getMonth() === endDate.getMonth()
-  const startLabel = startDate.toLocaleDateString(locale, sameMonth ? { day: 'numeric' } : fullOpts)
-  return `${startLabel} - ${endDate.toLocaleDateString(locale, fullOpts)}`
+// A light top veil (the nav buttons are opaque circles, so it stays subtle to keep the
+// status bar legible) and a strong bottom fade for the title, clear in the middle.
+const COVER_FADE_COLORS = [
+  'rgba(15, 23, 42, 0.3)',
+  'rgba(15, 23, 42, 0)',
+  'rgba(15, 23, 42, 0)',
+  'rgba(15, 23, 42, 0.85)',
+] as const
+const COVER_FADE_LOCATIONS = [0, 0.25, 0.5, 1] as const
+
+function CoverButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap
+  label: string
+  onPress: () => void
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.coverButton, pressed && styles.coverButtonPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={6}
+    >
+      <Ionicons name={icon} size={20} color="#1E293B" />
+    </Pressable>
+  )
 }
 
 export default function TripDashboardScreen() {
@@ -189,212 +205,245 @@ export default function TripDashboardScreen() {
     return (memberId && nameById.get(memberId)) || t('common.member')
   }
 
+  // Full-bleed cover: its corners trace the device's screen radius exactly (no inset to
+  // subtract). Falls back to the xl token when the radius is undetectable.
+  const coverRadius = ScreenCornerRadius > 0 ? ScreenCornerRadius : theme.radius.xl
+
   return (
-    <Screen
-      title={trip.title}
-      showBack
-      scroll
-      right={
-        <Pressable
-          onPress={goGroup}
-          accessibilityRole="button"
-          accessibilityLabel={t('trip.manage')}
-          hitSlop={8}
-        >
-          <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.foreground} />
-        </Pressable>
-      }
-    >
-      {/* Cover hero */}
-      <CityImage uri={trip.cover_photo_url} seed={trip.destination ?? trip.title} height={132}>
-        <View style={styles.coverScrim} pointerEvents="none" />
-        <View style={styles.coverOverlay}>
-          <View style={styles.coverInfo}>
-            {trip.destination ? (
-              <View style={styles.coverRow}>
-                <Ionicons name="location" size={14} color="#FFFFFF" />
-                <Text style={styles.coverDestination}>{trip.destination}</Text>
-              </View>
-            ) : null}
-            {dates ? (
-              <View style={styles.coverRow}>
-                <Ionicons name="calendar-outline" size={14} color="#FFFFFF" />
-                <Text style={styles.coverDates}>{dates}</Text>
-              </View>
-            ) : null}
-          </View>
-          <Pressable
-            onPress={goGroup}
-            style={styles.manage}
-            accessibilityRole="button"
-            accessibilityLabel={t('trip.manage')}
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Inset cover hero */}
+        <View>
+          <CityImage
+            uri={trip.cover_photo_url}
+            seed={trip.destination ?? trip.title}
+            height={284}
+            radius={coverRadius}
+            corners="all"
+            scrim={false}
           >
-            {avatarMembers.length > 0 ? <AvatarStack members={avatarMembers} size={32} /> : null}
-            <Text style={styles.manageLabel}>{t('trip.manage')}</Text>
-          </Pressable>
-        </View>
-      </CityImage>
-
-      {/* Balance hero */}
-      <Card>
-        <View style={styles.balanceRow}>
-          <View style={styles.balanceInfo}>
-            <Text style={styles.balanceLabel}>
-              {settled ? t('trip.settled') : positive ? t('trip.owed') : t('trip.owe')}
-            </Text>
-            <Text style={[styles.balanceAmount, { color: balanceTone }]}>
-              {formatAmount(Math.abs(myBalance), currency)}
-            </Text>
-            <Text style={styles.balanceSub}>{balanceSub}</Text>
-          </View>
-          <Surface
-            width={48}
-            height={48}
-            radius={theme.radius.md}
-            borderWidth={0}
-            color={withAlpha(settled ? theme.colors.success : theme.colors.primary, 0.12)}
-            style={styles.balanceIcon}
-          >
-            <Ionicons
-              name={settled ? 'checkmark-done' : 'git-compare-outline'}
-              size={24}
-              color={settled ? theme.colors.success : theme.colors.primary}
+            <LinearGradient
+              colors={COVER_FADE_COLORS}
+              locations={COVER_FADE_LOCATIONS}
+              style={styles.fade}
+              pointerEvents="none"
             />
-          </Surface>
-        </View>
-        <View style={styles.balanceButton}>
-          <Button
-            label={settled ? t('trip.viewBalances') : t('trip.settle')}
-            icon="git-compare-outline"
-            variant={settled ? 'secondary' : 'primary'}
-            onPress={goGroup}
-          />
-        </View>
-      </Card>
-
-      {/* Quick actions */}
-      <View style={styles.quickActions}>
-        <QuickAction
-          icon="sparkles"
-          label={t('trip.copilot')}
-          onPress={() => router.push({ pathname: '/trips/[id]/copilot', params: { id: tripId } })}
-        />
-        <QuickAction
-          icon="add-circle"
-          label={t('trip.expense')}
-          onPress={() =>
-            router.push({ pathname: '/trips/[id]/add-expense', params: { id: tripId } })
-          }
-        />
-        <QuickAction
-          icon="map"
-          label={t('trip.map')}
-          onPress={() => router.push({ pathname: '/trips/[id]/map', params: { id: tripId } })}
-        />
-        <QuickAction
-          icon="navigate"
-          label={t('trip.ar')}
-          onPress={() => router.push({ pathname: '/trips/[id]/ar', params: { id: tripId } })}
-        />
-      </View>
-
-      {/* Next event */}
-      {nextEvent && nextStatus?.kind === 'upcoming' ? (
-        <View>
-          <SectionTitle action={t('tabs.timeline')} onAction={() => goTab('timeline')}>
-            {t('trip.upcoming')}
-          </SectionTitle>
-          <View style={styles.blockBody}>
-            <Card onPress={() => goTab('timeline')}>
-              <View style={styles.eventRow}>
-                <Surface
-                  width={44}
-                  height={44}
-                  radius={theme.radius.md}
-                  borderWidth={0}
-                  color={withAlpha(theme.colors.primary, 0.12)}
-                  style={styles.eventIcon}
-                >
-                  <Ionicons
-                    name={eventTypeIcon(nextEvent.type)}
-                    size={22}
-                    color={theme.colors.primary}
-                  />
-                </Surface>
-                <View style={styles.eventInfo}>
-                  <Text style={styles.eventTitle} numberOfLines={1}>
-                    {nextEvent.title}
-                  </Text>
-                  {nextEvent.notes ? (
-                    <Text style={styles.eventNotes} numberOfLines={1}>
-                      {nextEvent.notes}
-                    </Text>
-                  ) : null}
-                </View>
-                <Badge label={formatCountdown(nextStatus, t)} tone="primary" icon="time-outline" />
-              </View>
-            </Card>
-          </View>
-        </View>
-      ) : null}
-
-      {/* Recent expenses */}
-      {recent.length > 0 ? (
-        <View>
-          <SectionTitle action={t('trip.viewAll')} onAction={() => goTab('expenses')}>
-            {t('trip.recent')}
-          </SectionTitle>
-          <View style={styles.recentBody}>
-            {recent.map((expense, index) => (
-              <Pressable
-                key={expense.id}
-                onPress={() =>
-                  router.push({
-                    pathname: '/trips/[id]/expenses/[expenseId]',
-                    params: { id: tripId, expenseId: expense.id },
-                  })
-                }
-                style={[styles.expenseRow, index === recent.length - 1 && styles.expenseRowLast]}
-                accessibilityRole="button"
-                accessibilityLabel={`${expense.description}, ${formatAmount(expense.amount_cents, expense.currency)}`}
-              >
-                <Surface
-                  width={40}
-                  height={40}
-                  radius={theme.radius.md}
-                  borderWidth={0}
-                  color={withAlpha(theme.colors.muted, 0.12)}
-                  style={styles.expenseIcon}
-                >
-                  <Ionicons
-                    name={CATEGORY_ICON[expense.category as ExpenseCategory] ?? 'pricetag'}
-                    size={19}
-                    color={theme.colors.muted}
-                  />
-                </Surface>
-                <View style={styles.expenseInfo}>
-                  <Text style={styles.expenseDescription} numberOfLines={1}>
-                    {expense.description}
-                  </Text>
-                  <Text style={styles.expensePaidBy}>
-                    {t('trip.paidBy', { name: payerName(expense.paid_by) })}
-                  </Text>
-                </View>
-                <Text style={styles.expenseAmount}>
-                  {formatAmount(expense.amount_cents, expense.currency)}
+            <View style={styles.coverTop}>
+              <CoverButton
+                icon="chevron-back"
+                label={t('common.back')}
+                onPress={() => router.back()}
+              />
+              <CoverButton icon="ellipsis-horizontal" label={t('trip.manage')} onPress={goGroup} />
+            </View>
+            <View style={styles.coverBottom}>
+              <View style={styles.coverInfo}>
+                <Text style={styles.coverTitle} numberOfLines={2}>
+                  {trip.title}
                 </Text>
-              </Pressable>
-            ))}
-          </View>
+                {trip.destination ? (
+                  <View style={styles.coverRow}>
+                    <Ionicons name="location" size={14} color="#FFFFFF" />
+                    <Text style={styles.coverMeta} numberOfLines={1}>
+                      {trip.destination}
+                    </Text>
+                  </View>
+                ) : null}
+                {dates ? (
+                  <View style={styles.coverRow}>
+                    <Ionicons name="calendar-outline" size={14} color="#FFFFFF" />
+                    <Text style={styles.coverMeta}>{dates}</Text>
+                  </View>
+                ) : null}
+              </View>
+              {avatarMembers.length > 0 ? (
+                <Pressable
+                  onPress={goGroup}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('trip.manage')}
+                  hitSlop={6}
+                >
+                  <AvatarStack members={avatarMembers} size={32} />
+                </Pressable>
+              ) : null}
+            </View>
+          </CityImage>
         </View>
-      ) : null}
 
-      <View style={styles.spacer} />
-    </Screen>
+        <View style={styles.content}>
+          {/* Balance hero */}
+          <Card>
+            <View style={styles.balanceRow}>
+              <View style={styles.balanceInfo}>
+                <Text style={styles.balanceLabel}>
+                  {settled ? t('trip.settled') : positive ? t('trip.owed') : t('trip.owe')}
+                </Text>
+                <Text style={[styles.balanceAmount, { color: balanceTone }]}>
+                  {formatAmount(Math.abs(myBalance), currency)}
+                </Text>
+                <Text style={styles.balanceSub}>{balanceSub}</Text>
+              </View>
+              <Surface
+                width={48}
+                height={48}
+                radius={theme.radius.md}
+                borderWidth={0}
+                color={withAlpha(settled ? theme.colors.success : theme.colors.primary, 0.12)}
+                style={styles.balanceIcon}
+              >
+                <Ionicons
+                  name={settled ? 'checkmark-done' : 'git-compare-outline'}
+                  size={24}
+                  color={settled ? theme.colors.success : theme.colors.primary}
+                />
+              </Surface>
+            </View>
+            <View style={styles.balanceButton}>
+              <Button
+                label={settled ? t('trip.viewBalances') : t('trip.settle')}
+                icon="git-compare-outline"
+                variant={settled ? 'secondary' : 'primary'}
+                onPress={goGroup}
+              />
+            </View>
+          </Card>
+
+          {/* Quick actions */}
+          <View style={styles.quickActions}>
+            <QuickAction
+              icon="sparkles"
+              label={t('trip.copilot')}
+              onPress={() =>
+                router.push({ pathname: '/trips/[id]/copilot', params: { id: tripId } })
+              }
+            />
+            <QuickAction
+              icon="add-circle"
+              label={t('trip.expense')}
+              onPress={() =>
+                router.push({ pathname: '/trips/[id]/add-expense', params: { id: tripId } })
+              }
+            />
+            <QuickAction
+              icon="map"
+              label={t('trip.map')}
+              onPress={() => router.push({ pathname: '/trips/[id]/map', params: { id: tripId } })}
+            />
+            <QuickAction
+              icon="navigate"
+              label={t('trip.ar')}
+              onPress={() => router.push({ pathname: '/trips/[id]/ar', params: { id: tripId } })}
+            />
+          </View>
+
+          {/* Next event */}
+          {nextEvent && nextStatus?.kind === 'upcoming' ? (
+            <View>
+              <SectionTitle action={t('tabs.timeline')} onAction={() => goTab('timeline')}>
+                {t('trip.upcoming')}
+              </SectionTitle>
+              <View style={styles.blockBody}>
+                <Card onPress={() => goTab('timeline')}>
+                  <View style={styles.eventRow}>
+                    <Surface
+                      width={44}
+                      height={44}
+                      radius={theme.radius.md}
+                      borderWidth={0}
+                      color={withAlpha(theme.colors.primary, 0.12)}
+                      style={styles.eventIcon}
+                    >
+                      <Ionicons
+                        name={eventTypeIcon(nextEvent.type)}
+                        size={22}
+                        color={theme.colors.primary}
+                      />
+                    </Surface>
+                    <View style={styles.eventInfo}>
+                      <Text style={styles.eventTitle} numberOfLines={1}>
+                        {nextEvent.title}
+                      </Text>
+                      {nextEvent.notes ? (
+                        <Text style={styles.eventNotes} numberOfLines={1}>
+                          {nextEvent.notes}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Badge
+                      label={formatCountdown(nextStatus, t)}
+                      tone="primary"
+                      icon="time-outline"
+                    />
+                  </View>
+                </Card>
+              </View>
+            </View>
+          ) : null}
+
+          {/* Recent expenses */}
+          {recent.length > 0 ? (
+            <View>
+              <SectionTitle action={t('trip.viewAll')} onAction={() => goTab('expenses')}>
+                {t('trip.recent')}
+              </SectionTitle>
+              <View style={styles.recentBody}>
+                {recent.map((expense, index) => (
+                  <Pressable
+                    key={expense.id}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/trips/[id]/expenses/[expenseId]',
+                        params: { id: tripId, expenseId: expense.id },
+                      })
+                    }
+                    style={[
+                      styles.expenseRow,
+                      index === recent.length - 1 && styles.expenseRowLast,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${expense.description}, ${formatAmount(expense.amount_cents, expense.currency)}`}
+                  >
+                    <Surface
+                      width={40}
+                      height={40}
+                      radius={theme.radius.md}
+                      borderWidth={0}
+                      color={withAlpha(theme.colors.muted, 0.12)}
+                      style={styles.expenseIcon}
+                    >
+                      <Ionicons
+                        name={CATEGORY_ICON[expense.category as ExpenseCategory] ?? 'pricetag'}
+                        size={19}
+                        color={theme.colors.muted}
+                      />
+                    </Surface>
+                    <View style={styles.expenseInfo}>
+                      <Text style={styles.expenseDescription} numberOfLines={1}>
+                        {expense.description}
+                      </Text>
+                      <Text style={styles.expensePaidBy}>
+                        {t('trip.paidBy', { name: payerName(expense.paid_by) })}
+                      </Text>
+                    </View>
+                    <Text style={styles.expenseAmount}>
+                      {formatAmount(expense.amount_cents, expense.currency)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </View>
+      </ScrollView>
+    </View>
   )
 }
 
-const styles = StyleSheet.create((theme) => ({
+const styles = StyleSheet.create((theme, rt) => ({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -405,19 +454,41 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.md,
     color: theme.colors.muted,
   },
-  coverScrim: {
+  scroll: {
+    paddingBottom: rt.insets.bottom + FLOATING_TAB_BAR_CLEARANCE,
+  },
+  fade: {
     position: 'absolute',
+    top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    height: '60%',
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
   },
-  coverOverlay: {
+  coverTop: {
     position: 'absolute',
-    left: theme.gap(3.5),
-    right: theme.gap(3.5),
-    bottom: theme.gap(3),
+    top: rt.insets.top + theme.gap(2),
+    left: theme.gap(6),
+    right: theme.gap(6),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  coverButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+  },
+  coverButtonPressed: {
+    opacity: 0.8,
+  },
+  coverBottom: {
+    position: 'absolute',
+    left: theme.gap(6),
+    right: theme.gap(6),
+    bottom: theme.gap(6),
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
@@ -425,42 +496,37 @@ const styles = StyleSheet.create((theme) => ({
   },
   coverInfo: {
     flexShrink: 1,
-    gap: theme.gap(0.75),
+    gap: theme.gap(1),
+  },
+  coverTitle: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.xxl,
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 10,
   },
   coverRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(1.25),
   },
-  coverDestination: {
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
+  coverMeta: {
+    flexShrink: 1,
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
     fontSize: theme.fontSize.sm,
-    color: '#FFFFFF',
+    color: 'rgba(255, 255, 255, 0.92)',
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
   },
-  coverDates: {
-    fontFamily: theme.fonts.sans.regular,
-    fontSize: theme.fontSize.sm,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
-  },
-  manage: {
-    alignItems: 'center',
-    gap: theme.gap(1),
-  },
-  manageLabel: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
-    fontSize: theme.fontSize.xs,
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
+  content: {
+    paddingHorizontal: theme.gap(6),
+    paddingTop: theme.gap(4),
+    gap: theme.gap(4),
   },
   balanceRow: {
     flexDirection: 'row',
@@ -574,8 +640,5 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '700',
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
-  },
-  spacer: {
-    height: FLOATING_TAB_BAR_CLEARANCE,
   },
 }))

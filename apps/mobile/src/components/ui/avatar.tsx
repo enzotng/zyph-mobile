@@ -1,3 +1,4 @@
+import { Image } from 'expo-image'
 import { Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -16,9 +17,11 @@ type AvatarProps = {
   size?: number
   tint?: string
   ring?: boolean
+  // Optional profile photo; falls back to the coloured initial while loading or if absent.
+  imageUrl?: string | null
 }
 
-export function Avatar({ name, initial, size = 36, tint, ring = false }: AvatarProps) {
+export function Avatar({ name, initial, size = 36, tint, ring = false, imageUrl }: AvatarProps) {
   const { theme } = useUnistyles()
 
   const resolvedInitial = initial?.trim() ? initial : initialOf(name)
@@ -54,6 +57,14 @@ export function Avatar({ name, initial, size = 36, tint, ring = false }: AvatarP
       >
         {resolvedInitial}
       </Text>
+      {imageUrl ? (
+        <Image
+          source={{ uri: imageUrl }}
+          style={[styles.image, { borderRadius: size }]}
+          contentFit="cover"
+          transition={150}
+        />
+      ) : null}
     </View>
   )
 }
@@ -65,6 +76,7 @@ type AvatarStackMember = {
   name?: string
   initial?: string
   tint?: string
+  imageUrl?: string | null
 }
 
 type AvatarStackProps = {
@@ -84,7 +96,14 @@ export function AvatarStack({ members, size = 30, max = 4 }: AvatarStackProps) {
     <View style={styles.stack}>
       {visible.map((member, index) => (
         <View key={member.id ?? index} style={{ marginLeft: index === 0 ? 0 : -overlap }}>
-          <Avatar name={member.name} initial={member.initial} tint={member.tint} size={size} ring />
+          <Avatar
+            name={member.name}
+            initial={member.initial}
+            tint={member.tint}
+            imageUrl={member.imageUrl}
+            size={size}
+            ring
+          />
         </View>
       ))}
       {overflow > 0 ? (
@@ -114,6 +133,14 @@ const styles = StyleSheet.create((theme) => ({
   avatar: {
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  image: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   initial: {
     color: theme.colors.primaryForeground,

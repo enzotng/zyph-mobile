@@ -283,6 +283,21 @@ export const en = {
   offline: {
     banner: 'Offline - showing saved data',
   },
+  home: {
+    greeting: 'Hello, {{name}}',
+    greetingFallback: 'traveller',
+    tripCountOne: '{{count}} trip',
+    tripCountOther: '{{count}} trips',
+    upcomingCount: '{{count}} upcoming',
+    sectionUpcoming: 'Upcoming',
+    seeAll: 'See all',
+    nextDeparture: 'Next departure',
+    inProgress: 'In progress',
+    countdownDay: 'D-{{days}}',
+    today: 'Today',
+    noUpcomingTitle: 'No upcoming trip',
+    noUpcomingBody: 'Time to plan your next adventure.',
+  },
   ar: {
     cameraNeeded: 'AR needs camera access to overlay markers on the world.',
     grantAccess: 'Grant access',
