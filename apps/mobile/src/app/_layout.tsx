@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { useFonts } from 'expo-font'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { useEffect } from 'react'
@@ -7,11 +7,14 @@ import { View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { ErrorBoundary } from '@/components/error-boundary'
+import { OfflineBanner } from '@/components/offline-banner'
 import { Spinner } from '@/components/ui'
 import { AuthProvider, useAuth } from '@/features/auth'
 import '@/lib/i18n'
+import '@/lib/online-manager'
 import { hasSeenOnboarding } from '@/lib/preferences'
 import { queryClient } from '@/lib/query-client'
+import { mmkvQueryPersister } from '@/lib/query-persister'
 
 function useProtectedRoute(session: Session | null, isLoading: boolean) {
   const segments = useSegments()
@@ -70,11 +73,20 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister: mmkvQueryPersister,
+          // Drop cached data older than 7 days; bump the buster to invalidate on a shape change.
+          maxAge: 1000 * 60 * 60 * 24 * 7,
+          buster: 'v1',
+        }}
+      >
         <AuthProvider>
           <RootNavigator />
+          <OfflineBanner />
         </AuthProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </ErrorBoundary>
   )
 }
