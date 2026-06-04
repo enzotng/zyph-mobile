@@ -158,6 +158,12 @@ export const fr: Translations = {
       hasAccount: 'Tu as déjà un compte ?',
       errorTitle: 'Inscription impossible',
     },
+    google: {
+      continue: 'Continuer avec Google',
+      signingIn: 'Connexion…',
+      errorTitle: 'Connexion Google impossible',
+    },
+    orSeparator: 'ou',
     fields: {
       email: 'E-mail',
       emailPlaceholder: 'toi@exemple.com',
