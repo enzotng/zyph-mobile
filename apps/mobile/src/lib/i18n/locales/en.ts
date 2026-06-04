@@ -156,6 +156,12 @@ export const en = {
       hasAccount: 'Already have an account?',
       errorTitle: 'Sign-up failed',
     },
+    google: {
+      continue: 'Continue with Google',
+      signingIn: 'Signing in…',
+      errorTitle: 'Google sign-in failed',
+    },
+    orSeparator: 'or',
     fields: {
       email: 'Email',
       emailPlaceholder: 'you@example.com',

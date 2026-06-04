@@ -10,6 +10,8 @@ export const supabase = {
     getSession: jest.fn(),
     getUser: jest.fn(),
     signInWithPassword: jest.fn(),
+    signInWithOAuth: jest.fn(),
+    exchangeCodeForSession: jest.fn(),
     signUp: jest.fn(),
     signOut: jest.fn(),
     onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
