@@ -6,7 +6,7 @@ import { ZyphMark } from '@/components/brand/zyph-mark'
 import { Button } from '@/components/button'
 import { withAlpha } from '@/lib/color'
 
-import { Squircle } from './squircle'
+import { Surface } from './surface'
 
 type EmptyStateProps = {
   icon: keyof typeof Ionicons.glyphMap
@@ -21,7 +21,7 @@ export function EmptyState({ icon, title, body, cta, onCta }: EmptyStateProps) {
 
   return (
     <View style={styles.container}>
-      <Squircle
+      <Surface
         style={styles.iconArea}
         color={withAlpha(theme.colors.primary, 0.1)}
         borderWidth={0}
@@ -31,7 +31,7 @@ export function EmptyState({ icon, title, body, cta, onCta }: EmptyStateProps) {
           <ZyphMark size={56} color={withAlpha(theme.colors.primary, 0.14)} />
         </View>
         <Ionicons name={icon} size={30} color={theme.colors.primary} />
-      </Squircle>
+      </Surface>
 
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.body}>{body}</Text>

@@ -2,7 +2,7 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import { Platform, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Squircle } from '@/components/ui/squircle'
+import { Surface } from '@/components/ui/surface'
 
 type DateFieldProps = {
   label: string
@@ -80,7 +80,7 @@ export function DateField({
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <Pressable onPress={openAndroid} accessibilityRole="button">
-        <Squircle
+        <Surface
           radius={theme.radius.md}
           color={theme.colors.card}
           borderColor={error ? theme.colors.destructive : theme.colors.border}
@@ -89,7 +89,7 @@ export function DateField({
           <Text style={styles.value}>
             {mode === 'date' ? value.toLocaleDateString() : value.toLocaleString()}
           </Text>
-        </Squircle>
+        </Surface>
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>

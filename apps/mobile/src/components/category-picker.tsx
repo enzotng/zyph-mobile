@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Pressable, ScrollView, Text } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Squircle } from '@/components/ui/squircle'
+import { Surface } from '@/components/ui/surface'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/features/expenses'
 
 type CategoryPickerProps = {
@@ -23,14 +23,14 @@ export function CategoryPicker({ label, value, onChange }: CategoryPickerProps) 
         accessibilityRole="radio"
         accessibilityState={{ selected }}
       >
-        <Squircle
+        <Surface
           radius={theme.radius.md}
           color={selected ? theme.colors.primary : theme.colors.card}
           borderColor={selected ? theme.colors.primary : theme.colors.border}
           style={styles.chip}
         >
           <Text style={[styles.chipText, selected ? styles.chipTextActive : null]}>{text}</Text>
-        </Squircle>
+        </Surface>
       </Pressable>
     )
   }

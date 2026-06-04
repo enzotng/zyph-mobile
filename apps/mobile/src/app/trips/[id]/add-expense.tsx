@@ -13,7 +13,7 @@ import { CurrencySelect } from '@/components/currency-select'
 import { ReceiptScanner } from '@/components/receipt-scanner'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Spinner, Squircle } from '@/components/ui'
+import { Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
@@ -237,7 +237,7 @@ export default function AddExpenseScreen() {
         accessibilityLabel={t('expenseForm.scanReceipt')}
         style={styles.scanBtn}
       >
-        <Squircle
+        <Surface
           color="transparent"
           borderColor={theme.colors.border}
           borderWidth={1}
@@ -246,7 +246,7 @@ export default function AddExpenseScreen() {
         >
           <Ionicons name="scan-outline" size={20} color={theme.colors.primary} />
           <Text style={styles.scanLabel}>{t('expenseForm.scanReceipt')}</Text>
-        </Squircle>
+        </Surface>
       </Pressable>
 
       <ReceiptScanner
@@ -324,7 +324,7 @@ export default function AddExpenseScreen() {
 
             {included ? (
               <View style={styles.memberRight}>
-                <Squircle
+                <Surface
                   color="transparent"
                   borderColor={theme.colors.border}
                   borderWidth={1}
@@ -348,7 +348,7 @@ export default function AddExpenseScreen() {
                   >
                     <Ionicons name="add" size={18} color={theme.colors.foreground} />
                   </Pressable>
-                </Squircle>
+                </Surface>
                 <Text style={styles.share}>
                   {share === undefined ? '-' : formatAmount(share, tripCurrency)}
                 </Text>

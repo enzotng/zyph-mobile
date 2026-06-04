@@ -9,7 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Squircle } from '@/components/ui'
+import { Surface } from '@/components/ui'
 import { type JoinTripValues, joinTripSchema, useJoinTrip } from '@/features/group'
 import { withAlpha } from '@/lib/color'
 
@@ -49,7 +49,7 @@ export default function JoinTripScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Squircle
+          <Surface
             width={64}
             height={64}
             radius={theme.radius.lg}
@@ -58,7 +58,7 @@ export default function JoinTripScreen() {
             style={styles.hero}
           >
             <Ionicons name="enter-outline" size={32} color={theme.colors.primary} />
-          </Squircle>
+          </Surface>
 
           <Text style={styles.title}>{t('joinTrip.heading')}</Text>
           <Text style={styles.subtitle}>{t('joinTrip.subtitle')}</Text>

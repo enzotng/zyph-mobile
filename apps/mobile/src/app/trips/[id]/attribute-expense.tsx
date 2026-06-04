@@ -8,7 +8,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { BottomSheet, Spinner, Squircle } from '@/components/ui'
+import { BottomSheet, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   amountToCents,
@@ -408,7 +408,7 @@ function AttributionEditor({
         />
       </View>
 
-      <Squircle
+      <Surface
         color={theme.colors.card}
         borderWidth={0}
         radius={theme.radius.lg}
@@ -425,7 +425,7 @@ function AttributionEditor({
             {delta !== 0 ? `  (${delta > 0 ? '+' : ''}${(delta / 100).toFixed(2)})` : ''}
           </Text>
         </View>
-      </Squircle>
+      </Surface>
 
       <ScrollView
         style={styles.list}
@@ -438,7 +438,7 @@ function AttributionEditor({
           const isUnassigned = set.size === 0
           const lineCents = amountToCents(draft.amount)
           return (
-            <Squircle
+            <Surface
               key={draft.id}
               color={theme.colors.card}
               borderColor={isUnassigned ? theme.colors.warning : theme.colors.border}
@@ -509,7 +509,7 @@ function AttributionEditor({
                   })}
                 </Text>
               ) : null}
-            </Squircle>
+            </Surface>
           )
         })}
 
@@ -558,7 +558,7 @@ function AttributionEditor({
                 ? t('common.you')
                 : (member.display_name ?? t('common.member'))
             return (
-              <Squircle
+              <Surface
                 key={member.id}
                 color={theme.colors.card}
                 borderColor={theme.colors.border}
@@ -568,7 +568,7 @@ function AttributionEditor({
               >
                 <Text style={styles.summaryName}>{name}</Text>
                 <Text style={styles.summaryValue}>{formatAmount(cents, tripCurrency)}</Text>
-              </Squircle>
+              </Surface>
             )
           })}
         </ScrollView>

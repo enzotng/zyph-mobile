@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Squircle } from '@/components/ui'
+import { Surface } from '@/components/ui'
 import { EVENT_TYPES, type EventType, eventTypeIcon } from '@/features/timeline'
 import { withAlpha } from '@/lib/color'
 
@@ -33,7 +33,7 @@ export function EventTypePicker({ label, value, onChange }: EventTypePickerProps
               accessibilityState={{ selected }}
               style={({ pressed }) => (pressed ? styles.pressed : undefined)}
             >
-              <Squircle
+              <Surface
                 radius={theme.radius.md}
                 color={selected ? withAlpha(theme.colors.primary, 0.12) : theme.colors.card}
                 borderColor={selected ? theme.colors.primary : theme.colors.border}
@@ -48,7 +48,7 @@ export function EventTypePicker({ label, value, onChange }: EventTypePickerProps
                 <Text style={[styles.chipLabel, selected && styles.chipLabelActive]}>
                   {t(`events.types.${type}`)}
                 </Text>
-              </Squircle>
+              </Surface>
             </Pressable>
           )
         })}

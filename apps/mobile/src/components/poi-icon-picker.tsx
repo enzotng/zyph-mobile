@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Squircle } from '@/components/ui/squircle'
+import { Surface } from '@/components/ui/surface'
 import { POI_ICONS, type PoiIcon } from '@/features/wayfinder'
 
 const IONICON_MAP: Record<PoiIcon, keyof typeof Ionicons.glyphMap> = {
@@ -42,7 +42,7 @@ export function PoiIconPicker({ label, value, onChange }: Props) {
               accessibilityRole="button"
               accessibilityState={{ selected }}
             >
-              <Squircle
+              <Surface
                 radius={theme.radius.md}
                 color={selected ? theme.colors.primary : theme.colors.card}
                 borderColor={selected ? theme.colors.primary : theme.colors.border}
@@ -53,7 +53,7 @@ export function PoiIconPicker({ label, value, onChange }: Props) {
                   size={20}
                   color={selected ? theme.colors.primaryForeground : theme.colors.foreground}
                 />
-              </Squircle>
+              </Surface>
             </Pressable>
           )
         })}

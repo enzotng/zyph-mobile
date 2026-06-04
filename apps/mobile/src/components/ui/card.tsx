@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Pressable, type StyleProp, View, type ViewStyle } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
-import { Squircle } from './squircle'
+import { Surface } from './surface'
 
 type CardProps = {
   children: ReactNode
@@ -21,12 +21,12 @@ export function Card({ children, onPress, padding, style }: CardProps) {
         accessibilityRole="button"
         style={({ pressed }) => (pressed ? styles.pressed : undefined)}
       >
-        <Squircle style={style}>{body}</Squircle>
+        <Surface style={style}>{body}</Surface>
       </Pressable>
     )
   }
 
-  return <Squircle style={style}>{body}</Squircle>
+  return <Surface style={style}>{body}</Surface>
 }
 
 const styles = StyleSheet.create((theme) => ({

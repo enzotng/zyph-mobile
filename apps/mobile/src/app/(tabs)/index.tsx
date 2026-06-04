@@ -16,7 +16,7 @@ import {
   CityImage,
   EmptyState,
   Spinner,
-  Squircle,
+  Surface,
 } from '@/components/ui'
 import { isoDayToDate, type TripCard, useTrips } from '@/features/trips'
 import { formatAmount } from '@/lib/money'
@@ -156,7 +156,7 @@ function TripListCard({ trip, onPress }: { trip: TripCard; onPress: () => void }
       accessibilityRole="button"
       accessibilityLabel={trip.title}
     >
-      <Squircle radius={theme.radius.lg} borderWidth={0} style={styles.card}>
+      <Surface radius={theme.radius.lg} borderWidth={0} style={styles.card}>
         <CityImage
           uri={trip.cover_photo_url}
           seed={trip.destination ?? trip.title}
@@ -193,7 +193,7 @@ function TripListCard({ trip, onPress }: { trip: TripCard; onPress: () => void }
           )}
           <Badge label={balanceLabel} tone={tone} />
         </View>
-      </Squircle>
+      </Surface>
     </Pressable>
   )
 }

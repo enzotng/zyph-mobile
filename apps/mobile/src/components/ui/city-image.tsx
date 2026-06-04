@@ -1,30 +1,9 @@
-import {
-  Canvas,
-  Fill,
-  Group,
-  LinearGradient,
-  Rect,
-  Skia,
-  Image as SkiaImage,
-  useImage,
-  vec,
-} from '@shopify/react-native-skia'
+import { Image } from 'expo-image'
 import type { ReactNode } from 'react'
-import { useEffect, useMemo, useState } from 'react'
-import {
-  type LayoutChangeEvent,
-  StyleSheet as RNStyleSheet,
-  type StyleProp,
-  View,
-  type ViewStyle,
-} from 'react-native'
-import { cancelAnimation, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
-import { useUnistyles } from 'react-native-unistyles'
-
-import { type CornerRadii, squirclePoints } from '@/lib/squircle'
+import { StyleSheet as RNStyleSheet, type StyleProp, View, type ViewStyle } from 'react-native'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 // Vibrant indigo/sky/teal family for the colour cover when no photo is available.
-// (No dark slates - they blended into the dark background.)
 const FALLBACK_TINTS = [
   '#4F46E5',
   '#6366F1',
@@ -57,16 +36,16 @@ type CityImageProps = {
   radius?: number
   // 'top' rounds only the top corners (e.g. a card cover); 'all' is the default.
   corners?: 'all' | 'top'
-  // Dark bottom gradient so white overlay text stays legible over a photo.
+  // Dark bottom overlay so white overlay text stays legible over a photo.
   scrim?: boolean
   // Overlay content (title, avatars, badges) positioned by the caller.
   children?: ReactNode
   style?: StyleProp<ViewStyle>
 }
 
-// The photo, fallback tint, loading shimmer and scrim are all drawn inside one Skia
-// Canvas clipped to a superellipse path - so the cover matches the Card's squircle
-// exactly (no RN borderRadius vs Skia mismatch) and its bottom sits flush with content.
+// The cover is a plain rounded View: the deterministic tint is the background, the photo
+// (expo-image) fills it with corners clipped via overflow, and a dark bottom overlay keeps
+// white text legible. No Skia.
 export function CityImage({
   uri,
   seed,
@@ -79,68 +58,41 @@ export function CityImage({
 }: CityImageProps) {
   const { theme } = useUnistyles()
   const cornerRadius = radius ?? theme.radius.lg
-  const [width, setWidth] = useState(0)
-  const image = useImage(uri ?? null)
-  const isLoading = Boolean(uri) && image === null
-  const shimmer = useSharedValue(0.16)
-
-  useEffect(() => {
-    if (isLoading) {
-      shimmer.value = withRepeat(withTiming(0.4, { duration: 850 }), -1, true)
-    } else {
-      cancelAnimation(shimmer)
-    }
-  }, [isLoading, shimmer])
-
-  const clip = useMemo(() => {
-    if (width === 0) {
-      return null
-    }
-    const spec: number | Partial<CornerRadii> =
-      corners === 'top'
-        ? { topLeft: cornerRadius, topRight: cornerRadius, bottomRight: 0, bottomLeft: 0 }
-        : cornerRadius
-    const points = squirclePoints(width, height, spec, 8, 0)
-    const path = Skia.Path.Make()
-    points.forEach((point, index) => {
-      if (index === 0) {
-        path.moveTo(point.x, point.y)
-      } else {
-        path.lineTo(point.x, point.y)
-      }
-    })
-    path.close()
-    return path
-  }, [width, height, cornerRadius, corners])
-
-  function onLayout(event: LayoutChangeEvent) {
-    setWidth(event.nativeEvent.layout.width)
-  }
+  const radiusStyle: ViewStyle =
+    corners === 'top'
+      ? { borderTopLeftRadius: cornerRadius, borderTopRightRadius: cornerRadius }
+      : { borderRadius: cornerRadius }
 
   return (
-    <View onLayout={onLayout} style={[{ height }, style]}>
-      {clip ? (
-        <Canvas style={RNStyleSheet.absoluteFill}>
-          <Group clip={clip}>
-            <Fill color={coverTint(seed)} />
-            {image ? (
-              <SkiaImage image={image} x={0} y={0} width={width} height={height} fit="cover" />
-            ) : null}
-            {isLoading ? <Fill color="#FFFFFF" opacity={shimmer} /> : null}
-            {scrim && image ? (
-              <Rect x={0} y={0} width={width} height={height}>
-                <LinearGradient
-                  start={vec(0, 0)}
-                  end={vec(0, height)}
-                  positions={[0.35, 1]}
-                  colors={['rgba(15, 23, 42, 0)', 'rgba(15, 23, 42, 0.82)']}
-                />
-              </Rect>
-            ) : null}
-          </Group>
-        </Canvas>
+    <View
+      style={[styles.container, radiusStyle, { height, backgroundColor: coverTint(seed) }, style]}
+    >
+      {uri ? (
+        <Image
+          source={{ uri }}
+          style={RNStyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={200}
+        />
       ) : null}
+      {scrim && uri ? <View style={styles.scrim} pointerEvents="none" /> : null}
       {children}
     </View>
   )
 }
+
+const styles = StyleSheet.create(() => ({
+  container: {
+    overflow: 'hidden',
+    // Native iOS soft corners (no Skia) to match the rounded cards.
+    borderCurve: 'continuous',
+  },
+  scrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: '35%',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+  },
+}))

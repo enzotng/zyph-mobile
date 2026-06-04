@@ -12,7 +12,7 @@ import { CategoryPicker } from '@/components/category-picker'
 import { CurrencySelect } from '@/components/currency-select'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Spinner, Squircle } from '@/components/ui'
+import { Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
@@ -293,7 +293,7 @@ export default function EditExpenseScreen() {
 
             {included ? (
               <View style={styles.memberRight}>
-                <Squircle
+                <Surface
                   color="transparent"
                   borderColor={theme.colors.border}
                   borderWidth={1}
@@ -317,7 +317,7 @@ export default function EditExpenseScreen() {
                   >
                     <Ionicons name="add" size={18} color={theme.colors.foreground} />
                   </Pressable>
-                </Squircle>
+                </Surface>
                 <Text style={styles.share}>
                   {share === undefined ? '-' : formatAmount(share, tripCurrency)}
                 </Text>

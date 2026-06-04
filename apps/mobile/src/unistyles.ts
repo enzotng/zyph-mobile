@@ -3,10 +3,11 @@ import { StyleSheet } from 'react-native-unistyles'
 import { applyThemePreference, getThemePreference } from './lib/preferences'
 
 // Spacing helper + radius/typography scales shared across themes.
-// Radii follow the v2 visual direction (softer corners than v1).
+// Radius scale aligned to platform norms (controls ~sm, inputs ~md, cards ~lg, sheets ~xl);
+// shared primitives pair these with borderCurve 'continuous' for native iOS soft corners.
 const shared = {
   gap: (v: number) => v * 4,
-  radius: { sm: 12, md: 20, lg: 32, xl: 40, full: 9999 },
+  radius: { sm: 10, md: 14, lg: 20, xl: 28, full: 9999 },
   fontSize: { xs: 12, sm: 14, md: 16, lg: 20, xl: 28, xxl: 34 },
   // Brand type: Space Grotesk for display/titles/numbers, Plus Jakarta Sans for body.
   // Names match the keys registered via useFonts in app/_layout.tsx (vendored .ttf).

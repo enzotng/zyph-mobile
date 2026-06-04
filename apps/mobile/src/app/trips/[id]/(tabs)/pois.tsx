@@ -6,7 +6,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { poiIconName } from '@/components/poi-icon-picker'
 import { Screen } from '@/components/screen'
-import { EmptyState, ListRow, SectionTitle, Spinner, Squircle } from '@/components/ui'
+import { EmptyState, ListRow, SectionTitle, Spinner, Surface } from '@/components/ui'
 import { useTrip } from '@/features/trips'
 import { useDeletePoi, usePois } from '@/features/wayfinder'
 import { withAlpha } from '@/lib/color'
@@ -63,7 +63,7 @@ export default function PoisScreen() {
       accessibilityRole="button"
       accessibilityLabel={t('pois.openMap')}
     >
-      <Squircle
+      <Surface
         color={withAlpha(theme.colors.primary, 0.1)}
         borderWidth={0}
         radius={theme.radius.lg}
@@ -71,7 +71,7 @@ export default function PoisScreen() {
       >
         <Ionicons name="map" size={32} color={theme.colors.primary} />
         <Text style={styles.mapCaption}>{t('pois.mapCaption')}</Text>
-      </Squircle>
+      </Surface>
     </Pressable>
   )
 
@@ -81,7 +81,7 @@ export default function PoisScreen() {
       accessibilityRole="button"
       accessibilityLabel={t('pois.openAr')}
     >
-      <Squircle
+      <Surface
         color={theme.colors.primary}
         borderWidth={0}
         radius={theme.radius.lg}
@@ -95,7 +95,7 @@ export default function PoisScreen() {
           <Text style={styles.arSubtitle}>{t('pois.arSubtitle')}</Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-      </Squircle>
+      </Surface>
     </Pressable>
   )
 

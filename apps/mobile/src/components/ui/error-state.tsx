@@ -5,7 +5,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { withAlpha } from '@/lib/color'
 
-import { Squircle } from './squircle'
+import { Surface } from './surface'
 
 type ErrorStateProps = {
   title: string
@@ -27,14 +27,14 @@ export function ErrorState({
 
   return (
     <View style={styles.container}>
-      <Squircle
+      <Surface
         style={styles.iconArea}
         color={withAlpha(theme.colors.destructive, 0.1)}
         borderWidth={0}
         radius={theme.radius.lg}
       >
         <Ionicons name={icon} size={30} color={theme.colors.destructive} />
-      </Squircle>
+      </Surface>
 
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.body}>{body}</Text>

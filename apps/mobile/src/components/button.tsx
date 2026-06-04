@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { type GestureResponderEvent, Pressable, Text } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Squircle } from '@/components/ui/squircle'
+import { Surface } from '@/components/ui/surface'
 import { withAlpha } from '@/lib/color'
 
 type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost'
@@ -69,7 +69,7 @@ export function Button({
         disabled && styles.disabled,
       ]}
     >
-      <Squircle
+      <Surface
         radius={theme.radius.md}
         color={palette.fill}
         borderColor={palette.border}
@@ -78,7 +78,7 @@ export function Button({
       >
         {icon ? <Ionicons name={icon} size={size === 'sm' ? 16 : 18} color={palette.text} /> : null}
         <Text style={[styles.label(size), { color: palette.text }]}>{label}</Text>
-      </Squircle>
+      </Surface>
     </Pressable>
   )
 }

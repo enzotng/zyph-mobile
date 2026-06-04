@@ -9,7 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Chip, EmptyState, Squircle } from '@/components/ui'
+import { Chip, EmptyState, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   EXPENSE_CATEGORIES,
@@ -98,7 +98,7 @@ export default function TripExpensesScreen() {
         accessibilityRole="button"
         accessibilityLabel={`${item.description}, ${formatAmount(item.amount_cents, item.currency)}`}
       >
-        <Squircle
+        <Surface
           width={40}
           height={40}
           radius={theme.radius.md}
@@ -111,7 +111,7 @@ export default function TripExpensesScreen() {
             size={19}
             color={theme.colors.muted}
           />
-        </Squircle>
+        </Surface>
         <View style={styles.rowInfo}>
           <Text style={styles.rowDescription} numberOfLines={1}>
             {item.description}
@@ -163,7 +163,7 @@ export default function TripExpensesScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('trip.viewBalances')}
               >
-                <Squircle
+                <Surface
                   color={theme.colors.card}
                   borderColor={theme.colors.border}
                   borderWidth={1}
@@ -171,7 +171,7 @@ export default function TripExpensesScreen() {
                   style={styles.strip}
                 >
                   <View style={styles.stripLeft}>
-                    <Squircle
+                    <Surface
                       width={36}
                       height={36}
                       radius={theme.radius.md}
@@ -180,7 +180,7 @@ export default function TripExpensesScreen() {
                       style={styles.stripTile}
                     >
                       <Ionicons name="git-compare-outline" size={19} color={theme.colors.primary} />
-                    </Squircle>
+                    </Surface>
                     <View>
                       <Text style={styles.stripLabel}>{balanceLabel}</Text>
                       <Text style={[styles.stripAmount, { color: balanceColor }]}>
@@ -192,7 +192,7 @@ export default function TripExpensesScreen() {
                     <Text style={styles.settleUp}>{t('expenses.settleUp')}</Text>
                     <Ionicons name="chevron-forward" size={18} color={theme.colors.primary} />
                   </View>
-                </Squircle>
+                </Surface>
               </Pressable>
 
               <TextField

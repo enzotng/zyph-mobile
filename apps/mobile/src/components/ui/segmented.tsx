@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Squircle } from './squircle'
+import { Surface } from './surface'
 
 type SegmentedOption = {
   label: string
@@ -19,7 +19,7 @@ export function Segmented({ options, value, onChange }: SegmentedProps) {
   const optionRadius = theme.radius.md - 4
 
   return (
-    <Squircle radius={theme.radius.md} style={styles.container}>
+    <Surface radius={theme.radius.md} style={styles.container}>
       {options.map((option) => {
         const selected = option.value === value
         const label = (
@@ -38,21 +38,21 @@ export function Segmented({ options, value, onChange }: SegmentedProps) {
             accessibilityState={{ selected }}
           >
             {selected ? (
-              <Squircle
+              <Surface
                 radius={optionRadius}
                 color={theme.colors.background}
                 borderWidth={0}
                 style={styles.option}
               >
                 {label}
-              </Squircle>
+              </Surface>
             ) : (
               <View style={styles.option}>{label}</View>
             )}
           </Pressable>
         )
       })}
-    </Squircle>
+    </Surface>
   )
 }
 

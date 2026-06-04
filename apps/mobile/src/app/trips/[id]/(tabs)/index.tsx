@@ -16,7 +16,7 @@ import {
   QuickAction,
   SectionTitle,
   Spinner,
-  Squircle,
+  Surface,
 } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
@@ -247,7 +247,7 @@ export default function TripDashboardScreen() {
             </Text>
             <Text style={styles.balanceSub}>{balanceSub}</Text>
           </View>
-          <Squircle
+          <Surface
             width={48}
             height={48}
             radius={theme.radius.md}
@@ -260,7 +260,7 @@ export default function TripDashboardScreen() {
               size={24}
               color={settled ? theme.colors.success : theme.colors.primary}
             />
-          </Squircle>
+          </Surface>
         </View>
         <View style={styles.balanceButton}>
           <Button
@@ -307,7 +307,7 @@ export default function TripDashboardScreen() {
           <View style={styles.blockBody}>
             <Card onPress={() => goTab('timeline')}>
               <View style={styles.eventRow}>
-                <Squircle
+                <Surface
                   width={44}
                   height={44}
                   radius={theme.radius.md}
@@ -320,7 +320,7 @@ export default function TripDashboardScreen() {
                     size={22}
                     color={theme.colors.primary}
                   />
-                </Squircle>
+                </Surface>
                 <View style={styles.eventInfo}>
                   <Text style={styles.eventTitle} numberOfLines={1}>
                     {nextEvent.title}
@@ -358,7 +358,7 @@ export default function TripDashboardScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`${expense.description}, ${formatAmount(expense.amount_cents, expense.currency)}`}
               >
-                <Squircle
+                <Surface
                   width={40}
                   height={40}
                   radius={theme.radius.md}
@@ -371,7 +371,7 @@ export default function TripDashboardScreen() {
                     size={19}
                     color={theme.colors.muted}
                   />
-                </Squircle>
+                </Surface>
                 <View style={styles.expenseInfo}>
                   <Text style={styles.expenseDescription} numberOfLines={1}>
                     {expense.description}

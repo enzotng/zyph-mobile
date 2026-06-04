@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { TextField } from '@/components/text-field'
-import { Squircle } from '@/components/ui'
+import { Surface } from '@/components/ui'
 import { type PlaceResult, usePlaceSearch } from '@/features/places'
 
 type AddressSearchFieldProps = {
@@ -48,7 +48,7 @@ export function AddressSearchField({ label, onSelect }: AddressSearchFieldProps)
         autoCapitalize="none"
       />
       {open ? (
-        <Squircle
+        <Surface
           radius={theme.radius.md}
           color={theme.colors.card}
           borderColor={theme.colors.border}
@@ -82,7 +82,7 @@ export function AddressSearchField({ label, onSelect }: AddressSearchFieldProps)
               <Text style={styles.muted}>{t('places.noResults')}</Text>
             </View>
           )}
-        </Squircle>
+        </Surface>
       ) : null}
     </View>
   )

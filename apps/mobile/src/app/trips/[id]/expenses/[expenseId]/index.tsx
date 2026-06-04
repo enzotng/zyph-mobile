@@ -7,7 +7,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { Avatar, Badge, Card, SectionTitle, Spinner, Squircle } from '@/components/ui'
+import { Avatar, Badge, Card, SectionTitle, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type ExpenseCategory,
@@ -133,7 +133,7 @@ export default function ExpenseDetailScreen() {
     >
       <Card>
         <View style={styles.headRow}>
-          <Squircle
+          <Surface
             width={46}
             height={46}
             radius={theme.radius.md}
@@ -146,7 +146,7 @@ export default function ExpenseDetailScreen() {
               size={23}
               color={theme.colors.primary}
             />
-          </Squircle>
+          </Surface>
           <View style={styles.headInfo}>
             <Text style={styles.description} numberOfLines={2}>
               {expense.description}

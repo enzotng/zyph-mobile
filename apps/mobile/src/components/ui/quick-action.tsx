@@ -4,7 +4,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { withAlpha } from '@/lib/color'
 
-import { Squircle } from './squircle'
+import { Surface } from './surface'
 
 type QuickActionProps = {
   icon: keyof typeof Ionicons.glyphMap
@@ -26,8 +26,8 @@ export function QuickAction({ icon, label, onPress, tone }: QuickActionProps) {
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <Squircle style={styles.tile}>
-        <Squircle
+      <Surface style={styles.tile}>
+        <Surface
           width={42}
           height={42}
           radius={theme.radius.md}
@@ -36,11 +36,11 @@ export function QuickAction({ icon, label, onPress, tone }: QuickActionProps) {
           style={styles.iconWrapper}
         >
           <Ionicons name={icon} size={22} color={resolvedColor} />
-        </Squircle>
+        </Surface>
         <Text style={styles.label} numberOfLines={1}>
           {label}
         </Text>
-      </Squircle>
+      </Surface>
     </Pressable>
   )
 }

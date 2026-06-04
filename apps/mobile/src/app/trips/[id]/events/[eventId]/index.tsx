@@ -8,7 +8,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { Badge, Card, SectionTitle, Spinner, Squircle } from '@/components/ui'
+import { Badge, Card, SectionTitle, Spinner, Surface } from '@/components/ui'
 import {
   formatFileSize,
   getDocumentUrl,
@@ -177,7 +177,7 @@ export default function EventDetailScreen() {
     >
       <Card>
         <View style={styles.headRow}>
-          <Squircle
+          <Surface
             width={46}
             height={46}
             radius={theme.radius.md}
@@ -186,7 +186,7 @@ export default function EventDetailScreen() {
             style={styles.headTile}
           >
             <Ionicons name="calendar" size={23} color={theme.colors.primary} />
-          </Squircle>
+          </Surface>
           <View style={styles.headInfo}>
             <Text style={styles.title} numberOfLines={2}>
               {event.title}
@@ -241,7 +241,7 @@ export default function EventDetailScreen() {
                   name: doc.name ?? t('events.detail.documentFallback'),
                 })}
               >
-                <Squircle
+                <Surface
                   width={34}
                   height={34}
                   radius={theme.radius.sm}
@@ -250,7 +250,7 @@ export default function EventDetailScreen() {
                   style={styles.docTile}
                 >
                   <Ionicons name="document-text" size={18} color={theme.colors.destructive} />
-                </Squircle>
+                </Surface>
                 <View style={styles.docInfo}>
                   <Text style={styles.docName} numberOfLines={1}>
                     {doc.name ?? t('events.detail.documentFallback')}

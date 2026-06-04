@@ -1,25 +1,25 @@
 import { render, screen } from '@testing-library/react-native'
 import { Text } from 'react-native'
 
-import { Squircle } from './squircle'
+import { Surface } from './surface'
 
-describe('Squircle', () => {
+describe('Surface', () => {
   it('renders its children', () => {
     render(
-      <Squircle>
-        <Text>Inside the squircle</Text>
-      </Squircle>,
+      <Surface>
+        <Text>Inside the surface</Text>
+      </Surface>,
     )
 
-    expect(screen.getByText('Inside the squircle')).toBeOnTheScreen()
+    expect(screen.getByText('Inside the surface')).toBeOnTheScreen()
   })
 
   it('renders without a border when borderWidth is 0', () => {
     expect(() =>
       render(
-        <Squircle borderWidth={0}>
+        <Surface borderWidth={0}>
           <Text>No border</Text>
-        </Squircle>,
+        </Surface>,
       ),
     ).not.toThrow()
   })
