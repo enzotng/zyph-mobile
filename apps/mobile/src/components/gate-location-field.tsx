@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -14,6 +15,7 @@ type Props = {
 
 export function GateLocationField({ value, onChange }: Props) {
   const { theme } = useUnistyles()
+  const { t } = useTranslation()
   const expanded = value !== null
 
   function toggle() {
@@ -45,19 +47,19 @@ export function GateLocationField({ value, onChange }: Props) {
           size={22}
           color={expanded ? theme.colors.primary : theme.colors.muted}
         />
-        <Text style={styles.toggleLabel}>Add a precise gate / destination</Text>
+        <Text style={styles.toggleLabel}>{t('gate.toggle')}</Text>
       </Pressable>
 
       {expanded ? (
         <View style={styles.body}>
           <TextField
-            label="Gate label"
-            placeholder="Gate 24B, Terminal 2C…"
+            label={t('gate.label')}
+            placeholder={t('gate.placeholder')}
             value={value?.label ?? ''}
             onChangeText={updateLabel}
           />
           <LocationPicker
-            label="Gate location"
+            label={t('gate.location')}
             value={value && (value.lat !== 0 || value.lng !== 0) ? value : null}
             onChange={updateCoords}
           />

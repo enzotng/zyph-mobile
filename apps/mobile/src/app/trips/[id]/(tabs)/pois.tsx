@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
@@ -15,24 +16,25 @@ export default function PoisScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
+  const { t } = useTranslation()
   const { theme } = useUnistyles()
   const { data: trip } = useTrip(tripId)
   const { data: pois, isLoading, isError } = usePois(tripId)
   const deletePoi = useDeletePoi(tripId)
 
   function confirmDelete(poiId: string, label: string) {
-    Alert.alert('Supprimer le repère', `Retirer « ${label} » de ce voyage ?`, [
-      { text: 'Annuler', style: 'cancel' },
+    Alert.alert(t('pois.deleteTitle'), t('pois.deleteBody', { label }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Supprimer',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await deletePoi.mutateAsync(poiId)
           } catch (error) {
             Alert.alert(
-              'Suppression impossible',
-              error instanceof Error ? error.message : 'Veuillez réessayer.',
+              t('pois.deleteError'),
+              error instanceof Error ? error.message : t('common.tryAgain'),
             )
           }
         },
@@ -48,7 +50,7 @@ export default function PoisScreen() {
     <Pressable
       onPress={goAddPoi}
       accessibilityRole="button"
-      accessibilityLabel="Ajouter un repère"
+      accessibilityLabel={t('pois.addWaypoint')}
       hitSlop={8}
     >
       <Ionicons name="add" size={26} color={theme.colors.foreground} />
@@ -59,7 +61,7 @@ export default function PoisScreen() {
     <Pressable
       onPress={() => router.push({ pathname: '/trips/[id]/map', params: { id: tripId } })}
       accessibilityRole="button"
-      accessibilityLabel="Ouvrir la carte"
+      accessibilityLabel={t('pois.openMap')}
     >
       <Squircle
         color={withAlpha(theme.colors.primary, 0.1)}
@@ -68,7 +70,7 @@ export default function PoisScreen() {
         style={styles.mapPreview}
       >
         <Ionicons name="map" size={32} color={theme.colors.primary} />
-        <Text style={styles.mapCaption}>CARTE</Text>
+        <Text style={styles.mapCaption}>{t('pois.mapCaption')}</Text>
       </Squircle>
     </Pressable>
   )
@@ -77,7 +79,7 @@ export default function PoisScreen() {
     <Pressable
       onPress={() => router.push({ pathname: '/trips/[id]/ar', params: { id: tripId } })}
       accessibilityRole="button"
-      accessibilityLabel="Ouvrir la vue AR"
+      accessibilityLabel={t('pois.openAr')}
     >
       <Squircle
         color={theme.colors.primary}
@@ -89,8 +91,8 @@ export default function PoisScreen() {
           <Ionicons name="navigate" size={22} color="#FFFFFF" />
         </View>
         <View style={styles.arInfo}>
-          <Text style={styles.arTitle}>Vue AR</Text>
-          <Text style={styles.arSubtitle}>Une flèche vous guide vers vos repères</Text>
+          <Text style={styles.arTitle}>{t('pois.arTitle')}</Text>
+          <Text style={styles.arSubtitle}>{t('pois.arSubtitle')}</Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
       </Squircle>
@@ -115,7 +117,7 @@ export default function PoisScreen() {
         {mapPreview}
         <View style={styles.heroSpacing}>{arHero}</View>
         <View style={styles.center}>
-          <Text style={styles.muted}>Impossible de charger les repères.</Text>
+          <Text style={styles.muted}>{t('pois.loadError')}</Text>
         </View>
       </Screen>
     )
@@ -128,17 +130,17 @@ export default function PoisScreen() {
       {mapPreview}
       <View style={styles.heroSpacing}>{arHero}</View>
 
-      <SectionTitle action="Ajouter" onAction={goAddPoi}>
-        Lieux & membres
+      <SectionTitle action={t('common.add')} onAction={goAddPoi}>
+        {t('pois.sectionTitle')}
       </SectionTitle>
 
       {waypoints.length === 0 ? (
         <View style={styles.emptyWrap}>
           <EmptyState
             icon="location-outline"
-            title="Aucun repère"
-            body="Ajoutez des entrées, des toilettes ou tout autre point pour la carte et la navigation AR."
-            cta="Ajouter un repère"
+            title={t('pois.emptyTitle')}
+            body={t('pois.emptyBody')}
+            cta={t('pois.addWaypoint')}
             onCta={goAddPoi}
           />
         </View>
@@ -150,7 +152,7 @@ export default function PoisScreen() {
               icon={poiIconName(item.icon)}
               iconColor={theme.colors.primary}
               title={item.label}
-              subtitle="Point d'intérêt"
+              subtitle={t('pois.subtitle')}
               last={index === waypoints.length - 1}
               accessibilityLabel={`Modifier ${item.label}`}
               onPress={() =>

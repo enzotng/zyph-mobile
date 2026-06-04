@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { ActivityIndicator, Alert, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { Alert, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -9,10 +10,12 @@ import { LocationPicker } from '@/components/location-picker'
 import { PoiIconPicker } from '@/components/poi-icon-picker'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
+import { Spinner } from '@/components/ui'
 import { type PoiIcon, type PoiValues, poiSchema, usePoi, useUpdatePoi } from '@/features/wayfinder'
 import { paramString } from '@/lib/routing'
 
 export default function EditPoiScreen() {
+  const { t } = useTranslation()
   const params = useLocalSearchParams<{ id: string; poiId: string }>()
   const tripId = paramString(params.id)
   const poiId = paramString(params.poiId)
@@ -55,28 +58,31 @@ export default function EditPoiScreen() {
       })
       router.back()
     } catch (error) {
-      Alert.alert('Could not save', error instanceof Error ? error.message : 'Please try again.')
+      Alert.alert(
+        t('poiForm.saveError'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
     }
   }
 
   if (isLoading) {
     return (
-      <Screen title="Edit POI" showBack>
+      <Screen title={t('poiForm.editTitle')} showBack>
         <View style={styles.center}>
-          <ActivityIndicator />
+          <Spinner />
         </View>
       </Screen>
     )
   }
 
   return (
-    <Screen title="Edit POI" showBack scroll>
+    <Screen title={t('poiForm.editTitle')} showBack scroll>
       <Controller
         control={control}
         name="label"
         render={({ field }) => (
           <TextField
-            label="Label"
+            label={t('poiForm.label')}
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -89,12 +95,12 @@ export default function EditPoiScreen() {
         control={control}
         name="icon"
         render={({ field }) => (
-          <PoiIconPicker label="Icon" value={field.value} onChange={field.onChange} />
+          <PoiIconPicker label={t('poiForm.icon')} value={field.value} onChange={field.onChange} />
         )}
       />
 
       <LocationPicker
-        label="Location"
+        label={t('poiForm.location')}
         value={coords}
         onChange={(next) => {
           setValue('lat', next.lat)
@@ -103,7 +109,7 @@ export default function EditPoiScreen() {
       />
 
       <Button
-        label={updatePoi.isPending ? 'Saving…' : 'Save'}
+        label={updatePoi.isPending ? t('poiForm.saving') : t('poiForm.save')}
         onPress={handleSubmit(onSubmit)}
         disabled={updatePoi.isPending}
       />

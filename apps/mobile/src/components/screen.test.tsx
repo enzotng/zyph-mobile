@@ -60,7 +60,7 @@ describe('Screen', () => {
       </Screen>,
     )
 
-    expect(screen.getByRole('button', { name: 'Go back' })).toBeOnTheScreen()
+    expect(screen.getByRole('button', { name: 'Back' })).toBeOnTheScreen()
   })
 
   it('renders the right slot in the header', () => {

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'expo-router'
 import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { Alert, ScrollView, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -13,6 +14,7 @@ import { type JoinTripValues, joinTripSchema, useJoinTrip } from '@/features/gro
 import { withAlpha } from '@/lib/color'
 
 export default function JoinTripScreen() {
+  const { t } = useTranslation()
   const router = useRouter()
   const { theme } = useUnistyles()
   const joinTrip = useJoinTrip()
@@ -33,14 +35,14 @@ export default function JoinTripScreen() {
       router.replace({ pathname: '/trips/[id]', params: { id: tripId } })
     } catch (error) {
       Alert.alert(
-        'Impossible de rejoindre',
-        error instanceof Error ? error.message : 'Vérifiez le code et réessayez.',
+        t('joinTrip.errorTitle'),
+        error instanceof Error ? error.message : t('joinTrip.errorBody'),
       )
     }
   }
 
   return (
-    <Screen title="Rejoindre" showBack>
+    <Screen title={t('joinTrip.title')} showBack>
       <View style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.body}
@@ -58,8 +60,8 @@ export default function JoinTripScreen() {
             <Ionicons name="enter-outline" size={32} color={theme.colors.primary} />
           </Squircle>
 
-          <Text style={styles.title}>Rejoindre un voyage</Text>
-          <Text style={styles.subtitle}>Saisis le code partagé par l’organisateur du voyage.</Text>
+          <Text style={styles.title}>{t('joinTrip.heading')}</Text>
+          <Text style={styles.subtitle}>{t('joinTrip.subtitle')}</Text>
 
           <Controller
             control={control}
@@ -83,7 +85,7 @@ export default function JoinTripScreen() {
 
         <View style={styles.footer}>
           <Button
-            label={joinTrip.isPending ? 'Connexion…' : 'Rejoindre'}
+            label={joinTrip.isPending ? t('joinTrip.submitting') : t('joinTrip.submit')}
             onPress={handleSubmit(onSubmit)}
             disabled={joinTrip.isPending || code.length < 4}
           />

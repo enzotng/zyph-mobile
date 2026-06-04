@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -11,11 +12,9 @@ import { withAlpha } from '@/lib/color'
 import { setOnboardingSeen } from '@/lib/preferences'
 
 type Slide = {
-  key: string
+  key: 'plan' | 'spend' | 'find'
   icon: keyof typeof Ionicons.glyphMap
   accent: 'primary' | 'accentDeep' | 'accent'
-  title: string
-  body: string
 }
 
 const SLIDES: Slide[] = [
@@ -23,28 +22,23 @@ const SLIDES: Slide[] = [
     key: 'plan',
     icon: 'map',
     accent: 'primary',
-    title: 'Planifiez à plusieurs',
-    body: 'Créez un voyage, invitez vos amis avec un seul code et construisez une timeline partagée.',
   },
   {
     key: 'spend',
     icon: 'sparkles',
     accent: 'accentDeep',
-    title: 'Partagez les dépenses',
-    body: 'Scannez un ticket, attribuez chaque article à la bonne personne. ZYPH équilibre qui doit quoi.',
   },
   {
     key: 'find',
     icon: 'navigate',
     accent: 'accent',
-    title: 'Repérez-vous sur place',
-    body: 'Une flèche en réalité augmentée vous guide vers les portes, les lieux et vos amis.',
   },
 ]
 
 export default function OnboardingScreen() {
   const router = useRouter()
   const { theme } = useUnistyles()
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
 
   const slide = SLIDES[page]
@@ -69,7 +63,7 @@ export default function OnboardingScreen() {
       <View style={styles.topBar}>
         <BrandLockup size={22} />
         <Pressable onPress={finish} accessibilityRole="button" hitSlop={8}>
-          <Text style={styles.skip}>Passer</Text>
+          <Text style={styles.skip}>{t('onboarding.skip')}</Text>
         </Pressable>
       </View>
 
@@ -93,8 +87,8 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.copy}>
-          <Text style={styles.title}>{slide.title}</Text>
-          <Text style={styles.body}>{slide.body}</Text>
+          <Text style={styles.title}>{t(`onboarding.${slide.key}.title`)}</Text>
+          <Text style={styles.body}>{t(`onboarding.${slide.key}.body`)}</Text>
         </View>
       </View>
 
@@ -104,6 +98,8 @@ export default function OnboardingScreen() {
             key={s.key}
             onPress={() => setPage(index)}
             accessibilityRole="button"
+            accessibilityLabel={t('onboarding.goToSlide', { index: index + 1 })}
+            accessibilityState={{ selected: index === page }}
             hitSlop={8}
           >
             <View style={[styles.dot, index === page && styles.dotActive]} />
@@ -112,7 +108,7 @@ export default function OnboardingScreen() {
       </View>
 
       <View style={styles.footer}>
-        <Button label={isLast ? 'Commencer' : 'Suivant'} onPress={next} />
+        <Button label={isLast ? t('onboarding.start') : t('onboarding.next')} onPress={next} />
       </View>
     </View>
   )

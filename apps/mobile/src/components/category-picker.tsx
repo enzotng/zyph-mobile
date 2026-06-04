@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Pressable, ScrollView, Text } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -10,17 +11,9 @@ type CategoryPickerProps = {
   onChange: (next: ExpenseCategory | null) => void
 }
 
-const LABELS: Record<ExpenseCategory, string> = {
-  food: 'Food',
-  transport: 'Transport',
-  lodging: 'Lodging',
-  activity: 'Activity',
-  shopping: 'Shopping',
-  other: 'Other',
-}
-
 export function CategoryPicker({ label, value, onChange }: CategoryPickerProps) {
   const { theme } = useUnistyles()
+  const { t } = useTranslation()
 
   function renderChip(key: string, text: string, selected: boolean, onPress: () => void) {
     return (
@@ -51,20 +44,15 @@ export function CategoryPicker({ label, value, onChange }: CategoryPickerProps) 
         contentContainerStyle={styles.row}
         accessibilityRole="radiogroup"
       >
-        {renderChip('none', 'None', value === null, () => onChange(null))}
+        {renderChip('none', t('categories.none'), value === null, () => onChange(null))}
         {EXPENSE_CATEGORIES.map((category) =>
-          renderChip(category, LABELS[category], category === value, () => onChange(category)),
+          renderChip(category, t(`categories.${category}`), category === value, () =>
+            onChange(category),
+          ),
         )}
       </ScrollView>
     </>
   )
-}
-
-export function categoryLabel(category: ExpenseCategory | null | undefined): string | null {
-  if (!category) {
-    return null
-  }
-  return LABELS[category]
 }
 
 const styles = StyleSheet.create((theme) => ({

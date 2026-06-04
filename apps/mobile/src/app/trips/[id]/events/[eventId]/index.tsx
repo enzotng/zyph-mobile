@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as DocumentPicker from 'expo-document-picker'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Alert, Linking, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -35,6 +37,8 @@ export default function EventDetailScreen() {
   const eventId = paramString(params.eventId)
   const { theme } = useUnistyles()
   const router = useRouter()
+  const { t } = useTranslation()
+  const [now] = useState(() => Date.now())
 
   const { data: event, isLoading } = useEvent(eventId)
   const { data: documents } = useEventDocuments(eventId)
@@ -43,28 +47,24 @@ export default function EventDetailScreen() {
   const deleteEvent = useDeleteEvent(tripId)
 
   function confirmDeleteEvent() {
-    Alert.alert(
-      'Supprimer l’événement',
-      "Cela supprime définitivement l'événement et détache ses documents.",
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteEvent.mutateAsync(eventId)
-              router.back()
-            } catch (error) {
-              Alert.alert(
-                'Suppression impossible',
-                error instanceof Error ? error.message : 'Veuillez réessayer.',
-              )
-            }
-          },
+    Alert.alert(t('events.detail.deleteEvent'), t('events.detail.deleteBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteEvent.mutateAsync(eventId)
+            router.back()
+          } catch (error) {
+            Alert.alert(
+              t('events.detail.deleteError'),
+              error instanceof Error ? error.message : t('common.tryAgain'),
+            )
+          }
         },
-      ],
-    )
+      },
+    ])
   }
 
   async function addDocument() {
@@ -87,8 +87,8 @@ export default function EventDetailScreen() {
       })
     } catch (error) {
       Alert.alert(
-        'Échec de l’envoi',
-        error instanceof Error ? error.message : 'Veuillez réessayer.',
+        t('events.detail.uploadError'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     }
   }
@@ -99,37 +99,41 @@ export default function EventDetailScreen() {
       await Linking.openURL(url)
     } catch (error) {
       Alert.alert(
-        'Ouverture impossible',
-        error instanceof Error ? error.message : 'Veuillez réessayer.',
+        t('events.detail.openError'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     }
   }
 
   function confirmDelete(doc: TripDocument) {
-    Alert.alert('Supprimer le document', doc.name ?? 'Ce document', [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await del.mutateAsync(doc)
-          } catch (error) {
-            Alert.alert(
-              'Suppression impossible',
-              error instanceof Error ? error.message : 'Veuillez réessayer.',
-            )
-          }
+    Alert.alert(
+      t('events.detail.deleteDocument'),
+      doc.name ?? t('events.detail.documentFallback'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await del.mutateAsync(doc)
+            } catch (error) {
+              Alert.alert(
+                t('events.detail.deleteError'),
+                error instanceof Error ? error.message : t('common.tryAgain'),
+              )
+            }
+          },
         },
-      },
-    ])
+      ],
+    )
   }
 
   if (isLoading) {
     return (
-      <Screen title="Événement" showBack>
+      <Screen title={t('events.detail.title')} showBack>
         <View style={styles.center}>
-          <Spinner label="Chargement…" />
+          <Spinner label={t('common.loading')} />
         </View>
       </Screen>
     )
@@ -137,22 +141,22 @@ export default function EventDetailScreen() {
 
   if (!event) {
     return (
-      <Screen title="Événement" showBack>
+      <Screen title={t('events.detail.title')} showBack>
         <View style={styles.center}>
-          <Text style={styles.muted}>Événement introuvable.</Text>
+          <Text style={styles.muted}>{t('events.detail.notFound')}</Text>
         </View>
       </Screen>
     )
   }
 
-  const status = eventStatus(event.starts_at, event.ends_at)
+  const status = eventStatus(event.starts_at, event.ends_at, now)
   const dateLabel = formatEventDate(event.starts_at)
   const gate = event.gate_location as { label?: string; lat?: number; lng?: number } | null
   const hasGate = Boolean(gate && typeof gate.lat === 'number' && typeof gate.lng === 'number')
 
   return (
     <Screen
-      title="Événement"
+      title={t('events.detail.title')}
       showBack
       scroll
       right={
@@ -164,7 +168,7 @@ export default function EventDetailScreen() {
             })
           }
           accessibilityRole="button"
-          accessibilityLabel="Modifier"
+          accessibilityLabel={t('common.edit')}
           hitSlop={8}
         >
           <Ionicons name="create-outline" size={22} color={theme.colors.primary} />
@@ -193,35 +197,39 @@ export default function EventDetailScreen() {
 
         <View style={styles.badges}>
           {status.kind === 'upcoming' ? (
-            <Badge label={formatCountdown(status)} tone="primary" icon="time-outline" />
+            <Badge label={formatCountdown(status, t)} tone="primary" icon="time-outline" />
           ) : status.kind === 'in_progress' ? (
-            <Badge label="En cours" tone="success" icon="ellipse" />
+            <Badge label={t('timeline.inProgress')} tone="success" icon="ellipse" />
           ) : status.kind === 'completed' ? (
-            <Badge label="Terminé" tone="muted" />
+            <Badge label={t('timeline.completed')} tone="muted" />
           ) : null}
           {hasGate ? (
-            <Badge label={gate?.label || 'Lieu épinglé'} tone="muted" icon="location-outline" />
+            <Badge
+              label={gate?.label || t('events.detail.pinnedPlace')}
+              tone="muted"
+              icon="location-outline"
+            />
           ) : null}
         </View>
       </Card>
 
       {event.notes ? (
         <View>
-          <SectionTitle>Notes</SectionTitle>
+          <SectionTitle>{t('events.detail.notes')}</SectionTitle>
           <Text style={styles.notes}>{event.notes}</Text>
         </View>
       ) : null}
 
       <View>
         <SectionTitle
-          action={upload.isPending ? 'Envoi…' : 'Ajouter'}
+          action={upload.isPending ? t('events.detail.uploading') : t('common.add')}
           onAction={upload.isPending ? undefined : addDocument}
         >
-          Documents joints
+          {t('events.detail.documents')}
         </SectionTitle>
         <View style={styles.docList}>
           {!documents || documents.length === 0 ? (
-            <Text style={styles.muted}>Aucun document pour l’instant.</Text>
+            <Text style={styles.muted}>{t('events.detail.noDocuments')}</Text>
           ) : (
             documents.map((doc) => (
               <Pressable
@@ -229,6 +237,9 @@ export default function EventDetailScreen() {
                 style={({ pressed }) => [styles.docRow, pressed && styles.pressed]}
                 onPress={() => openDocument(doc)}
                 accessibilityRole="button"
+                accessibilityLabel={t('events.detail.openDocument', {
+                  name: doc.name ?? t('events.detail.documentFallback'),
+                })}
               >
                 <Squircle
                   width={34}
@@ -242,14 +253,14 @@ export default function EventDetailScreen() {
                 </Squircle>
                 <View style={styles.docInfo}>
                   <Text style={styles.docName} numberOfLines={1}>
-                    {doc.name ?? 'Document'}
+                    {doc.name ?? t('events.detail.documentFallback')}
                   </Text>
                   <Text style={styles.muted}>{formatFileSize(doc.size_bytes)}</Text>
                 </View>
                 <Pressable
                   onPress={() => confirmDelete(doc)}
                   accessibilityRole="button"
-                  accessibilityLabel="Supprimer le document"
+                  accessibilityLabel={t('events.detail.deleteDocument')}
                   hitSlop={8}
                 >
                   <Ionicons name="trash-outline" size={20} color={theme.colors.muted} />
@@ -261,7 +272,7 @@ export default function EventDetailScreen() {
       </View>
 
       <Button
-        label="Voir en AR"
+        label={t('events.detail.viewInAr')}
         variant="secondary"
         icon="navigate"
         onPress={() => router.push({ pathname: '/trips/[id]/ar', params: { id: tripId } })}
@@ -271,9 +282,11 @@ export default function EventDetailScreen() {
         onPress={confirmDeleteEvent}
         disabled={deleteEvent.isPending}
         accessibilityRole="button"
+        accessibilityLabel={t('events.detail.deleteEvent')}
+        accessibilityState={{ disabled: deleteEvent.isPending }}
         style={styles.deleteWrap}
       >
-        <Text style={styles.deleteText}>Supprimer l’événement</Text>
+        <Text style={styles.deleteText}>{t('events.detail.deleteEvent')}</Text>
       </Pressable>
     </Screen>
   )

@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -22,8 +23,10 @@ export default function AddEventScreen() {
   const tripId = paramString(params.id)
   const router = useRouter()
   const { theme } = useUnistyles()
+  const { t } = useTranslation()
   const createEvent = useCreateEvent(tripId)
   const [hasEnd, setHasEnd] = useState(false)
+  const [initialStartsAt] = useState(() => new Date().toISOString())
 
   const {
     control,
@@ -33,7 +36,7 @@ export default function AddEventScreen() {
     formState: { errors },
   } = useForm<CreateEventValues>({
     resolver: zodResolver(createEventSchema),
-    defaultValues: { title: '', startsAt: new Date().toISOString(), endsAt: '', notes: '' },
+    defaultValues: { title: '', startsAt: initialStartsAt, endsAt: '', notes: '' },
   })
 
   const lat = useWatch({ control, name: 'lat' })
@@ -67,21 +70,21 @@ export default function AddEventScreen() {
       router.back()
     } catch (error) {
       Alert.alert(
-        "Ajout de l'événement impossible",
-        error instanceof Error ? error.message : 'Veuillez réessayer.',
+        t('events.add.errorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     }
   }
 
   return (
-    <Screen title="Nouvel événement" showBack scroll>
+    <Screen title={t('events.add.title')} showBack scroll>
       <Controller
         control={control}
         name="title"
         render={({ field }) => (
           <TextField
-            label="Titre"
-            placeholder="Dîner, vol, visite…"
+            label={t('events.form.title')}
+            placeholder={t('events.form.titlePlaceholder')}
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -95,7 +98,7 @@ export default function AddEventScreen() {
         name="startsAt"
         render={({ field }) => (
           <DateField
-            label="Début"
+            label={t('events.form.start')}
             value={new Date(field.value)}
             onChange={(date) => field.onChange(date.toISOString())}
             error={errors.startsAt?.message}
@@ -114,7 +117,7 @@ export default function AddEventScreen() {
           size={22}
           color={hasEnd ? theme.colors.primary : theme.colors.muted}
         />
-        <Text style={styles.toggleLabel}>Ajouter une heure de fin</Text>
+        <Text style={styles.toggleLabel}>{t('events.form.addEndTime')}</Text>
       </Pressable>
 
       {hasEnd ? (
@@ -123,7 +126,7 @@ export default function AddEventScreen() {
           name="endsAt"
           render={({ field }) => (
             <DateField
-              label="Fin"
+              label={t('events.form.end')}
               value={new Date(field.value || getValues('startsAt'))}
               onChange={(date) => field.onChange(date.toISOString())}
               error={errors.endsAt?.message}
@@ -137,8 +140,8 @@ export default function AddEventScreen() {
         name="notes"
         render={({ field }) => (
           <TextField
-            label="Notes"
-            placeholder="Table pour 4, code porte…"
+            label={t('events.form.notes')}
+            placeholder={t('events.form.notesPlaceholder')}
             multiline
             value={field.value}
             onChangeText={field.onChange}
@@ -149,7 +152,7 @@ export default function AddEventScreen() {
       />
 
       <LocationPicker
-        label="Lieu"
+        label={t('events.form.location')}
         value={coords}
         onChange={(next) => {
           setValue('lat', next.lat)
@@ -166,7 +169,7 @@ export default function AddEventScreen() {
       />
 
       <Button
-        label={createEvent.isPending ? 'Ajout…' : 'Ajouter à la timeline'}
+        label={createEvent.isPending ? t('events.add.submitting') : t('events.add.submit')}
         icon="add"
         onPress={handleSubmit(onSubmit)}
         disabled={createEvent.isPending}
@@ -183,6 +186,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   toggleLabel: {
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.sans.regular,
     color: theme.colors.foreground,
   },
 }))

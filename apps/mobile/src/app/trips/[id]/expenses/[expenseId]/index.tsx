@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
+import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { Avatar, Badge, Card, SectionTitle, Squircle } from '@/components/ui'
+import { Avatar, Badge, Card, SectionTitle, Spinner, Squircle } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type ExpenseCategory,
@@ -51,24 +52,35 @@ export default function ExpenseDetailScreen() {
   const deleteExpense = useDeleteExpense(tripId)
 
   const hasItems = Boolean(items && items.length > 0)
-  const membersByItemId = groupMembersByItemId(itemAssignments ?? [])
+  const membersByItemId = useMemo(
+    () => groupMembersByItemId(itemAssignments ?? []),
+    [itemAssignments],
+  )
+
+  const memberLabelById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const member of members ?? []) {
+      const label =
+        member.user_id && member.user_id === userId
+          ? t('common.you')
+          : (member.display_name ?? t('common.member'))
+      map.set(member.id, label)
+    }
+    return map
+  }, [members, userId, t])
 
   function labelFor(memberId: string | null): string {
     if (!memberId) {
-      return 'Member'
+      return t('common.member')
     }
-    const member = members?.find((m) => m.id === memberId)
-    if (member?.user_id && member.user_id === userId) {
-      return t('common.you')
-    }
-    return member?.display_name ?? 'Member'
+    return memberLabelById.get(memberId) ?? t('common.member')
   }
 
   function confirmDelete() {
-    Alert.alert('Delete expense', 'This permanently removes the expense from the trip.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('expenseDetail.deleteTitle'), t('expenseDetail.deleteBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
@@ -76,8 +88,8 @@ export default function ExpenseDetailScreen() {
             router.back()
           } catch (error) {
             Alert.alert(
-              'Could not delete',
-              error instanceof Error ? error.message : 'Please try again.',
+              t('expenseDetail.deleteError'),
+              error instanceof Error ? error.message : t('common.tryAgain'),
             )
           }
         },
@@ -89,7 +101,7 @@ export default function ExpenseDetailScreen() {
     return (
       <Screen title={t('trip.expense')} showBack>
         <View style={styles.center}>
-          <ActivityIndicator />
+          <Spinner label={t('common.loading')} />
         </View>
       </Screen>
     )

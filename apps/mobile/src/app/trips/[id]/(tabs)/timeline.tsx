@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
 import { Link, useGlobalSearchParams, useRouter } from 'expo-router'
+import type { TFunction } from 'i18next'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -26,20 +28,21 @@ function formatEventTime(iso: string | null): string | null {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 }
 
-function statusBadge(status: EventStatus) {
+function statusBadge(status: EventStatus, t: TFunction) {
   switch (status.kind) {
     case 'upcoming':
-      return { label: formatCountdown(status), tone: 'primary' as const, icon: undefined }
+      return { label: formatCountdown(status, t), tone: 'primary' as const, icon: undefined }
     case 'in_progress':
-      return { label: 'En cours', tone: 'success' as const, icon: 'ellipse' as const }
+      return { label: t('timeline.inProgress'), tone: 'success' as const, icon: 'ellipse' as const }
     case 'completed':
-      return { label: 'Terminé', tone: 'muted' as const, icon: undefined }
+      return { label: t('timeline.completed'), tone: 'muted' as const, icon: undefined }
     default:
       return null
   }
 }
 
 export default function TimelineScreen() {
+  const { t } = useTranslation()
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const { data: trip } = useTrip(tripId)
@@ -61,7 +64,7 @@ export default function TimelineScreen() {
         return <Text style={styles.dayHeader}>{item.label}</Text>
       }
       const status = eventStatus(item.event.starts_at, item.event.ends_at, now)
-      const badge = statusBadge(status)
+      const badge = statusBadge(status, t)
       const time = formatEventTime(item.event.starts_at)
       const completed = status.kind === 'completed'
       const inProgress = status.kind === 'in_progress'
@@ -133,18 +136,18 @@ export default function TimelineScreen() {
         </View>
       )
     },
-    [now, router, tripId, theme],
+    [now, router, tripId, theme, t],
   )
 
   return (
     <Screen
-      title={trip?.title ?? 'Timeline'}
+      title={trip?.title ?? t('tabs.timeline')}
       showBack
       right={
         <Link href={{ pathname: '/trips/[id]/add-event', params: { id: tripId } }} asChild>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Ajouter un événement"
+            accessibilityLabel={t('timeline.addEvent')}
             hitSlop={8}
           >
             <Ionicons name="add" size={26} color={theme.colors.primary} />
@@ -154,20 +157,20 @@ export default function TimelineScreen() {
     >
       {isLoading ? (
         <View style={styles.center}>
-          <Spinner label="Chargement…" />
+          <Spinner label={t('common.loading')} />
         </View>
       ) : isError ? (
         <EmptyState
           icon="cloud-offline-outline"
-          title="Erreur"
-          body="Impossible de charger la timeline."
+          title={t('timeline.errorTitle')}
+          body={t('timeline.errorBody')}
         />
       ) : items.length === 0 ? (
         <EmptyState
           icon="calendar-outline"
-          title="Timeline vide"
-          body="Ajoutez votre premier événement pour structurer le voyage."
-          cta="Ajouter un événement"
+          title={t('timeline.emptyTitle')}
+          body={t('timeline.emptyBody')}
+          cta={t('timeline.addEvent')}
           onCta={() => router.push({ pathname: '/trips/[id]/add-event', params: { id: tripId } })}
         />
       ) : (

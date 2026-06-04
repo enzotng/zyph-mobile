@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { Link, useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { Linking, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -9,6 +10,7 @@ import { withAlpha } from '@/lib/color'
 export default function CheckEmailScreen() {
   const router = useRouter()
   const { theme } = useUnistyles()
+  const { t } = useTranslation()
 
   function openMailApp() {
     Linking.openURL('message://').catch(() => {
@@ -22,13 +24,11 @@ export default function CheckEmailScreen() {
         <Ionicons name="mail-unread-outline" size={40} color={theme.colors.primary} />
       </View>
 
-      <Text style={styles.title}>Vérifie tes e-mails</Text>
-      <Text style={styles.body}>
-        On t’a envoyé un lien de confirmation. Ouvre-le pour activer ton compte, puis connecte-toi.
-      </Text>
+      <Text style={styles.title}>{t('auth.checkEmail.title')}</Text>
+      <Text style={styles.body}>{t('auth.checkEmail.body')}</Text>
 
       <View style={styles.action}>
-        <Button label="Ouvrir l'app mail" icon="open-outline" onPress={openMailApp} />
+        <Button label={t('auth.checkEmail.openMail')} icon="open-outline" onPress={openMailApp} />
       </View>
 
       <Pressable
@@ -36,11 +36,11 @@ export default function CheckEmailScreen() {
         accessibilityRole="button"
         hitSlop={8}
       >
-        <Text style={styles.resend}>Retour à la connexion</Text>
+        <Text style={styles.resend}>{t('auth.checkEmail.backToSignIn')}</Text>
       </Pressable>
 
       <Link href="/(auth)/sign-up" style={styles.link}>
-        Renvoyer l’e-mail
+        {t('auth.checkEmail.changeEmail')}
       </Link>
     </View>
   )

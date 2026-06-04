@@ -3,9 +3,10 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { useFonts } from 'expo-font'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { useEffect } from 'react'
-import { ActivityIndicator, View } from 'react-native'
+import { View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
+import { Spinner } from '@/components/ui'
 import { AuthProvider, useAuth } from '@/features/auth'
 import '@/lib/i18n'
 import { hasSeenOnboarding } from '@/lib/preferences'
@@ -57,7 +58,7 @@ function RootNavigator() {
   if (isLoading || !fontsLoaded) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator />
+        <Spinner />
       </View>
     )
   }

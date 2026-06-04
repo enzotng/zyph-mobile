@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -12,6 +13,7 @@ import { GateLocationField } from '@/components/gate-location-field'
 import { LocationPicker } from '@/components/location-picker'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
+import { Spinner } from '@/components/ui'
 import {
   type CreateEventValues,
   createEventSchema,
@@ -25,30 +27,22 @@ export default function EditEventScreen() {
   const tripId = paramString(params.id)
   const eventId = paramString(params.eventId)
   const router = useRouter()
+  const { t } = useTranslation()
   const { theme } = useUnistyles()
   const { data: event, isLoading } = useEvent(eventId)
   const update = useUpdateEvent(tripId)
 
-  const {
-    control,
-    handleSubmit,
-    getValues,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<CreateEventValues>({
-    resolver: zodResolver(createEventSchema),
-    defaultValues: { title: '', startsAt: new Date().toISOString(), endsAt: '', notes: '' },
-  })
+  const [defaultStart] = useState(() => new Date().toISOString())
 
-  useEffect(() => {
+  // RHF syncs form values from this object whenever it changes; no useEffect needed.
+  const formValues = useMemo<CreateEventValues | undefined>(() => {
     if (!event) {
-      return
+      return undefined
     }
     const gate = event.gate_location as { label?: string; lat?: number; lng?: number } | null
-    reset({
+    return {
       title: event.title,
-      startsAt: event.starts_at ?? new Date().toISOString(),
+      startsAt: event.starts_at ?? defaultStart,
       endsAt: event.ends_at ?? '',
       notes: event.notes ?? '',
       lat: event.lat ?? undefined,
@@ -57,8 +51,20 @@ export default function EditEventScreen() {
         gate && typeof gate.lat === 'number' && typeof gate.lng === 'number'
           ? { label: gate.label ?? '', lat: gate.lat, lng: gate.lng }
           : null,
-    })
-  }, [event, reset])
+    }
+  }, [event, defaultStart])
+
+  const {
+    control,
+    handleSubmit,
+    getValues,
+    setValue,
+    formState: { errors },
+  } = useForm<CreateEventValues>({
+    resolver: zodResolver(createEventSchema),
+    values: formValues,
+    defaultValues: { title: '', startsAt: defaultStart, endsAt: '', notes: '' },
+  })
 
   const lat = useWatch({ control, name: 'lat' })
   const lng = useWatch({ control, name: 'lng' })
@@ -90,31 +96,31 @@ export default function EditEventScreen() {
       router.back()
     } catch (error) {
       Alert.alert(
-        "Mise à jour de l'événement impossible",
-        error instanceof Error ? error.message : 'Veuillez réessayer.',
+        t('events.edit.errorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     }
   }
 
   if (isLoading || !event) {
     return (
-      <Screen title="Modifier l'événement" showBack>
+      <Screen title={t('events.edit.title')} showBack>
         <View style={styles.center}>
-          <ActivityIndicator color={theme.colors.primary} />
+          <Spinner />
         </View>
       </Screen>
     )
   }
 
   return (
-    <Screen title="Modifier l'événement" showBack scroll>
+    <Screen title={t('events.edit.title')} showBack scroll>
       <Controller
         control={control}
         name="title"
         render={({ field }) => (
           <TextField
-            label="Titre"
-            placeholder="Dîner, vol, visite…"
+            label={t('events.form.title')}
+            placeholder={t('events.form.titlePlaceholder')}
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -128,7 +134,7 @@ export default function EditEventScreen() {
         name="startsAt"
         render={({ field }) => (
           <DateField
-            label="Début"
+            label={t('events.form.start')}
             value={new Date(field.value)}
             onChange={(date) => field.onChange(date.toISOString())}
             error={errors.startsAt?.message}
@@ -147,7 +153,7 @@ export default function EditEventScreen() {
           size={22}
           color={hasEnd ? theme.colors.primary : theme.colors.muted}
         />
-        <Text style={styles.toggleLabel}>Ajouter une heure de fin</Text>
+        <Text style={styles.toggleLabel}>{t('events.form.addEndTime')}</Text>
       </Pressable>
 
       {hasEnd ? (
@@ -156,7 +162,7 @@ export default function EditEventScreen() {
           name="endsAt"
           render={({ field }) => (
             <DateField
-              label="Fin"
+              label={t('events.form.end')}
               value={new Date(field.value || getValues('startsAt'))}
               onChange={(date) => field.onChange(date.toISOString())}
               error={errors.endsAt?.message}
@@ -170,8 +176,8 @@ export default function EditEventScreen() {
         name="notes"
         render={({ field }) => (
           <TextField
-            label="Notes"
-            placeholder="Table pour 4, code porte…"
+            label={t('events.form.notes')}
+            placeholder={t('events.form.notesPlaceholder')}
             multiline
             value={field.value}
             onChangeText={field.onChange}
@@ -182,7 +188,7 @@ export default function EditEventScreen() {
       />
 
       <LocationPicker
-        label="Lieu"
+        label={t('events.form.location')}
         value={coords}
         onChange={(next) => {
           setValue('lat', next.lat)
@@ -199,7 +205,7 @@ export default function EditEventScreen() {
       />
 
       <Button
-        label={update.isPending ? 'Enregistrement…' : 'Enregistrer'}
+        label={update.isPending ? t('common.saving') : t('common.save')}
         onPress={handleSubmit(onSubmit)}
         disabled={update.isPending}
       />
@@ -220,6 +226,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   toggleLabel: {
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.sans.regular,
     color: theme.colors.foreground,
   },
 }))

@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { Alert } from 'react-native'
 
 import { Button } from '@/components/button'
@@ -12,6 +13,7 @@ import { type PoiValues, poiSchema, useCreatePoi } from '@/features/wayfinder'
 import { paramString } from '@/lib/routing'
 
 export default function NewPoiScreen() {
+  const { t } = useTranslation()
   const params = useLocalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
@@ -33,7 +35,7 @@ export default function NewPoiScreen() {
 
   async function onSubmit(values: PoiValues) {
     if (values.lat === 0 && values.lng === 0) {
-      Alert.alert('Pick a location', 'Drop a pin on the map first.')
+      Alert.alert(t('poiForm.pickLocationTitle'), t('poiForm.pickLocationBody'))
       return
     }
     try {
@@ -46,19 +48,22 @@ export default function NewPoiScreen() {
       })
       router.back()
     } catch (error) {
-      Alert.alert('Could not add POI', error instanceof Error ? error.message : 'Please try again.')
+      Alert.alert(
+        t('poiForm.addError'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
     }
   }
 
   return (
-    <Screen title="Add POI" scroll>
+    <Screen title={t('poiForm.addTitle')} scroll>
       <Controller
         control={control}
         name="label"
         render={({ field }) => (
           <TextField
-            label="Label"
-            placeholder="Gate 24B, Restroom, ATM…"
+            label={t('poiForm.label')}
+            placeholder={t('poiForm.labelPlaceholder')}
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -71,12 +76,12 @@ export default function NewPoiScreen() {
         control={control}
         name="icon"
         render={({ field }) => (
-          <PoiIconPicker label="Icon" value={field.value} onChange={field.onChange} />
+          <PoiIconPicker label={t('poiForm.icon')} value={field.value} onChange={field.onChange} />
         )}
       />
 
       <LocationPicker
-        label="Location"
+        label={t('poiForm.location')}
         value={coords}
         onChange={(next) => {
           setValue('lat', next.lat)
@@ -85,7 +90,7 @@ export default function NewPoiScreen() {
       />
 
       <Button
-        label={createPoi.isPending ? 'Adding…' : 'Add POI'}
+        label={createPoi.isPending ? t('poiForm.adding') : t('poiForm.add')}
         onPress={handleSubmit(onSubmit)}
         disabled={createPoi.isPending}
       />
