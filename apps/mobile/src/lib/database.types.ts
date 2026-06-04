@@ -479,6 +479,74 @@ export type Database = {
           },
         ]
       }
+      trip_settlements: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          from_member: string
+          id: string
+          paid_at: string
+          status: Database['public']['Enums']['settlement_status']
+          to_member: string
+          trip_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          from_member: string
+          id?: string
+          paid_at?: string
+          status?: Database['public']['Enums']['settlement_status']
+          to_member: string
+          trip_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          from_member?: string
+          id?: string
+          paid_at?: string
+          status?: Database['public']['Enums']['settlement_status']
+          to_member?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'trip_settlements_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'trip_settlements_from_member_fkey'
+            columns: ['from_member']
+            isOneToOne: false
+            referencedRelation: 'trip_members'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'trip_settlements_to_member_fkey'
+            columns: ['to_member']
+            isOneToOne: false
+            referencedRelation: 'trip_members'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'trip_settlements_trip_id_fkey'
+            columns: ['trip_id']
+            isOneToOne: false
+            referencedRelation: 'trips'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       trips: {
         Row: {
           cover_photo_author: string | null
@@ -594,6 +662,32 @@ export type Database = {
       }
       join_trip_by_code: { Args: { _code: string }; Returns: string }
       leave_trip: { Args: { _trip_id: string }; Returns: undefined }
+      record_settlement: {
+        Args: {
+          _amount_cents: number
+          _from_member: string
+          _to_member: string
+          _trip_id: string
+        }
+        Returns: {
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          from_member: string
+          id: string
+          paid_at: string
+          status: Database['public']['Enums']['settlement_status']
+          to_member: string
+          trip_id: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'trip_settlements'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       regenerate_invite_code: { Args: { _trip_id: string }; Returns: string }
       remove_trip_member: { Args: { _member_id: string }; Returns: undefined }
       update_expense_with_splits:
@@ -711,6 +805,7 @@ export type Database = {
     }
     Enums: {
       member_status: 'invited' | 'active' | 'removed'
+      settlement_status: 'active' | 'reversed'
       trip_role: 'owner' | 'member'
     }
     CompositeTypes: {
@@ -838,6 +933,7 @@ export const Constants = {
   public: {
     Enums: {
       member_status: ['invited', 'active', 'removed'],
+      settlement_status: ['active', 'reversed'],
       trip_role: ['owner', 'member'],
     },
   },

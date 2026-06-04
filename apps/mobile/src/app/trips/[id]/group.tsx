@@ -8,20 +8,33 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { Amount, Avatar, Badge, Card, SectionTitle, Spinner, Squircle } from '@/components/ui'
+import { TextField } from '@/components/text-field'
+import {
+  Amount,
+  Avatar,
+  Badge,
+  BottomSheet,
+  Card,
+  SectionTitle,
+  Spinner,
+  Squircle,
+} from '@/components/ui'
 import { useAuth } from '@/features/auth'
-import { settleBalances, useTripBalances } from '@/features/expenses'
+import { type Settlement, settleBalances, toCents, useTripBalances } from '@/features/expenses'
 import {
   useLeaveTrip,
   useRegenerateInviteCode,
   useRemoveTripMember,
   useTripMembers,
 } from '@/features/group'
+import { useRecordSettlement } from '@/features/settlements'
 import { useDeleteTrip, useTrip } from '@/features/trips'
 import { useShareLocation } from '@/features/wayfinder'
 import { withAlpha } from '@/lib/color'
 import { getShareLocation, setShareLocation } from '@/lib/preferences'
 import { paramString } from '@/lib/routing'
+
+const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
 
 export default function TripGroupScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
@@ -37,10 +50,13 @@ export default function TripGroupScreen() {
   const regenerate = useRegenerateInviteCode(tripId)
   const leaveTripMutation = useLeaveTrip()
   const removeMember = useRemoveTripMember(tripId)
+  const recordSettlement = useRecordSettlement(tripId)
   const { theme } = useUnistyles()
 
   const [sharing, setSharing] = useState(() => getShareLocation(tripId))
   const [copied, setCopied] = useState(false)
+  const [pendingSettlement, setPendingSettlement] = useState<Settlement | null>(null)
+  const [settleAmount, setSettleAmount] = useState('')
   const { status: shareStatus } = useShareLocation({ tripId, enabled: sharing })
 
   useEffect(() => {
@@ -235,6 +251,35 @@ export default function TripGroupScreen() {
     )
   }
 
+  function openSettle(settlement: Settlement) {
+    setPendingSettlement(settlement)
+    setSettleAmount((settlement.amountCents / 100).toFixed(2))
+  }
+
+  async function confirmSettle() {
+    if (!pendingSettlement || !trip || !AMOUNT_RE.test(settleAmount.trim())) {
+      return
+    }
+    const amountCents = toCents(settleAmount)
+    if (amountCents <= 0) {
+      return
+    }
+    try {
+      await recordSettlement.mutateAsync({
+        tripId,
+        fromMemberId: pendingSettlement.fromMemberId,
+        toMemberId: pendingSettlement.toMemberId,
+        amountCents,
+      })
+      setPendingSettlement(null)
+    } catch (error) {
+      Alert.alert(
+        t('group.paymentFailedTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
+    }
+  }
+
   const hasSettlements = settlements.length > 0
   const hasBalances = balances != null && balances.length > 0
   const hasMembers = members != null && members.length > 0
@@ -333,6 +378,16 @@ export default function TripGroupScreen() {
                       currency={trip.currency}
                       size={15}
                       neutral
+                    />
+                  </View>
+                  <View style={styles.settleActions}>
+                    <Button
+                      label={t('group.markAsPaid')}
+                      icon="checkmark-circle-outline"
+                      variant="secondary"
+                      size="sm"
+                      block={false}
+                      onPress={() => openSettle(settlement)}
                     />
                   </View>
                 </Card>
@@ -489,6 +544,45 @@ export default function TripGroupScreen() {
           </Text>
         </Pressable>
       )}
+
+      <BottomSheet
+        open={pendingSettlement != null}
+        onClose={() => setPendingSettlement(null)}
+        title={t('group.confirmPaymentTitle')}
+      >
+        {pendingSettlement ? (
+          <View style={styles.sheetBody}>
+            <View style={styles.sheetParties}>
+              <Avatar name={labelForMember(pendingSettlement.fromMemberId)} size={36} />
+              <Ionicons name="arrow-forward" size={18} color={theme.colors.muted} />
+              <Avatar name={labelForMember(pendingSettlement.toMemberId)} size={36} />
+              <Text style={styles.sheetPartiesText} numberOfLines={2}>
+                <Text style={styles.settleName}>
+                  {labelForMember(pendingSettlement.fromMemberId)}
+                </Text>
+                {` ${t('group.paysTo')} `}
+                <Text style={styles.settleName}>
+                  {labelForMember(pendingSettlement.toMemberId)}
+                </Text>
+              </Text>
+            </View>
+            <TextField
+              label={t('expenseForm.amount', { currency: trip.currency })}
+              placeholder="0.00"
+              keyboardType="decimal-pad"
+              value={settleAmount}
+              onChangeText={setSettleAmount}
+            />
+            <Button
+              label={
+                recordSettlement.isPending ? t('group.recordingPayment') : t('group.confirmPayment')
+              }
+              onPress={() => void confirmSettle()}
+              disabled={recordSettlement.isPending || !AMOUNT_RE.test(settleAmount.trim())}
+            />
+          </View>
+        ) : null}
+      </BottomSheet>
     </Screen>
   )
 }
@@ -570,6 +664,25 @@ const styles = StyleSheet.create((theme) => ({
   settledText: {
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.foreground,
+  },
+  settleActions: {
+    marginTop: theme.gap(2.5),
+    alignItems: 'flex-end',
+  },
+  sheetBody: {
+    gap: theme.gap(4),
+  },
+  sheetParties: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+  },
+  sheetPartiesText: {
+    flex: 1,
+    minWidth: 0,
+    fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
   },
