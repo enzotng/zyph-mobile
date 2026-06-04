@@ -10,7 +10,7 @@ import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { Spinner } from '@/components/ui'
 import { type ParsedEmailEvent, useParseEmail } from '@/features/smart-import'
-import { useCreateEvent } from '@/features/timeline'
+import { eventTypeIcon, useCreateEvent } from '@/features/timeline'
 import { paramString } from '@/lib/routing'
 
 export default function ImportEmailScreen() {
@@ -86,6 +86,7 @@ export default function ImportEmailScreen() {
       await createEvent.mutateAsync({
         tripId,
         title,
+        type: parsed.type,
         startsAt,
         endsAt,
         notes: parsed.notes ?? '',
@@ -159,7 +160,7 @@ export default function ImportEmailScreen() {
       {parsed ? (
         <View style={styles.previewCard}>
           <View style={styles.previewHead}>
-            <Ionicons name={iconForType(parsed.type)} size={22} color={theme.colors.primary} />
+            <Ionicons name={eventTypeIcon(parsed.type)} size={22} color={theme.colors.primary} />
             <Text style={styles.previewType}>{t(`smartImport.types.${parsed.type}`)}</Text>
             <View style={styles.confidencePill}>
               <Text style={styles.confidenceText}>
@@ -243,21 +244,6 @@ function PreviewRow({
       <Text style={[styles.rowText, muted ? styles.muted : null]}>{label}</Text>
     </View>
   )
-}
-
-function iconForType(type: ParsedEmailEvent['type']): keyof typeof Ionicons.glyphMap {
-  switch (type) {
-    case 'flight':
-      return 'airplane'
-    case 'hotel':
-      return 'bed'
-    case 'transport':
-      return 'train'
-    case 'activity':
-      return 'sparkles'
-    default:
-      return 'calendar'
-  }
 }
 
 function formatDateTime(iso: string): string {

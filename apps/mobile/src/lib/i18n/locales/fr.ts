@@ -386,12 +386,21 @@ export const fr: Translations = {
     form: {
       title: 'Titre',
       titlePlaceholder: 'Dîner, vol, visite…',
+      type: 'Type',
       start: 'Début',
       end: 'Fin',
       addEndTime: 'Ajouter une heure de fin',
       notes: 'Notes',
       notesPlaceholder: 'Table pour 4, code porte…',
       location: 'Lieu',
+    },
+    types: {
+      flight: 'Vol',
+      lodging: 'Hébergement',
+      transport: 'Transport',
+      activity: 'Activité',
+      food: 'Repas',
+      event: 'Événement',
     },
     detail: {
       title: 'Événement',

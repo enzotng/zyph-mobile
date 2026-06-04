@@ -13,6 +13,7 @@ import { Badge, Card, EmptyState, Spinner } from '@/components/ui'
 import {
   type EventStatus,
   eventStatus,
+  eventTypeIcon,
   formatCountdown,
   groupEventsByDay,
   type TimelineItem,
@@ -111,7 +112,7 @@ export default function TimelineScreen() {
             >
               <View style={styles.eventHead}>
                 <View style={styles.eventTitleWrap}>
-                  <Ionicons name="calendar" size={18} color={iconColor} />
+                  <Ionicons name={eventTypeIcon(item.event.type)} size={18} color={iconColor} />
                   <Text style={styles.eventTitle} numberOfLines={1}>
                     {item.event.title}
                   </Text>

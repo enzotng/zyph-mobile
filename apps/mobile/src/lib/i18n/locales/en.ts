@@ -380,12 +380,21 @@ export const en = {
     form: {
       title: 'Title',
       titlePlaceholder: 'Dinner, flight, visit…',
+      type: 'Type',
       start: 'Start',
       end: 'End',
       addEndTime: 'Add an end time',
       notes: 'Notes',
       notesPlaceholder: 'Table for 4, door code…',
       location: 'Location',
+    },
+    types: {
+      flight: 'Flight',
+      lodging: 'Lodging',
+      transport: 'Transport',
+      activity: 'Activity',
+      food: 'Food',
+      event: 'Event',
     },
     detail: {
       title: 'Event',

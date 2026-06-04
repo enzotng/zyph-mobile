@@ -9,6 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { DateField } from '@/components/date-field'
+import { EventTypePicker } from '@/components/event-type-picker'
 import { GateLocationField } from '@/components/gate-location-field'
 import { LocationPicker } from '@/components/location-picker'
 import { Screen } from '@/components/screen'
@@ -36,7 +37,7 @@ export default function AddEventScreen() {
     formState: { errors },
   } = useForm<CreateEventValues>({
     resolver: zodResolver(createEventSchema),
-    defaultValues: { title: '', startsAt: initialStartsAt, endsAt: '', notes: '' },
+    defaultValues: { title: '', type: 'event', startsAt: initialStartsAt, endsAt: '', notes: '' },
   })
 
   const lat = useWatch({ control, name: 'lat' })
@@ -60,6 +61,7 @@ export default function AddEventScreen() {
       await createEvent.mutateAsync({
         tripId,
         title: values.title,
+        type: values.type,
         startsAt: values.startsAt,
         endsAt: values.endsAt || undefined,
         notes: values.notes,
@@ -89,6 +91,18 @@ export default function AddEventScreen() {
             onChangeText={field.onChange}
             onBlur={field.onBlur}
             error={errors.title?.message}
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="type"
+        render={({ field }) => (
+          <EventTypePicker
+            label={t('events.form.type')}
+            value={field.value}
+            onChange={field.onChange}
           />
         )}
       />

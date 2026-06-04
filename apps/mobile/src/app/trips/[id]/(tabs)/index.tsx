@@ -27,7 +27,7 @@ import {
   useTripBalances,
 } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
-import { eventStatus, formatCountdown, useEvents } from '@/features/timeline'
+import { eventStatus, eventTypeIcon, formatCountdown, useEvents } from '@/features/timeline'
 import { isoDayToDate, useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { paramString } from '@/lib/routing'
@@ -39,20 +39,6 @@ const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
   activity: 'ticket',
   shopping: 'bag-handle',
   other: 'pricetag',
-}
-
-// Maps a trip-event type to an icon; falls back to 'calendar' for unknown types.
-const EVENT_TYPE_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
-  flight: 'airplane',
-  transport: 'car',
-  lodging: 'bed',
-  activity: 'ticket',
-  food: 'restaurant',
-  event: 'calendar',
-}
-
-function eventIcon(type: string | null | undefined): keyof typeof Ionicons.glyphMap {
-  return (type && EVENT_TYPE_ICON[type]) || 'calendar'
 }
 
 // Formats a trip date range using the app i18n language, collapsing a shared
@@ -332,7 +318,7 @@ export default function TripDashboardScreen() {
                   style={styles.eventIcon}
                 >
                   <Ionicons
-                    name={eventIcon(nextEvent.type)}
+                    name={eventTypeIcon(nextEvent.type)}
                     size={22}
                     color={theme.colors.primary}
                   />
