@@ -19,6 +19,10 @@ export const en = {
     category: 'Category',
     tryAgain: 'Please try again.',
   },
+  errors: {
+    title: 'Something went wrong',
+    body: 'The app hit an unexpected problem. Try again.',
+  },
   trips: {
     title: 'My trips',
     create: 'Create a trip',

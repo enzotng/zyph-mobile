@@ -21,6 +21,10 @@ export const fr: Translations = {
     category: 'Catégorie',
     tryAgain: 'Réessaie.',
   },
+  errors: {
+    title: 'Oups, une erreur',
+    body: 'L’app a rencontré un souci inattendu. Réessaie.',
+  },
   trips: {
     title: 'Mes voyages',
     create: 'Créer un voyage',
