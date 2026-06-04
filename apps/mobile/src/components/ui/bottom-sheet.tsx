@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Squircle } from './squircle'
+import { Surface } from './surface'
 
 type BottomSheetProps = {
   open: boolean
@@ -77,7 +77,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
           />
         </Animated.View>
         <Animated.View style={sheetStyle} onLayout={onSheetLayout}>
-          <Squircle
+          <Surface
             corners="top"
             color={theme.colors.background}
             borderWidth={0}
@@ -87,7 +87,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
             <View style={styles.grabber} />
             {title !== undefined ? <Text style={styles.title}>{title}</Text> : null}
             {children}
-          </Squircle>
+          </Surface>
         </Animated.View>
       </View>
     </Modal>

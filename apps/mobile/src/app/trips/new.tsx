@@ -10,7 +10,7 @@ import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { TripDatesField } from '@/components/trip-dates-field'
-import { Segmented, Squircle } from '@/components/ui'
+import { Segmented, Surface } from '@/components/ui'
 import { type CreateTripValues, createTripSchema, useCreateTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 
@@ -23,7 +23,7 @@ const CURRENCY_OPTIONS = [
 function FieldIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
   const { theme } = useUnistyles()
   return (
-    <Squircle
+    <Surface
       width={40}
       height={40}
       radius={theme.radius.sm}
@@ -32,7 +32,7 @@ function FieldIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
       style={styles.fieldIcon}
     >
       <Ionicons name={name} size={20} color={theme.colors.primary} />
-    </Squircle>
+    </Surface>
   )
 }
 

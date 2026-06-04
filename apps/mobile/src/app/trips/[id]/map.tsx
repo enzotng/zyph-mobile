@@ -6,7 +6,7 @@ import { Platform, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Screen } from '@/components/screen'
-import { Squircle } from '@/components/ui'
+import { Surface } from '@/components/ui'
 import {
   layerOf,
   type MapLayer,
@@ -104,7 +104,7 @@ export default function TripMapScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
               >
-                <Squircle
+                <Surface
                   radius={theme.radius.full}
                   color={theme.colors.background}
                   borderColor={theme.colors.border}
@@ -115,7 +115,7 @@ export default function TripMapScreen() {
                     style={[styles.dot, { backgroundColor: mapTintFor(theme.colors, layer) }]}
                   />
                   <Text style={styles.chipLabel}>{t(`map.layers.${layer}s`)}</Text>
-                </Squircle>
+                </Surface>
               </Pressable>
             )
           })}

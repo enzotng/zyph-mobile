@@ -22,7 +22,7 @@ import {
   SectionTitle,
   Segmented,
   Spinner,
-  Squircle,
+  Surface,
 } from '@/components/ui'
 import { setAppLanguage } from '@/lib/i18n'
 import { getThemePreference, setThemePreference, type ThemePreference } from '@/lib/preferences'
@@ -75,12 +75,12 @@ export default function UiKitScreen() {
         onChange={selectTheme}
       />
 
-      <SectionTitle>Squircle tuner</SectionTitle>
-      <Squircle radius={tuneRadius} smoothing={tuneSmoothing} style={styles.tuneBox}>
+      <SectionTitle>Surface tuner</SectionTitle>
+      <Surface radius={tuneRadius} smoothing={tuneSmoothing} style={styles.tuneBox}>
         <Text style={styles.cardText}>
           radius {tuneRadius} - smoothing {tuneSmoothing}
         </Text>
-      </Squircle>
+      </Surface>
       <Text style={styles.muted}>Radius</Text>
       <Segmented
         options={[

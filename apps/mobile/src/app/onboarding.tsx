@@ -7,7 +7,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { ZyphMark } from '@/components/brand/zyph-mark'
 import { Button } from '@/components/button'
-import { Squircle } from '@/components/ui'
+import { Surface } from '@/components/ui'
 import { withAlpha } from '@/lib/color'
 import { setOnboardingSeen } from '@/lib/preferences'
 
@@ -74,7 +74,7 @@ export default function OnboardingScreen() {
           <View style={styles.markGhost}>
             <ZyphMark size={130} color={withAlpha(accent, 0.12)} />
           </View>
-          <Squircle
+          <Surface
             radius={theme.radius.xl}
             color={accent}
             borderWidth={0}
@@ -83,7 +83,7 @@ export default function OnboardingScreen() {
             style={styles.iconTile}
           >
             <Ionicons name={slide.icon} size={46} color="#FFFFFF" />
-          </Squircle>
+          </Surface>
         </View>
 
         <View style={styles.copy}>

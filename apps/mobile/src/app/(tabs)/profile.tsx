@@ -8,7 +8,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
-import { Avatar, ListRow, Segmented, Spinner, Squircle } from '@/components/ui'
+import { Avatar, ListRow, Segmented, Spinner, Surface } from '@/components/ui'
 import { signOut, useAuth } from '@/features/auth'
 import { useProfile } from '@/features/profile'
 import { getThemePreference, setThemePreference, type ThemePreference } from '@/lib/preferences'
@@ -96,7 +96,7 @@ export default function ProfileScreen() {
       {/* Account */}
       <View style={styles.group}>
         <Text style={styles.groupTitle}>{t('profile.section.account')}</Text>
-        <Squircle
+        <Surface
           color={theme.colors.card}
           borderColor={theme.colors.border}
           borderWidth={1}
@@ -123,7 +123,7 @@ export default function ProfileScreen() {
             detail={t('profile.notificationsOn')}
             last
           />
-        </Squircle>
+        </Surface>
       </View>
 
       {/* Appearance */}

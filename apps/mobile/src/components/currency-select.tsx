@@ -1,7 +1,7 @@
 import { Pressable, ScrollView, Text } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Squircle } from '@/components/ui/squircle'
+import { Surface } from '@/components/ui/surface'
 
 type CurrencySelectProps = {
   label?: string
@@ -31,14 +31,14 @@ export function CurrencySelect({ label, value, currencies, onChange }: CurrencyS
               accessibilityRole="radio"
               accessibilityState={{ selected: active }}
             >
-              <Squircle
+              <Surface
                 radius={theme.radius.md}
                 color={active ? theme.colors.primary : theme.colors.card}
                 borderColor={active ? theme.colors.primary : theme.colors.border}
                 style={styles.chip}
               >
                 <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{code}</Text>
-              </Squircle>
+              </Surface>
             </Pressable>
           )
         })}

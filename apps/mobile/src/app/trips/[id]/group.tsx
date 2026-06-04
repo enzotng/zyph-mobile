@@ -17,7 +17,7 @@ import {
   Card,
   SectionTitle,
   Spinner,
-  Squircle,
+  Surface,
 } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import { type Settlement, settleBalances, toCents, useTripBalances } from '@/features/expenses'
@@ -309,7 +309,7 @@ export default function TripGroupScreen() {
             <Text style={styles.inviteLabel}>{t('group.inviteCode')}</Text>
             <Text style={styles.code}>{trip.invite_code}</Text>
           </View>
-          <Squircle
+          <Surface
             width={48}
             height={48}
             radius={theme.radius.md}
@@ -318,7 +318,7 @@ export default function TripGroupScreen() {
             style={styles.inviteMark}
           >
             <Ionicons name="people" size={24} color={theme.colors.primary} />
-          </Squircle>
+          </Surface>
         </View>
         <View style={styles.inviteActions}>
           <Button
@@ -394,7 +394,7 @@ export default function TripGroupScreen() {
               ))}
             </View>
           ) : (
-            <Squircle
+            <Surface
               borderWidth={0}
               radius={theme.radius.lg}
               color={withAlpha(theme.colors.success, 0.1)}
@@ -404,7 +404,7 @@ export default function TripGroupScreen() {
               <Text style={styles.settledText} numberOfLines={2}>
                 {t('group.allUpToDate')}
               </Text>
-            </Squircle>
+            </Surface>
           )}
         </View>
       </View>

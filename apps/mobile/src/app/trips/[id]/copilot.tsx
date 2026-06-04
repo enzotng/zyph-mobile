@@ -8,7 +8,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Spinner, Squircle } from '@/components/ui'
+import { Spinner, Surface } from '@/components/ui'
 import { buildTripContext, type CopilotMessage, useAskCopilot } from '@/features/copilot'
 import { useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
@@ -132,7 +132,7 @@ export default function CopilotScreen() {
                       accessibilityRole="button"
                       style={({ pressed }) => (pressed ? styles.pressed : undefined)}
                     >
-                      <Squircle
+                      <Surface
                         radius={theme.radius.full}
                         color={theme.colors.card}
                         borderColor={theme.colors.border}
@@ -140,7 +140,7 @@ export default function CopilotScreen() {
                         style={styles.suggestion}
                       >
                         <Text style={styles.suggestionText}>{label}</Text>
-                      </Squircle>
+                      </Surface>
                     </Pressable>
                   )
                 })}
@@ -155,7 +155,7 @@ export default function CopilotScreen() {
                   message.role === 'user' ? styles.bubbleRowUser : styles.bubbleRowAssistant,
                 ]}
               >
-                <Squircle
+                <Surface
                   radius={theme.radius.lg}
                   color={message.role === 'user' ? theme.colors.primary : theme.colors.card}
                   borderColor={message.role === 'user' ? theme.colors.primary : theme.colors.border}
@@ -165,13 +165,13 @@ export default function CopilotScreen() {
                   <Text style={message.role === 'user' ? styles.bubbleTextUser : styles.bubbleText}>
                     {message.text}
                   </Text>
-                </Squircle>
+                </Surface>
               </View>
             ))
           )}
           {ask.isPending ? (
             <View style={[styles.bubbleRow, styles.bubbleRowAssistant]}>
-              <Squircle
+              <Surface
                 radius={theme.radius.lg}
                 color={theme.colors.card}
                 borderColor={theme.colors.border}
@@ -179,7 +179,7 @@ export default function CopilotScreen() {
                 style={styles.bubble}
               >
                 <Spinner label={t('copilot.thinking')} />
-              </Squircle>
+              </Surface>
             </View>
           ) : null}
         </ScrollView>
@@ -201,14 +201,14 @@ export default function CopilotScreen() {
             accessibilityLabel={t('copilot.send')}
             style={({ pressed }) => (pressed ? styles.pressed : undefined)}
           >
-            <Squircle
+            <Surface
               radius={theme.radius.full}
               color={canSend ? theme.colors.primary : theme.colors.muted}
               borderWidth={0}
               style={styles.sendButton}
             >
               <Ionicons name="send" size={18} color={theme.colors.primaryForeground} />
-            </Squircle>
+            </Surface>
           </Pressable>
         </View>
       </KeyboardAvoidingView>

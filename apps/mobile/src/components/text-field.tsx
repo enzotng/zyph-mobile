@@ -2,7 +2,7 @@ import { type ComponentProps, forwardRef, useState } from 'react'
 import { Text, TextInput, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Squircle } from '@/components/ui/squircle'
+import { Surface } from '@/components/ui/surface'
 
 type TextFieldProps = ComponentProps<typeof TextInput> & {
   // Optional: search-style fields render placeholder-only (no label).
@@ -26,7 +26,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   return (
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <Squircle
+      <Surface
         radius={theme.radius.md}
         color={theme.colors.card}
         borderColor={borderColor}
@@ -46,7 +46,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             onBlur?.(event)
           }}
         />
-      </Squircle>
+      </Surface>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   )

@@ -5,7 +5,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { withAlpha } from '@/lib/color'
 
-import { Squircle } from './squircle'
+import { Surface } from './surface'
 
 type ListRowProps = {
   icon?: keyof typeof Ionicons.glyphMap
@@ -39,7 +39,7 @@ export function ListRow({
   const inner = (
     <>
       {icon ? (
-        <Squircle
+        <Surface
           width={38}
           height={38}
           radius={theme.radius.md}
@@ -48,7 +48,7 @@ export function ListRow({
           style={styles.iconTile}
         >
           <Ionicons name={icon} size={20} color={resolvedIconColor} />
-        </Squircle>
+        </Surface>
       ) : null}
 
       <View style={styles.content}>

@@ -21,24 +21,6 @@ if (!i18n.isInitialized) {
   })
 }
 
-// Lightweight Skia mock: the CanvasKit/WASM runtime is not loaded in unit tests. Canvas
-// and Path render to nothing and Skia.Path.Make() returns a no-op path, so Skia-backed
-// components (Squircle, the Wayfinder overlay) can render in tests without the native module.
-jest.mock('@shopify/react-native-skia', () => {
-  const noopPath = () => ({
-    moveTo: () => undefined,
-    lineTo: () => undefined,
-    close: () => undefined,
-  })
-  const target: Record<PropertyKey, unknown> = {
-    __esModule: true,
-    Skia: { Path: { Make: noopPath } },
-  }
-  return new Proxy(target, {
-    get: (obj, prop) => (prop in obj ? obj[prop] : () => null),
-  })
-})
-
 // @react-native-community/netinfo: native module absent in unit tests. Use the package's
 // own jest mock so onlineManager wiring and useIsOnline can load without the native side.
 jest.mock('@react-native-community/netinfo', () =>
