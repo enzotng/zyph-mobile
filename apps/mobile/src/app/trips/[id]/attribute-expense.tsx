@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
-import { FlashList } from '@shopify/flash-list'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
@@ -12,12 +11,20 @@ import { TextField } from '@/components/text-field'
 import { BottomSheet, Spinner, Squircle } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
+  amountToCents,
   buildAssignmentsByPosition,
   buildEqualAssignments,
   computeMemberTotalsCents,
+  type DraftItem,
   deleteExpense,
+  draftFromItems,
+  draftsToItems,
+  draftTotalCents,
+  everyDraftAmountValid,
+  everyDraftLabelled,
   formatAmount,
   type ParsedItem,
+  reindexAssignmentsAfterRemoval,
   type SmartSplitItem,
   useCreateExpense,
   useExpense,
@@ -172,10 +179,18 @@ function AttributionEditor({
     },
   )
   const [description, setDescription] = useState(initialDescription)
+  // Editable line items (label + decimal-string amount). The saved expense total is the
+  // sum of these lines, so an OCR receipt whose lines do not match the printed total is
+  // always saveable once the user has corrected or added lines. `id` is a stable React key
+  // (position stays the assignment key); a counter mints ids for added lines.
+  const nextDraftId = useRef(items.length)
+  const [drafts, setDrafts] = useState<(DraftItem & { id: string })[]>(() =>
+    draftFromItems(items).map((draft, index) => ({ ...draft, id: `d${index}` })),
+  )
   const [sheetOpenForPosition, setSheetOpenForPosition] = useState<number | null>(null)
 
-  const itemsTotal = useMemo(() => items.reduce((sum, i) => sum + i.amountCents, 0), [items])
-
+  const editedItems = useMemo(() => draftsToItems(drafts), [drafts])
+  const itemsTotal = useMemo(() => draftTotalCents(drafts), [drafts])
   const delta = itemsTotal - totalCents
 
   const assignments = useMemo(() => {
@@ -184,25 +199,24 @@ function AttributionEditor({
       const position = Number.parseInt(posStr, 10)
       const memberIds = Array.from(set)
       if (memberIds.length === 0) continue
-      const built = buildEqualAssignments([position], memberIds)
-      out.push(...built)
+      out.push(...buildEqualAssignments([position], memberIds))
     }
     return out
   }, [assignmentsByPosition])
 
   const memberTotals = useMemo(
-    () => computeMemberTotalsCents(items, assignments),
-    [items, assignments],
+    () => computeMemberTotalsCents(editedItems, assignments),
+    [editedItems, assignments],
   )
 
   const unassignedCount = useMemo(() => {
     let count = 0
-    for (let i = 0; i < items.length; i++) {
+    for (let i = 0; i < drafts.length; i++) {
       const set = assignmentsByPosition[i]
       if (!set || set.size === 0) count++
     }
     return count
-  }, [items.length, assignmentsByPosition])
+  }, [drafts.length, assignmentsByPosition])
 
   const toggleAssignment = useCallback((position: number, memberId: string) => {
     setAssignmentsByPosition((prev) => {
@@ -216,79 +230,41 @@ function AttributionEditor({
     })
   }, [])
 
-  // Stable inline-chip slice computed once, not per FlashList row.
+  function setLabel(index: number, label: string) {
+    setDrafts((prev) => prev.map((draft, i) => (i === index ? { ...draft, label } : draft)))
+  }
+
+  function setAmount(index: number, amount: string) {
+    setDrafts((prev) => prev.map((draft, i) => (i === index ? { ...draft, amount } : draft)))
+  }
+
+  function addLine() {
+    const id = `d${nextDraftId.current}`
+    nextDraftId.current += 1
+    setDrafts((prev) => [...prev, { id, label: '', amount: '' }])
+  }
+
+  function addMissingLine() {
+    const missing = totalCents - itemsTotal
+    if (missing <= 0) {
+      return
+    }
+    const id = `d${nextDraftId.current}`
+    nextDraftId.current += 1
+    setDrafts((prev) => [
+      ...prev,
+      { id, label: t('smartSplit.differenceLabel'), amount: (missing / 100).toFixed(2) },
+    ])
+  }
+
+  function removeLine(index: number) {
+    setDrafts((prev) => prev.filter((_, i) => i !== index))
+    setAssignmentsByPosition((prev) => reindexAssignmentsAfterRemoval(prev, index))
+  }
+
+  // Stable inline-chip slice computed once, not per row.
   const inlineMembers = useMemo(() => (members ?? []).slice(0, MAX_INLINE_CHIPS), [members])
   const remainder = (members?.length ?? 0) - inlineMembers.length
-
-  const renderItem = useCallback(
-    ({ item, index }: { item: SmartSplitItem; index: number }) => {
-      const set = assignmentsByPosition[index] ?? new Set<string>()
-      const isUnassigned = set.size === 0
-      return (
-        <Squircle
-          color={theme.colors.card}
-          borderColor={isUnassigned ? theme.colors.warning : theme.colors.border}
-          borderWidth={1}
-          radius={theme.radius.md}
-          style={styles.itemCard}
-        >
-          <View style={styles.itemRow}>
-            <Text style={styles.itemLabel} numberOfLines={2}>
-              {item.label}
-            </Text>
-            <Text style={styles.itemAmount}>{formatAmount(item.amountCents, expenseCurrency)}</Text>
-          </View>
-          <View style={styles.chipsRow}>
-            {inlineMembers.map((member) => {
-              const selected = set.has(member.id)
-              const name =
-                member.user_id === userId
-                  ? t('common.you')
-                  : (member.display_name ?? t('common.member'))
-              const initial = name.charAt(0).toUpperCase()
-              return (
-                <MemberChip
-                  key={member.id}
-                  initial={initial}
-                  label={name}
-                  selected={selected}
-                  onPress={() => toggleAssignment(index, member.id)}
-                />
-              )
-            })}
-            {remainder > 0 ? (
-              <Pressable
-                onPress={() => setSheetOpenForPosition(index)}
-                accessibilityRole="button"
-                accessibilityLabel={t('smartSplit.moreMembers', { count: remainder })}
-                style={styles.moreChip}
-              >
-                <Text style={styles.moreChipText}>+{remainder}</Text>
-              </Pressable>
-            ) : null}
-          </View>
-          {set.size > 1 ? (
-            <Text style={styles.itemShared}>
-              {t('smartSplit.sharedBetween', {
-                count: set.size,
-                amount: formatAmount(item.amountCents / set.size, expenseCurrency),
-              })}
-            </Text>
-          ) : null}
-        </Squircle>
-      )
-    },
-    [
-      assignmentsByPosition,
-      expenseCurrency,
-      inlineMembers,
-      remainder,
-      t,
-      theme,
-      toggleAssignment,
-      userId,
-    ],
-  )
 
   if (!trip || !members) {
     return (
@@ -318,11 +294,23 @@ function AttributionEditor({
   const fxRate = isForeign && fx ? crossRate(expenseCurrency, tripCurrency, fx.rates) : 1
   const canConvert = !isForeign || (fx && fx.rates[expenseCurrency] !== undefined)
   const baseAmountCents =
-    isForeign && fx ? convertCents(totalCents, expenseCurrency, tripCurrency, fx.rates) : totalCents
+    isForeign && fx ? convertCents(itemsTotal, expenseCurrency, tripCurrency, fx.rates) : itemsTotal
 
   const currentUserMember = members.find((m) => m.user_id === userId)
 
   async function onSave() {
+    if (!everyDraftLabelled(drafts)) {
+      Alert.alert(t('smartSplit.emptyLabelTitle'), t('smartSplit.emptyLabelBody'))
+      return
+    }
+    if (!everyDraftAmountValid(drafts)) {
+      Alert.alert(t('smartSplit.invalidAmountTitle'), t('smartSplit.invalidAmountBody'))
+      return
+    }
+    if (itemsTotal <= 0) {
+      Alert.alert(t('smartSplit.zeroTotalTitle'), t('smartSplit.zeroTotalBody'))
+      return
+    }
     if (unassignedCount > 0) {
       Alert.alert(
         t('smartSplit.unassignedTitle'),
@@ -350,11 +338,11 @@ function AttributionEditor({
         await upsertWithItems.mutateAsync({
           expenseId,
           description,
-          amountCents: totalCents,
+          amountCents: itemsTotal,
           currency: expenseCurrency,
           baseAmountCents,
           fxRate,
-          items,
+          items: editedItems,
           assignments,
         })
         router.back()
@@ -375,7 +363,7 @@ function AttributionEditor({
       const created = await createExpense.mutateAsync({
         tripId,
         description,
-        amountCents: totalCents,
+        amountCents: itemsTotal,
         currency: expenseCurrency,
         baseAmountCents,
         fxRate,
@@ -385,11 +373,11 @@ function AttributionEditor({
       await upsertWithItems.mutateAsync({
         expenseId: created.id,
         description,
-        amountCents: totalCents,
+        amountCents: itemsTotal,
         currency: expenseCurrency,
         baseAmountCents,
         fxRate,
-        items,
+        items: editedItems,
         assignments,
       })
       router.replace({ pathname: '/trips/[id]/expenses', params: { id: tripId } })
@@ -407,6 +395,7 @@ function AttributionEditor({
 
   const isPending = createExpense.isPending || upsertWithItems.isPending
   const totalLabel = mode === 'edit' ? t('smartSplit.total') : t('smartSplit.ocrTotal')
+  const showAddMissing = mode === 'create' && delta < 0
 
   return (
     <Screen title={mode === 'edit' ? t('smartSplit.editTitle') : t('smartSplit.title')} showBack>
@@ -438,17 +427,115 @@ function AttributionEditor({
         </View>
       </Squircle>
 
-      <FlashList
-        data={items}
-        keyExtractor={(item) => `${item.position}`}
-        contentContainerStyle={styles.list}
-        renderItem={renderItem}
-        ListFooterComponent={
-          <View style={styles.footerSpacer}>
-            <Text style={styles.muted}>{t('smartSplit.tip')}</Text>
-          </View>
-        }
-      />
+      <ScrollView
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {drafts.map((draft, index) => {
+          const set = assignmentsByPosition[index] ?? new Set<string>()
+          const isUnassigned = set.size === 0
+          const lineCents = amountToCents(draft.amount)
+          return (
+            <Squircle
+              key={draft.id}
+              color={theme.colors.card}
+              borderColor={isUnassigned ? theme.colors.warning : theme.colors.border}
+              borderWidth={1}
+              radius={theme.radius.md}
+              style={styles.itemCard}
+            >
+              <View style={styles.editRow}>
+                <View style={styles.labelField}>
+                  <TextField
+                    value={draft.label}
+                    onChangeText={(value) => setLabel(index, value)}
+                    placeholder={t('smartSplit.itemLabelPlaceholder')}
+                  />
+                </View>
+                <View style={styles.amountField}>
+                  <TextField
+                    value={draft.amount}
+                    onChangeText={(value) => setAmount(index, value)}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                  />
+                </View>
+                <Pressable
+                  onPress={() => removeLine(index)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('smartSplit.removeLine')}
+                  hitSlop={8}
+                  style={styles.removeBtn}
+                >
+                  <Ionicons name="trash-outline" size={20} color={theme.colors.destructive} />
+                </Pressable>
+              </View>
+              <View style={styles.chipsRow}>
+                {inlineMembers.map((member) => {
+                  const selected = set.has(member.id)
+                  const name =
+                    member.user_id === userId
+                      ? t('common.you')
+                      : (member.display_name ?? t('common.member'))
+                  const initial = name.charAt(0).toUpperCase()
+                  return (
+                    <MemberChip
+                      key={member.id}
+                      initial={initial}
+                      label={name}
+                      selected={selected}
+                      onPress={() => toggleAssignment(index, member.id)}
+                    />
+                  )
+                })}
+                {remainder > 0 ? (
+                  <Pressable
+                    onPress={() => setSheetOpenForPosition(index)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('smartSplit.moreMembers', { count: remainder })}
+                    style={styles.moreChip}
+                  >
+                    <Text style={styles.moreChipText}>+{remainder}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              {set.size > 1 ? (
+                <Text style={styles.itemShared}>
+                  {t('smartSplit.sharedBetween', {
+                    count: set.size,
+                    amount: formatAmount(lineCents / set.size, expenseCurrency),
+                  })}
+                </Text>
+              ) : null}
+            </Squircle>
+          )
+        })}
+
+        <View style={styles.addActions}>
+          <Pressable
+            onPress={addLine}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.addLine, pressed && styles.pressed]}
+          >
+            <Ionicons name="add" size={20} color={theme.colors.primary} />
+            <Text style={styles.addLineText}>{t('smartSplit.addLine')}</Text>
+          </Pressable>
+          {showAddMissing ? (
+            <Button
+              label={t('smartSplit.addMissing', { amount: formatAmount(-delta, expenseCurrency) })}
+              icon="git-compare-outline"
+              variant="secondary"
+              size="sm"
+              block={false}
+              onPress={addMissingLine}
+            />
+          ) : null}
+        </View>
+
+        <Text style={styles.tip}>{t('smartSplit.tip')}</Text>
+      </ScrollView>
 
       <View style={styles.summary}>
         <Text style={styles.summaryTitle}>
@@ -499,7 +586,9 @@ function AttributionEditor({
                 : t('smartSplit.save')
           }
           onPress={onSave}
-          disabled={isPending || unassignedCount > 0 || (isForeign && !canConvert)}
+          disabled={
+            isPending || unassignedCount > 0 || itemsTotal <= 0 || (isForeign && !canConvert)
+          }
         />
       </View>
 
@@ -612,6 +701,9 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '700',
   },
   list: {
+    flex: 1,
+  },
+  listContent: {
     paddingBottom: theme.gap(4),
   },
   itemCard: {
@@ -620,23 +712,21 @@ const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: theme.gap(4),
     marginBottom: theme.gap(2),
   },
-  itemRow: {
+  editRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
     gap: theme.gap(2),
   },
-  itemLabel: {
+  labelField: {
     flex: 1,
-    color: theme.colors.foreground,
-    fontSize: theme.fontSize.md,
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
   },
-  itemAmount: {
-    color: theme.colors.foreground,
-    fontSize: theme.fontSize.md,
-    fontFamily: theme.fonts.display.bold,
-    fontWeight: '700',
+  amountField: {
+    width: theme.gap(22),
+  },
+  removeBtn: {
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   itemShared: {
     color: theme.colors.muted,
@@ -685,8 +775,28 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '700',
     color: theme.colors.foreground,
   },
-  footerSpacer: {
-    paddingVertical: theme.gap(4),
+  addActions: {
+    gap: theme.gap(2),
+    alignItems: 'flex-start',
+    paddingVertical: theme.gap(2),
+  },
+  addLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+    paddingVertical: theme.gap(2),
+  },
+  addLineText: {
+    color: theme.colors.primary,
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.md,
+  },
+  tip: {
+    color: theme.colors.muted,
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    paddingVertical: theme.gap(2),
   },
   summary: {
     gap: theme.gap(2),
@@ -719,6 +829,9 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
     color: theme.colors.foreground,
+  },
+  pressed: {
+    opacity: 0.85,
   },
   sheetScroll: {
     flexShrink: 1,
