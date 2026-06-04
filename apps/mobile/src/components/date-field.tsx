@@ -1,17 +1,31 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker'
 import { Platform, Pressable, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
+
+import { Surface } from '@/components/ui/surface'
 
 type DateFieldProps = {
   label: string
   value: Date
   onChange: (date: Date) => void
+  // 'datetime' (default) picks day + time; 'date' is day-only (e.g. trip start/end dates).
+  mode?: 'date' | 'datetime'
+  // Earliest selectable date - used to keep an end date on or after a start date.
+  minimumDate?: Date
   error?: string | undefined
 }
 
-export function DateField({ label, value, onChange, error }: DateFieldProps) {
-  // iOS: the native compact control — a tappable date/time chip that pops the system
-  // popover. mode="datetime" lets the user set both the day and the time.
+export function DateField({
+  label,
+  value,
+  onChange,
+  mode = 'datetime',
+  minimumDate,
+  error,
+}: DateFieldProps) {
+  const { theme } = useUnistyles()
+
+  // iOS: the native compact control - a tappable date/time chip that pops the system popover.
   if (Platform.OS === 'ios') {
     return (
       <View style={styles.container}>
@@ -19,8 +33,9 @@ export function DateField({ label, value, onChange, error }: DateFieldProps) {
           <Text style={styles.label}>{label}</Text>
           <DateTimePicker
             value={value}
-            mode="datetime"
+            mode={mode}
             display="compact"
+            minimumDate={minimumDate}
             onChange={(_event, date) => {
               if (date) {
                 onChange(date)
@@ -33,14 +48,19 @@ export function DateField({ label, value, onChange, error }: DateFieldProps) {
     )
   }
 
-  // Android: open the native date dialog, then the native time dialog (Android has no
-  // single date+time dialog), preserving the picked day when selecting the time.
+  // Android: open the native date dialog. In 'datetime' mode, chain the native time dialog
+  // (Android has no single date+time dialog), preserving the picked day.
   function openAndroid() {
     DateTimePickerAndroid.open({
       value,
       mode: 'date',
+      minimumDate,
       onChange: (_dateEvent, pickedDate) => {
         if (!pickedDate) {
+          return
+        }
+        if (mode === 'date') {
+          onChange(pickedDate)
           return
         }
         DateTimePickerAndroid.open({
@@ -59,12 +79,17 @@ export function DateField({ label, value, onChange, error }: DateFieldProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      <Pressable
-        style={styles.input(Boolean(error))}
-        onPress={openAndroid}
-        accessibilityRole="button"
-      >
-        <Text style={styles.value}>{value.toLocaleString()}</Text>
+      <Pressable onPress={openAndroid} accessibilityRole="button">
+        <Surface
+          radius={theme.radius.md}
+          color={theme.colors.card}
+          borderColor={error ? theme.colors.destructive : theme.colors.border}
+          style={styles.input}
+        >
+          <Text style={styles.value}>
+            {mode === 'date' ? value.toLocaleDateString() : value.toLocaleString()}
+          </Text>
+        </Surface>
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
@@ -86,15 +111,11 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '600',
     color: theme.colors.foreground,
   },
-  input: (hasError: boolean) => ({
+  input: {
     height: 48,
     justifyContent: 'center',
     paddingHorizontal: theme.gap(3),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: hasError ? theme.colors.destructive : theme.colors.border,
-    backgroundColor: theme.colors.card,
-  }),
+  },
   value: {
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,

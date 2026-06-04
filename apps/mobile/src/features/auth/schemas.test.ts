@@ -1,4 +1,12 @@
-import { passwordSchema, signInSchema, signUpSchema } from './schemas'
+import type { TFunction } from 'i18next'
+import { makePasswordSchema, makeSignInSchema, makeSignUpSchema } from './schemas'
+
+// The schemas are i18n factories; validation messages are irrelevant here, so the
+// mock t just echoes the key.
+const t = ((key: string) => key) as unknown as TFunction
+const passwordSchema = makePasswordSchema(t)
+const signInSchema = makeSignInSchema(t)
+const signUpSchema = makeSignUpSchema(t)
 
 describe('auth schemas', () => {
   it('rejects passwords shorter than 8 characters', () => {

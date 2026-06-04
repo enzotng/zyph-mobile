@@ -1,22 +1,26 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from 'expo-router'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { Alert, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { ZyphMark } from '@/components/brand/zyph-mark'
 import { Button } from '@/components/button'
 import { TextField } from '@/components/text-field'
-import { type SignInValues, signIn, signInSchema } from '@/features/auth'
+import { makeSignInSchema, type SignInValues, signIn } from '@/features/auth'
 
 export default function SignInScreen() {
+  const { t } = useTranslation()
   const [submitting, setSubmitting] = useState(false)
+  const schema = useMemo(() => makeSignInSchema(t), [t])
   const {
     control,
     handleSubmit,
     formState: { errors },
   } = useForm<SignInValues>({
-    resolver: zodResolver(signInSchema),
+    resolver: zodResolver(schema),
     defaultValues: { email: '', password: '' },
   })
 
@@ -24,9 +28,12 @@ export default function SignInScreen() {
     setSubmitting(true)
     try {
       await signIn(values)
-      // Navigation is handled by the auth gate once the session updates.
+      // La navigation est gérée par la garde d'authentification après la mise à jour de la session.
     } catch (error) {
-      Alert.alert('Sign in failed', error instanceof Error ? error.message : 'Please try again.')
+      Alert.alert(
+        t('auth.signIn.errorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
     } finally {
       setSubmitting(false)
     }
@@ -34,14 +41,20 @@ export default function SignInScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome back</Text>
+      <BrandLockup />
+
+      <View style={styles.heading}>
+        <Text style={styles.title}>{t('auth.signIn.title')}</Text>
+        <Text style={styles.subtitle}>{t('auth.signIn.subtitle')}</Text>
+      </View>
 
       <Controller
         control={control}
         name="email"
         render={({ field }) => (
           <TextField
-            label="Email"
+            label={t('auth.fields.email')}
+            placeholder={t('auth.fields.emailPlaceholder')}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
@@ -58,7 +71,8 @@ export default function SignInScreen() {
         name="password"
         render={({ field }) => (
           <TextField
-            label="Password"
+            label={t('auth.fields.password')}
+            placeholder="••••••••"
             secureTextEntry
             autoComplete="current-password"
             value={field.value}
@@ -69,18 +83,30 @@ export default function SignInScreen() {
         )}
       />
 
-      <Button
-        label={submitting ? 'Signing in…' : 'Sign in'}
-        onPress={handleSubmit(onSubmit)}
-        disabled={submitting}
-      />
+      <View style={styles.action}>
+        <Button
+          label={submitting ? t('auth.signIn.submitting') : t('auth.signIn.submit')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={submitting}
+        />
+      </View>
 
       <View style={styles.footer}>
-        <Text style={styles.muted}>No account yet?</Text>
+        <Text style={styles.muted}>{t('auth.signIn.noAccount')}</Text>
         <Link href="/(auth)/sign-up" style={styles.link}>
-          Create one
+          {t('auth.signIn.createAccount')}
         </Link>
       </View>
+    </View>
+  )
+}
+
+function BrandLockup() {
+  const { theme } = useUnistyles()
+  return (
+    <View style={styles.lockup}>
+      <ZyphMark size={26} />
+      <Text style={[styles.wordmark, { color: theme.colors.foreground }]}>ZYPH</Text>
     </View>
   )
 }
@@ -94,10 +120,34 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingTop: rt.insets.top,
     backgroundColor: theme.colors.background,
   },
-  title: {
-    fontSize: theme.fontSize.xl,
+  lockup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+  },
+  wordmark: {
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
+    fontSize: 22,
+    letterSpacing: -0.6,
+  },
+  heading: {
+    gap: theme.gap(1.5),
+  },
+  title: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.xl,
     color: theme.colors.foreground,
+    letterSpacing: -0.6,
+  },
+  subtitle: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.muted,
+  },
+  action: {
+    marginTop: theme.gap(1),
   },
   footer: {
     flexDirection: 'row',
@@ -105,9 +155,13 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(1),
   },
   muted: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.md,
     color: theme.colors.muted,
   },
   link: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontSize: theme.fontSize.md,
     color: theme.colors.primary,
     fontWeight: '600',
   },

@@ -1,4 +1,9 @@
-import { updateProfileSchema } from './schemas'
+import type { TFunction } from 'i18next'
+import { makeUpdateProfileSchema } from './schemas'
+
+// i18n factory schema; the mock t just echoes the key (messages are not asserted here).
+const t = ((key: string) => key) as unknown as TFunction
+const updateProfileSchema = makeUpdateProfileSchema(t)
 
 describe('updateProfileSchema', () => {
   it('accepts a valid name and 3-letter currency', () => {

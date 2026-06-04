@@ -1,25 +1,52 @@
-import { type ComponentProps, forwardRef } from 'react'
+import { type ComponentProps, forwardRef, useState } from 'react'
 import { Text, TextInput, View } from 'react-native'
-import { StyleSheet, UnistylesRuntime } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
+
+import { Surface } from '@/components/ui/surface'
 
 type TextFieldProps = ComponentProps<typeof TextInput> & {
-  label: string
+  // Optional: search-style fields render placeholder-only (no label).
+  label?: string
   error?: string | undefined
 }
 
 export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
-  { label, error, ...props },
+  { label, error, onFocus, onBlur, style, ...props },
   ref,
 ) {
+  const { theme } = useUnistyles()
+  const [focused, setFocused] = useState(false)
+
+  const borderColor = error
+    ? theme.colors.destructive
+    : focused
+      ? theme.colors.primary
+      : theme.colors.border
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        ref={ref}
-        style={styles.input(Boolean(error))}
-        placeholderTextColor={UnistylesRuntime.getTheme().colors.muted}
-        {...props}
-      />
+      {label ? <Text style={styles.label}>{label}</Text> : null}
+      <Surface
+        radius={theme.radius.md}
+        color={theme.colors.card}
+        borderColor={borderColor}
+        borderWidth={1.5}
+      >
+        <TextInput
+          ref={ref}
+          placeholderTextColor={theme.colors.muted}
+          {...props}
+          style={[styles.input, style]}
+          onFocus={(event) => {
+            setFocused(true)
+            onFocus?.(event)
+          }}
+          onBlur={(event) => {
+            setFocused(false)
+            onBlur?.(event)
+          }}
+        />
+      </Surface>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   )
@@ -32,20 +59,19 @@ const styles = StyleSheet.create((theme) => ({
   label: {
     fontSize: theme.fontSize.sm,
     fontWeight: '600',
+    fontFamily: theme.fonts.sans.semibold,
     color: theme.colors.foreground,
   },
-  input: (hasError: boolean) => ({
-    height: 48,
+  input: {
+    minHeight: 48,
     paddingHorizontal: theme.gap(3),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: hasError ? theme.colors.destructive : theme.colors.border,
-    backgroundColor: theme.colors.card,
     color: theme.colors.foreground,
     fontSize: theme.fontSize.md,
-  }),
+    fontFamily: theme.fonts.sans.regular,
+  },
   error: {
     fontSize: theme.fontSize.xs,
     color: theme.colors.destructive,
+    fontFamily: theme.fonts.sans.regular,
   },
 }))

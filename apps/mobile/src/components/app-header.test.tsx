@@ -38,35 +38,35 @@ describe('AppHeader', () => {
     router().canGoBack.mockReturnValue(true)
     render(<AppHeader title="Back Test" />)
 
-    expect(screen.getByRole('button', { name: 'Go back' })).toBeOnTheScreen()
+    expect(screen.getByRole('button', { name: 'Back' })).toBeOnTheScreen()
   })
 
   it('hides the back button when canGoBack returns false', () => {
     router().canGoBack.mockReturnValue(false)
     render(<AppHeader title="No Back" />)
 
-    expect(screen.queryByRole('button', { name: 'Go back' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
   })
 
   it('shows the back button when showBack=true regardless of canGoBack', () => {
     router().canGoBack.mockReturnValue(false)
     render(<AppHeader title="Forced Back" showBack={true} />)
 
-    expect(screen.getByRole('button', { name: 'Go back' })).toBeOnTheScreen()
+    expect(screen.getByRole('button', { name: 'Back' })).toBeOnTheScreen()
   })
 
   it('hides the back button when showBack=false regardless of canGoBack', () => {
     router().canGoBack.mockReturnValue(true)
     render(<AppHeader title="No Back Forced" showBack={false} />)
 
-    expect(screen.queryByRole('button', { name: 'Go back' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
   })
 
   it('calls router.back when the back button is pressed', () => {
     router().canGoBack.mockReturnValue(true)
     render(<AppHeader title="Press Back" />)
 
-    fireEvent.press(screen.getByRole('button', { name: 'Go back' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Back' }))
 
     expect(router().back).toHaveBeenCalledTimes(1)
   })

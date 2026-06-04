@@ -1,8 +1,11 @@
+import type { TFunction } from 'i18next'
 import { z } from 'zod'
 
-export const updateProfileSchema = z.object({
-  displayName: z.string().trim().min(1, 'Name is required').max(80),
-  preferredCurrency: z.string().trim().min(3, 'Pick a currency').max(3),
-})
+export function makeUpdateProfileSchema(t: TFunction) {
+  return z.object({
+    displayName: z.string().trim().min(1, t('profile.validation.nameRequired')).max(80),
+    preferredCurrency: z.string().trim().min(3, t('profile.validation.currency')).max(3),
+  })
+}
 
-export type UpdateProfileValues = z.infer<typeof updateProfileSchema>
+export type UpdateProfileValues = z.infer<ReturnType<typeof makeUpdateProfileSchema>>

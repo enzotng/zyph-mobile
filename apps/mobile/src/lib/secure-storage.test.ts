@@ -40,7 +40,7 @@ function requireSecureStorage() {
   return mod.secureSessionStorage
 }
 
-describe('secureSessionStorage — key already exists in SecureStore', () => {
+describe('secureSessionStorage - key already exists in SecureStore', () => {
   beforeEach(() => {
     mockGetItemAsync.mockResolvedValue('existing-encryption-key')
   })
@@ -112,7 +112,7 @@ describe('secureSessionStorage — key already exists in SecureStore', () => {
   })
 })
 
-describe('secureSessionStorage — no key in SecureStore (first run)', () => {
+describe('secureSessionStorage - no key in SecureStore (first run)', () => {
   beforeEach(() => {
     mockGetItemAsync.mockResolvedValue(null)
     mockSetItemAsync.mockResolvedValue(undefined)
@@ -152,7 +152,7 @@ describe('secureSessionStorage — no key in SecureStore (first run)', () => {
   })
 })
 
-describe('secureSessionStorage — key resolution failure clears the cached promise', () => {
+describe('secureSessionStorage - key resolution failure clears the cached promise', () => {
   it('clears storagePromise on rejection so a subsequent call retries', async () => {
     // First call: getItemAsync rejects.
     mockGetItemAsync.mockRejectedValueOnce(new Error('keychain unavailable'))

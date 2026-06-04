@@ -25,8 +25,13 @@ const trip = {
   invite_code: 'ABC123',
   start_date: null,
   end_date: null,
+  cover_photo_url: null,
+  cover_photo_author: null,
+  cover_photo_author_url: null,
   created_at: '2026-05-22T00:00:00Z',
   updated_at: '2026-05-22T00:00:00Z',
+  members: [],
+  myBalanceCents: 0,
 }
 
 beforeEach(() => {
@@ -73,7 +78,13 @@ describe('useCreateTrip', () => {
     const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
 
     const { result } = renderHook(() => useCreateTrip(), { wrapper })
-    result.current.mutate({ title: 'Lisbon', destination: 'PT', currency: 'EUR' })
+    result.current.mutate({
+      title: 'Lisbon',
+      destination: 'PT',
+      currency: 'EUR',
+      startDate: null,
+      endDate: null,
+    })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(invalidate).toHaveBeenCalledWith({ queryKey: tripsQueryKey })
@@ -94,6 +105,8 @@ describe('useUpdateTrip', () => {
       title: 'Lisbon',
       destination: 'PT',
       currency: 'EUR',
+      startDate: null,
+      endDate: null,
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))

@@ -3,22 +3,42 @@ import { StyleSheet } from 'react-native-unistyles'
 import { applyThemePreference, getThemePreference } from './lib/preferences'
 
 // Spacing helper + radius/typography scales shared across themes.
+// Radius scale aligned to platform norms (controls ~sm, inputs ~md, cards ~lg, sheets ~xl);
+// shared primitives pair these with borderCurve 'continuous' for native iOS soft corners.
 const shared = {
   gap: (v: number) => v * 4,
-  radius: { sm: 8, md: 12, lg: 16, xl: 24, full: 9999 },
+  radius: { sm: 10, md: 14, lg: 20, xl: 28, full: 9999 },
   fontSize: { xs: 12, sm: 14, md: 16, lg: 20, xl: 28, xxl: 34 },
+  // Brand type: Space Grotesk for display/titles/numbers, Plus Jakarta Sans for body.
+  // Names match the keys registered via useFonts in app/_layout.tsx (vendored .ttf).
+  fonts: {
+    display: {
+      regular: 'SpaceGrotesk_400Regular',
+      medium: 'SpaceGrotesk_500Medium',
+      semibold: 'SpaceGrotesk_600SemiBold',
+      bold: 'SpaceGrotesk_700Bold',
+    },
+    sans: {
+      regular: 'PlusJakartaSans_400Regular',
+      medium: 'PlusJakartaSans_500Medium',
+      semibold: 'PlusJakartaSans_600SemiBold',
+      bold: 'PlusJakartaSans_700Bold',
+    },
+  },
 } as const
 
-// ZYPH brand palette (purple), carried over from the original design.
+// ZYPH brand palette (v2 indigo/sky). Indigo marks interactive/active surfaces;
+// sky is the lighter travel accent; accentDeep is the secondary brand indigo.
 const lightTheme = {
   colors: {
     background: '#FFFFFF',
     foreground: '#0F172A',
     card: '#F8FAFC',
     border: '#E2E8F0',
-    primary: '#7C3AED',
+    primary: '#4F46E5',
     primaryForeground: '#FFFFFF',
-    accent: '#818CF8',
+    accent: '#38BDF8',
+    accentDeep: '#6366F1',
     muted: '#64748B',
     success: '#10B981',
     warning: '#F59E0B',
@@ -33,9 +53,10 @@ const darkTheme = {
     foreground: '#F8FAFC',
     card: '#1E293B',
     border: '#334155',
-    primary: '#8B5CF6',
+    primary: '#6366F1',
     primaryForeground: '#FFFFFF',
-    accent: '#A5B4FC',
+    accent: '#7DD3FC',
+    accentDeep: '#818CF8',
     muted: '#94A3B8',
     success: '#34D399',
     warning: '#FBBF24',

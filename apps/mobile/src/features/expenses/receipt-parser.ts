@@ -185,7 +185,7 @@ export type ParsedReceiptItems = ParsedReceipt & {
 const ITEM_LINE_RE =
   /^(?:(\d+)\s*[xX×]\s*)?(.+?)\s+[€$£¥]?\s*(\d{1,4}(?:[ .,]\d{3})*[.,]\d{2})\s*[€$£¥]?$/
 
-// Phrases that mark a line as a total / tax / payment / discount — not an item.
+// Phrases that mark a line as a total / tax / payment / discount - not an item.
 const NON_ITEM_KEYWORDS = [
   'total ttc',
   'montant total',

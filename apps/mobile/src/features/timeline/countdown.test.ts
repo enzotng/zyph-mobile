@@ -1,7 +1,12 @@
+import type { TFunction } from 'i18next'
 import { eventStatus, formatCountdown } from './countdown'
 
 const NOW = new Date('2026-05-22T12:00:00Z').getTime()
 const iso = (d: string) => new Date(d).toISOString()
+
+// formatCountdown is now i18n-aware; the mock t echoes the chosen key so we can
+// assert which unit branch (and therefore which locale key) is selected.
+const t = ((key: string) => key) as unknown as TFunction
 
 describe('eventStatus', () => {
   it('returns undated when there is no start', () => {
@@ -33,21 +38,27 @@ describe('eventStatus', () => {
 })
 
 describe('formatCountdown', () => {
-  it('shows days and hours', () => {
-    expect(formatCountdown({ kind: 'upcoming', days: 3, hours: 4, minutes: 30 })).toBe('in 3d 4h')
+  it('uses the days+hours key when days remain', () => {
+    expect(formatCountdown({ kind: 'upcoming', days: 3, hours: 4, minutes: 30 }, t)).toBe(
+      'countdown.inDaysHours',
+    )
   })
 
-  it('shows hours and minutes when under a day', () => {
-    expect(formatCountdown({ kind: 'upcoming', days: 0, hours: 4, minutes: 12 })).toBe('in 4h 12m')
+  it('uses the hours+minutes key when under a day', () => {
+    expect(formatCountdown({ kind: 'upcoming', days: 0, hours: 4, minutes: 12 }, t)).toBe(
+      'countdown.inHoursMinutes',
+    )
   })
 
-  it('shows minutes when under an hour', () => {
-    expect(formatCountdown({ kind: 'upcoming', days: 0, hours: 0, minutes: 12 })).toBe('in 12m')
+  it('uses the minutes key when under an hour', () => {
+    expect(formatCountdown({ kind: 'upcoming', days: 0, hours: 0, minutes: 12 }, t)).toBe(
+      'countdown.inMinutes',
+    )
   })
 
-  it('shows "starting now" when imminent', () => {
-    expect(formatCountdown({ kind: 'upcoming', days: 0, hours: 0, minutes: 0 })).toBe(
-      'starting now',
+  it('uses the "now" key when imminent', () => {
+    expect(formatCountdown({ kind: 'upcoming', days: 0, hours: 0, minutes: 0 }, t)).toBe(
+      'countdown.now',
     )
   })
 })

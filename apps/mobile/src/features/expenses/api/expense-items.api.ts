@@ -23,7 +23,7 @@ export async function listExpenseItemAssignments(
   expenseId: string,
 ): Promise<ExpenseItemAssignmentRow[]> {
   // PostgREST does not support filtering by an embedded relation's column with
-  // `.eq('item.expense_id', ...)` — it would silently scan the whole table
+  // `.eq('item.expense_id', ...)` - it would silently scan the whole table
   // (potential cross-trip leak via RLS gaps). Resolve the items first, then
   // filter assignments by their primary-key parents.
   const items = await listExpenseItems(expenseId)

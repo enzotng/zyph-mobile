@@ -11,6 +11,9 @@ export type GateLocationValues = z.infer<typeof gateLocationSchema>
 export const createEventSchema = z
   .object({
     title: z.string().trim().min(1, 'Title is required').max(120),
+    // Event type (see EVENT_TYPES). The form defaults it and the picker constrains the
+    // choices; kept as a plain string so legacy/Smart-Import values never fail validation.
+    type: z.string().min(1),
     startsAt: z.string().min(1, 'Pick a date'),
     // Empty string means "no end time" (point event).
     endsAt: z.string(),

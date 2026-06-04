@@ -2,22 +2,25 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { Alert, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { ZyphMark } from '@/components/brand/zyph-mark'
 import { Button } from '@/components/button'
 import { TextField } from '@/components/text-field'
-import { type SignUpValues, signUp, signUpSchema } from '@/features/auth'
+import { makeSignUpSchema, type SignUpValues, signUp } from '@/features/auth'
 
 export default function SignUpScreen() {
   const router = useRouter()
+  const { t } = useTranslation()
   const [submitting, setSubmitting] = useState(false)
   const {
     control,
     handleSubmit,
     formState: { errors },
   } = useForm<SignUpValues>({
-    resolver: zodResolver(signUpSchema),
+    resolver: zodResolver(makeSignUpSchema(t)),
     defaultValues: { displayName: '', email: '', password: '' },
   })
 
@@ -25,13 +28,16 @@ export default function SignUpScreen() {
     setSubmitting(true)
     try {
       const { session } = await signUp(values)
-      // With email confirmation enabled there is no session yet -> ask to confirm.
-      // If a session exists (confirmation disabled), the auth gate routes home.
+      // Avec la confirmation par e-mail activée il n'y a pas encore de session -> on demande de confirmer.
+      // Si une session existe (confirmation désactivée), la garde d'authentification route vers l'accueil.
       if (!session) {
         router.replace('/(auth)/check-email')
       }
     } catch (error) {
-      Alert.alert('Sign up failed', error instanceof Error ? error.message : 'Please try again.')
+      Alert.alert(
+        t('auth.signUp.errorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
     } finally {
       setSubmitting(false)
     }
@@ -39,14 +45,20 @@ export default function SignUpScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Create your account</Text>
+      <BrandLockup />
+
+      <View style={styles.heading}>
+        <Text style={styles.title}>{t('auth.signUp.title')}</Text>
+        <Text style={styles.subtitle}>{t('auth.signUp.subtitle')}</Text>
+      </View>
 
       <Controller
         control={control}
         name="displayName"
         render={({ field }) => (
           <TextField
-            label="Name"
+            label={t('auth.fields.name')}
+            placeholder={t('auth.fields.namePlaceholder')}
             autoCapitalize="words"
             value={field.value}
             onChangeText={field.onChange}
@@ -61,7 +73,8 @@ export default function SignUpScreen() {
         name="email"
         render={({ field }) => (
           <TextField
-            label="Email"
+            label={t('auth.fields.email')}
+            placeholder={t('auth.fields.emailPlaceholder')}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
@@ -78,7 +91,8 @@ export default function SignUpScreen() {
         name="password"
         render={({ field }) => (
           <TextField
-            label="Password"
+            label={t('auth.fields.password')}
+            placeholder="••••••••"
             secureTextEntry
             autoComplete="new-password"
             value={field.value}
@@ -89,18 +103,30 @@ export default function SignUpScreen() {
         )}
       />
 
-      <Button
-        label={submitting ? 'Creating…' : 'Sign up'}
-        onPress={handleSubmit(onSubmit)}
-        disabled={submitting}
-      />
+      <View style={styles.action}>
+        <Button
+          label={submitting ? t('auth.signUp.submitting') : t('auth.signUp.submit')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={submitting}
+        />
+      </View>
 
       <View style={styles.footer}>
-        <Text style={styles.muted}>Already have an account?</Text>
+        <Text style={styles.muted}>{t('auth.signUp.hasAccount')}</Text>
         <Link href="/(auth)/sign-in" style={styles.link}>
-          Sign in
+          {t('auth.signIn.submit')}
         </Link>
       </View>
+    </View>
+  )
+}
+
+function BrandLockup() {
+  const { theme } = useUnistyles()
+  return (
+    <View style={styles.lockup}>
+      <ZyphMark size={26} />
+      <Text style={[styles.wordmark, { color: theme.colors.foreground }]}>ZYPH</Text>
     </View>
   )
 }
@@ -114,10 +140,34 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingTop: rt.insets.top,
     backgroundColor: theme.colors.background,
   },
-  title: {
-    fontSize: theme.fontSize.xl,
+  lockup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+  },
+  wordmark: {
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
+    fontSize: 22,
+    letterSpacing: -0.6,
+  },
+  heading: {
+    gap: theme.gap(1.5),
+  },
+  title: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.xl,
     color: theme.colors.foreground,
+    letterSpacing: -0.6,
+  },
+  subtitle: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.muted,
+  },
+  action: {
+    marginTop: theme.gap(1),
   },
   footer: {
     flexDirection: 'row',
@@ -125,9 +175,13 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(1),
   },
   muted: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.md,
     color: theme.colors.muted,
   },
   link: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontSize: theme.fontSize.md,
     color: theme.colors.primary,
     fontWeight: '600',
   },

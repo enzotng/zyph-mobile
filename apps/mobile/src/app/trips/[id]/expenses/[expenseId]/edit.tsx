@@ -3,7 +3,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -11,6 +12,7 @@ import { CategoryPicker } from '@/components/category-picker'
 import { CurrencySelect } from '@/components/currency-select'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
+import { Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
@@ -38,6 +40,7 @@ export default function EditExpenseScreen() {
   const tripId = paramString(params.id)
   const expenseId = paramString(params.expenseId)
   const router = useRouter()
+  const { t } = useTranslation()
   const { theme } = useUnistyles()
   const { session } = useAuth()
   const userId = session?.user.id
@@ -164,21 +167,24 @@ export default function EditExpenseScreen() {
 
     if (isForeign) {
       if (!fx) {
-        Alert.alert('Rates unavailable', 'Exchange rates could not be loaded. Try again later.')
+        Alert.alert(t('expenseForm.ratesUnavailableTitle'), t('expenseForm.ratesUnavailableBody'))
         return
       }
       try {
         baseAmountCents = convertCents(amountCents, currency, tripCurrency, fx.rates)
         fxRate = crossRate(currency, tripCurrency, fx.rates)
       } catch (error) {
-        Alert.alert('Conversion failed', error instanceof Error ? error.message : 'Try again.')
+        Alert.alert(
+          t('expenseForm.conversionFailed'),
+          error instanceof Error ? error.message : t('common.tryAgain'),
+        )
         return
       }
     }
 
     const splitInputs = computeSplits(baseAmountCents, participants)
     if (splitInputs.length === 0) {
-      Alert.alert('Select at least one person', 'An expense must be shared with someone.')
+      Alert.alert(t('expenseForm.selectSomeoneTitle'), t('expenseForm.selectSomeoneBody'))
       return
     }
 
@@ -196,31 +202,41 @@ export default function EditExpenseScreen() {
       router.back()
     } catch (error) {
       Alert.alert(
-        'Could not update expense',
-        error instanceof Error ? error.message : 'Please try again.',
+        t('expenseForm.updateError'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     }
   }
 
   if (expLoading || splitsLoading || !expense || !trip || !members) {
     return (
-      <Screen title="Edit expense" showBack>
+      <Screen title={t('expenseForm.editTitle')} showBack>
         <View style={styles.center}>
-          <ActivityIndicator />
+          <Spinner />
         </View>
       </Screen>
     )
   }
 
   return (
-    <Screen title="Edit expense" scroll>
+    <Screen
+      title={t('expenseForm.editTitle')}
+      scroll
+      footer={
+        <Button
+          label={updateExpense.isPending ? t('common.saving') : t('common.save')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={updateExpense.isPending || blocked}
+        />
+      }
+    >
       <Controller
         control={control}
         name="description"
         render={({ field }) => (
           <TextField
-            label="Description"
-            placeholder="Dinner"
+            label={t('expenseForm.description')}
+            placeholder={t('expenseForm.descriptionPlaceholder')}
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -230,20 +246,24 @@ export default function EditExpenseScreen() {
       />
 
       <CurrencySelect
-        label="Currency"
+        label={t('expenseForm.currency')}
         value={currency}
         currencies={currencies}
         onChange={setPicked}
       />
 
-      <CategoryPicker label="Category" value={category} onChange={setPickedCategory} />
+      <CategoryPicker
+        label={t('expenseForm.category')}
+        value={category}
+        onChange={setPickedCategory}
+      />
 
       <Controller
         control={control}
         name="amount"
         render={({ field }) => (
           <TextField
-            label={`Amount (${currency})`}
+            label={t('expenseForm.amount', { currency })}
             placeholder="45.00"
             keyboardType="decimal-pad"
             value={field.value}
@@ -255,14 +275,15 @@ export default function EditExpenseScreen() {
       />
 
       {isForeign && !canConvert ? (
-        <Text style={styles.warn}>Exchange rate for {currency} is unavailable.</Text>
+        <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
       ) : null}
 
-      <Text style={styles.sectionTitle}>Split between</Text>
+      <Text style={styles.sectionTitle}>{t('expenseForm.splitBetween')}</Text>
       {members.map((member) => {
         const state = stateFor(member.id)
         const included = state.included
-        const name = member.user_id === userId ? 'You' : (member.display_name ?? 'Member')
+        const name =
+          member.user_id === userId ? t('common.you') : (member.display_name ?? t('common.member'))
         const share = shareByMember.get(member.id)
         return (
           <View key={member.id} style={styles.memberRow}>
@@ -282,11 +303,17 @@ export default function EditExpenseScreen() {
 
             {included ? (
               <View style={styles.memberRight}>
-                <View style={styles.stepper}>
+                <Surface
+                  color="transparent"
+                  borderColor={theme.colors.border}
+                  borderWidth={1}
+                  radius={theme.radius.md}
+                  style={styles.stepper}
+                >
                   <Pressable
                     onPress={() => setWeight(member.id, state.weight - 1)}
                     accessibilityRole="button"
-                    accessibilityLabel="Decrease shares"
+                    accessibilityLabel={t('expenseForm.decreaseShares')}
                     hitSlop={6}
                   >
                     <Ionicons name="remove" size={18} color={theme.colors.foreground} />
@@ -295,26 +322,20 @@ export default function EditExpenseScreen() {
                   <Pressable
                     onPress={() => setWeight(member.id, state.weight + 1)}
                     accessibilityRole="button"
-                    accessibilityLabel="Increase shares"
+                    accessibilityLabel={t('expenseForm.increaseShares')}
                     hitSlop={6}
                   >
                     <Ionicons name="add" size={18} color={theme.colors.foreground} />
                   </Pressable>
-                </View>
+                </Surface>
                 <Text style={styles.share}>
-                  {share === undefined ? '—' : formatAmount(share, tripCurrency)}
+                  {share === undefined ? '-' : formatAmount(share, tripCurrency)}
                 </Text>
               </View>
             ) : null}
           </View>
         )
       })}
-
-      <Button
-        label={updateExpense.isPending ? 'Saving…' : 'Save changes'}
-        onPress={handleSubmit(onSubmit)}
-        disabled={updateExpense.isPending || blocked}
-      />
     </Screen>
   )
 }
@@ -327,11 +348,12 @@ const styles = StyleSheet.create((theme) => ({
   },
   warn: {
     fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.regular,
     color: theme.colors.warning,
   },
   sectionTitle: {
     fontSize: theme.fontSize.sm,
-    fontWeight: '700',
+    fontFamily: theme.fonts.sans.bold,
     color: theme.colors.muted,
   },
   memberRow: {
@@ -348,6 +370,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   memberName: {
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.sans.regular,
     color: theme.colors.foreground,
   },
   memberRight: {
@@ -361,20 +384,17 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(2),
     paddingHorizontal: theme.gap(2),
     paddingVertical: theme.gap(1),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   weight: {
     minWidth: theme.gap(4),
     textAlign: 'center',
-    fontWeight: '600',
+    fontFamily: theme.fonts.sans.semibold,
     color: theme.colors.foreground,
   },
   share: {
     minWidth: theme.gap(16),
     textAlign: 'right',
-    fontWeight: '600',
+    fontFamily: theme.fonts.display.bold,
     color: theme.colors.foreground,
   },
 }))

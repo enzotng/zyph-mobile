@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -14,6 +15,7 @@ type AppHeaderProps = {
 export function AppHeader({ title, showBack, right }: AppHeaderProps) {
   const router = useRouter()
   const { theme } = useUnistyles()
+  const { t } = useTranslation()
   const canBack = showBack ?? router.canGoBack()
 
   return (
@@ -23,7 +25,7 @@ export function AppHeader({ title, showBack, right }: AppHeaderProps) {
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('common.back')}
             hitSlop={8}
           >
             <Ionicons name="chevron-back" size={26} color={theme.colors.foreground} />
@@ -62,6 +64,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     flex: 1,
     textAlign: 'center',
     fontSize: theme.fontSize.lg,
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
     color: theme.colors.foreground,
   },

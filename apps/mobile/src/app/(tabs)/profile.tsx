@@ -1,23 +1,35 @@
-import { Link } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
+import { Avatar, ListRow, Segmented, Spinner, Surface } from '@/components/ui'
 import { signOut, useAuth } from '@/features/auth'
 import { useProfile } from '@/features/profile'
 import { getThemePreference, setThemePreference, type ThemePreference } from '@/lib/preferences'
 
-const THEME_OPTIONS: ThemePreference[] = ['system', 'light', 'dark']
-
 export default function ProfileScreen() {
+  const { t } = useTranslation()
+  const { theme } = useUnistyles()
+  const router = useRouter()
   const { session } = useAuth()
-  const { data: profile } = useProfile()
+  const { data: profile, isLoading, isError, refetch } = useProfile()
   const [signingOut, setSigningOut] = useState(false)
   const [themePref, setThemePref] = useState<ThemePreference>(getThemePreference())
 
-  function selectTheme(preference: ThemePreference) {
+  const themeOptions = [
+    { value: 'system', label: t('profile.theme.system') },
+    { value: 'light', label: t('profile.theme.light') },
+    { value: 'dark', label: t('profile.theme.dark') },
+  ]
+
+  function selectTheme(value: string) {
+    const preference = value as ThemePreference
     setThemePref(preference)
     setThemePreference(preference)
   }
@@ -27,111 +39,165 @@ export default function ProfileScreen() {
     try {
       await signOut()
     } catch (error) {
-      Alert.alert('Sign out failed', error instanceof Error ? error.message : 'Please try again.')
+      Alert.alert(
+        t('profile.signOutErrorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
     } finally {
       setSigningOut(false)
     }
   }
 
+  const displayName = profile?.display_name ?? t('profile.fallbackName')
+  const email = session?.user.email ?? '-'
+  const currency = profile?.preferred_currency ?? 'EUR'
+
+  if (isLoading && !profile) {
+    return (
+      <Screen title={t('profile.title')} showBack={false}>
+        <View style={styles.statusCenter}>
+          <Spinner />
+        </View>
+      </Screen>
+    )
+  }
+
+  if (isError && !profile) {
+    return (
+      <Screen title={t('profile.title')} showBack={false}>
+        <View style={styles.statusCenter}>
+          <Button label={t('common.tryAgain')} variant="secondary" onPress={() => void refetch()} />
+        </View>
+      </Screen>
+    )
+  }
+
   return (
-    <Screen title="Profile" showBack={false} scroll>
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <Text style={styles.label}>Name</Text>
-          <Text style={styles.value}>{profile?.display_name ?? '—'}</Text>
+    <Screen title={t('profile.title')} showBack={false} scroll>
+      {/* Profile header */}
+      <Pressable
+        onPress={() => router.push('/profile/edit')}
+        style={({ pressed }) => [styles.hero, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={t('profile.editProfile')}
+      >
+        <Avatar name={displayName} size={60} tint={theme.colors.primary} />
+        <View style={styles.heroInfo}>
+          <Text style={styles.heroName} numberOfLines={1}>
+            {displayName}
+          </Text>
+          <Text style={styles.heroEmail} numberOfLines={1}>
+            {email}
+          </Text>
         </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>{session?.user.email ?? '—'}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Currency</Text>
-          <Text style={styles.value}>{profile?.preferred_currency ?? '—'}</Text>
-        </View>
+        <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
+      </Pressable>
+
+      {/* Account */}
+      <View style={styles.group}>
+        <Text style={styles.groupTitle}>{t('profile.section.account')}</Text>
+        <Surface
+          color={theme.colors.card}
+          borderColor={theme.colors.border}
+          borderWidth={1}
+          radius={theme.radius.lg}
+          style={styles.groupCard}
+        >
+          <ListRow
+            icon="person-outline"
+            title={t('profile.displayName')}
+            detail={displayName}
+            onPress={() => router.push('/profile/edit')}
+          />
+          <ListRow
+            icon="cash-outline"
+            iconColor={theme.colors.success}
+            title={t('profile.defaultCurrency')}
+            detail={currency}
+            onPress={() => router.push('/profile/edit')}
+          />
+          <ListRow
+            icon="notifications-outline"
+            iconColor={theme.colors.warning}
+            title={t('profile.notifications')}
+            detail={t('profile.notificationsOn')}
+            last
+          />
+        </Surface>
       </View>
 
-      <Link href="/profile/edit" style={styles.editLink}>
-        Edit profile
-      </Link>
-
-      <Text style={styles.sectionTitle}>Theme</Text>
-      <View style={styles.segment}>
-        {THEME_OPTIONS.map((option) => (
-          <Pressable
-            key={option}
-            style={[styles.segmentItem, themePref === option ? styles.segmentItemActive : null]}
-            onPress={() => selectTheme(option)}
-            accessibilityRole="button"
-          >
-            <Text
-              style={[styles.segmentText, themePref === option ? styles.segmentTextActive : null]}
-            >
-              {option}
-            </Text>
-          </Pressable>
-        ))}
+      {/* Appearance */}
+      <View style={styles.group}>
+        <Text style={styles.groupTitle}>{t('profile.section.appearance')}</Text>
+        <Segmented value={themePref} onChange={selectTheme} options={themeOptions} />
+        <Text style={styles.groupHint}>{t('profile.appearanceHint')}</Text>
       </View>
 
-      <Button label="Sign out" variant="secondary" onPress={onSignOut} disabled={signingOut} />
+      <Button
+        label={t('profile.signOut')}
+        variant="destructive"
+        icon="log-out-outline"
+        onPress={onSignOut}
+        disabled={signingOut}
+      />
+
+      <View style={styles.spacer} />
     </Screen>
   )
 }
 
 const styles = StyleSheet.create((theme) => ({
-  card: {
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
-    paddingHorizontal: theme.gap(4),
-  },
-  row: {
+  hero: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: theme.gap(3),
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    alignItems: 'center',
+    gap: theme.gap(3.5),
   },
-  label: {
-    color: theme.colors.muted,
+  pressed: {
+    opacity: 0.85,
   },
-  value: {
-    color: theme.colors.foreground,
-    fontWeight: '600',
+  heroInfo: {
+    flex: 1,
+    minWidth: 0,
   },
-  sectionTitle: {
-    fontSize: theme.fontSize.sm,
+  heroName: {
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
-    color: theme.colors.muted,
+    fontSize: theme.fontSize.xl,
+    color: theme.colors.foreground,
   },
-  segment: {
-    flexDirection: 'row',
+  heroEmail: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+    marginTop: 2,
+  },
+  group: {
     gap: theme.gap(2),
   },
-  segmentItem: {
+  groupTitle: {
+    fontFamily: theme.fonts.sans.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.sm,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: theme.colors.muted,
+  },
+  groupCard: {
+    paddingHorizontal: theme.gap(4),
+  },
+  groupHint: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
+    paddingLeft: 2,
+  },
+  statusCenter: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: theme.gap(3),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
+    justifyContent: 'center',
+    gap: theme.gap(3),
   },
-  segmentItemActive: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary,
-  },
-  segmentText: {
-    color: theme.colors.foreground,
-    textTransform: 'capitalize',
-  },
-  segmentTextActive: {
-    color: theme.colors.primaryForeground,
-    fontWeight: '600',
-  },
-  editLink: {
-    alignSelf: 'flex-start',
-    color: theme.colors.primary,
-    fontWeight: '600',
+  spacer: {
+    height: FLOATING_TAB_BAR_CLEARANCE,
   },
 }))

@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -12,6 +13,7 @@ import { CurrencySelect } from '@/components/currency-select'
 import { ReceiptScanner } from '@/components/receipt-scanner'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
+import { Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
@@ -29,13 +31,15 @@ import { useTrip } from '@/features/trips'
 import { paramString } from '@/lib/routing'
 
 const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
+const MAX_DESCRIPTION_LEN = 120
 
 type ShareState = Record<string, { included: boolean; weight: number }>
 
 export default function AddExpenseScreen() {
-  const params = useLocalSearchParams<{ id: string }>()
+  const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
+  const { t } = useTranslation()
   const { theme } = useUnistyles()
   const { session } = useAuth()
   const userId = session?.user.id
@@ -73,14 +77,16 @@ export default function AddExpenseScreen() {
   function applyScan(parsed: ParsedReceiptItems) {
     setScannerOpen(false)
     if (parsed.merchant) {
-      setValue('description', parsed.merchant.slice(0, 120), { shouldValidate: true })
+      setValue('description', parsed.merchant.slice(0, MAX_DESCRIPTION_LEN), {
+        shouldValidate: true,
+      })
     }
     if (parsed.amountCents !== null) {
       setValue('amount', (parsed.amountCents / 100).toFixed(2), { shouldValidate: true })
     }
     let resolvedCurrency = currency
     if (parsed.currency && parsed.currency !== currency) {
-      // `rates[code]` can legitimately be 0 (degenerate) — check for explicit presence.
+      // `rates[code]` can legitimately be 0 (degenerate) - check for explicit presence.
       const known = !fx || fx.rates[parsed.currency] !== undefined
       if (known) {
         setPicked(parsed.currency)
@@ -96,7 +102,8 @@ export default function AddExpenseScreen() {
           items: JSON.stringify(parsed.items),
           amountCents: String(parsed.amountCents),
           currency: resolvedCurrency,
-          description: parsed.merchant?.slice(0, 120) ?? 'Receipt',
+          description:
+            parsed.merchant?.slice(0, MAX_DESCRIPTION_LEN) ?? t('smartSplit.defaultDescription'),
         },
       })
     }
@@ -171,21 +178,24 @@ export default function AddExpenseScreen() {
 
     if (isForeign) {
       if (!fx) {
-        Alert.alert('Rates unavailable', 'Exchange rates could not be loaded. Try again later.')
+        Alert.alert(t('expenseForm.ratesUnavailableTitle'), t('expenseForm.ratesUnavailableBody'))
         return
       }
       try {
         baseAmountCents = convertCents(amountCents, currency, tripCurrency, fx.rates)
         fxRate = crossRate(currency, tripCurrency, fx.rates)
       } catch (error) {
-        Alert.alert('Conversion failed', error instanceof Error ? error.message : 'Try again.')
+        Alert.alert(
+          t('expenseForm.conversionFailed'),
+          error instanceof Error ? error.message : t('common.tryAgain'),
+        )
         return
       }
     }
 
     const splits = computeSplits(baseAmountCents, participants)
     if (splits.length === 0) {
-      Alert.alert('Select at least one person', 'An expense must be shared with someone.')
+      Alert.alert(t('expenseForm.selectSomeoneTitle'), t('expenseForm.selectSomeoneBody'))
       return
     }
 
@@ -203,8 +213,8 @@ export default function AddExpenseScreen() {
       router.back()
     } catch (error) {
       Alert.alert(
-        'Could not add expense',
-        error instanceof Error ? error.message : 'Please try again.',
+        t('expenseForm.createError'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     }
   }
@@ -213,23 +223,40 @@ export default function AddExpenseScreen() {
   // split list is fully populated before the user interacts.
   if (!trip || !members) {
     return (
-      <Screen title="Add expense">
-        <View style={styles.center}>
-          <ActivityIndicator />
-        </View>
+      <Screen title={t('expenseForm.addTitle')}>
+        <Spinner label={t('common.loading')} />
       </Screen>
     )
   }
 
   return (
-    <Screen title="Add expense" scroll>
+    <Screen
+      title={t('expenseForm.addTitle')}
+      scroll
+      footer={
+        <Button
+          label={createExpense.isPending ? t('expenseForm.submitting') : t('expenseForm.submit')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={createExpense.isPending || blocked}
+        />
+      }
+    >
       <Pressable
         onPress={() => setScannerOpen(true)}
         accessibilityRole="button"
+        accessibilityLabel={t('expenseForm.scanReceipt')}
         style={styles.scanBtn}
       >
-        <Ionicons name="scan-outline" size={20} color={theme.colors.primary} />
-        <Text style={styles.scanLabel}>Scan receipt</Text>
+        <Surface
+          color="transparent"
+          borderColor={theme.colors.border}
+          borderWidth={1}
+          radius={theme.radius.md}
+          style={styles.scanBtnSurface}
+        >
+          <Ionicons name="scan-outline" size={20} color={theme.colors.primary} />
+          <Text style={styles.scanLabel}>{t('expenseForm.scanReceipt')}</Text>
+        </Surface>
       </Pressable>
 
       <ReceiptScanner
@@ -243,8 +270,8 @@ export default function AddExpenseScreen() {
         name="description"
         render={({ field }) => (
           <TextField
-            label="Description"
-            placeholder="Dinner"
+            label={t('expenseForm.description')}
+            placeholder={t('expenseForm.descriptionPlaceholder')}
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -254,20 +281,20 @@ export default function AddExpenseScreen() {
       />
 
       <CurrencySelect
-        label="Currency"
+        label={t('expenseForm.currency')}
         value={currency}
         currencies={currencies}
         onChange={setPicked}
       />
 
-      <CategoryPicker label="Category" value={category} onChange={setCategory} />
+      <CategoryPicker label={t('expenseForm.category')} value={category} onChange={setCategory} />
 
       <Controller
         control={control}
         name="amount"
         render={({ field }) => (
           <TextField
-            label={`Amount (${currency})`}
+            label={t('expenseForm.amount', { currency })}
             placeholder="45.00"
             keyboardType="decimal-pad"
             value={field.value}
@@ -279,14 +306,15 @@ export default function AddExpenseScreen() {
       />
 
       {isForeign && !canConvert ? (
-        <Text style={styles.warn}>Exchange rate for {currency} is unavailable.</Text>
+        <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
       ) : null}
 
-      <Text style={styles.sectionTitle}>Split between</Text>
+      <Text style={styles.sectionTitle}>{t('expenseForm.splitBetween')}</Text>
       {members.map((member) => {
         const state = stateFor(member.id)
         const included = state.included
-        const name = member.user_id === userId ? 'You' : (member.display_name ?? 'Member')
+        const name =
+          member.user_id === userId ? t('common.you') : (member.display_name ?? t('common.member'))
         const share = shareByMember.get(member.id)
         return (
           <View key={member.id} style={styles.memberRow}>
@@ -306,11 +334,17 @@ export default function AddExpenseScreen() {
 
             {included ? (
               <View style={styles.memberRight}>
-                <View style={styles.stepper}>
+                <Surface
+                  color="transparent"
+                  borderColor={theme.colors.border}
+                  borderWidth={1}
+                  radius={theme.radius.md}
+                  style={styles.stepper}
+                >
                   <Pressable
                     onPress={() => setWeight(member.id, state.weight - 1)}
                     accessibilityRole="button"
-                    accessibilityLabel="Decrease shares"
+                    accessibilityLabel={t('expenseForm.decreaseShares')}
                     hitSlop={6}
                   >
                     <Ionicons name="remove" size={18} color={theme.colors.foreground} />
@@ -319,43 +353,32 @@ export default function AddExpenseScreen() {
                   <Pressable
                     onPress={() => setWeight(member.id, state.weight + 1)}
                     accessibilityRole="button"
-                    accessibilityLabel="Increase shares"
+                    accessibilityLabel={t('expenseForm.increaseShares')}
                     hitSlop={6}
                   >
                     <Ionicons name="add" size={18} color={theme.colors.foreground} />
                   </Pressable>
-                </View>
+                </Surface>
                 <Text style={styles.share}>
-                  {share === undefined ? '—' : formatAmount(share, tripCurrency)}
+                  {share === undefined ? '-' : formatAmount(share, tripCurrency)}
                 </Text>
               </View>
             ) : null}
           </View>
         )
       })}
-
-      <Button
-        label={createExpense.isPending ? 'Adding…' : 'Add expense'}
-        onPress={handleSubmit(onSubmit)}
-        disabled={createExpense.isPending || blocked}
-      />
     </Screen>
   )
 }
 
 const styles = StyleSheet.create((theme) => ({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   warn: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.warning,
   },
   sectionTitle: {
     fontSize: theme.fontSize.sm,
-    fontWeight: '700',
+    fontFamily: theme.fonts.sans.bold,
     color: theme.colors.muted,
   },
   memberRow: {
@@ -372,6 +395,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   memberName: {
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.sans.semibold,
     color: theme.colors.foreground,
   },
   memberRight: {
@@ -385,35 +409,31 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(2),
     paddingHorizontal: theme.gap(2),
     paddingVertical: theme.gap(1),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   weight: {
     minWidth: theme.gap(4),
     textAlign: 'center',
-    fontWeight: '600',
+    fontFamily: theme.fonts.sans.semibold,
     color: theme.colors.foreground,
   },
   share: {
     minWidth: theme.gap(16),
     textAlign: 'right',
-    fontWeight: '600',
+    fontFamily: theme.fonts.sans.semibold,
     color: theme.colors.foreground,
   },
   scanBtn: {
+    alignSelf: 'flex-start',
+  },
+  scanBtnSurface: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(2),
-    alignSelf: 'flex-start',
     paddingVertical: theme.gap(2),
     paddingHorizontal: theme.gap(3),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   scanLabel: {
     color: theme.colors.primary,
-    fontWeight: '600',
+    fontFamily: theme.fonts.sans.semibold,
   },
 }))

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import TextRecognition from '@react-native-ml-kit/text-recognition'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Alert, Modal, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -17,6 +18,7 @@ type ReceiptScannerProps = {
 
 export function ReceiptScanner({ visible, onClose, onResult }: ReceiptScannerProps) {
   const { theme } = useUnistyles()
+  const { t } = useTranslation()
   const cameraRef = useRef<CameraView | null>(null)
   const [permission, requestPermission] = useCameraPermissions()
   const [processing, setProcessing] = useState(false)
@@ -36,7 +38,7 @@ export function ReceiptScanner({ visible, onClose, onResult }: ReceiptScannerPro
       const parsed = parseReceiptItems(result.text)
       onResult(parsed)
     } catch {
-      Alert.alert('Scan failed', 'Could not read this receipt. Try again with better lighting.')
+      Alert.alert(t('scanner.failTitle'), t('scanner.failBody'))
     } finally {
       setProcessing(false)
     }
@@ -56,10 +58,10 @@ export function ReceiptScanner({ visible, onClose, onResult }: ReceiptScannerPro
           </View>
         ) : !permission.granted ? (
           <View style={styles.center}>
-            <Text style={styles.message}>ZYPH needs access to your camera to scan receipts.</Text>
-            <Button label="Grant camera access" onPress={() => void requestPermission()} />
+            <Text style={styles.message}>{t('scanner.permission')}</Text>
+            <Button label={t('scanner.grant')} onPress={() => void requestPermission()} />
             <Pressable onPress={onClose} accessibilityRole="button">
-              <Text style={styles.cancel}>Cancel</Text>
+              <Text style={styles.cancel}>{t('common.cancel')}</Text>
             </Pressable>
           </View>
         ) : (
@@ -74,19 +76,19 @@ export function ReceiptScanner({ visible, onClose, onResult }: ReceiptScannerPro
               >
                 <Ionicons name="close" size={28} color="#fff" />
               </Pressable>
-              <Text style={styles.hint}>Frame the receipt and tap the shutter.</Text>
+              <Text style={styles.hint}>{t('scanner.hint')}</Text>
             </View>
             <View style={styles.bottomBar}>
               {processing ? (
                 <View style={styles.processing}>
                   <ActivityIndicator color="#fff" />
-                  <Text style={styles.processingText}>Reading receipt…</Text>
+                  <Text style={styles.processingText}>{t('scanner.reading')}</Text>
                 </View>
               ) : (
                 <Pressable
                   onPress={() => void capture()}
                   accessibilityRole="button"
-                  accessibilityLabel="Capture receipt"
+                  accessibilityLabel={t('scanner.capture')}
                   style={styles.shutter}
                 >
                   <View style={styles.shutterInner} />

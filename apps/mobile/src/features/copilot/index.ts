@@ -1,0 +1,7 @@
+export type { AskCopilotInput, CopilotMessage } from './api/copilot.api'
+export { askCopilot } from './api/copilot.api'
+export type { CopilotContextInput } from './context'
+export { buildTripContext } from './context'
+export { useAskCopilot } from './hooks/use-copilot'
+export type { CopilotAnswer } from './schemas'
+export { copilotAnswerSchema } from './schemas'

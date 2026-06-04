@@ -406,3 +406,26 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+[functions.parse-receipt-email]
+enabled = true
+# Authenticated-only: the app always invokes with the user JWT. Prevents anonymous
+# callers from burning the Groq quota. Requires a redeploy to take effect on cloud.
+verify_jwt = true
+import_map = "./functions/parse-receipt-email/deno.json"
+entrypoint = "./functions/parse-receipt-email/index.ts"
+
+[functions.copilot]
+enabled = true
+# Authenticated-only: the app always invokes with the user JWT. Prevents anonymous
+# callers from burning the Groq quota. Requires a redeploy to take effect on cloud.
+verify_jwt = true
+import_map = "./functions/copilot/deno.json"
+entrypoint = "./functions/copilot/index.ts"
+
+[functions.place-search]
+enabled = true
+# Authenticated-only: prevents anonymous callers from using us as an open geocoding proxy.
+verify_jwt = true
+import_map = "./functions/place-search/deno.json"
+entrypoint = "./functions/place-search/index.ts"

@@ -1,15 +1,20 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { Controller, useForm } from 'react-hook-form'
-import { ActivityIndicator, Alert, Text } from 'react-native'
+import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { Alert, Text, View } from 'react-native'
+import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
+import { TripDatesField } from '@/components/trip-dates-field'
+import { Spinner } from '@/components/ui'
 import { type CreateTripValues, createTripSchema, useTrip, useUpdateTrip } from '@/features/trips'
 import { paramString } from '@/lib/routing'
 
 export default function EditTripScreen() {
+  const { t } = useTranslation()
   const params = useLocalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
@@ -18,13 +23,23 @@ export default function EditTripScreen() {
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<CreateTripValues>({
     resolver: zodResolver(createTripSchema),
     values: trip
-      ? { title: trip.title, destination: trip.destination ?? '', currency: trip.currency }
-      : { title: '', destination: '', currency: 'EUR' },
+      ? {
+          title: trip.title,
+          destination: trip.destination ?? '',
+          currency: trip.currency,
+          startDate: trip.start_date,
+          endDate: trip.end_date,
+        }
+      : { title: '', destination: '', currency: 'EUR', startDate: null, endDate: null },
   })
+
+  const startDate = useWatch({ control, name: 'startDate' })
+  const endDate = useWatch({ control, name: 'endDate' })
 
   async function onSubmit(values: CreateTripValues) {
     try {
@@ -32,16 +47,16 @@ export default function EditTripScreen() {
       router.back()
     } catch (error) {
       Alert.alert(
-        'Could not update trip',
-        error instanceof Error ? error.message : 'Please try again.',
+        t('tripForm.updateError'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
       )
     }
   }
 
   if (isLoading) {
     return (
-      <Screen title="Edit trip">
-        <ActivityIndicator />
+      <Screen title={t('tripForm.editTitle')}>
+        <Spinner />
       </Screen>
     )
   }
@@ -49,19 +64,31 @@ export default function EditTripScreen() {
   if (!trip) {
     return (
       <Screen showBack>
-        <Text>Trip not found.</Text>
+        <View style={styles.center}>
+          <Text style={styles.notFound}>{t('tripForm.notFound')}</Text>
+        </View>
       </Screen>
     )
   }
 
   return (
-    <Screen title="Edit trip" scroll>
+    <Screen
+      title={t('tripForm.editTitle')}
+      scroll
+      footer={
+        <Button
+          label={updateTrip.isPending ? t('common.saving') : t('common.save')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={updateTrip.isPending}
+        />
+      }
+    >
       <Controller
         control={control}
         name="title"
         render={({ field }) => (
           <TextField
-            label="Title"
+            label={t('tripForm.title')}
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -75,7 +102,7 @@ export default function EditTripScreen() {
         name="destination"
         render={({ field }) => (
           <TextField
-            label="Destination"
+            label={t('tripForm.destination')}
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -89,7 +116,7 @@ export default function EditTripScreen() {
         name="currency"
         render={({ field }) => (
           <TextField
-            label="Currency"
+            label={t('tripForm.currency')}
             autoCapitalize="characters"
             maxLength={3}
             value={field.value}
@@ -100,11 +127,28 @@ export default function EditTripScreen() {
         )}
       />
 
-      <Button
-        label={updateTrip.isPending ? 'Saving…' : 'Save changes'}
-        onPress={handleSubmit(onSubmit)}
-        disabled={updateTrip.isPending}
+      <TripDatesField
+        startDate={startDate}
+        endDate={endDate}
+        onChange={(next) => {
+          setValue('startDate', next.startDate, { shouldValidate: true })
+          setValue('endDate', next.endDate, { shouldValidate: true })
+        }}
+        error={errors.endDate?.message}
       />
     </Screen>
   )
 }
+
+const styles = StyleSheet.create((theme) => ({
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notFound: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.muted,
+  },
+}))

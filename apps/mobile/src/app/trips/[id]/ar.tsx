@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons'
 import { CameraView, useCameraPermissions } from 'expo-camera'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
   Pressable,
@@ -20,10 +21,11 @@ import { paramString } from '@/lib/routing'
 import { useDeviceTilt, useHeading, useUserLocation } from '@/lib/sensors'
 
 export default function ArScreen() {
-  const params = useLocalSearchParams<{ id: string }>()
+  const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
   const { theme } = useUnistyles()
+  const { t } = useTranslation()
 
   const [cameraPermission, requestCameraPermission] = useCameraPermissions()
   const { targets, isLoading } = useWayfinderTargets(tripId, true)
@@ -68,10 +70,10 @@ export default function ArScreen() {
   if (!cameraReady) {
     return (
       <View style={styles.center}>
-        <Text style={styles.message}>AR needs camera access to overlay markers on the world.</Text>
-        <Button label="Grant access" onPress={() => void requestCameraPermission()} />
+        <Text style={styles.message}>{t('ar.cameraNeeded')}</Text>
+        <Button label={t('ar.grantAccess')} onPress={() => void requestCameraPermission()} />
         <Pressable onPress={() => router.back()} accessibilityRole="button" style={styles.backCta}>
-          <Text style={styles.link}>Go back</Text>
+          <Text style={styles.link}>{t('ar.goBack')}</Text>
         </Pressable>
       </View>
     )
@@ -89,11 +91,9 @@ export default function ArScreen() {
     return (
       <View style={styles.center}>
         <Ionicons name="compass-outline" size={48} color={theme.colors.muted} />
-        <Text style={styles.message}>
-          Add events with locations or POIs first — AR needs at least one target.
-        </Text>
+        <Text style={styles.message}>{t('ar.noTargets')}</Text>
         <Pressable onPress={() => router.back()} accessibilityRole="button" style={styles.backCta}>
-          <Text style={styles.link}>Go back</Text>
+          <Text style={styles.link}>{t('ar.goBack')}</Text>
         </Pressable>
       </View>
     )
@@ -121,7 +121,7 @@ export default function ArScreen() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Close AR"
+          accessibilityLabel={t('ar.close')}
           hitSlop={12}
           style={styles.closeBtn}
         >
@@ -133,8 +133,10 @@ export default function ArScreen() {
             size={14}
             color={theme.colors.primaryForeground}
           />
-          <Text style={styles.badgeText}>
-            {heading.available ? `±${Math.max(1, heading.accuracy * 5)}°` : 'no compass'}
+          <Text style={styles.badgeText} numberOfLines={1}>
+            {heading.available
+              ? `±${Math.max(1, Math.round(heading.accuracy * 5))}°`
+              : t('ar.noCompass')}
           </Text>
         </View>
       </View>
@@ -171,18 +173,14 @@ export default function ArScreen() {
               <Text style={styles.hudSep}>·</Text>
               <Text style={styles.hudDelta}>
                 {Math.abs(stats.delta) < 5
-                  ? 'Right ahead'
+                  ? t('ar.rightAhead')
                   : `${stats.delta > 0 ? '→' : '←'} ${Math.abs(Math.round(stats.delta))}°`}
               </Text>
             </View>
           ) : (
-            <Text style={styles.hudMuted}>Looking for GPS…</Text>
+            <Text style={styles.hudMuted}>{t('ar.lookingForGps')}</Text>
           )}
-          {tilt.available ? (
-            <Text style={styles.hudHint}>
-              Move your phone in a figure-of-eight to calibrate the compass.
-            </Text>
-          ) : null}
+          {tilt.available ? <Text style={styles.hudHint}>{t('ar.calibrateHint')}</Text> : null}
         </View>
       ) : null}
     </View>
@@ -238,9 +236,11 @@ const styles = StyleSheet.create((theme, rt) => ({
     textAlign: 'center',
     color: theme.colors.foreground,
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.sans.semibold,
   },
   link: {
     color: theme.colors.primary,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
   },
   backCta: {
@@ -275,6 +275,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   badgeText: {
     color: theme.colors.primaryForeground,
     fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
   },
   chipsScroll: {
@@ -301,6 +302,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   chipLabel: {
     fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     color: theme.colors.foreground,
     maxWidth: theme.gap(40),
@@ -327,6 +329,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   hudTitle: {
     flex: 1,
     fontSize: theme.fontSize.lg,
+    fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
     color: theme.colors.primaryForeground,
   },
@@ -337,6 +340,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   hudValue: {
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     color: theme.colors.primaryForeground,
   },
@@ -346,6 +350,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   hudDelta: {
     marginLeft: 'auto',
     fontSize: theme.fontSize.md,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '700',
     color: theme.colors.primary,
   },
