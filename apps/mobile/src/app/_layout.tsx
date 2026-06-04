@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
+import { ErrorBoundary } from '@/components/error-boundary'
 import { Spinner } from '@/components/ui'
 import { AuthProvider, useAuth } from '@/features/auth'
 import '@/lib/i18n'
@@ -68,11 +69,13 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   )
 }
 
