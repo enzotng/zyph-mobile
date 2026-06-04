@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.2.0](https://github.com/enzotng/zyph-mobile/compare/v1.1.0...v1.2.0) (2026-06-04)
+
+
+### Features
+
+* **api:** add trip cover photos and batched balances for the list ([#102](https://github.com/enzotng/zyph-mobile/issues/102)) ([26fe022](https://github.com/enzotng/zyph-mobile/commit/26fe022685b6d4d89d19b4bbc8f9ebd990927b75))
+* **copilot:** add Zo, a trip-scoped AI chat copilot ([#116](https://github.com/enzotng/zyph-mobile/issues/116)) ([868eb6a](https://github.com/enzotng/zyph-mobile/commit/868eb6ab0b4dd5930890081e4450c20b2356438d))
+* **expenses:** make Smart Split lines editable and always saveable ([#115](https://github.com/enzotng/zyph-mobile/issues/115)) ([7631280](https://github.com/enzotng/zyph-mobile/commit/76312802076f67d05520e5274cdff7c4688bd80a))
+* **i18n:** localize every screen and polish the app to the prototype ([#108](https://github.com/enzotng/zyph-mobile/issues/108)) ([85cd415](https://github.com/enzotng/zyph-mobile/commit/85cd41564bc68833b8a72ced86b906734df53499))
+* **i18n:** set up i18next with fr and en locales ([48b8f87](https://github.com/enzotng/zyph-mobile/commit/48b8f8726518146736bffaf90975d740b7d7eacd))
+* **layout:** add in-trip tab navigation ([#100](https://github.com/enzotng/zyph-mobile/issues/100)) ([0ec4dd0](https://github.com/enzotng/zyph-mobile/commit/0ec4dd093cf6a6d9519ecd184bfd46bf46d22952))
+* **map:** plot POIs and live members alongside events ([#114](https://github.com/enzotng/zyph-mobile/issues/114)) ([9bdf4b7](https://github.com/enzotng/zyph-mobile/commit/9bdf4b7232aac6ed26a73868db8e6a248cb6b270))
+* **offline:** persist the query cache and show an offline banner ([#118](https://github.com/enzotng/zyph-mobile/issues/118)) ([6059da5](https://github.com/enzotng/zyph-mobile/commit/6059da52d35fad02510697e685b05440a07d5582))
+* **places:** add address autocomplete on the location picker ([#117](https://github.com/enzotng/zyph-mobile/issues/117)) ([d7ad3cb](https://github.com/enzotng/zyph-mobile/commit/d7ad3cbbb3dec58ca05a7020348540ef464e8c6d))
+* **settlements:** add mark-as-paid payments netted into balances ([#111](https://github.com/enzotng/zyph-mobile/issues/111)) ([cd7dcda](https://github.com/enzotng/zyph-mobile/commit/cd7dcda52a367816bdf15f903138c1152dadff99))
+* **smart-import:** reintegrate AI email-to-event import on the new app ([#110](https://github.com/enzotng/zyph-mobile/issues/110)) ([e03ada7](https://github.com/enzotng/zyph-mobile/commit/e03ada7c443c50dd0db16e1ebd3a5b2f49b01510)), closes [#94](https://github.com/enzotng/zyph-mobile/issues/94)
+* **timeline:** add an event type picker and unify type icons ([#113](https://github.com/enzotng/zyph-mobile/issues/113)) ([131abba](https://github.com/enzotng/zyph-mobile/commit/131abbae20cc763128e6fffd9dcb9078b34c4a3d))
+* **trips:** add optional travel dates to create and edit ([#112](https://github.com/enzotng/zyph-mobile/issues/112)) ([d222c55](https://github.com/enzotng/zyph-mobile/commit/d222c55a0d5b87490401a2fffeaec88eb43a3df1))
+* **trips:** rebuild the expenses list (+ SDK 56 alignment) ([#105](https://github.com/enzotng/zyph-mobile/issues/105)) ([c292ce2](https://github.com/enzotng/zyph-mobile/commit/c292ce2ec377a6e591274888c0786e4fc3bf96ad))
+* **trips:** rebuild the remaining screens to the prototype ([#107](https://github.com/enzotng/zyph-mobile/issues/107)) ([64451d3](https://github.com/enzotng/zyph-mobile/commit/64451d3ef69e186f7682772bad4f53eed6196476))
+* **trips:** rebuild the trip overview as a dashboard ([#104](https://github.com/enzotng/zyph-mobile/issues/104)) ([8878c29](https://github.com/enzotng/zyph-mobile/commit/8878c29cfbd7971ad851f58176064cd8c76ec099))
+* **trips:** rebuild the trips list as photo cards ([#103](https://github.com/enzotng/zyph-mobile/issues/103)) ([821957c](https://github.com/enzotng/zyph-mobile/commit/821957ce8f731a683e8b1fcaaf41f93463376d5b))
+* **trips:** redesign the expense detail screen ([#106](https://github.com/enzotng/zyph-mobile/issues/106)) ([67b69dd](https://github.com/enzotng/zyph-mobile/commit/67b69dd4123a1601fbd0445d04812071358250a7))
+* **ui:** add a floating tab bar for the global tabs ([8eb5ad0](https://github.com/enzotng/zyph-mobile/commit/8eb5ad04bcaa196e16d837f6d89678bdc862abdf))
+* **ui:** add a global ErrorBoundary and ErrorState primitive ([#109](https://github.com/enzotng/zyph-mobile/issues/109)) ([5be032a](https://github.com/enzotng/zyph-mobile/commit/5be032a97565c04aef14ff17a321003978b464fa))
+* **ui:** add design-system primitives with squircle surfaces ([33c2fd3](https://github.com/enzotng/zyph-mobile/commit/33c2fd3c81169ca883a22c704020a820f4e8d548))
+* **ui:** animate and unify bottom sheets ([824ba00](https://github.com/enzotng/zyph-mobile/commit/824ba008f8af81b78e634839626c164fdeff6eb4))
+* **ui:** apply squircle to all screen surfaces ([2be63fc](https://github.com/enzotng/zyph-mobile/commit/2be63fc2cf5e9874c56d871ecc6287b6ee41e72d))
+* **ui:** apply squircle to expense and poi pickers ([99eb19a](https://github.com/enzotng/zyph-mobile/commit/99eb19a327e8d71463f1f14edeebf1701d690562))
+* **ui:** load brand fonts and add CityImage primitive ([#101](https://github.com/enzotng/zyph-mobile/issues/101)) ([56cceea](https://github.com/enzotng/zyph-mobile/commit/56cceeafb33d51073d67c5d8ec82f486ac24a3b4))
+* **ui:** migrate brand palette to indigo v2 tokens ([5c11323](https://github.com/enzotng/zyph-mobile/commit/5c11323f3f8a6ca5c122607ac0893719400f0485))
+* **ui:** redesign home + trip dashboard (cover heroes, gradient cards) ([#120](https://github.com/enzotng/zyph-mobile/issues/120)) ([2f38550](https://github.com/enzotng/zyph-mobile/commit/2f385505dc5f4486ce423fe964f946ad5b2b8fcb))
+* **ui:** sticky form footers, Zo redesign, trip-actions sheet ([#121](https://github.com/enzotng/zyph-mobile/issues/121)) ([8a5ca6e](https://github.com/enzotng/zyph-mobile/commit/8a5ca6e932e1ab819364f9372320c1e86b4f6bb1))
+
 ## 1.1.0 (2026-05-29)
 
 
