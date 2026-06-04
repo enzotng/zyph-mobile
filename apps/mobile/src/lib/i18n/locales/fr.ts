@@ -232,6 +232,9 @@ export const fr: Translations = {
     destination: 'Destination',
     destinationPlaceholder: 'Lisbonne, Portugal',
     currency: 'Devise',
+    addDates: 'Ajouter des dates',
+    startDate: 'Date de début',
+    endDate: 'Date de fin',
     updateError: 'Mise à jour du voyage impossible',
   },
   newTrip: {

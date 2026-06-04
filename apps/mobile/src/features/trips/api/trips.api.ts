@@ -121,6 +121,8 @@ export async function createTrip(input: CreateTripValues): Promise<Trip> {
       title: input.title,
       destination: input.destination || null,
       currency: input.currency,
+      start_date: input.startDate,
+      end_date: input.endDate,
     })
     .select()
     .single()
@@ -137,10 +139,18 @@ export async function updateTrip({
   title,
   destination,
   currency,
+  startDate,
+  endDate,
 }: UpdateTripInput): Promise<Trip> {
   const { data, error } = await supabase
     .from('trips')
-    .update({ title, destination: destination || null, currency })
+    .update({
+      title,
+      destination: destination || null,
+      currency,
+      start_date: startDate,
+      end_date: endDate,
+    })
     .eq('id', id)
     .select()
     .single()

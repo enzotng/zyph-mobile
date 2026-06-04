@@ -51,7 +51,13 @@ describe('getTrip', () => {
 })
 
 describe('createTrip', () => {
-  const input = { title: 'Rome', destination: 'IT', currency: 'EUR' }
+  const input = {
+    title: 'Rome',
+    destination: 'IT',
+    currency: 'EUR',
+    startDate: null,
+    endDate: null,
+  }
 
   it('inserts a trip owned by the signed-in user', async () => {
     getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
@@ -64,7 +70,20 @@ describe('createTrip', () => {
       title: 'Rome',
       destination: 'IT',
       currency: 'EUR',
+      start_date: null,
+      end_date: null,
     })
+  })
+
+  it('persists travel dates when provided', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const builder = makeQueryBuilder({ data: trip, error: null })
+    from.mockReturnValue(builder)
+
+    await createTrip({ ...input, startDate: '2026-06-10', endDate: '2026-06-14' })
+    expect(builder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ start_date: '2026-06-10', end_date: '2026-06-14' }),
+    )
   })
 
   it('nulls an empty destination', async () => {
@@ -97,12 +116,21 @@ describe('updateTrip', () => {
     from.mockReturnValue(builder)
 
     await expect(
-      updateTrip({ id: 't1', title: 'Lisbon', destination: '', currency: 'EUR' }),
+      updateTrip({
+        id: 't1',
+        title: 'Lisbon',
+        destination: '',
+        currency: 'EUR',
+        startDate: '2026-06-10',
+        endDate: '2026-06-14',
+      }),
     ).resolves.toEqual(trip)
     expect(builder.update).toHaveBeenCalledWith({
       title: 'Lisbon',
       destination: null,
       currency: 'EUR',
+      start_date: '2026-06-10',
+      end_date: '2026-06-14',
     })
     expect(builder.eq).toHaveBeenCalledWith('id', 't1')
   })
@@ -111,7 +139,14 @@ describe('updateTrip', () => {
     from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('update fail') }))
 
     await expect(
-      updateTrip({ id: 't1', title: 'x', destination: 'y', currency: 'EUR' }),
+      updateTrip({
+        id: 't1',
+        title: 'x',
+        destination: 'y',
+        currency: 'EUR',
+        startDate: null,
+        endDate: null,
+      }),
     ).rejects.toThrow('update fail')
   })
 })

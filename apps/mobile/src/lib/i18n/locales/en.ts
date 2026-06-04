@@ -230,6 +230,9 @@ export const en = {
     destination: 'Destination',
     destinationPlaceholder: 'Lisbon, Portugal',
     currency: 'Currency',
+    addDates: 'Add travel dates',
+    startDate: 'Start date',
+    endDate: 'End date',
     updateError: 'Could not update trip',
   },
   newTrip: {
