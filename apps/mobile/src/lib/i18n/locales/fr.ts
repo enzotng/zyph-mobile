@@ -282,6 +282,9 @@ export const fr: Translations = {
     searchPlaceholder: 'Rechercher une adresse…',
     noResults: 'Aucune adresse trouvée.',
   },
+  offline: {
+    banner: 'Hors-ligne - données enregistrées',
+  },
   ar: {
     cameraNeeded:
       'L’AR a besoin de l’accès à la caméra pour afficher les repères sur le monde réel.',

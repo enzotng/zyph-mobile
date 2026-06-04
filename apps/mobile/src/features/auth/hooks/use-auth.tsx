@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import * as Linking from 'expo-linking'
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 
+import { mmkvQueryPersister } from '@/lib/query-persister'
 import { supabase } from '@/lib/supabase'
 
 // Complete the PKCE flow when the app is opened via the auth deep link
@@ -36,8 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // subscribing, so it seeds the session and clears the loading state too.
     const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === 'SIGNED_OUT') {
-        // Drop all cached user data so the next account starts clean.
+        // Drop all cached user data so the next account starts clean. clear() only persists
+        // via cache events, which don't fire if the queries were already garbage-collected -
+        // so purge the MMKV cache explicitly too, otherwise a different account on this
+        // device could restore the previous user's data while offline.
         queryClient.clear()
+        void mmkvQueryPersister.removeClient()
       }
       setSession(nextSession)
       setIsLoading(false)

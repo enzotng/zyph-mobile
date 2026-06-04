@@ -3,12 +3,20 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { type ReactNode } from 'react'
 
+import { mmkvQueryPersister } from '@/lib/query-persister'
 import { supabase } from '@/lib/supabase'
 import { createQueryWrapper } from '@/test-utils/query-wrapper'
 
 import { AuthProvider, useAuth } from './use-auth'
 
 jest.mock('@/lib/supabase')
+jest.mock('@/lib/query-persister', () => ({
+  mmkvQueryPersister: {
+    persistClient: jest.fn(),
+    restoreClient: jest.fn(),
+    removeClient: jest.fn(),
+  },
+}))
 jest.mock('expo-linking', () => ({
   parse: jest.fn((url: string) => {
     const match = url.match(/[?&]code=([^&]+)/)
@@ -131,6 +139,8 @@ describe('AuthProvider', () => {
     })
     await waitFor(() => expect(result.current.session).toBeNull())
     expect(clearSpy).toHaveBeenCalled()
+    // Purge the persisted MMKV cache too, so the next account can't restore this user's data.
+    expect(mmkvQueryPersister.removeClient).toHaveBeenCalled()
   })
 
   it('unsubscribes from onAuthStateChange when unmounted', () => {

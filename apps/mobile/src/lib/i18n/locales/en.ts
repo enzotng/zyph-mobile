@@ -280,6 +280,9 @@ export const en = {
     searchPlaceholder: 'Search an address…',
     noResults: 'No address found.',
   },
+  offline: {
+    banner: 'Offline - showing saved data',
+  },
   ar: {
     cameraNeeded: 'AR needs camera access to overlay markers on the world.',
     grantAccess: 'Grant access',
