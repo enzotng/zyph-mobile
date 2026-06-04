@@ -406,3 +406,11 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+[functions.parse-receipt-email]
+enabled = true
+# Authenticated-only: the app always invokes with the user JWT. Prevents anonymous
+# callers from burning the Groq quota. Requires a redeploy to take effect on cloud.
+verify_jwt = true
+import_map = "./functions/parse-receipt-email/deno.json"
+entrypoint = "./functions/parse-receipt-email/index.ts"
