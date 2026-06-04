@@ -34,7 +34,9 @@ function useProtectedRoute(session: Session | null, isLoading: boolean, recoveri
     // A recovery session must land on reset-password, before the normal session routing -
     // otherwise the session would bounce it straight to home.
     if (recovering) {
-      const onReset = segments[0] === '(auth)' && segments[1] === 'reset-password'
+      // Cast: with expo-router typed routes useSegments() is a tuple union (some routes are
+      // length 1), so index [1] must be read off a widened string[].
+      const onReset = segments[0] === '(auth)' && (segments as string[])[1] === 'reset-password'
       if (!onReset) {
         router.replace('/(auth)/reset-password')
       }
