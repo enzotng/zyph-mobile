@@ -104,6 +104,37 @@ export const en = {
   expenses: {
     settleUp: 'Settle up',
   },
+  smartImport: {
+    title: 'Smart Import',
+    open: 'Smart Import',
+    lede: 'Paste a flight, hotel or train confirmation email. AI extracts the event in seconds.',
+    placeholder:
+      'Paste your booking confirmation here, e.g.\n\nAir France e-Ticket\nFlight AF1234\nParis CDG -> New York JFK\nDeparture: March 15, 2026 at 14:30\nArrival: March 15, 2026 at 17:45\nTerminal 2E - Gate 24B\nBooking reference: AB12CD',
+    clipboardTitle: 'Booking text detected',
+    clipboardHint: 'Tap to paste {{count}} characters',
+    parse: 'Parse with AI',
+    parsing: 'Parsing…',
+    talking: 'Talking to the model…',
+    tooShortTitle: 'Too short',
+    tooShortBody: 'Paste at least the key details of the confirmation email.',
+    parseErrorTitle: 'Could not parse the email',
+    defaultTitle: 'Imported event',
+    confidence: '{{pct}}% confident',
+    titlePlaceholder: 'Title',
+    noDate: 'No date detected',
+    endsAt: 'Ends {{date}}',
+    addToTrip: 'Add to trip',
+    adding: 'Adding…',
+    discard: 'Discard and edit text',
+    createErrorTitle: 'Could not create event',
+    types: {
+      flight: 'Flight',
+      hotel: 'Hotel',
+      transport: 'Transport',
+      activity: 'Activity',
+      event: 'Event',
+    },
+  },
   auth: {
     signIn: {
       title: 'Welcome back',

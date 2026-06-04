@@ -106,6 +106,37 @@ export const fr: Translations = {
   expenses: {
     settleUp: 'Régler',
   },
+  smartImport: {
+    title: 'Smart Import',
+    open: 'Smart Import',
+    lede: 'Colle un e-mail de confirmation (vol, hôtel, train). L’IA en extrait l’événement en quelques secondes.',
+    placeholder:
+      'Colle ici ton e-mail de confirmation, par exemple :\n\nAir France e-Ticket\nVol AF1234\nParis CDG -> New York JFK\nDépart : 15 mars 2026 à 14h30\nArrivée : 15 mars 2026 à 17h45\nTerminal 2E - Porte 24B\nRéférence : AB12CD',
+    clipboardTitle: 'Texte de réservation détecté',
+    clipboardHint: 'Touche pour coller {{count}} caractères',
+    parse: 'Analyser avec l’IA',
+    parsing: 'Analyse…',
+    talking: 'Discussion avec le modèle…',
+    tooShortTitle: 'Trop court',
+    tooShortBody: 'Colle au moins les infos clés de l’e-mail de confirmation.',
+    parseErrorTitle: 'Analyse impossible',
+    defaultTitle: 'Événement importé',
+    confidence: '{{pct}} % de confiance',
+    titlePlaceholder: 'Titre',
+    noDate: 'Aucune date détectée',
+    endsAt: 'Fin {{date}}',
+    addToTrip: 'Ajouter au voyage',
+    adding: 'Ajout…',
+    discard: 'Modifier le texte',
+    createErrorTitle: 'Création de l’événement impossible',
+    types: {
+      flight: 'Vol',
+      hotel: 'Hôtel',
+      transport: 'Transport',
+      activity: 'Activité',
+      event: 'Événement',
+    },
+  },
   auth: {
     signIn: {
       title: 'Bon retour',

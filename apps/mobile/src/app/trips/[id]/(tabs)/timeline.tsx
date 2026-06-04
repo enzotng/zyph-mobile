@@ -144,15 +144,26 @@ export default function TimelineScreen() {
       title={trip?.title ?? t('tabs.timeline')}
       showBack
       right={
-        <Link href={{ pathname: '/trips/[id]/add-event', params: { id: tripId } }} asChild>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('timeline.addEvent')}
-            hitSlop={8}
-          >
-            <Ionicons name="add" size={26} color={theme.colors.primary} />
-          </Pressable>
-        </Link>
+        <View style={styles.headerActions}>
+          <Link href={{ pathname: '/trips/[id]/import-email', params: { id: tripId } }} asChild>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('smartImport.open')}
+              hitSlop={8}
+            >
+              <Ionicons name="sparkles" size={22} color={theme.colors.primary} />
+            </Pressable>
+          </Link>
+          <Link href={{ pathname: '/trips/[id]/add-event', params: { id: tripId } }} asChild>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('timeline.addEvent')}
+              hitSlop={8}
+            >
+              <Ionicons name="add" size={26} color={theme.colors.primary} />
+            </Pressable>
+          </Link>
+        </View>
       }
     >
       {isLoading ? (
@@ -191,6 +202,11 @@ const RAIL_WIDTH = 24
 const DOT_SIZE = 16
 
 const styles = StyleSheet.create((theme, rt) => ({
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+  },
   center: {
     flex: 1,
     alignItems: 'center',
