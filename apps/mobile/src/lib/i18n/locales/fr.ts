@@ -42,6 +42,8 @@ export const fr: Translations = {
   },
   trip: {
     manage: 'Gérer',
+    editTrip: 'Modifier le voyage',
+    regenerateCode: 'Régénérer le code',
     notFound: 'Voyage introuvable',
     editSplit: 'Modifier le Smart Split',
     edit: 'Modifier',
@@ -265,6 +267,7 @@ export const fr: Translations = {
   },
   copilot: {
     title: 'Zo',
+    subtitle: 'Ton copain de voyage',
     empty:
       "Salut, moi c'est Zo, ton copilote pour ce voyage. Pose-moi tes questions sur ton programme, qui doit quoi, ou la prochaine étape.",
     placeholder: 'Pose ta question à Zo…',

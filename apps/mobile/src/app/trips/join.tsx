@@ -42,7 +42,17 @@ export default function JoinTripScreen() {
   }
 
   return (
-    <Screen title={t('joinTrip.title')} showBack>
+    <Screen
+      title={t('joinTrip.title')}
+      showBack
+      footer={
+        <Button
+          label={joinTrip.isPending ? t('joinTrip.submitting') : t('joinTrip.submit')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={joinTrip.isPending || code.length < 4}
+        />
+      }
+    >
       <View style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.body}
@@ -82,20 +92,12 @@ export default function JoinTripScreen() {
             )}
           />
         </ScrollView>
-
-        <View style={styles.footer}>
-          <Button
-            label={joinTrip.isPending ? t('joinTrip.submitting') : t('joinTrip.submit')}
-            onPress={handleSubmit(onSubmit)}
-            disabled={joinTrip.isPending || code.length < 4}
-          />
-        </View>
       </View>
     </Screen>
   )
 }
 
-const styles = StyleSheet.create((theme, rt) => ({
+const styles = StyleSheet.create((theme) => ({
   flex: {
     flex: 1,
     marginHorizontal: -theme.gap(6),
@@ -135,12 +137,5 @@ const styles = StyleSheet.create((theme, rt) => ({
     textAlign: 'center',
     letterSpacing: 2,
     fontFamily: theme.fonts.display.semibold,
-  },
-  footer: {
-    paddingHorizontal: theme.gap(6),
-    paddingTop: theme.gap(3),
-    paddingBottom: rt.insets.bottom + theme.gap(3),
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
   },
 }))

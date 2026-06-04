@@ -219,7 +219,17 @@ export default function EditExpenseScreen() {
   }
 
   return (
-    <Screen title={t('expenseForm.editTitle')} scroll>
+    <Screen
+      title={t('expenseForm.editTitle')}
+      scroll
+      footer={
+        <Button
+          label={updateExpense.isPending ? t('common.saving') : t('common.save')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={updateExpense.isPending || blocked}
+        />
+      }
+    >
       <Controller
         control={control}
         name="description"
@@ -326,12 +336,6 @@ export default function EditExpenseScreen() {
           </View>
         )
       })}
-
-      <Button
-        label={updateExpense.isPending ? t('common.saving') : t('common.save')}
-        onPress={handleSubmit(onSubmit)}
-        disabled={updateExpense.isPending || blocked}
-      />
     </Screen>
   )
 }

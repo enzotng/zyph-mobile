@@ -7,5 +7,10 @@ export const unstable_settings = {
 }
 
 export default function TripLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* Zo opens with a fade (no horizontal slide); the screen content adds a zoom-in pop. */}
+      <Stack.Screen name="copilot" options={{ animation: 'fade' }} />
+    </Stack>
+  )
 }

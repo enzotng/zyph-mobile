@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons'
-import { Tabs } from 'expo-router'
+import { Tabs, useGlobalSearchParams, useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 
 import { type FloatingTab, FloatingTabBar } from '@/components/layout/floating-tab-bar'
+import { paramString } from '@/lib/routing'
 
 const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: 'grid',
@@ -11,8 +12,8 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   pois: 'navigate',
 }
 
-// Explicit order so the floating bar always renders Places (pois) as the standalone
-// right pill - expo-router would otherwise sort the tab routes alphabetically.
+// Explicit left-group order (Zo is the standalone right action, not a tab) - expo-router
+// would otherwise sort the tab routes alphabetically.
 const TAB_ORDER = ['index', 'timeline', 'expenses', 'pois'] as const
 
 export const unstable_settings = {
@@ -21,6 +22,9 @@ export const unstable_settings = {
 
 export default function TripTabsLayout() {
   const { t } = useTranslation()
+  const router = useRouter()
+  const params = useGlobalSearchParams<{ id: string }>()
+  const tripId = paramString(params.id)
 
   return (
     <Tabs
@@ -46,6 +50,12 @@ export default function TripTabsLayout() {
           <FloatingTabBar
             tabs={tabs}
             activeName={activeName}
+            soloAction={{
+              label: t('trip.copilot'),
+              icon: 'sparkles',
+              onPress: () =>
+                router.push({ pathname: '/trips/[id]/copilot', params: { id: tripId } }),
+            }}
             onSelect={(name) => {
               const route = props.state.routes.find((r) => r.name === name)
               if (!route) {

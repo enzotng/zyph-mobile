@@ -27,10 +27,19 @@ export type FloatingTab = {
   icon: keyof typeof Ionicons.glyphMap
 }
 
+// A standalone right-hand action (not a tab) - e.g. the Zo copilot, which pushes a screen
+// rather than switching tabs. When set, every tab goes into the left group.
+export type FloatingTabAction = {
+  label: string
+  icon: keyof typeof Ionicons.glyphMap
+  onPress: () => void
+}
+
 type FloatingTabBarProps = {
   tabs: FloatingTab[]
   activeName: string
   onSelect: (name: string) => void
+  soloAction?: FloatingTabAction
 }
 
 // iOS-style ease-out curve.
@@ -119,15 +128,16 @@ function TabPill({
 
 // Floating bar: a left group sharing a card capsule, plus a standalone pill on the right
 // (the last tab). The active pill fills with the brand color and expands to show its label.
-export function FloatingTabBar({ tabs, activeName, onSelect }: FloatingTabBarProps) {
+export function FloatingTabBar({ tabs, activeName, onSelect, soloAction }: FloatingTabBarProps) {
   const { theme, rt } = useUnistyles()
 
-  if (tabs.length === 0) {
+  if (tabs.length === 0 && !soloAction) {
     return null
   }
 
-  const leftTabs = tabs.slice(0, -1)
-  const rightTab = tabs[tabs.length - 1]
+  // With a solo action, all tabs share the left group and the action is the right pill.
+  const leftTabs = soloAction ? tabs : tabs.slice(0, -1)
+  const rightTab = soloAction ? undefined : tabs[tabs.length - 1]
 
   return (
     <Animated.View
@@ -155,7 +165,25 @@ export function FloatingTabBar({ tabs, activeName, onSelect }: FloatingTabBarPro
         </View>
       ) : null}
 
-      {rightTab ? (
+      {soloAction ? (
+        <Pressable
+          onPress={soloAction.onPress}
+          accessibilityRole="button"
+          accessibilityLabel={soloAction.label}
+          style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+        >
+          <View
+            style={[
+              styles.pill,
+              styles.soloAction,
+              { height: SOLO_HEIGHT, borderRadius: SOLO_RADIUS },
+            ]}
+          >
+            <Ionicons name={soloAction.icon} size={20} color={theme.colors.primaryForeground} />
+            <Text style={[styles.label, styles.soloActionLabel]}>{soloAction.label}</Text>
+          </View>
+        </Pressable>
+      ) : rightTab ? (
         <TabPill
           tab={rightTab}
           active={activeName === rightTab.name}
@@ -228,5 +256,21 @@ const styles = StyleSheet.create((theme) => ({
   label: {
     fontSize: theme.fontSize.xs,
     fontWeight: '600',
+  },
+  soloAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.gap(1.5),
+    paddingHorizontal: theme.gap(3.5),
+    backgroundColor: theme.colors.primary,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  soloActionLabel: {
+    color: theme.colors.primaryForeground,
   },
 }))

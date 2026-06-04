@@ -56,7 +56,17 @@ export default function NewPoiScreen() {
   }
 
   return (
-    <Screen title={t('poiForm.addTitle')} scroll>
+    <Screen
+      title={t('poiForm.addTitle')}
+      scroll
+      footer={
+        <Button
+          label={createPoi.isPending ? t('poiForm.adding') : t('poiForm.add')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={createPoi.isPending}
+        />
+      }
+    >
       <Controller
         control={control}
         name="label"
@@ -87,12 +97,6 @@ export default function NewPoiScreen() {
           setValue('lat', next.lat)
           setValue('lng', next.lng)
         }}
-      />
-
-      <Button
-        label={createPoi.isPending ? t('poiForm.adding') : t('poiForm.add')}
-        onPress={handleSubmit(onSubmit)}
-        disabled={createPoi.isPending}
       />
     </Screen>
   )
