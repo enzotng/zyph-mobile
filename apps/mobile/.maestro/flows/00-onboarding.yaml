@@ -1,0 +1,19 @@
+appId: fr.enzotang.zyph
+name: 00-onboarding
+tags:
+  - smoke
+# Locale strings (English defaults). For a French device, swap to the FR values in comments.
+env:
+  SKIP: "Skip"          # FR: "Passer"
+  SIGN_IN: "Sign in"    # FR: "Se connecter"
+---
+# Fresh install: clear state so the first-launch onboarding is shown.
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+# The 3-screen onboarding shows a Skip action.
+- assertVisible: "${SKIP}"
+- tapOn: "${SKIP}"
+# Skipping onboarding lands on the sign-in screen (no session yet).
+- assertVisible: "${SIGN_IN}"

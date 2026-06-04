@@ -78,7 +78,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --maxWorkers=50%",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --maxWorkers=50%"
+    "test:coverage": "jest --coverage --maxWorkers=50%",
+    "e2e": "maestro test .maestro"
   },
   "private": true
 }
