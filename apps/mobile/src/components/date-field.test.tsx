@@ -196,4 +196,48 @@ describe('DateField - Android', () => {
 
     expect(onChange).not.toHaveBeenCalled()
   })
+
+  it('renders the day-only formatted value when mode is "date"', () => {
+    render(<DateField label="Departure" value={TEST_DATE} onChange={jest.fn()} mode="date" />)
+
+    expect(screen.getByText(TEST_DATE.toLocaleDateString())).toBeOnTheScreen()
+  })
+
+  it('calls onChange directly without a time dialog when mode is "date"', () => {
+    const openMock = getPickerMock().DateTimePickerAndroid.open
+    const onChange = jest.fn()
+
+    render(<DateField label="Departure" value={TEST_DATE} onChange={onChange} mode="date" />)
+
+    fireEvent.press(screen.getByRole('button'))
+
+    const { onChange: onDateChange } = openMock.mock.calls[0][0] as {
+      onChange: (e: object, d: Date | undefined) => void
+    }
+    const pickedDate = new Date('2024-06-20T00:00:00')
+    onDateChange({}, pickedDate)
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenCalledWith(pickedDate)
+    // 'date' mode returns early - no second (time) dialog is opened.
+    expect(openMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('forwards minimumDate to the Android date dialog', () => {
+    const openMock = getPickerMock().DateTimePickerAndroid.open
+    const minimumDate = new Date('2024-06-01T00:00:00')
+
+    render(
+      <DateField
+        label="Departure"
+        value={TEST_DATE}
+        onChange={jest.fn()}
+        minimumDate={minimumDate}
+      />,
+    )
+
+    fireEvent.press(screen.getByRole('button'))
+
+    expect(openMock).toHaveBeenCalledWith(expect.objectContaining({ minimumDate }))
+  })
 })

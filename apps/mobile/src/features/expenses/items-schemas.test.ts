@@ -111,6 +111,23 @@ describe('smartSplitInputSchema', () => {
     }
     expect(() => smartSplitInputSchema.parse(input)).not.toThrow()
   })
+
+  it('skips share-sum validation for assignments past the item count', () => {
+    // The stray assignment references position 1, beyond the single item, so
+    // its share-sum entry is skipped (the `position >= itemCount` branch)
+    // instead of failing the "must sum to 1" rule.
+    const input = {
+      description: 'Dinner',
+      currency: 'EUR',
+      fxRate: 1,
+      items: [{ label: 'Wine', amountCents: 1200, position: 0 }],
+      assignments: [
+        { position: 0, memberId: m1, share: 1 },
+        { position: 1, memberId: m2, share: 0.5 },
+      ],
+    }
+    expect(() => smartSplitInputSchema.parse(input)).not.toThrow()
+  })
 })
 
 describe('buildEqualAssignments', () => {
@@ -168,6 +185,17 @@ describe('computeMemberTotalsCents', () => {
     ]
     const totals = computeMemberTotalsCents(items, assignments)
     expect(totals.get(m1)! + totals.get(m2)!).toBe(1000)
+  })
+
+  it('skips assignments whose position has no matching item', () => {
+    const items = [{ amountCents: 1000 }]
+    const assignments: SmartSplitAssignment[] = [
+      { position: 0, memberId: m1, share: 1 },
+      { position: 5, memberId: m2, share: 1 },
+    ]
+    const totals = computeMemberTotalsCents(items, assignments)
+    expect(totals.get(m1)).toBe(1000)
+    expect(totals.has(m2)).toBe(false)
   })
 })
 

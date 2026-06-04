@@ -37,8 +37,12 @@ describe('formatWalkingTime', () => {
     expect(formatWalkingTime(1_000)).toMatch(/min$/)
   })
 
-  it('switches to hours past 60 min', () => {
-    expect(formatWalkingTime(10_000)).toContain('h')
+  it('switches to whole hours when the remainder is zero', () => {
+    expect(formatWalkingTime(10_000)).toBe('2 h')
+  })
+
+  it('appends remaining minutes when the hour is not exact', () => {
+    expect(formatWalkingTime(6_000)).toBe('1 h 12')
   })
 
   it('returns dash for invalid input', () => {
