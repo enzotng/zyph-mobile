@@ -36,6 +36,7 @@ export type GateLocation = {
 export type CreateEventInput = {
   tripId: string
   title: string
+  type?: string
   startsAt: string
   endsAt?: string
   notes: string
@@ -47,6 +48,7 @@ export type CreateEventInput = {
 export async function createEvent({
   tripId,
   title,
+  type,
   startsAt,
   endsAt,
   notes,
@@ -65,7 +67,7 @@ export async function createEvent({
     .insert({
       trip_id: tripId,
       title,
-      type: 'event',
+      type: type || 'event',
       starts_at: startsAt,
       ends_at: endsAt || null,
       notes: notes || null,
@@ -85,6 +87,7 @@ export async function createEvent({
 export type UpdateEventInput = {
   eventId: string
   title: string
+  type?: string
   startsAt: string
   endsAt?: string
   notes: string
@@ -96,6 +99,7 @@ export type UpdateEventInput = {
 export async function updateEvent({
   eventId,
   title,
+  type,
   startsAt,
   endsAt,
   notes,
@@ -107,6 +111,8 @@ export async function updateEvent({
     .from('trip_events')
     .update({
       title,
+      // Only touch type when the caller supplies it, so a typeless update never wipes it.
+      ...(type !== undefined ? { type } : {}),
       starts_at: startsAt,
       ends_at: endsAt || null,
       notes: notes || null,

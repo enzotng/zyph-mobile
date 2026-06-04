@@ -109,6 +109,18 @@ describe('createEvent', () => {
     )
   })
 
+  it('persists the chosen type, defaulting to event', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const builder = makeQueryBuilder({ data: event, error: null })
+    from.mockReturnValue(builder)
+
+    await createEvent({ ...input, type: 'flight' })
+    expect(builder.insert).toHaveBeenCalledWith(expect.objectContaining({ type: 'flight' }))
+
+    await createEvent(input)
+    expect(builder.insert).toHaveBeenCalledWith(expect.objectContaining({ type: 'event' }))
+  })
+
   it('sets ends_at to null when not provided', async () => {
     getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
     const builder = makeQueryBuilder({ data: event, error: null })
@@ -175,6 +187,19 @@ describe('updateEvent', () => {
     await updateEvent({ ...input, lat: 48.8584, lng: 2.2945 })
     expect(builder.update).toHaveBeenCalledWith(
       expect.objectContaining({ lat: 48.8584, lng: 2.2945 }),
+    )
+  })
+
+  it('updates the type when provided, and leaves it untouched when omitted', async () => {
+    const builder = makeQueryBuilder({ data: event, error: null })
+    from.mockReturnValue(builder)
+
+    await updateEvent({ ...input, type: 'lodging' })
+    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({ type: 'lodging' }))
+
+    await updateEvent(input)
+    expect(builder.update).toHaveBeenCalledWith(
+      expect.not.objectContaining({ type: expect.anything() }),
     )
   })
 

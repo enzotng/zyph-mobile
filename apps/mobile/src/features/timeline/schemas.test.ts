@@ -2,6 +2,7 @@ import { createEventSchema } from './schemas'
 
 const base = {
   title: 'Museum visit',
+  type: 'event',
   startsAt: '2026-05-22T10:00:00.000Z',
   endsAt: '',
   notes: '',
@@ -10,6 +11,10 @@ const base = {
 describe('createEventSchema', () => {
   it('accepts a point event with no end time', () => {
     expect(createEventSchema.safeParse(base).success).toBe(true)
+  })
+
+  it('requires a non-empty type', () => {
+    expect(createEventSchema.safeParse({ ...base, type: '' }).success).toBe(false)
   })
 
   it('accepts an end time after the start', () => {
