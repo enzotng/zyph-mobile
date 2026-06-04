@@ -275,11 +275,9 @@ export default function TripDashboardScreen() {
       {/* Quick actions */}
       <View style={styles.quickActions}>
         <QuickAction
-          icon="scan"
-          label={t('trip.scan')}
-          onPress={() =>
-            router.push({ pathname: '/trips/[id]/add-expense', params: { id: tripId } })
-          }
+          icon="sparkles"
+          label={t('trip.copilot')}
+          onPress={() => router.push({ pathname: '/trips/[id]/copilot', params: { id: tripId } })}
         />
         <QuickAction
           icon="add-circle"

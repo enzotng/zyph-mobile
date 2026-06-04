@@ -64,6 +64,7 @@ export const fr: Translations = {
     expense: 'Dépense',
     map: 'Carte',
     ar: 'AR',
+    copilot: 'Zo',
     searchExpenses: 'Rechercher une dépense',
     noExpenses: 'Aucune dépense',
     noExpensesBody: 'Ajoutez une dépense ou scannez un ticket pour démarrer le partage.',
@@ -260,6 +261,21 @@ export const fr: Translations = {
       events: 'Événements',
       pois: 'Lieux',
       members: 'Membres',
+    },
+  },
+  copilot: {
+    title: 'Zo',
+    empty:
+      "Salut, moi c'est Zo, ton copilote pour ce voyage. Pose-moi tes questions sur ton programme, qui doit quoi, ou la prochaine étape.",
+    placeholder: 'Pose ta question à Zo…',
+    send: 'Envoyer',
+    thinking: 'Zo réfléchit…',
+    error: 'Désolé, je ne peux pas répondre pour le moment. Réessaie.',
+    suggestions: {
+      owe: 'Combien je dois ?',
+      next: 'C’est quoi la suite du programme ?',
+      topPayer: 'Qui a payé le plus ?',
+      airport: 'Où est l’aéroport ?',
     },
   },
   ar: {
