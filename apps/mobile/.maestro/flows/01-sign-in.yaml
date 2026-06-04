@@ -1,0 +1,32 @@
+appId: fr.enzotang.zyph
+name: 01-sign-in
+tags:
+  - smoke
+  - auth
+env:
+  SKIP: "Skip"                          # FR: "Passer"
+  SIGN_IN: "Sign in"                    # FR: "Se connecter"
+  EMAIL_PLACEHOLDER: "you@example.com"  # FR: "toi@exemple.com"
+  PASSWORD_PLACEHOLDER: "••••••••"
+  # Provide a real test account at runtime - do NOT commit credentials:
+  #   maestro test --env EMAIL=you@test.app --env PASSWORD=secret .maestro
+  EMAIL: "demo@zyph.app"
+  PASSWORD: "changeme"
+---
+- launchApp:
+    permissions:
+      all: allow
+# Tolerate a standalone run where onboarding is still showing.
+- tapOn:
+    text: "${SKIP}"
+    optional: true
+- assertVisible: "${SIGN_IN}"
+# Fields are targeted by their (visible) placeholder while empty.
+- tapOn: "${EMAIL_PLACEHOLDER}"
+- inputText: "${EMAIL}"
+- tapOn: "${PASSWORD_PLACEHOLDER}"
+- inputText: "${PASSWORD}"
+- hideKeyboard
+- tapOn: "${SIGN_IN}"
+# A successful login leaves the auth stack: the sign-in button is gone.
+- assertNotVisible: "${SIGN_IN}"
