@@ -278,6 +278,10 @@ export const fr: Translations = {
       airport: 'Où est l’aéroport ?',
     },
   },
+  places: {
+    searchPlaceholder: 'Rechercher une adresse…',
+    noResults: 'Aucune adresse trouvée.',
+  },
   ar: {
     cameraNeeded:
       'L’AR a besoin de l’accès à la caméra pour afficher les repères sur le monde réel.',
