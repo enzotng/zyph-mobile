@@ -276,6 +276,10 @@ export const en = {
       airport: 'Where is the airport?',
     },
   },
+  places: {
+    searchPlaceholder: 'Search an address…',
+    noResults: 'No address found.',
+  },
   ar: {
     cameraNeeded: 'AR needs camera access to overlay markers on the world.',
     grantAccess: 'Grant access',

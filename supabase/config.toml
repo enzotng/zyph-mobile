@@ -422,3 +422,10 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/copilot/deno.json"
 entrypoint = "./functions/copilot/index.ts"
+
+[functions.place-search]
+enabled = true
+# Authenticated-only: prevents anonymous callers from using us as an open geocoding proxy.
+verify_jwt = true
+import_map = "./functions/place-search/deno.json"
+entrypoint = "./functions/place-search/index.ts"

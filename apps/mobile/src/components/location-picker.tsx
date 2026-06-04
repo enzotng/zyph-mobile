@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { ActivityIndicator, Alert, Platform, Pressable, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
+import { AddressSearchField } from '@/components/address-search-field'
+
 export type Coords = { lat: number; lng: number }
 
 type LocationPickerProps = {
@@ -40,6 +42,7 @@ export function LocationPicker({ label, value, onChange }: LocationPickerProps) 
   return (
     <View style={styles.wrap}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
+      <AddressSearchField onSelect={(place) => onChange({ lat: place.lat, lng: place.lng })} />
       <View style={styles.mapWrap}>
         <AppleMaps.View
           style={styles.map}
