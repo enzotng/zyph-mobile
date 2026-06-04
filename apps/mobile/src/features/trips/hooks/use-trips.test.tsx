@@ -78,7 +78,13 @@ describe('useCreateTrip', () => {
     const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
 
     const { result } = renderHook(() => useCreateTrip(), { wrapper })
-    result.current.mutate({ title: 'Lisbon', destination: 'PT', currency: 'EUR' })
+    result.current.mutate({
+      title: 'Lisbon',
+      destination: 'PT',
+      currency: 'EUR',
+      startDate: null,
+      endDate: null,
+    })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(invalidate).toHaveBeenCalledWith({ queryKey: tripsQueryKey })
@@ -99,6 +105,8 @@ describe('useUpdateTrip', () => {
       title: 'Lisbon',
       destination: 'PT',
       currency: 'EUR',
+      startDate: null,
+      endDate: null,
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))

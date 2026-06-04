@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'expo-router'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Alert, ScrollView, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
@@ -9,6 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
+import { TripDatesField } from '@/components/trip-dates-field'
 import { Segmented, Squircle } from '@/components/ui'
 import { type CreateTripValues, createTripSchema, useCreateTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
@@ -42,12 +43,16 @@ export default function NewTripScreen() {
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors, isValid },
   } = useForm<CreateTripValues>({
     resolver: zodResolver(createTripSchema),
     mode: 'onChange',
-    defaultValues: { title: '', destination: '', currency: 'EUR' },
+    defaultValues: { title: '', destination: '', currency: 'EUR', startDate: null, endDate: null },
   })
+
+  const startDate = useWatch({ control, name: 'startDate' })
+  const endDate = useWatch({ control, name: 'endDate' })
 
   async function onSubmit(values: CreateTripValues) {
     try {
@@ -125,6 +130,16 @@ export default function NewTripScreen() {
                 ) : null}
               </View>
             )}
+          />
+
+          <TripDatesField
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(next) => {
+              setValue('startDate', next.startDate, { shouldValidate: true })
+              setValue('endDate', next.endDate, { shouldValidate: true })
+            }}
+            error={errors.endDate?.message}
           />
         </ScrollView>
 

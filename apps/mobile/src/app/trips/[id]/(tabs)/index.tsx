@@ -28,7 +28,7 @@ import {
 } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
 import { eventStatus, formatCountdown, useEvents } from '@/features/timeline'
-import { useTrip } from '@/features/trips'
+import { isoDayToDate, useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { paramString } from '@/lib/routing'
 
@@ -61,12 +61,12 @@ function formatTripDates(start: string | null, end: string | null, locale: strin
   if (!start) {
     return null
   }
-  const startDate = new Date(start)
+  const startDate = isoDayToDate(start)
   const fullOpts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
   if (!end || end === start) {
     return startDate.toLocaleDateString(locale, fullOpts)
   }
-  const endDate = new Date(end)
+  const endDate = isoDayToDate(end)
   const sameMonth =
     startDate.getFullYear() === endDate.getFullYear() && startDate.getMonth() === endDate.getMonth()
   const startLabel = startDate.toLocaleDateString(locale, sameMonth ? { day: 'numeric' } : fullOpts)
