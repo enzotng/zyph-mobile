@@ -35,5 +35,7 @@ export {
 } from './hooks/use-wayfinder'
 export type { WayfinderTarget, WayfinderTargetKind } from './hooks/use-wayfinder-targets'
 export { useWayfinderTargets } from './hooks/use-wayfinder-targets'
+export type { MapLayer } from './lib/map-markers'
+export { layerOf, mapSymbolFor, mapTintFor, sfSymbolForPoiIcon } from './lib/map-markers'
 export type { GateLocation, PoiIcon, PoiValues } from './schemas'
 export { gateLocationSchema, POI_ICONS, poiSchema } from './schemas'

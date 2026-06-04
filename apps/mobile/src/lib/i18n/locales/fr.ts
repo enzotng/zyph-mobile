@@ -255,7 +255,12 @@ export const fr: Translations = {
   map: {
     title: 'Carte',
     iosOnly: 'La carte est disponible sur iOS.',
-    noLocation: 'Aucun événement n’a encore de lieu. Ajoutes-en un en créant un événement.',
+    empty: 'Rien à afficher pour le moment. Ajoute un événement ou un lieu, ou active un calque.',
+    layers: {
+      events: 'Événements',
+      pois: 'Lieux',
+      members: 'Membres',
+    },
   },
   ar: {
     cameraNeeded:

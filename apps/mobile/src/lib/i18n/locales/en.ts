@@ -253,7 +253,12 @@ export const en = {
   map: {
     title: 'Map',
     iosOnly: 'The map is available on iOS.',
-    noLocation: 'No event has a location yet. Add one when creating an event.',
+    empty: 'Nothing to show yet. Add an event or place, or turn on a layer.',
+    layers: {
+      events: 'Events',
+      pois: 'Places',
+      members: 'Members',
+    },
   },
   ar: {
     cameraNeeded: 'AR needs camera access to overlay markers on the world.',
