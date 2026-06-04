@@ -78,8 +78,9 @@ const styles = StyleSheet.create((theme) => ({
     textAlign: 'center',
     maxWidth: 260,
   },
+  // Hugs the (content-sized) button so the parent's center alignment applies; alignSelf
+  // 'stretch' would make the button's own flex-start left-align it.
   ctaWrap: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
+    alignSelf: 'center',
   },
 }))

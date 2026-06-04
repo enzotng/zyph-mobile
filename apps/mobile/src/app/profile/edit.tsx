@@ -80,7 +80,18 @@ export default function EditProfileScreen() {
     : (profile.display_name ?? t('profile.fallbackName'))
 
   return (
-    <Screen title={t('profile.editProfile')} showBack scroll>
+    <Screen
+      title={t('profile.editProfile')}
+      showBack
+      scroll
+      footer={
+        <Button
+          label={update.isPending ? t('common.saving') : t('common.save')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={update.isPending}
+        />
+      }
+    >
       {/* Avatar hero */}
       <View style={styles.avatarWrap}>
         <View style={styles.avatarStack}>
@@ -125,12 +136,6 @@ export default function EditProfileScreen() {
             onChange={field.onChange}
           />
         )}
-      />
-
-      <Button
-        label={update.isPending ? t('common.saving') : t('common.save')}
-        onPress={handleSubmit(onSubmit)}
-        disabled={update.isPending}
       />
     </Screen>
   )

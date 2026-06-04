@@ -40,6 +40,8 @@ export const en = {
   },
   trip: {
     manage: 'Manage',
+    editTrip: 'Edit trip',
+    regenerateCode: 'Regenerate code',
     notFound: 'Trip not found',
     editSplit: 'Edit Smart Split',
     edit: 'Edit',
@@ -263,6 +265,7 @@ export const en = {
   },
   copilot: {
     title: 'Zo',
+    subtitle: 'Your travel buddy',
     empty:
       "Hi, I'm Zo, your copilot for this trip. Ask me about your timeline, who owes what, or where to go next.",
     placeholder: 'Ask Zo about this trip…',

@@ -76,7 +76,18 @@ export default function EditPoiScreen() {
   }
 
   return (
-    <Screen title={t('poiForm.editTitle')} showBack scroll>
+    <Screen
+      title={t('poiForm.editTitle')}
+      showBack
+      scroll
+      footer={
+        <Button
+          label={updatePoi.isPending ? t('poiForm.saving') : t('poiForm.save')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={updatePoi.isPending}
+        />
+      }
+    >
       <Controller
         control={control}
         name="label"
@@ -106,12 +117,6 @@ export default function EditPoiScreen() {
           setValue('lat', next.lat)
           setValue('lng', next.lng)
         }}
-      />
-
-      <Button
-        label={updatePoi.isPending ? t('poiForm.saving') : t('poiForm.save')}
-        onPress={handleSubmit(onSubmit)}
-        disabled={updatePoi.isPending}
       />
     </Screen>
   )

@@ -230,7 +230,17 @@ export default function AddExpenseScreen() {
   }
 
   return (
-    <Screen title={t('expenseForm.addTitle')} scroll>
+    <Screen
+      title={t('expenseForm.addTitle')}
+      scroll
+      footer={
+        <Button
+          label={createExpense.isPending ? t('expenseForm.submitting') : t('expenseForm.submit')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={createExpense.isPending || blocked}
+        />
+      }
+    >
       <Pressable
         onPress={() => setScannerOpen(true)}
         accessibilityRole="button"
@@ -357,12 +367,6 @@ export default function AddExpenseScreen() {
           </View>
         )
       })}
-
-      <Button
-        label={createExpense.isPending ? t('expenseForm.submitting') : t('expenseForm.submit')}
-        onPress={handleSubmit(onSubmit)}
-        disabled={createExpense.isPending || blocked}
-      />
     </Screen>
   )
 }

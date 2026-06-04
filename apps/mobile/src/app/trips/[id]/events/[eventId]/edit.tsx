@@ -116,7 +116,18 @@ export default function EditEventScreen() {
   }
 
   return (
-    <Screen title={t('events.edit.title')} showBack scroll>
+    <Screen
+      title={t('events.edit.title')}
+      showBack
+      scroll
+      footer={
+        <Button
+          label={update.isPending ? t('common.saving') : t('common.save')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={update.isPending}
+        />
+      }
+    >
       <Controller
         control={control}
         name="title"
@@ -217,12 +228,6 @@ export default function EditEventScreen() {
         render={({ field }) => (
           <GateLocationField value={field.value ?? null} onChange={field.onChange} />
         )}
-      />
-
-      <Button
-        label={update.isPending ? t('common.saving') : t('common.save')}
-        onPress={handleSubmit(onSubmit)}
-        disabled={update.isPending}
       />
     </Screen>
   )

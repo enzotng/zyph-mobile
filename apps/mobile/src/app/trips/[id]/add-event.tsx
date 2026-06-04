@@ -79,7 +79,19 @@ export default function AddEventScreen() {
   }
 
   return (
-    <Screen title={t('events.add.title')} showBack scroll>
+    <Screen
+      title={t('events.add.title')}
+      showBack
+      scroll
+      footer={
+        <Button
+          label={createEvent.isPending ? t('events.add.submitting') : t('events.add.submit')}
+          icon="add"
+          onPress={handleSubmit(onSubmit)}
+          disabled={createEvent.isPending}
+        />
+      }
+    >
       <Controller
         control={control}
         name="title"
@@ -180,13 +192,6 @@ export default function AddEventScreen() {
         render={({ field }) => (
           <GateLocationField value={field.value ?? null} onChange={field.onChange} />
         )}
-      />
-
-      <Button
-        label={createEvent.isPending ? t('events.add.submitting') : t('events.add.submit')}
-        icon="add"
-        onPress={handleSubmit(onSubmit)}
-        disabled={createEvent.isPending}
       />
     </Screen>
   )

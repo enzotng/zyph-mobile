@@ -67,7 +67,17 @@ export default function NewTripScreen() {
   }
 
   return (
-    <Screen title={t('newTrip.title')} showBack>
+    <Screen
+      title={t('newTrip.title')}
+      showBack
+      footer={
+        <Button
+          label={createTrip.isPending ? t('newTrip.submitting') : t('newTrip.submit')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={createTrip.isPending || !isValid}
+        />
+      }
+    >
       <View style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.body}
@@ -142,20 +152,12 @@ export default function NewTripScreen() {
             error={errors.endDate?.message}
           />
         </ScrollView>
-
-        <View style={styles.footer}>
-          <Button
-            label={createTrip.isPending ? t('newTrip.submitting') : t('newTrip.submit')}
-            onPress={handleSubmit(onSubmit)}
-            disabled={createTrip.isPending || !isValid}
-          />
-        </View>
       </View>
     </Screen>
   )
 }
 
-const styles = StyleSheet.create((theme, rt) => ({
+const styles = StyleSheet.create((theme) => ({
   flex: {
     flex: 1,
     marginHorizontal: -theme.gap(6),
@@ -191,12 +193,5 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontSize: theme.fontSize.xs,
     color: theme.colors.destructive,
     marginTop: theme.gap(1),
-  },
-  footer: {
-    paddingHorizontal: theme.gap(6),
-    paddingTop: theme.gap(3),
-    paddingBottom: rt.insets.bottom + theme.gap(3),
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
   },
 }))

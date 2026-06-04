@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, ScrollView, Text, View } from 'react-native'
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
 import { ScreenCornerRadius } from 'react-native-screen-corner-radius'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -13,6 +13,7 @@ import { Screen } from '@/components/screen'
 import {
   AvatarStack,
   Badge,
+  BottomSheet,
   Card,
   CityImage,
   QuickAction,
@@ -28,9 +29,9 @@ import {
   useExpenses,
   useTripBalances,
 } from '@/features/expenses'
-import { useTripMembers } from '@/features/group'
+import { useLeaveTrip, useRegenerateInviteCode, useTripMembers } from '@/features/group'
 import { eventStatus, eventTypeIcon, formatCountdown, useEvents } from '@/features/timeline'
-import { formatTripDates, useTrip } from '@/features/trips'
+import { formatTripDates, useDeleteTrip, useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { paramString } from '@/lib/routing'
 
@@ -75,6 +76,33 @@ function CoverButton({
   )
 }
 
+// A row in the trip-actions sheet (opened from the cover ellipsis).
+function TripActionRow({
+  icon,
+  label,
+  tone = 'default',
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap
+  label: string
+  tone?: 'default' | 'destructive'
+  onPress: () => void
+}) {
+  const { theme } = useUnistyles()
+  const color = tone === 'destructive' ? theme.colors.destructive : theme.colors.foreground
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.actionRow, pressed && styles.actionRowPressed]}
+    >
+      <Ionicons name={icon} size={20} color={color} />
+      <Text style={[styles.actionLabel, { color }]}>{label}</Text>
+    </Pressable>
+  )
+}
+
 export default function TripDashboardScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
@@ -91,6 +119,11 @@ export default function TripDashboardScreen() {
   const { data: expenses } = useExpenses(tripId)
   // Snapshot once on mount; the countdown badge does not need to tick on this screen.
   const [now] = useState(() => Date.now())
+
+  const [actionsOpen, setActionsOpen] = useState(false)
+  const regenerate = useRegenerateInviteCode(tripId)
+  const deleteTripMutation = useDeleteTrip()
+  const leaveTripMutation = useLeaveTrip()
 
   const myMember = useMemo(
     () => (members ?? []).find((member) => member.user_id === userId),
@@ -205,6 +238,82 @@ export default function TripDashboardScreen() {
     return (memberId && nameById.get(memberId)) || t('common.member')
   }
 
+  const isOwner = trip.owner_id === userId
+
+  function confirmRegenerate() {
+    Alert.alert(
+      'Régénérer le code d’invitation',
+      'Le code actuel cessera de fonctionner. Les personnes déjà inscrites conservent leur accès.',
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('group.regenerate'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await regenerate.mutateAsync()
+            } catch (error) {
+              Alert.alert(
+                'Régénération impossible',
+                error instanceof Error ? error.message : t('common.tryAgain'),
+              )
+            }
+          },
+        },
+      ],
+    )
+  }
+
+  function confirmDelete() {
+    Alert.alert(
+      t('group.deleteTrip'),
+      'Cette action supprime définitivement le voyage et toutes ses données.',
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteTripMutation.mutateAsync(tripId)
+              router.replace('/')
+            } catch (error) {
+              Alert.alert(
+                'Suppression impossible',
+                error instanceof Error ? error.message : t('common.tryAgain'),
+              )
+            }
+          },
+        },
+      ],
+    )
+  }
+
+  function confirmLeave() {
+    Alert.alert(
+      t('group.leaveTrip'),
+      'Tu ne verras plus ce voyage ni ses dépenses. Les dépenses passées que tu as payées ou que tu dois restent comptabilisées.',
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: 'Quitter',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await leaveTripMutation.mutateAsync(tripId)
+              router.replace('/')
+            } catch (error) {
+              Alert.alert(
+                'Impossible de quitter',
+                error instanceof Error ? error.message : t('common.tryAgain'),
+              )
+            }
+          },
+        },
+      ],
+    )
+  }
+
   // Full-bleed cover: its corners trace the device's screen radius exactly (no inset to
   // subtract). Falls back to the xl token when the radius is undetectable.
   const coverRadius = ScreenCornerRadius > 0 ? ScreenCornerRadius : theme.radius.xl
@@ -234,7 +343,11 @@ export default function TripDashboardScreen() {
                 label={t('common.back')}
                 onPress={() => router.back()}
               />
-              <CoverButton icon="ellipsis-horizontal" label={t('trip.manage')} onPress={goGroup} />
+              <CoverButton
+                icon="ellipsis-horizontal"
+                label={t('trip.manage')}
+                onPress={() => setActionsOpen(true)}
+              />
             </View>
             <View style={styles.coverBottom}>
               <View style={styles.coverInfo}>
@@ -308,15 +421,8 @@ export default function TripDashboardScreen() {
             </View>
           </Card>
 
-          {/* Quick actions */}
+          {/* Quick actions (Zo lives in the floating bar now) */}
           <View style={styles.quickActions}>
-            <QuickAction
-              icon="sparkles"
-              label={t('trip.copilot')}
-              onPress={() =>
-                router.push({ pathname: '/trips/[id]/copilot', params: { id: tripId } })
-              }
-            />
             <QuickAction
               icon="add-circle"
               label={t('trip.expense')}
@@ -435,6 +541,54 @@ export default function TripDashboardScreen() {
           ) : null}
         </View>
       </ScrollView>
+
+      <BottomSheet
+        open={actionsOpen}
+        onClose={() => setActionsOpen(false)}
+        title={t('trip.manage')}
+      >
+        <View style={styles.sheetActions}>
+          {isOwner ? (
+            <>
+              <TripActionRow
+                icon="create-outline"
+                label={t('trip.editTrip')}
+                onPress={() => {
+                  setActionsOpen(false)
+                  router.push({ pathname: '/trips/[id]/edit', params: { id: tripId } })
+                }}
+              />
+              <TripActionRow
+                icon="refresh-outline"
+                label={t('trip.regenerateCode')}
+                onPress={() => {
+                  setActionsOpen(false)
+                  confirmRegenerate()
+                }}
+              />
+              <TripActionRow
+                icon="trash-outline"
+                label={t('group.deleteTrip')}
+                tone="destructive"
+                onPress={() => {
+                  setActionsOpen(false)
+                  confirmDelete()
+                }}
+              />
+            </>
+          ) : (
+            <TripActionRow
+              icon="exit-outline"
+              label={t('group.leaveTrip')}
+              tone="destructive"
+              onPress={() => {
+                setActionsOpen(false)
+                confirmLeave()
+              }}
+            />
+          )}
+        </View>
+      </BottomSheet>
     </View>
   )
 }
@@ -443,6 +597,23 @@ const styles = StyleSheet.create((theme, rt) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  sheetActions: {
+    gap: theme.gap(1),
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+    paddingVertical: theme.gap(3),
+  },
+  actionRowPressed: {
+    opacity: 0.6,
+  },
+  actionLabel: {
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    fontSize: theme.fontSize.md,
   },
   center: {
     flex: 1,

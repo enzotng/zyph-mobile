@@ -72,7 +72,17 @@ export default function EditTripScreen() {
   }
 
   return (
-    <Screen title={t('tripForm.editTitle')} scroll>
+    <Screen
+      title={t('tripForm.editTitle')}
+      scroll
+      footer={
+        <Button
+          label={updateTrip.isPending ? t('common.saving') : t('common.save')}
+          onPress={handleSubmit(onSubmit)}
+          disabled={updateTrip.isPending}
+        />
+      }
+    >
       <Controller
         control={control}
         name="title"
@@ -125,12 +135,6 @@ export default function EditTripScreen() {
           setValue('endDate', next.endDate, { shouldValidate: true })
         }}
         error={errors.endDate?.message}
-      />
-
-      <Button
-        label={updateTrip.isPending ? t('common.saving') : t('common.save')}
-        onPress={handleSubmit(onSubmit)}
-        disabled={updateTrip.isPending}
       />
     </Screen>
   )
