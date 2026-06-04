@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'expo-router'
+import { Link, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Alert, Text, View } from 'react-native'
+import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { ZyphMark } from '@/components/brand/zyph-mark'
@@ -12,6 +12,7 @@ import { TextField } from '@/components/text-field'
 import { makeSignInSchema, type SignInValues, signIn, signInWithGoogle } from '@/features/auth'
 
 export default function SignInScreen() {
+  const router = useRouter()
   const { t } = useTranslation()
   const [submitting, setSubmitting] = useState(false)
   const [googleSubmitting, setGoogleSubmitting] = useState(false)
@@ -99,6 +100,15 @@ export default function SignInScreen() {
         )}
       />
 
+      <Pressable
+        onPress={() => router.push('/(auth)/forgot-password')}
+        accessibilityRole="button"
+        hitSlop={8}
+        style={styles.forgot}
+      >
+        <Text style={styles.forgotText}>{t('auth.signIn.forgotPassword')}</Text>
+      </Pressable>
+
       <View style={styles.action}>
         <Button
           label={submitting ? t('auth.signIn.submitting') : t('auth.signIn.submit')}
@@ -175,6 +185,15 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.md,
     color: theme.colors.muted,
+  },
+  forgot: {
+    alignSelf: 'flex-end',
+  },
+  forgotText: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+    fontWeight: '600',
   },
   action: {
     marginTop: theme.gap(1),

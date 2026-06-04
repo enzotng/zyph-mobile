@@ -148,7 +148,26 @@ export const fr: Translations = {
       submitting: 'Connexion…',
       noAccount: 'Pas encore de compte ?',
       createAccount: 'Créer un compte',
+      forgotPassword: 'Mot de passe oublié ?',
       errorTitle: 'Connexion impossible',
+    },
+    forgotPassword: {
+      title: 'Réinitialise ton mot de passe',
+      subtitle: 'Saisis ton e-mail, on t’envoie un lien de réinitialisation.',
+      submit: 'Envoyer le lien',
+      submitting: 'Envoi…',
+      sentTitle: 'Vérifie tes e-mails',
+      sentBody:
+        'On t’a envoyé un lien de réinitialisation. Ouvre-le pour choisir un nouveau mot de passe.',
+      backToSignIn: 'Retour à la connexion',
+      errorTitle: 'Envoi impossible',
+    },
+    resetPassword: {
+      title: 'Choisis un nouveau mot de passe',
+      subtitle: 'Choisis un mot de passe que tu n’utilises nulle part ailleurs.',
+      submit: 'Mettre à jour',
+      submitting: 'Mise à jour…',
+      errorTitle: 'Mise à jour impossible',
     },
     signUp: {
       title: 'Crée ton compte',

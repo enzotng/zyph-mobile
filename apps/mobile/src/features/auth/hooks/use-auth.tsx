@@ -1,7 +1,15 @@
 import type { Session } from '@supabase/supabase-js'
 import { useQueryClient } from '@tanstack/react-query'
 import * as Linking from 'expo-linking'
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 
 import { mmkvQueryPersister } from '@/lib/query-persister'
 import { supabase } from '@/lib/supabase'
@@ -23,6 +31,10 @@ function exchangeCodeFromUrl(url: string | null) {
 type AuthContextValue = {
   session: Session | null
   isLoading: boolean
+  recovering: boolean
+  // Ends the recovery flow deterministically (after the new password is set) so the guard
+  // routes home without waiting on the async USER_UPDATED event.
+  clearRecovery: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -30,6 +42,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [recovering, setRecovering] = useState(false)
   const queryClient = useQueryClient()
 
   useEffect(() => {
@@ -43,6 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // device could restore the previous user's data while offline.
         queryClient.clear()
         void mmkvQueryPersister.removeClient()
+        setRecovering(false)
+      } else if (event === 'PASSWORD_RECOVERY') {
+        // The recovery link signed the user in; route them to set a new password.
+        setRecovering(true)
+      } else if (event === 'USER_UPDATED') {
+        // updatePassword emits USER_UPDATED, which ends the recovery flow.
+        setRecovering(false)
       }
       setSession(nextSession)
       setIsLoading(false)
@@ -57,7 +77,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.remove()
   }, [])
 
-  const value = useMemo<AuthContextValue>(() => ({ session, isLoading }), [session, isLoading])
+  const clearRecovery = useCallback(() => setRecovering(false), [])
+
+  const value = useMemo<AuthContextValue>(
+    () => ({ session, isLoading, recovering, clearRecovery }),
+    [session, isLoading, recovering, clearRecovery],
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
