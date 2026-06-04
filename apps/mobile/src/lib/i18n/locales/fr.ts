@@ -285,6 +285,21 @@ export const fr: Translations = {
   offline: {
     banner: 'Hors-ligne - données enregistrées',
   },
+  home: {
+    greeting: 'Bonjour, {{name}}',
+    greetingFallback: 'voyageur',
+    tripCountOne: '{{count}} voyage',
+    tripCountOther: '{{count}} voyages',
+    upcomingCount: '{{count}} à venir',
+    sectionUpcoming: 'À venir',
+    seeAll: 'Tout voir',
+    nextDeparture: 'Prochain départ',
+    inProgress: 'En cours',
+    countdownDay: 'J-{{days}}',
+    today: "Aujourd'hui",
+    noUpcomingTitle: 'Aucun voyage à venir',
+    noUpcomingBody: 'C’est le moment de planifier ta prochaine aventure.',
+  },
   ar: {
     cameraNeeded:
       'L’AR a besoin de l’accès à la caméra pour afficher les repères sur le monde réel.',

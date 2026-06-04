@@ -27,6 +27,13 @@ jest.mock('@react-native-community/netinfo', () =>
   require('@react-native-community/netinfo/jest/netinfo-mock.js'),
 )
 
+// react-native-screen-corner-radius reads a native module at import; stub it so any screen
+// importing it can render in tests without the native side.
+jest.mock('react-native-screen-corner-radius', () => ({
+  ScreenCornerRadius: 55,
+  IsScreenRounded: true,
+}))
+
 // react-native-reanimated: the native worklets runtime is absent in unit tests, so its
 // real entry crashes on import. Provide a lightweight mock - Animated.View/Text are plain
 // RN views, layout-animation builders and hooks are chainable no-ops, and any other export

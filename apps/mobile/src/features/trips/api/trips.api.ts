@@ -8,6 +8,7 @@ export type TripMemberLite = {
   id: string
   user_id: string
   display_name: string | null
+  avatar_url: string | null
   role: string
   status: string
 }
@@ -76,7 +77,7 @@ export async function listTrips(): Promise<TripCard[]> {
   const [tripsResult, balanceByTrip] = await Promise.all([
     supabase
       .from('trips')
-      .select('*, trip_members(id, user_id, role, status, profiles(display_name))')
+      .select('*, trip_members(id, user_id, role, status, profiles(display_name, avatar_url))')
       .order('created_at', { ascending: false }),
     getMyTripBalances(),
   ])
@@ -93,6 +94,7 @@ export async function listTrips(): Promise<TripCard[]> {
         role: member.role,
         status: member.status,
         display_name: member.profiles?.display_name ?? null,
+        avatar_url: member.profiles?.avatar_url ?? null,
       }))
     return { ...trip, members, myBalanceCents: balanceByTrip.get(trip.id) ?? 0 }
   })
