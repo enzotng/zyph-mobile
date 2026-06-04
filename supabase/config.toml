@@ -414,3 +414,11 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/parse-receipt-email/deno.json"
 entrypoint = "./functions/parse-receipt-email/index.ts"
+
+[functions.copilot]
+enabled = true
+# Authenticated-only: the app always invokes with the user JWT. Prevents anonymous
+# callers from burning the Groq quota. Requires a redeploy to take effect on cloud.
+verify_jwt = true
+import_map = "./functions/copilot/deno.json"
+entrypoint = "./functions/copilot/index.ts"

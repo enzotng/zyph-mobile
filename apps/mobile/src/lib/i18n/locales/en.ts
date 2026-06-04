@@ -62,6 +62,7 @@ export const en = {
     expense: 'Expense',
     map: 'Map',
     ar: 'AR',
+    copilot: 'Zo',
     searchExpenses: 'Search an expense',
     noExpenses: 'No expenses yet',
     noExpensesBody: 'Add an expense or scan a receipt to start splitting.',
@@ -258,6 +259,21 @@ export const en = {
       events: 'Events',
       pois: 'Places',
       members: 'Members',
+    },
+  },
+  copilot: {
+    title: 'Zo',
+    empty:
+      "Hi, I'm Zo, your copilot for this trip. Ask me about your timeline, who owes what, or where to go next.",
+    placeholder: 'Ask Zo about this trip…',
+    send: 'Send',
+    thinking: 'Zo is thinking…',
+    error: 'Sorry, I could not answer right now. Please try again.',
+    suggestions: {
+      owe: 'How much do I owe?',
+      next: "What's next on the timeline?",
+      topPayer: 'Who has paid the most?',
+      airport: 'Where is the airport?',
     },
   },
   ar: {
