@@ -22,6 +22,14 @@ module.exports = {
     '!src/lib/supabase.ts',
     '!src/test-utils/**',
     '!src/unistyles.ts',
+    // Native-bridge code validated on-device / by E2E (like app/** above), not in unit
+    // tests: device sensors (magnetometer/accelerometer/GPS), the camera scanner, and the
+    // sensor-driven AR wayfinder overlay + live-location sharing.
+    '!src/lib/sensors/**',
+    '!src/components/receipt-scanner.tsx',
+    '!src/features/wayfinder/components/**',
+    '!src/features/wayfinder/hooks/use-share-location.ts',
+    '!src/features/wayfinder/hooks/use-wayfinder.ts',
   ],
   // Enforce coverage on business logic (features/lib/components). Screens/routing are
   // covered by E2E (Maestro, TECH-008) and excluded above via collectCoverageFrom.

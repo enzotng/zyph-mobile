@@ -124,6 +124,96 @@ describe('setThemePreference', () => {
   })
 })
 
+describe('getLanguagePreference', () => {
+  it('returns "en" when "en" is stored', () => {
+    mockMmkv.getString.mockReturnValue('en')
+    jest.isolateModules(() => {
+      const { getLanguagePreference } = requirePreferences()
+      expect(getLanguagePreference()).toBe('en')
+    })
+  })
+
+  it('returns "fr" when "fr" is stored', () => {
+    mockMmkv.getString.mockReturnValue('fr')
+    jest.isolateModules(() => {
+      const { getLanguagePreference } = requirePreferences()
+      expect(getLanguagePreference()).toBe('fr')
+    })
+  })
+
+  it('returns "system" as fallback when the stored value is unknown', () => {
+    mockMmkv.getString.mockReturnValue('de')
+    jest.isolateModules(() => {
+      const { getLanguagePreference } = requirePreferences()
+      expect(getLanguagePreference()).toBe('system')
+    })
+  })
+
+  it('returns "system" as fallback when the key is absent', () => {
+    mockMmkv.getString.mockReturnValue(undefined)
+    jest.isolateModules(() => {
+      const { getLanguagePreference } = requirePreferences()
+      expect(getLanguagePreference()).toBe('system')
+    })
+  })
+})
+
+describe('setLanguagePreference', () => {
+  it('persists the preference to storage under the language key', () => {
+    jest.isolateModules(() => {
+      const { setLanguagePreference } = requirePreferences()
+      setLanguagePreference('fr')
+      expect(mockMmkv.set).toHaveBeenCalledWith('language', 'fr')
+    })
+  })
+})
+
+describe('getShareLocation', () => {
+  it('returns true when the stored boolean for the trip is true', () => {
+    mockMmkv.getBoolean.mockReturnValue(true)
+    jest.isolateModules(() => {
+      const { getShareLocation } = requirePreferences()
+      expect(getShareLocation('trip-1')).toBe(true)
+      expect(mockMmkv.getBoolean).toHaveBeenCalledWith('shareLocation:trip-1')
+    })
+  })
+
+  it('returns false when the stored boolean for the trip is false', () => {
+    mockMmkv.getBoolean.mockReturnValue(false)
+    jest.isolateModules(() => {
+      const { getShareLocation } = requirePreferences()
+      expect(getShareLocation('trip-2')).toBe(false)
+    })
+  })
+
+  it('returns false when no value is stored for the trip (undefined)', () => {
+    mockMmkv.getBoolean.mockReturnValue(undefined)
+    jest.isolateModules(() => {
+      const { getShareLocation } = requirePreferences()
+      expect(getShareLocation('trip-3')).toBe(false)
+      expect(mockMmkv.getBoolean).toHaveBeenCalledWith('shareLocation:trip-3')
+    })
+  })
+})
+
+describe('setShareLocation', () => {
+  it('persists true under the trip-scoped key when enabled', () => {
+    jest.isolateModules(() => {
+      const { setShareLocation } = requirePreferences()
+      setShareLocation('trip-1', true)
+      expect(mockMmkv.set).toHaveBeenCalledWith('shareLocation:trip-1', true)
+    })
+  })
+
+  it('persists false under the trip-scoped key when disabled', () => {
+    jest.isolateModules(() => {
+      const { setShareLocation } = requirePreferences()
+      setShareLocation('trip-2', false)
+      expect(mockMmkv.set).toHaveBeenCalledWith('shareLocation:trip-2', false)
+    })
+  })
+})
+
 describe('applyThemePreference', () => {
   it('enables adaptive themes when preference is "system"', () => {
     jest.isolateModules(() => {
