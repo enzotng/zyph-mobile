@@ -42,7 +42,11 @@ function useProtectedRoute(session: Session | null, isLoading: boolean, recoveri
       }
       return
     }
-    const inAuthGroup = segments[0] === '(auth)'
+    // `auth` is the deep-link callback route (zyph://auth/callback); treat it like the auth
+    // group so an unauthenticated error-callback isn't bounced before it can show its message.
+    // Cast keeps the comparison robust whatever the generated typed-routes union looks like.
+    const seg0 = segments[0] as string
+    const inAuthGroup = seg0 === '(auth)' || seg0 === 'auth'
     if (inOnboarding) {
       router.replace(session ? '/' : '/(auth)/sign-in')
     } else if (!session && !inAuthGroup) {

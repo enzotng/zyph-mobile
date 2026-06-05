@@ -169,6 +169,11 @@ export const fr: Translations = {
       submitting: 'Mise à jour…',
       errorTitle: 'Mise à jour impossible',
     },
+    callback: {
+      errorTitle: 'Lien expiré',
+      errorBody: 'Ce lien est invalide ou a expiré. Demandes-en un nouveau pour continuer.',
+      requestNew: 'Renvoyer un lien',
+    },
     signUp: {
       title: 'Crée ton compte',
       subtitle: 'Rejoins ZYPH et voyage léger à plusieurs.',
