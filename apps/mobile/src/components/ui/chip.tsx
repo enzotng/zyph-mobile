@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { Pressable, Text } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { haptics } from '@/lib/haptics'
+
 import { initialOf } from './avatar'
 
 type ChipProps = {
@@ -17,10 +19,15 @@ export function Chip({ label, icon, selected = false, onPress }: ChipProps) {
 
   const iconColor = selected ? theme.colors.primaryForeground : theme.colors.muted
 
+  const handlePress = () => {
+    haptics.selection()
+    onPress?.()
+  }
+
   return (
     <Pressable
-      style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-      onPress={onPress}
+      style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
+      onPress={handlePress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
     >
@@ -99,6 +106,10 @@ const styles = StyleSheet.create((theme) => ({
   },
   pressed: {
     opacity: 0.85,
+  },
+  chipPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.97 }],
   },
   label: {
     fontSize: theme.fontSize.sm,

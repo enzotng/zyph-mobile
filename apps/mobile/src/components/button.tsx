@@ -4,6 +4,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Surface } from '@/components/ui/surface'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 
 type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost'
 type ButtonSize = 'sm' | 'md'
@@ -29,6 +30,11 @@ export function Button({
   block = true,
 }: ButtonProps) {
   const { theme } = useUnistyles()
+
+  const handlePress = (event: GestureResponderEvent) => {
+    haptics.light()
+    onPress?.(event)
+  }
 
   const palette = {
     primary: {
@@ -59,7 +65,7 @@ export function Button({
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
@@ -103,6 +109,7 @@ const styles = StyleSheet.create((theme) => ({
   }),
   pressed: {
     opacity: 0.85,
+    transform: [{ scale: 0.97 }],
   },
   disabled: {
     opacity: 0.5,

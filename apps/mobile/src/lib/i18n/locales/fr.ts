@@ -31,7 +31,7 @@ export const fr: Translations = {
     join: 'Rejoindre par code',
     empty: {
       title: 'Aucun voyage pour le moment',
-      body: 'Créez votre premier voyage pour commencer.',
+      body: 'Crée ton premier voyage pour commencer.',
     },
     error: 'Impossible de charger vos voyages.',
     errorTitle: 'Connexion perdue',
@@ -53,7 +53,7 @@ export const fr: Translations = {
     owed: 'On te doit',
     owe: 'Tu dois',
     settled: 'Comptes équilibrés',
-    owedSub: "{{names}} te doivent de l'argent.",
+    owedSub: '{{names}} te doivent de l’argent.',
     oweSub: 'Règle ta part quand tu veux.',
     settledSub: 'Tout le monde est à jour.',
     settle: 'Régler les comptes',
@@ -69,7 +69,7 @@ export const fr: Translations = {
     copilot: 'Zo',
     searchExpenses: 'Rechercher une dépense',
     noExpenses: 'Aucune dépense',
-    noExpensesBody: 'Ajoutez une dépense ou scannez un ticket pour démarrer le partage.',
+    noExpensesBody: 'Ajoute une dépense ou scanne un ticket pour commencer à partager.',
     noResults: 'Aucun résultat pour ce filtre.',
     all: 'Tout',
     newExpense: 'Nouvelle dépense',
@@ -211,15 +211,15 @@ export const fr: Translations = {
     next: 'Suivant',
     start: 'Commencer',
     plan: {
-      title: 'Planifiez à plusieurs',
+      title: 'Planifie à plusieurs',
       body: 'Crée un voyage, invite tes amis avec un seul code et construis une timeline partagée.',
     },
     spend: {
-      title: 'Partagez les dépenses',
+      title: 'Partage les dépenses',
       body: 'Scanne un ticket, attribue chaque article à la bonne personne. ZYPH équilibre qui doit quoi.',
     },
     find: {
-      title: 'Repérez-vous sur place',
+      title: 'Repère-toi sur place',
       body: 'Une flèche en réalité augmentée te guide vers les portes, les lieux et tes amis.',
     },
     goToSlide: 'Aller à l’écran {{index}}',
@@ -286,7 +286,7 @@ export const fr: Translations = {
     empty: 'Rien à afficher pour le moment. Ajoute un événement ou un lieu, ou active un calque.',
     layers: {
       events: 'Événements',
-      pois: 'Lieux',
+      pois: 'Repères',
       members: 'Membres',
     },
   },
@@ -294,7 +294,7 @@ export const fr: Translations = {
     title: 'Zo',
     subtitle: 'Ton copain de voyage',
     empty:
-      "Salut, moi c'est Zo, ton copilote pour ce voyage. Pose-moi tes questions sur ton programme, qui doit quoi, ou la prochaine étape.",
+      'Salut, moi c’est Zo, ton copilote pour ce voyage. Pose-moi tes questions sur ton programme, qui doit quoi, ou la prochaine étape.',
     placeholder: 'Pose ta question à Zo…',
     send: 'Envoyer',
     thinking: 'Zo réfléchit…',
@@ -311,7 +311,7 @@ export const fr: Translations = {
     noResults: 'Aucune adresse trouvée.',
   },
   offline: {
-    banner: 'Hors-ligne - données enregistrées',
+    banner: 'Hors ligne - affichage des données enregistrées',
   },
   home: {
     greeting: 'Bonjour, {{name}}',
@@ -324,7 +324,7 @@ export const fr: Translations = {
     nextDeparture: 'Prochain départ',
     inProgress: 'En cours',
     countdownDay: 'J-{{days}}',
-    today: "Aujourd'hui",
+    today: 'Aujourd’hui',
     noUpcomingTitle: 'Aucun voyage à venir',
     noUpcomingBody: 'C’est le moment de planifier ta prochaine aventure.',
   },
@@ -421,7 +421,7 @@ export const fr: Translations = {
     arTitle: 'Vue AR',
     arSubtitle: 'Une flèche te guide vers tes repères',
     loadError: 'Impossible de charger les repères.',
-    sectionTitle: 'Lieux et membres',
+    sectionTitle: 'Repères et membres',
     emptyTitle: 'Aucun repère',
     emptyBody:
       'Ajoute des entrées, des toilettes ou tout autre point pour la carte et la navigation AR.',

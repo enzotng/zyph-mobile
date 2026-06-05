@@ -34,6 +34,16 @@ jest.mock('react-native-screen-corner-radius', () => ({
   IsScreenRounded: true,
 }))
 
+// expo-haptics: native module absent in unit tests. Stub the async triggers + the enums so
+// any component firing haptic feedback renders without the native side.
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(() => Promise.resolve()),
+  notificationAsync: jest.fn(() => Promise.resolve()),
+  selectionAsync: jest.fn(() => Promise.resolve()),
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
+  NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
+}))
+
 // react-native-reanimated: the native worklets runtime is absent in unit tests, so its
 // real entry crashes on import. Provide a lightweight mock - Animated.View/Text are plain
 // RN views, layout-animation builders and hooks are chainable no-ops, and any other export

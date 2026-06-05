@@ -15,6 +15,7 @@ import Animated, {
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 
 // Bottom space a scrollable tab screen should reserve so its last content clears the
 // floating bar (the bar adds the safe-area inset itself, so this is on top of that).
@@ -93,6 +94,11 @@ function TabPill({
     backgroundColor: interpolateColor(progress.value, [0, 1], [inactiveBg, activeBg]),
   }))
 
+  const handlePress = () => {
+    haptics.selection()
+    onPress()
+  }
+
   return (
     <Animated.View
       layout={PILL_TRANSITION}
@@ -104,7 +110,7 @@ function TabPill({
       ]}
     >
       <Pressable
-        onPress={onPress}
+        onPress={handlePress}
         accessibilityRole="button"
         accessibilityState={{ selected: active }}
         accessibilityLabel={tab.label}
@@ -167,7 +173,10 @@ export function FloatingTabBar({ tabs, activeName, onSelect, soloAction }: Float
 
       {soloAction ? (
         <Pressable
-          onPress={soloAction.onPress}
+          onPress={() => {
+            haptics.selection()
+            soloAction.onPress()
+          }}
           accessibilityRole="button"
           accessibilityLabel={soloAction.label}
           style={({ pressed }) => (pressed ? styles.pressed : undefined)}

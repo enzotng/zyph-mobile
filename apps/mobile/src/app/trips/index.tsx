@@ -4,13 +4,18 @@ import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, RefreshControl, View } from 'react-native'
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { BottomSheet, EmptyState, Spinner } from '@/components/ui'
+import { BottomSheet, EmptyState, Skeleton } from '@/components/ui'
 import { useTrips } from '@/features/trips'
 import { TripListCard } from '@/features/trips/components/trip-list-card'
+import { haptics } from '@/lib/haptics'
+
+// Placeholder rows shown while the list loads, sized to roughly match a TripListCard.
+const SKELETON_ROWS = [0, 1, 2, 3]
 
 // The full "all trips" list, reached from the home "See all" action.
 export default function AllTripsScreen() {
@@ -26,18 +31,24 @@ export default function AllTripsScreen() {
       showBack
       right={
         <Pressable
-          onPress={() => setAddOpen(true)}
+          onPress={() => {
+            haptics.light()
+            setAddOpen(true)
+          }}
           accessibilityRole="button"
           accessibilityLabel={t('trips.add')}
           hitSlop={8}
+          style={({ pressed }) => [pressed && styles.pressed]}
         >
           <Ionicons name="add" size={28} color={theme.colors.primary} />
         </Pressable>
       }
     >
       {isLoading ? (
-        <View style={styles.center}>
-          <Spinner label={t('common.loading')} />
+        <View style={styles.list}>
+          {SKELETON_ROWS.map((row) => (
+            <Skeleton key={row} height={184} radius={theme.radius.lg} style={styles.skeletonRow} />
+          ))}
         </View>
       ) : isError ? (
         <EmptyState
@@ -58,7 +69,7 @@ export default function AllTripsScreen() {
           onSecondaryCta={() => router.push('/trips/join')}
         />
       ) : (
-        <View style={styles.listWrap}>
+        <Animated.View style={styles.listWrap} entering={FadeIn.duration(300)}>
           <FlashList
             data={trips}
             keyExtractor={(item) => item.id}
@@ -71,13 +82,17 @@ export default function AllTripsScreen() {
               />
             }
             renderItem={({ item }) => (
-              <TripListCard
-                trip={item}
-                onPress={() => router.push({ pathname: '/trips/[id]', params: { id: item.id } })}
-              />
+              // No `entering` here: FlashList recycles rows, so a mount animation would
+              // re-fire on every scroll. `layout` only, for tasteful reorder transitions.
+              <Animated.View layout={LinearTransition}>
+                <TripListCard
+                  trip={item}
+                  onPress={() => router.push({ pathname: '/trips/[id]', params: { id: item.id } })}
+                />
+              </Animated.View>
             )}
           />
-        </View>
+        </Animated.View>
       )}
 
       <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title={t('trips.add')}>
@@ -106,10 +121,9 @@ export default function AllTripsScreen() {
 }
 
 const styles = StyleSheet.create((theme, rt) => ({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  pressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.97 }],
   },
   listWrap: {
     flex: 1,
@@ -117,6 +131,9 @@ const styles = StyleSheet.create((theme, rt) => ({
   list: {
     paddingVertical: theme.gap(3),
     paddingBottom: rt.insets.bottom + theme.gap(4),
+  },
+  skeletonRow: {
+    marginBottom: theme.gap(3.5),
   },
   sheetActions: {
     gap: theme.gap(2),

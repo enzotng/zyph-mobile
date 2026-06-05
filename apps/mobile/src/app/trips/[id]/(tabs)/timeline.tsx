@@ -5,11 +5,12 @@ import type { TFunction } from 'i18next'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
+import Animated, { FadeIn } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
-import { Badge, Card, EmptyState, Spinner } from '@/components/ui'
+import { Badge, Card, EmptyState, Skeleton } from '@/components/ui'
 import {
   type EventStatus,
   eventStatus,
@@ -20,6 +21,7 @@ import {
   useEvents,
 } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
 function formatEventTime(iso: string | null): string | null {
@@ -103,12 +105,13 @@ export default function TimelineScreen() {
           <View style={styles.cardWrap}>
             <Card
               padding={theme.gap(3.25)}
-              onPress={() =>
+              onPress={() => {
+                haptics.light()
                 router.push({
                   pathname: '/trips/[id]/events/[eventId]',
                   params: { id: tripId, eventId: item.event.id },
                 })
-              }
+              }}
             >
               <View style={styles.eventHead}>
                 <View style={styles.eventTitleWrap}>
@@ -168,9 +171,7 @@ export default function TimelineScreen() {
       }
     >
       {isLoading ? (
-        <View style={styles.center}>
-          <Spinner label={t('common.loading')} />
-        </View>
+        <TimelineSkeleton />
       ) : isError ? (
         <EmptyState
           icon="cloud-offline-outline"
@@ -186,16 +187,41 @@ export default function TimelineScreen() {
           onCta={() => router.push({ pathname: '/trips/[id]/add-event', params: { id: tripId } })}
         />
       ) : (
-        <FlashList
-          data={items}
-          keyExtractor={(item) => item.key}
-          getItemType={(item) => item.kind}
-          contentContainerStyle={styles.list}
-          renderItem={renderItem}
-          showsVerticalScrollIndicator={false}
-        />
+        <Animated.View entering={FadeIn.duration(280)} style={styles.fill}>
+          <FlashList
+            data={items}
+            keyExtractor={(item) => item.key}
+            getItemType={(item) => item.kind}
+            contentContainerStyle={styles.list}
+            renderItem={renderItem}
+            showsVerticalScrollIndicator={false}
+          />
+        </Animated.View>
       )}
     </Screen>
+  )
+}
+
+// Skeleton placeholder that mirrors the timeline layout (day header + rail rows). Rendered in a
+// plain View via .map(), so staggered entrance is safe (no FlashList recycling here).
+function TimelineSkeleton() {
+  const { theme } = useUnistyles()
+  return (
+    <View style={styles.skeleton}>
+      <Skeleton width={120} height={14} radius={theme.radius.sm} style={styles.skeletonHeader} />
+      {[0, 1, 2, 3].map((i) => (
+        <Animated.View
+          key={i}
+          entering={FadeIn.delay(i * 50).duration(280)}
+          style={styles.skeletonRow}
+        >
+          <View style={styles.skeletonRail}>
+            <Skeleton width={DOT_SIZE} height={DOT_SIZE} radius={DOT_SIZE / 2} />
+          </View>
+          <Skeleton width="100%" height={84} radius={theme.radius.lg} style={styles.skeletonCard} />
+        </Animated.View>
+      ))}
+    </View>
   )
 }
 
@@ -208,10 +234,27 @@ const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     gap: theme.gap(2),
   },
-  center: {
+  fill: {
     flex: 1,
+  },
+  skeleton: {
+    paddingTop: theme.gap(4),
+  },
+  skeletonHeader: {
+    marginBottom: theme.gap(3),
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    gap: theme.gap(3),
+    paddingBottom: theme.gap(3),
+  },
+  skeletonRail: {
+    width: RAIL_WIDTH,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingTop: theme.gap(4),
+  },
+  skeletonCard: {
+    flex: 1,
   },
   list: {
     paddingTop: theme.gap(1),

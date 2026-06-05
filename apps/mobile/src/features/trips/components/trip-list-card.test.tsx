@@ -1,7 +1,20 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 
+import { haptics } from '@/lib/haptics'
+
 import type { TripCard, TripMemberLite } from '../api/trips.api'
 import { TripListCard } from './trip-list-card'
+
+jest.mock('@/lib/haptics', () => ({
+  haptics: {
+    light: jest.fn(),
+    medium: jest.fn(),
+    selection: jest.fn(),
+    success: jest.fn(),
+    warning: jest.fn(),
+    error: jest.fn(),
+  },
+}))
 
 // Builds a TripMemberLite with sensible defaults; override per-test.
 function makeMember(overrides: Partial<TripMemberLite> = {}): TripMemberLite {
@@ -57,6 +70,10 @@ function renderedHasImage(): boolean {
 }
 
 describe('TripListCard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
   it('renders the trip title', () => {
     render(<TripListCard trip={makeTrip()} onPress={() => {}} />)
 
@@ -76,6 +93,14 @@ describe('TripListCard', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Tap me' }))
 
     expect(onPress).toHaveBeenCalledTimes(1)
+  })
+
+  it('fires a light haptic when the card is pressed', () => {
+    render(<TripListCard trip={makeTrip({ title: 'Buzz me' })} onPress={() => {}} />)
+
+    fireEvent.press(screen.getByRole('button', { name: 'Buzz me' }))
+
+    expect(haptics.light).toHaveBeenCalledTimes(1)
   })
 
   it('handles the press lifecycle (pressIn/pressOut) without throwing', () => {
@@ -120,7 +145,7 @@ describe('TripListCard', () => {
       />,
     )
 
-    expect(screen.getByText("You're owed 12.50 EUR")).toBeOnTheScreen()
+    expect(screen.getByText('You’re owed 12.50 EUR')).toBeOnTheScreen()
   })
 
   it('shows the "owe" label with an absolute amount for a negative balance', () => {

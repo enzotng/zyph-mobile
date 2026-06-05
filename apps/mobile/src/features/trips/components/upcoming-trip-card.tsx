@@ -5,6 +5,7 @@ import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { CityImage, StatusDot } from '@/components/ui'
+import { haptics } from '@/lib/haptics'
 
 import type { TripCard } from '../api/trips.api'
 import { formatTripDates } from '../format'
@@ -31,10 +32,15 @@ export function UpcomingTripCard({ trip, tone, onPress }: UpcomingTripCardProps)
   const { i18n } = useTranslation()
   const dates = formatTripDates(trip.start_date, trip.end_date, i18n.language)
 
+  const handlePress = () => {
+    haptics.light()
+    onPress()
+  }
+
   return (
     <Pressable
       style={({ pressed }) => [styles.wrap, pressed && styles.pressed]}
-      onPress={onPress}
+      onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel={trip.title}
     >
@@ -79,6 +85,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   pressed: {
     opacity: 0.85,
+    transform: [{ scale: 0.97 }],
   },
   dot: {
     position: 'absolute',

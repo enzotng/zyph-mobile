@@ -5,6 +5,7 @@ import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { AvatarStack, Badge, CityImage } from '@/components/ui'
+import { haptics } from '@/lib/haptics'
 import { formatAmount } from '@/lib/money'
 
 import type { TripCard } from '../api/trips.api'
@@ -44,10 +45,15 @@ export function TripListCard({ trip, onPress }: TripListCardProps) {
     imageUrl: member.avatar_url,
   }))
 
+  const handlePress = () => {
+    haptics.light()
+    onPress()
+  }
+
   return (
     <Pressable
       style={({ pressed }) => [styles.cardWrap, pressed && styles.pressed]}
-      onPress={onPress}
+      onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel={trip.title}
     >
@@ -104,7 +110,8 @@ const styles = StyleSheet.create((theme) => ({
     marginBottom: theme.gap(3.5),
   },
   pressed: {
-    opacity: 0.85,
+    opacity: 0.92,
+    transform: [{ scale: 0.98 }],
   },
   fade: {
     position: 'absolute',

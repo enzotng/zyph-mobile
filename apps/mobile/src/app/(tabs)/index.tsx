@@ -3,11 +3,12 @@ import { useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshControl, ScrollView, Text, View } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
-import { EmptyState, SectionTitle, Spinner, Surface } from '@/components/ui'
+import { EmptyState, SectionTitle, Skeleton, Surface } from '@/components/ui'
 import { useProfile } from '@/features/profile'
 import {
   daysUntil,
@@ -67,9 +68,7 @@ export default function HomeScreen() {
       />
 
       {isLoading ? (
-        <View style={styles.center}>
-          <Spinner label={t('common.loading')} />
-        </View>
+        <HomeSkeleton />
       ) : isError ? (
         <View style={styles.stateWrap}>
           <EmptyState
@@ -104,29 +103,37 @@ export default function HomeScreen() {
             />
           }
         >
-          {next ? (
-            <NextDepartureCard
-              trip={next}
-              days={next.start_date ? daysUntil(next.start_date, now) : 0}
-              inProgress={tripTimeline(next, now) === 'in_progress'}
-              departureLabel={formatDay(next.start_date, i18n.language)}
-              onPress={() => router.push({ pathname: '/trips/[id]', params: { id: next.id } })}
-            />
-          ) : (
-            <NoUpcomingCard
-              onCreate={() => router.push('/trips/new')}
-              onJoin={() => router.push('/trips/join')}
-            />
-          )}
+          <Animated.View entering={FadeInDown.duration(360).springify()}>
+            {next ? (
+              <NextDepartureCard
+                trip={next}
+                days={next.start_date ? daysUntil(next.start_date, now) : 0}
+                inProgress={tripTimeline(next, now) === 'in_progress'}
+                departureLabel={formatDay(next.start_date, i18n.language)}
+                onPress={() => router.push({ pathname: '/trips/[id]', params: { id: next.id } })}
+              />
+            ) : (
+              <NoUpcomingCard
+                onCreate={() => router.push('/trips/new')}
+                onJoin={() => router.push('/trips/join')}
+              />
+            )}
+          </Animated.View>
 
           {upcoming.length > 0 ? (
-            <View style={styles.section}>
+            <Animated.View entering={FadeInDown.delay(60).duration(360)} style={styles.section}>
               <SectionTitle action={t('home.seeAll')} onAction={() => router.push('/trips')}>
                 {t('home.sectionUpcoming')}
               </SectionTitle>
               <View style={styles.grid}>
-                {chunkPairs(upcoming).map((pair) => (
-                  <View key={pair.map((trip) => trip.id).join('-')} style={styles.row}>
+                {chunkPairs(upcoming).map((pair, i) => (
+                  <Animated.View
+                    key={pair.map((trip) => trip.id).join('-')}
+                    entering={FadeInDown.delay(Math.min(i, 8) * 50 + 120)
+                      .duration(360)
+                      .springify()}
+                    style={styles.row}
+                  >
                     {pair.map((trip) => (
                       <UpcomingTripCard
                         key={trip.id}
@@ -138,17 +145,41 @@ export default function HomeScreen() {
                       />
                     ))}
                     {pair.length === 1 ? <View style={styles.spacer} /> : null}
-                  </View>
+                  </Animated.View>
                 ))}
               </View>
-            </View>
+            </Animated.View>
           ) : home.past.length > 0 ? (
-            <SectionTitle action={t('home.seeAll')} onAction={() => router.push('/trips')}>
-              {t('trips.title')}
-            </SectionTitle>
+            <Animated.View entering={FadeInDown.delay(60).duration(360)}>
+              <SectionTitle action={t('home.seeAll')} onAction={() => router.push('/trips')}>
+                {t('trips.title')}
+              </SectionTitle>
+            </Animated.View>
           ) : null}
         </ScrollView>
       )}
+    </View>
+  )
+}
+
+// Loading placeholder shaped like the home content: a hero card then a two-up grid of cards.
+function HomeSkeleton() {
+  const { theme } = useUnistyles()
+  return (
+    <View style={styles.skeleton}>
+      <Skeleton width="100%" height={172} radius={theme.radius.xl} />
+      <View style={styles.skeletonHeader}>
+        <Skeleton width={140} height={20} radius={theme.radius.sm} />
+        <Skeleton width={56} height={16} radius={theme.radius.sm} />
+      </View>
+      <View style={styles.row}>
+        <Skeleton width="48%" height={132} radius={theme.radius.lg} />
+        <Skeleton width="48%" height={132} radius={theme.radius.lg} />
+      </View>
+      <View style={styles.row}>
+        <Skeleton width="48%" height={132} radius={theme.radius.lg} />
+        <Skeleton width="48%" height={132} radius={theme.radius.lg} />
+      </View>
     </View>
   )
 }
@@ -175,10 +206,15 @@ const styles = StyleSheet.create((theme, rt) => ({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  center: {
-    flex: 1,
+  skeleton: {
+    paddingHorizontal: theme.gap(6),
+    paddingTop: theme.gap(2),
+    gap: theme.gap(4),
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
   },
   stateWrap: {
     flex: 1,
