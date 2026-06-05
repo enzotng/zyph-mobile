@@ -166,6 +166,11 @@ export const en = {
       submitting: 'Updating…',
       errorTitle: 'Could not update the password',
     },
+    callback: {
+      errorTitle: 'Link expired',
+      errorBody: 'This link is invalid or has expired. Request a new one to continue.',
+      requestNew: 'Request a new link',
+    },
     signUp: {
       title: 'Create your account',
       subtitle: 'Join ZYPH and travel light together.',
