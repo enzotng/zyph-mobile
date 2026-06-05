@@ -26,6 +26,20 @@ describe('ListRow', () => {
     expect(onPress).toHaveBeenCalledTimes(1)
   })
 
+  it('exposes a button role and falls back to the title for its label', () => {
+    render(<ListRow title="Notifications" onPress={() => {}} />)
+
+    expect(screen.getByRole('button', { name: 'Notifications' })).toBeOnTheScreen()
+  })
+
+  it('prefers an explicit accessibilityLabel over the title', () => {
+    render(
+      <ListRow title="Notifications" accessibilityLabel="Open notifications" onPress={() => {}} />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Open notifications' })).toBeOnTheScreen()
+  })
+
   it('renders a custom right node when provided', () => {
     render(<ListRow title="Language" right={<Text>English</Text>} />)
 

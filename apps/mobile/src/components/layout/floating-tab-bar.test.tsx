@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 
+import { haptics } from '@/lib/haptics'
+
 import { type FloatingTab, type FloatingTabAction, FloatingTabBar } from './floating-tab-bar'
 
 const TABS: FloatingTab[] = [
@@ -50,6 +52,16 @@ describe('FloatingTabBar', () => {
 
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith('trips')
+  })
+
+  it('fires a selection haptic when a tab is pressed', () => {
+    const selection = jest.spyOn(haptics, 'selection')
+    render(<FloatingTabBar tabs={TABS} activeName="index" onSelect={jest.fn()} />)
+
+    fireEvent.press(screen.getByRole('button', { name: 'Trips' }))
+
+    expect(selection).toHaveBeenCalledTimes(1)
+    selection.mockRestore()
   })
 
   it('calls onSelect with the tab name when the right (solo) tab is pressed', () => {
@@ -123,6 +135,23 @@ describe('FloatingTabBar', () => {
       fireEvent.press(screen.getByRole('button', { name: 'Ask Zo' }))
 
       expect(soloAction.onPress).toHaveBeenCalledTimes(1)
+    })
+
+    it('fires a selection haptic when the solo action is pressed', () => {
+      const selection = jest.spyOn(haptics, 'selection')
+      render(
+        <FloatingTabBar
+          tabs={TABS}
+          activeName="index"
+          onSelect={jest.fn()}
+          soloAction={soloAction}
+        />,
+      )
+
+      fireEvent.press(screen.getByRole('button', { name: 'Ask Zo' }))
+
+      expect(selection).toHaveBeenCalledTimes(1)
+      selection.mockRestore()
     })
 
     it('still calls onSelect for a left-group tab while a solo action is present', () => {

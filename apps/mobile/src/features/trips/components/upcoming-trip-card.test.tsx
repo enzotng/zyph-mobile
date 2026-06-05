@@ -122,7 +122,7 @@ describe('UpcomingTripCard', () => {
     expect(pressable.props.accessibilityRole).toBe('button')
   })
 
-  it('applies the dimmed pressed style only while pressed (style-fn both branches)', () => {
+  it('applies the dimmed, scaled-down pressed style only while pressed (style-fn both branches)', () => {
     render(<UpcomingTripCard trip={trip()} tone="success" onPress={() => {}} />)
 
     // The Pressable keeps `style` as the original ({ pressed }) => style[] function (the host
@@ -133,10 +133,14 @@ describe('UpcomingTripCard', () => {
     )
     const styleFn = pressable.props.style as (s: { pressed: boolean }) => unknown
 
-    // Pressed -> the truthy `pressed && styles.pressed` branch applies opacity 0.85.
-    expect(flattenStyle(styleFn({ pressed: true })).opacity).toBe(0.85)
-    // At rest -> the falsy branch, no dim.
-    expect(flattenStyle(styleFn({ pressed: false })).opacity).toBeUndefined()
+    // Pressed -> the truthy `pressed && styles.pressed` branch dims and scales the card down.
+    const pressedStyle = flattenStyle(styleFn({ pressed: true }))
+    expect(pressedStyle.opacity).toBe(0.85)
+    expect(pressedStyle.transform).toEqual([{ scale: 0.97 }])
+    // At rest -> the falsy branch, no dim and no scale.
+    const restStyle = flattenStyle(styleFn({ pressed: false }))
+    expect(restStyle.opacity).toBeUndefined()
+    expect(restStyle.transform).toBeUndefined()
   })
 
   it('renders the cover photo when cover_photo_url is set', () => {

@@ -4,6 +4,7 @@ import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import { ScreenCornerRadius } from 'react-native-screen-corner-radius'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -18,7 +19,7 @@ import {
   CityImage,
   QuickAction,
   SectionTitle,
-  Spinner,
+  Skeleton,
   Surface,
 } from '@/components/ui'
 import { useAuth } from '@/features/auth'
@@ -33,7 +34,13 @@ import { useLeaveTrip, useRegenerateInviteCode, useTripMembers } from '@/feature
 import { eventStatus, eventTypeIcon, formatCountdown, useEvents } from '@/features/timeline'
 import { formatTripDates, useDeleteTrip, useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
+
+// Staggered entrance for the content blocks below the cover. Short step, capped so the
+// last block never lags; the cover hero stays static (its corner-radius logic is untouched).
+const ENTER_STEP = 50
+const enter = (index: number) => FadeInDown.duration(320).delay(index * ENTER_STEP)
 
 const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
   food: 'restaurant',
@@ -196,13 +203,7 @@ export default function TripDashboardScreen() {
   }
 
   if (isLoading) {
-    return (
-      <Screen showBack>
-        <View style={styles.center}>
-          <Spinner label={t('common.loading')} />
-        </View>
-      </Screen>
-    )
+    return <TripDashboardSkeleton />
   }
 
   if (isError || !trip) {
@@ -385,44 +386,46 @@ export default function TripDashboardScreen() {
 
         <View style={styles.content}>
           {/* Balance hero */}
-          <Card>
-            <View style={styles.balanceRow}>
-              <View style={styles.balanceInfo}>
-                <Text style={styles.balanceLabel}>
-                  {settled ? t('trip.settled') : positive ? t('trip.owed') : t('trip.owe')}
-                </Text>
-                <Text style={[styles.balanceAmount, { color: balanceTone }]}>
-                  {formatAmount(Math.abs(myBalance), currency)}
-                </Text>
-                <Text style={styles.balanceSub}>{balanceSub}</Text>
+          <Animated.View entering={enter(0)}>
+            <Card>
+              <View style={styles.balanceRow}>
+                <View style={styles.balanceInfo}>
+                  <Text style={styles.balanceLabel}>
+                    {settled ? t('trip.settled') : positive ? t('trip.owed') : t('trip.owe')}
+                  </Text>
+                  <Text style={[styles.balanceAmount, { color: balanceTone }]}>
+                    {formatAmount(Math.abs(myBalance), currency)}
+                  </Text>
+                  <Text style={styles.balanceSub}>{balanceSub}</Text>
+                </View>
+                <Surface
+                  width={48}
+                  height={48}
+                  radius={theme.radius.md}
+                  borderWidth={0}
+                  color={withAlpha(settled ? theme.colors.success : theme.colors.primary, 0.12)}
+                  style={styles.balanceIcon}
+                >
+                  <Ionicons
+                    name={settled ? 'checkmark-done' : 'git-compare-outline'}
+                    size={24}
+                    color={settled ? theme.colors.success : theme.colors.primary}
+                  />
+                </Surface>
               </View>
-              <Surface
-                width={48}
-                height={48}
-                radius={theme.radius.md}
-                borderWidth={0}
-                color={withAlpha(settled ? theme.colors.success : theme.colors.primary, 0.12)}
-                style={styles.balanceIcon}
-              >
-                <Ionicons
-                  name={settled ? 'checkmark-done' : 'git-compare-outline'}
-                  size={24}
-                  color={settled ? theme.colors.success : theme.colors.primary}
+              <View style={styles.balanceButton}>
+                <Button
+                  label={settled ? t('trip.viewBalances') : t('trip.settle')}
+                  icon="git-compare-outline"
+                  variant={settled ? 'secondary' : 'primary'}
+                  onPress={goGroup}
                 />
-              </Surface>
-            </View>
-            <View style={styles.balanceButton}>
-              <Button
-                label={settled ? t('trip.viewBalances') : t('trip.settle')}
-                icon="git-compare-outline"
-                variant={settled ? 'secondary' : 'primary'}
-                onPress={goGroup}
-              />
-            </View>
-          </Card>
+              </View>
+            </Card>
+          </Animated.View>
 
           {/* Quick actions (Zo lives in the floating bar now) */}
-          <View style={styles.quickActions}>
+          <Animated.View style={styles.quickActions} entering={enter(1)}>
             <QuickAction
               icon="add-circle"
               label={t('trip.expense')}
@@ -440,11 +443,11 @@ export default function TripDashboardScreen() {
               label={t('trip.ar')}
               onPress={() => router.push({ pathname: '/trips/[id]/ar', params: { id: tripId } })}
             />
-          </View>
+          </Animated.View>
 
           {/* Next event */}
           {nextEvent && nextStatus?.kind === 'upcoming' ? (
-            <View>
+            <Animated.View entering={enter(2)}>
               <SectionTitle action={t('tabs.timeline')} onAction={() => goTab('timeline')}>
                 {t('trip.upcoming')}
               </SectionTitle>
@@ -483,12 +486,12 @@ export default function TripDashboardScreen() {
                   </View>
                 </Card>
               </View>
-            </View>
+            </Animated.View>
           ) : null}
 
           {/* Recent expenses */}
           {recent.length > 0 ? (
-            <View>
+            <Animated.View entering={enter(3)}>
               <SectionTitle action={t('trip.viewAll')} onAction={() => goTab('expenses')}>
                 {t('trip.recent')}
               </SectionTitle>
@@ -496,15 +499,17 @@ export default function TripDashboardScreen() {
                 {recent.map((expense, index) => (
                   <Pressable
                     key={expense.id}
-                    onPress={() =>
+                    onPress={() => {
+                      haptics.light()
                       router.push({
                         pathname: '/trips/[id]/expenses/[expenseId]',
                         params: { id: tripId, expenseId: expense.id },
                       })
-                    }
-                    style={[
+                    }}
+                    style={({ pressed }) => [
                       styles.expenseRow,
                       index === recent.length - 1 && styles.expenseRowLast,
+                      pressed && styles.expenseRowPressed,
                     ]}
                     accessibilityRole="button"
                     accessibilityLabel={`${expense.description}, ${formatAmount(expense.amount_cents, expense.currency)}`}
@@ -537,7 +542,7 @@ export default function TripDashboardScreen() {
                   </Pressable>
                 ))}
               </View>
-            </View>
+            </Animated.View>
           ) : null}
         </View>
       </ScrollView>
@@ -589,6 +594,35 @@ export default function TripDashboardScreen() {
           )}
         </View>
       </BottomSheet>
+    </View>
+  )
+}
+
+// Loading placeholder shaped like the dashboard: a full-bleed cover block, then the balance
+// card, quick actions and a few recent rows. The cover stays static (mirrors the real hero);
+// the content blocks fade in staggered to match the loaded screen.
+function TripDashboardSkeleton() {
+  const { theme } = useUnistyles()
+  return (
+    <View style={styles.container}>
+      <View style={styles.skeletonCover}>
+        <Skeleton width="100%" height={284} radius={theme.radius.xl} />
+      </View>
+      <View style={styles.content}>
+        <Animated.View entering={enter(0)}>
+          <Skeleton width="100%" height={148} radius={theme.radius.lg} />
+        </Animated.View>
+        <Animated.View style={styles.quickActions} entering={enter(1)}>
+          <Skeleton width="100%" height={76} radius={theme.radius.lg} />
+          <Skeleton width="100%" height={76} radius={theme.radius.lg} />
+          <Skeleton width="100%" height={76} radius={theme.radius.lg} />
+        </Animated.View>
+        <Animated.View style={styles.skeletonSection} entering={enter(2)}>
+          <Skeleton width={140} height={18} radius={theme.radius.sm} />
+          <Skeleton width="100%" height={56} radius={theme.radius.md} />
+          <Skeleton width="100%" height={56} radius={theme.radius.md} />
+        </Animated.View>
+      </View>
     </View>
   )
 }
@@ -699,6 +733,12 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingTop: theme.gap(4),
     gap: theme.gap(4),
   },
+  skeletonCover: {
+    paddingTop: rt.insets.top,
+  },
+  skeletonSection: {
+    gap: theme.gap(2.5),
+  },
   balanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -783,6 +823,9 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   expenseRowLast: {
     borderBottomWidth: 0,
+  },
+  expenseRowPressed: {
+    opacity: 0.6,
   },
   expenseIcon: {
     alignItems: 'center',

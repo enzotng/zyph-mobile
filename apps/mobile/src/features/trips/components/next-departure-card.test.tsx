@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import type { ReactTestRendererJSON } from 'react-test-renderer'
 
+import { haptics } from '@/lib/haptics'
+
 import type { TripCard, TripMemberLite } from '../api/trips.api'
 import { NextDepartureCard } from './next-departure-card'
 
@@ -75,7 +77,8 @@ describe('NextDepartureCard', () => {
     expect(screen.getByText('Paris')).toBeOnTheScreen()
   })
 
-  it('calls onPress when the card is pressed', () => {
+  it('calls onPress and fires light haptics when the card is pressed', () => {
+    const lightSpy = jest.spyOn(haptics, 'light').mockImplementation(() => {})
     const onPress = jest.fn()
     render(
       <NextDepartureCard
@@ -87,12 +90,16 @@ describe('NextDepartureCard', () => {
       />,
     )
 
-    fireEvent.press(screen.getByRole('button', { name: 'Summer in Paris' }))
+    // The a11y label composes the visible title, countdown and destination.
+    fireEvent.press(screen.getByRole('button', { name: 'Summer in Paris, D-5, Paris' }))
 
     expect(onPress).toHaveBeenCalledTimes(1)
+    expect(lightSpy).toHaveBeenCalledTimes(1)
+
+    lightSpy.mockRestore()
   })
 
-  it('applies the pressed style while the card is pressed, then clears it', () => {
+  it('applies the pressed style (subtle scale + dim) while pressed, then clears it', () => {
     render(
       <NextDepartureCard
         trip={makeTrip()}
@@ -110,7 +117,7 @@ describe('NextDepartureCard', () => {
     )
     const styleFn = pressable.props.style as (state: { pressed: boolean }) => unknown
 
-    expect(styleFn({ pressed: true })).toEqual({ opacity: 0.92 })
+    expect(styleFn({ pressed: true })).toEqual({ opacity: 0.92, transform: [{ scale: 0.98 }] })
     expect(styleFn({ pressed: false })).toBeUndefined()
   })
 
