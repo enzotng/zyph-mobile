@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.2.1](https://github.com/enzotng/zyph-mobile/compare/v1.2.0...v1.2.1) (2026-06-05)
+
+
+### Features
+
+* **auth:** add Google sign-in (OAuth/PKCE) ([#127](https://github.com/enzotng/zyph-mobile/issues/127)) ([4fbe295](https://github.com/enzotng/zyph-mobile/commit/4fbe295))
+* **auth:** password reset + join a trip from the empty state ([#128](https://github.com/enzotng/zyph-mobile/issues/128)) ([a9468ae](https://github.com/enzotng/zyph-mobile/commit/a9468ae))
+* **ui:** animation, haptics, skeleton and a11y polish pass ([#129](https://github.com/enzotng/zyph-mobile/issues/129)) ([671bd74](https://github.com/enzotng/zyph-mobile/commit/671bd74))
+
+
+### Bug Fixes
+
+* **auth:** handle the zyph://auth/callback deep link ([#130](https://github.com/enzotng/zyph-mobile/issues/130)) ([a5e19c5](https://github.com/enzotng/zyph-mobile/commit/a5e19c5))
+
+
 ## [1.2.0](https://github.com/enzotng/zyph-mobile/compare/v1.1.0...v1.2.0) (2026-06-04)
 
 
