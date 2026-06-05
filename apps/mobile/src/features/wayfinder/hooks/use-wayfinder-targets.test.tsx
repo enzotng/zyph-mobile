@@ -165,4 +165,153 @@ describe('useWayfinderTargets', () => {
     const member = result.current.targets.find((t) => t.kind === 'member')
     expect(member).toMatchObject({ label: 'Tom', icon: 'star' })
   })
+
+  it('falls back to a synthesized gate label when none is provided', async () => {
+    mockListEvents.mockResolvedValue([
+      {
+        ...baseEvent,
+        lat: null,
+        lng: null,
+        gate_location: { lat: 48.857, lng: 2.353 },
+      },
+    ])
+    mockListPois.mockResolvedValue([])
+    mockListMemberLocations.mockResolvedValue([])
+
+    const { result } = renderHook(() => useWayfinderTargets('t1', false), { wrapper: wrapper() })
+
+    await waitFor(() => expect(result.current.targets.length).toBe(1))
+    expect(result.current.targets[0]).toMatchObject({
+      kind: 'gate',
+      label: 'Flight AF1234 · gate',
+    })
+  })
+
+  it('falls back to "Member" label and trip_member_id when profile/id are missing', async () => {
+    mockListEvents.mockResolvedValue([])
+    mockListPois.mockResolvedValue([])
+    mockListMemberLocations.mockResolvedValue([
+      {
+        trip_member_id: 'fallback-id',
+        lat: 48.86,
+        lng: 2.35,
+        accuracy_m: 10,
+        heading_deg: null,
+        updated_at: '2026-05-23T15:00:00Z',
+        trip_member: null,
+      },
+    ])
+
+    const { result } = renderHook(() => useWayfinderTargets('t1', true), { wrapper: wrapper() })
+
+    await waitFor(() => expect(result.current.targets.length).toBe(1))
+    expect(result.current.targets[0]).toMatchObject({
+      kind: 'member',
+      id: 'member:fallback-id',
+      label: 'Member',
+      sourceId: 'fallback-id',
+    })
+  })
+
+  it('ignores gate_location when its coordinates are not numbers', async () => {
+    mockListEvents.mockResolvedValue([
+      {
+        ...baseEvent,
+        gate_location: { label: 'Bad gate', lat: 'x', lng: 'y' },
+      },
+    ])
+    mockListPois.mockResolvedValue([])
+    mockListMemberLocations.mockResolvedValue([])
+
+    const { result } = renderHook(() => useWayfinderTargets('t1', false), { wrapper: wrapper() })
+
+    await waitFor(() => expect(result.current.targets.length).toBe(1))
+    expect(result.current.targets.find((t) => t.kind === 'gate')).toBeUndefined()
+  })
+
+  it('uses a "pin" icon for non-flight events', async () => {
+    mockListEvents.mockResolvedValue([{ ...baseEvent, type: 'activity' }])
+    mockListPois.mockResolvedValue([])
+    mockListMemberLocations.mockResolvedValue([])
+
+    const { result } = renderHook(() => useWayfinderTargets('t1', false), { wrapper: wrapper() })
+
+    await waitFor(() => expect(result.current.targets.length).toBe(1))
+    expect(result.current.targets[0]).toMatchObject({ kind: 'event', icon: 'pin' })
+  })
+
+  it('sorts dated targets chronologically, then undated targets alphabetically', async () => {
+    // Two events with startsAt (a.startsAt && b.startsAt branch) in reverse chronological order,
+    // plus two POIs without startsAt (neither-branch + label.localeCompare) added in reverse order.
+    mockListEvents.mockResolvedValue([
+      { ...baseEvent, id: 'late', title: 'Late event', starts_at: '2026-06-02T10:00:00Z' },
+      { ...baseEvent, id: 'early', title: 'Early event', starts_at: '2026-06-01T10:00:00Z' },
+    ])
+    mockListPois.mockResolvedValue([
+      {
+        id: 'pz',
+        trip_id: 't1',
+        label: 'Zebra POI',
+        icon: 'pin',
+        lat: 49.0,
+        lng: 2.5,
+        created_by: 'u1',
+        created_at: '2026-05-22T00:00:00Z',
+        updated_at: '2026-05-22T00:00:00Z',
+      },
+      {
+        id: 'pa',
+        trip_id: 't1',
+        label: 'Alpha POI',
+        icon: 'pin',
+        lat: 49.0,
+        lng: 2.5,
+        created_by: 'u1',
+        created_at: '2026-05-22T00:00:00Z',
+        updated_at: '2026-05-22T00:00:00Z',
+      },
+    ])
+    mockListMemberLocations.mockResolvedValue([])
+
+    const { result } = renderHook(() => useWayfinderTargets('t1', false), { wrapper: wrapper() })
+
+    await waitFor(() => expect(result.current.targets.length).toBe(4))
+
+    // Dated events first (chronological), then undated POIs alphabetically.
+    // This exercises: a.startsAt && b.startsAt, a.startsAt (-1), b.startsAt (1),
+    // and the neither-branch label.localeCompare fallback.
+    expect(result.current.targets.map((t) => t.label)).toEqual([
+      'Early event',
+      'Late event',
+      'Alpha POI',
+      'Zebra POI',
+    ])
+  })
+
+  it('places a single undated target after a single dated target', async () => {
+    // Minimal pair (one dated event, one undated POI) so the comparator is invoked
+    // with both argument orderings, covering the a-undated / b-dated direction (line 87/88).
+    mockListEvents.mockResolvedValue([
+      { ...baseEvent, id: 'dated', title: 'Dated event', starts_at: '2026-06-01T10:00:00Z' },
+    ])
+    mockListPois.mockResolvedValue([
+      {
+        id: 'p-undated',
+        trip_id: 't1',
+        label: 'Undated POI',
+        icon: 'pin',
+        lat: 49.0,
+        lng: 2.5,
+        created_by: 'u1',
+        created_at: '2026-05-22T00:00:00Z',
+        updated_at: '2026-05-22T00:00:00Z',
+      },
+    ])
+    mockListMemberLocations.mockResolvedValue([])
+
+    const { result } = renderHook(() => useWayfinderTargets('t1', false), { wrapper: wrapper() })
+
+    await waitFor(() => expect(result.current.targets.length).toBe(2))
+    expect(result.current.targets.map((t) => t.label)).toEqual(['Dated event', 'Undated POI'])
+  })
 })

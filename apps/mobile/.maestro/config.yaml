@@ -1,0 +1,12 @@
+# Maestro workspace config for ZYPH (TECH-008 / #12).
+# Run the whole suite from apps/mobile:  maestro test .maestro
+# (or `pnpm --filter mobile e2e`). See README.md for device setup + credentials.
+flows:
+  - flows/*.yaml
+executionOrder:
+  continueOnFailure: false
+  flowsOrder:
+    - 00-onboarding
+    - 01-sign-in
+    - 02-create-trip
+    - 03-add-expense

@@ -3,6 +3,7 @@ import { Pressable, Text } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 
 import { Surface } from './surface'
 
@@ -19,10 +20,15 @@ export function QuickAction({ icon, label, onPress, tone }: QuickActionProps) {
   const resolvedColor = tone ?? theme.colors.primary
   const iconBg = withAlpha(resolvedColor, 0.14)
 
+  const handlePress = () => {
+    haptics.light()
+    onPress?.()
+  }
+
   return (
     <Pressable
       style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
-      onPress={onPress}
+      onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
@@ -51,6 +57,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   pressed: {
     opacity: 0.85,
+    transform: [{ scale: 0.97 }],
   },
   tile: {
     alignItems: 'center',

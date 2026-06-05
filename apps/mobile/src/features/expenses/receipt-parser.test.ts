@@ -82,6 +82,16 @@ describe('parseReceipt', () => {
     const text = ['SHOP', 'Big Item   99,00 €', 'TOTAL TTC   12,00 €'].join('\n')
     expect(parseReceipt(text).amountCents).toBe(1200)
   })
+
+  it('expands a 2-digit year to the 2000-2099 range', () => {
+    const text = ['SHOP', '15/03/24', 'TOTAL 4,50 €'].join('\n')
+    expect(parseReceipt(text).date).toBe('2024-03-15')
+  })
+
+  it('falls back to the largest amount when a TOTAL line carries no figure', () => {
+    const text = ['SHOP', 'TOTAL TTC', 'Article   7,90 €'].join('\n')
+    expect(parseReceipt(text).amountCents).toBe(790)
+  })
 })
 
 describe('parseReceiptItems', () => {
@@ -204,5 +214,31 @@ describe('parseReceiptItems', () => {
     const items = parseReceiptItems(text).items
     expect(items).toHaveLength(1)
     expect(items[0].amountCents).toBe(129999)
+  })
+
+  it('skips lines whose label is a single character', () => {
+    const text = ['SHOP', 'a    5,00', 'TOTAL    5,00 €'].join('\n')
+    expect(parseReceiptItems(text).items).toEqual([])
+  })
+
+  it('skips lines whose label contains no letters', () => {
+    const text = ['SHOP', '## 5,00', 'TOTAL 5,00 €'].join('\n')
+    expect(parseReceiptItems(text).items).toEqual([])
+  })
+
+  it('skips item lines with a zero amount', () => {
+    const text = ['SHOP', 'Cadeau offert      0,00', 'TOTAL TTC      0,00'].join('\n')
+    expect(parseReceiptItems(text).items).toEqual([])
+  })
+
+  it('keeps a single-digit-quantity prefix only when quantity differs from 1', () => {
+    const text = [
+      'SHOP',
+      '3 x Stylo            4,50',
+      '1 x Cahier           2,00',
+      'TOTAL                6,50',
+    ].join('\n')
+    const items = parseReceiptItems(text).items
+    expect(items.map((i) => i.label)).toEqual(['3 × Stylo', 'Cahier'])
   })
 })

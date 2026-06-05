@@ -14,9 +14,19 @@ type EmptyStateProps = {
   body: string
   cta?: string
   onCta?: () => void
+  secondaryCta?: string
+  onSecondaryCta?: () => void
 }
 
-export function EmptyState({ icon, title, body, cta, onCta }: EmptyStateProps) {
+export function EmptyState({
+  icon,
+  title,
+  body,
+  cta,
+  onCta,
+  secondaryCta,
+  onSecondaryCta,
+}: EmptyStateProps) {
   const { theme } = useUnistyles()
 
   return (
@@ -39,6 +49,14 @@ export function EmptyState({ icon, title, body, cta, onCta }: EmptyStateProps) {
       {cta !== undefined && (
         <View style={styles.ctaWrap}>
           <Button label={cta} onPress={onCta} block={false} />
+          {secondaryCta !== undefined && (
+            <Button
+              label={secondaryCta}
+              onPress={onSecondaryCta}
+              variant="secondary"
+              block={false}
+            />
+          )}
         </View>
       )}
     </View>
@@ -82,5 +100,7 @@ const styles = StyleSheet.create((theme) => ({
   // 'stretch' would make the button's own flex-start left-align it.
   ctaWrap: {
     alignSelf: 'center',
+    alignItems: 'center',
+    gap: theme.gap(2),
   },
 }))

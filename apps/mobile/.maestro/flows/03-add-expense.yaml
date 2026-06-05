@@ -1,0 +1,30 @@
+appId: fr.enzotang.zyph
+name: 03-add-expense
+tags:
+  - expenses
+# Assumes the trip from 02-create-trip exists and a session is active.
+env:
+  TRIP_NAME: "E2E Trip Demo"
+  EXPENSES_TAB: "Expenses"                    # FR: "Dépenses"
+  NEW_EXPENSE: "New expense"                  # "+" accessibilityLabel. FR: "Nouvelle dépense"
+  DESC_PLACEHOLDER: "Dinner, taxi, hotel…"    # FR: "Dîner, taxi, hôtel…"
+  AMOUNT_PLACEHOLDER: "45.00"                 # verify on device (amount field placeholder)
+  ADD_SUBMIT: "Add expense"                   # FR: "Ajouter la dépense"
+  EXPENSE_DESC: "Team dinner"
+  EXPENSE_AMOUNT: "60"
+---
+- launchApp
+- openLink: "zyph:///trips"
+# Open the trip created in 02, then switch to its Expenses tab.
+- tapOn: "${TRIP_NAME}"
+- tapOn: "${EXPENSES_TAB}"
+# Open the add-expense form via the icon-only "+" (matched by its a11y label).
+- tapOn: "${NEW_EXPENSE}"
+- tapOn: "${DESC_PLACEHOLDER}"
+- inputText: "${EXPENSE_DESC}"
+- tapOn: "${AMOUNT_PLACEHOLDER}"
+- inputText: "${EXPENSE_AMOUNT}"
+- hideKeyboard
+- tapOn: "${ADD_SUBMIT}"
+# Back on the expenses list, the new expense appears.
+- assertVisible: "${EXPENSE_DESC}"

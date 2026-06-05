@@ -1,0 +1,25 @@
+appId: fr.enzotang.zyph
+name: 02-create-trip
+tags:
+  - trips
+# Assumes an authenticated session (run after 01-sign-in).
+env:
+  NEW_TRIP: "New trip"                    # "+" header accessibilityLabel. FR: "Nouveau voyage"
+  CREATE_TRIP: "Create a trip"            # FR: "Créer un voyage"
+  TITLE_PLACEHOLDER: "Weekend in Lisbon"  # FR: "Week-end à Lisbonne"
+  CREATE_SUBMIT: "Create the trip"        # FR: "Créer le voyage"
+  TRIP_NAME: "E2E Trip Demo"
+---
+- launchApp
+# Deep-link to the trips list (robust vs the home screen's data-dependent state).
+- openLink: "zyph:///trips"
+# Open the create/join bottom sheet via the icon-only "+" (matched by its a11y label).
+- tapOn: "${NEW_TRIP}"
+- tapOn: "${CREATE_TRIP}"
+# Fill the trip title (field targeted by its placeholder) and submit.
+- tapOn: "${TITLE_PLACEHOLDER}"
+- inputText: "${TRIP_NAME}"
+- hideKeyboard
+- tapOn: "${CREATE_SUBMIT}"
+# The freshly created trip is now visible.
+- assertVisible: "${TRIP_NAME}"

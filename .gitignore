@@ -85,8 +85,7 @@ sentry.properties
 # Storybook
 storybook-static/
 
-# Maestro
-.maestro/
+# Maestro: E2E flows under apps/mobile/.maestro are committed (CLI state lives in ~/.maestro)
 
 # Local SQLite
 *.db

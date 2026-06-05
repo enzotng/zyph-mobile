@@ -16,7 +16,7 @@ import { hasSeenOnboarding } from '@/lib/preferences'
 import { queryClient } from '@/lib/query-client'
 import { mmkvQueryPersister } from '@/lib/query-persister'
 
-function useProtectedRoute(session: Session | null, isLoading: boolean) {
+function useProtectedRoute(session: Session | null, isLoading: boolean, recovering: boolean) {
   const segments = useSegments()
   const router = useRouter()
 
@@ -31,7 +31,22 @@ function useProtectedRoute(session: Session | null, isLoading: boolean) {
       }
       return
     }
-    const inAuthGroup = segments[0] === '(auth)'
+    // A recovery session must land on reset-password, before the normal session routing -
+    // otherwise the session would bounce it straight to home.
+    if (recovering) {
+      // Cast: with expo-router typed routes useSegments() is a tuple union (some routes are
+      // length 1), so index [1] must be read off a widened string[].
+      const onReset = segments[0] === '(auth)' && (segments as string[])[1] === 'reset-password'
+      if (!onReset) {
+        router.replace('/(auth)/reset-password')
+      }
+      return
+    }
+    // `auth` is the deep-link callback route (zyph://auth/callback); treat it like the auth
+    // group so an unauthenticated error-callback isn't bounced before it can show its message.
+    // Cast keeps the comparison robust whatever the generated typed-routes union looks like.
+    const seg0 = segments[0] as string
+    const inAuthGroup = seg0 === '(auth)' || seg0 === 'auth'
     if (inOnboarding) {
       router.replace(session ? '/' : '/(auth)/sign-in')
     } else if (!session && !inAuthGroup) {
@@ -39,7 +54,7 @@ function useProtectedRoute(session: Session | null, isLoading: boolean) {
     } else if (session && inAuthGroup) {
       router.replace('/')
     }
-  }, [session, isLoading, segments, router])
+  }, [session, isLoading, recovering, segments, router])
 }
 
 // Vendored brand fonts (.ttf in assets/fonts). Keys must match theme.fonts.* in unistyles.ts.
@@ -55,9 +70,9 @@ const BRAND_FONTS = {
 }
 
 function RootNavigator() {
-  const { session, isLoading } = useAuth()
+  const { session, isLoading, recovering } = useAuth()
   const [fontsLoaded] = useFonts(BRAND_FONTS)
-  useProtectedRoute(session, isLoading)
+  useProtectedRoute(session, isLoading, recovering)
 
   if (isLoading || !fontsLoaded) {
     return (

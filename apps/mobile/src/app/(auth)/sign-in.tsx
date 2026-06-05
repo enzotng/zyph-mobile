@@ -1,19 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'expo-router'
+import { Link, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Alert, Text, View } from 'react-native'
+import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { ZyphMark } from '@/components/brand/zyph-mark'
 import { Button } from '@/components/button'
 import { TextField } from '@/components/text-field'
-import { makeSignInSchema, type SignInValues, signIn } from '@/features/auth'
+import { makeSignInSchema, type SignInValues, signIn, signInWithGoogle } from '@/features/auth'
 
 export default function SignInScreen() {
+  const router = useRouter()
   const { t } = useTranslation()
   const [submitting, setSubmitting] = useState(false)
+  const [googleSubmitting, setGoogleSubmitting] = useState(false)
   const schema = useMemo(() => makeSignInSchema(t), [t])
   const {
     control,
@@ -36,6 +38,21 @@ export default function SignInScreen() {
       )
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function onGoogle() {
+    setGoogleSubmitting(true)
+    try {
+      await signInWithGoogle()
+      // The auth guard navigates once the session updates.
+    } catch (error) {
+      Alert.alert(
+        t('auth.google.errorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
+    } finally {
+      setGoogleSubmitting(false)
     }
   }
 
@@ -83,13 +100,36 @@ export default function SignInScreen() {
         )}
       />
 
+      <Pressable
+        onPress={() => router.push('/(auth)/forgot-password')}
+        accessibilityRole="button"
+        hitSlop={8}
+        style={styles.forgot}
+      >
+        <Text style={styles.forgotText}>{t('auth.signIn.forgotPassword')}</Text>
+      </Pressable>
+
       <View style={styles.action}>
         <Button
           label={submitting ? t('auth.signIn.submitting') : t('auth.signIn.submit')}
           onPress={handleSubmit(onSubmit)}
-          disabled={submitting}
+          disabled={submitting || googleSubmitting}
         />
       </View>
+
+      <View style={styles.divider}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>{t('auth.orSeparator')}</Text>
+        <View style={styles.dividerLine} />
+      </View>
+
+      <Button
+        variant="secondary"
+        icon="logo-google"
+        label={googleSubmitting ? t('auth.google.signingIn') : t('auth.google.continue')}
+        onPress={onGoogle}
+        disabled={submitting || googleSubmitting}
+      />
 
       <View style={styles.footer}>
         <Text style={styles.muted}>{t('auth.signIn.noAccount')}</Text>
@@ -146,8 +186,32 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontSize: theme.fontSize.md,
     color: theme.colors.muted,
   },
+  forgot: {
+    alignSelf: 'flex-end',
+  },
+  forgotText: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+    fontWeight: '600',
+  },
   action: {
     marginTop: theme.gap(1),
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border,
+  },
+  dividerText: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
   },
   footer: {
     flexDirection: 'row',

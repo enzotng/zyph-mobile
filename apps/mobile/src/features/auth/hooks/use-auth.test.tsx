@@ -143,6 +143,71 @@ describe('AuthProvider', () => {
     expect(mmkvQueryPersister.removeClient).toHaveBeenCalled()
   })
 
+  it('starts with recovering=false', () => {
+    onAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: jest.fn() } } })
+
+    const { wrapper } = buildWrapper()
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    expect(result.current.recovering).toBe(false)
+  })
+
+  it('sets recovering=true on PASSWORD_RECOVERY', async () => {
+    const { wrapper, getAuthCallback } = buildWrapper()
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    act(() => {
+      getAuthCallback()?.('PASSWORD_RECOVERY', mockSession)
+    })
+
+    await waitFor(() => expect(result.current.recovering).toBe(true))
+  })
+
+  it('clears recovering on USER_UPDATED (password set)', async () => {
+    const { wrapper, getAuthCallback } = buildWrapper()
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    act(() => {
+      getAuthCallback()?.('PASSWORD_RECOVERY', mockSession)
+    })
+    await waitFor(() => expect(result.current.recovering).toBe(true))
+
+    act(() => {
+      getAuthCallback()?.('USER_UPDATED', mockSession)
+    })
+    await waitFor(() => expect(result.current.recovering).toBe(false))
+  })
+
+  it('clears recovering on SIGNED_OUT', async () => {
+    const { wrapper, getAuthCallback } = buildWrapper()
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    act(() => {
+      getAuthCallback()?.('PASSWORD_RECOVERY', mockSession)
+    })
+    await waitFor(() => expect(result.current.recovering).toBe(true))
+
+    act(() => {
+      getAuthCallback()?.('SIGNED_OUT', null)
+    })
+    await waitFor(() => expect(result.current.recovering).toBe(false))
+  })
+
+  it('clears recovering when clearRecovery() is called (deterministic end of reset flow)', async () => {
+    const { wrapper, getAuthCallback } = buildWrapper()
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    act(() => {
+      getAuthCallback()?.('PASSWORD_RECOVERY', mockSession)
+    })
+    await waitFor(() => expect(result.current.recovering).toBe(true))
+
+    act(() => {
+      result.current.clearRecovery()
+    })
+    await waitFor(() => expect(result.current.recovering).toBe(false))
+  })
+
   it('unsubscribes from onAuthStateChange when unmounted', () => {
     const { wrapper, unsubscribe } = buildWrapper()
     const { unmount } = renderHook(() => useAuth(), { wrapper })
@@ -225,5 +290,33 @@ describe('exchangeCodeFromUrl (via expo-linking)', () => {
     })
 
     await waitFor(() => expect(exchangeCode).toHaveBeenCalledWith('xyz789'))
+  })
+
+  it('swallows a rejected exchangeCodeForSession (expired/used link)', async () => {
+    // An expired or already-used link rejects; the .catch must absorb it without
+    // throwing an unhandled rejection or surfacing an error to the caller.
+    Linking.getInitialURL.mockResolvedValue('zyph://auth/callback?code=expired')
+    exchangeCode.mockRejectedValue(new Error('invalid grant'))
+
+    const { wrapper } = buildWrapper()
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    await waitFor(() => expect(exchangeCode).toHaveBeenCalledWith('expired'))
+    // The rejection is swallowed: session stays unchanged (no active user yet).
+    await act(() => Promise.resolve())
+    expect(result.current.session).toBeNull()
+  })
+
+  it('removes the url event listener on unmount', () => {
+    Linking.getInitialURL.mockResolvedValue(null)
+    const remove = jest.fn()
+    Linking.addEventListener.mockReturnValue({ remove })
+
+    const { wrapper } = buildWrapper()
+    const { unmount } = renderHook(() => useAuth(), { wrapper })
+
+    unmount()
+
+    expect(remove).toHaveBeenCalled()
   })
 })

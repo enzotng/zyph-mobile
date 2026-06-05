@@ -1,7 +1,7 @@
 {
   "name": "mobile",
   "main": "index.js",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "dependencies": {
     "@expo/ui": "~56.0.15",
     "@expo/vector-icons": "^15.1.1",
@@ -78,7 +78,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --maxWorkers=50%",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --maxWorkers=50%"
+    "test:coverage": "jest --coverage --maxWorkers=50%",
+    "e2e": "maestro test .maestro"
   },
   "private": true
 }

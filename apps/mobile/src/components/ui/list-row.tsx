@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 
 import { Surface } from './surface'
 
@@ -77,12 +78,17 @@ export function ListRow({
   )
 
   if (onPress) {
+    const handlePress = () => {
+      haptics.light()
+      onPress()
+    }
+
     return (
       <Pressable
         style={({ pressed }) => [styles.row(last), pressed && styles.pressed]}
-        onPress={onPress}
+        onPress={handlePress}
         accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
+        accessibilityLabel={accessibilityLabel ?? title}
       >
         {inner}
       </Pressable>
@@ -104,6 +110,7 @@ const styles = StyleSheet.create((theme) => ({
   }),
   pressed: {
     opacity: 0.85,
+    transform: [{ scale: 0.98 }],
   },
   iconTile: {
     width: 38,

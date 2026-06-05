@@ -5,6 +5,7 @@ import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { AvatarStack, CityImage } from '@/components/ui'
+import { haptics } from '@/lib/haptics'
 
 import type { TripCard } from '../api/trips.api'
 import { BalancePill } from './balance-pill'
@@ -52,11 +53,22 @@ export function NextDepartureCard({
     imageUrl: member.avatar_url,
   }))
 
+  // Reuse visible text so the label stays in sync with the locale: title, countdown and (when
+  // set) the destination, e.g. "Summer in Paris, D-5, Paris".
+  const accessibilityLabel = [trip.title, countdown, trip.destination ?? undefined]
+    .filter(Boolean)
+    .join(', ')
+
+  const handlePress = () => {
+    haptics.light()
+    onPress()
+  }
+
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
       accessibilityRole="button"
-      accessibilityLabel={trip.title}
+      accessibilityLabel={accessibilityLabel}
       style={({ pressed }) => (pressed ? styles.pressed : undefined)}
     >
       <CityImage
@@ -112,6 +124,7 @@ export function NextDepartureCard({
 const styles = StyleSheet.create((theme) => ({
   pressed: {
     opacity: 0.92,
+    transform: [{ scale: 0.98 }],
   },
   fade: {
     position: 'absolute',

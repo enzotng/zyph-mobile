@@ -2,15 +2,19 @@ import { Ionicons } from '@expo/vector-icons'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, View } from 'react-native'
+import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { poiIconName } from '@/components/poi-icon-picker'
 import { Screen } from '@/components/screen'
-import { EmptyState, ListRow, SectionTitle, Spinner, Surface } from '@/components/ui'
+import { EmptyState, ListRow, SectionTitle, Skeleton, Surface } from '@/components/ui'
 import { useTrip } from '@/features/trips'
 import { useDeletePoi, usePois } from '@/features/wayfinder'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
+
+const SKELETON_ROWS = [0, 1, 2, 3]
 
 export default function PoisScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
@@ -43,6 +47,7 @@ export default function PoisScreen() {
   }
 
   function goAddPoi() {
+    haptics.light()
     router.push({ pathname: '/trips/[id]/pois/new', params: { id: tripId } })
   }
 
@@ -52,6 +57,7 @@ export default function PoisScreen() {
       accessibilityRole="button"
       accessibilityLabel={t('pois.addWaypoint')}
       hitSlop={8}
+      style={({ pressed }) => [pressed && styles.pressed]}
     >
       <Ionicons name="add" size={26} color={theme.colors.foreground} />
     </Pressable>
@@ -104,9 +110,23 @@ export default function PoisScreen() {
       <Screen title={trip?.title} showBack scroll right={addButton}>
         {mapPreview}
         <View style={styles.heroSpacing}>{arHero}</View>
-        <View style={styles.center}>
-          <Spinner />
-        </View>
+        <Animated.View
+          entering={FadeIn.duration(300)}
+          style={styles.skeletonList}
+          accessibilityRole="progressbar"
+          accessibilityLabel={t('pois.sectionTitle')}
+        >
+          <Skeleton width="40%" height={18} radius={theme.radius.sm} />
+          {SKELETON_ROWS.map((row) => (
+            <View key={row} style={styles.skeletonRow}>
+              <Skeleton width={38} height={38} radius={theme.radius.md} />
+              <View style={styles.skeletonText}>
+                <Skeleton width="55%" height={15} radius={theme.radius.sm} />
+                <Skeleton width="32%" height={12} radius={theme.radius.sm} />
+              </View>
+            </View>
+          ))}
+        </Animated.View>
       </Screen>
     )
   }
@@ -145,35 +165,41 @@ export default function PoisScreen() {
           />
         </View>
       ) : (
-        <View style={styles.list}>
+        <Animated.View style={styles.list} entering={FadeIn.duration(300)}>
           {waypoints.map((item, index) => (
-            <ListRow
+            <Animated.View
               key={item.id}
-              icon={poiIconName(item.icon)}
-              iconColor={theme.colors.primary}
-              title={item.label}
-              subtitle={t('pois.subtitle')}
-              last={index === waypoints.length - 1}
-              accessibilityLabel={`Modifier ${item.label}`}
-              onPress={() =>
-                router.push({
-                  pathname: '/trips/[id]/pois/[poiId]/edit',
-                  params: { id: tripId, poiId: item.id },
-                })
-              }
-              right={
-                <Pressable
-                  onPress={() => confirmDelete(item.id, item.label)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Supprimer ${item.label}`}
-                  hitSlop={8}
-                >
-                  <Ionicons name="trash-outline" size={20} color={theme.colors.destructive} />
-                </Pressable>
-              }
-            />
+              entering={FadeInDown.duration(280).delay(Math.min(index, 7) * 40)}
+              layout={LinearTransition}
+            >
+              <ListRow
+                icon={poiIconName(item.icon)}
+                iconColor={theme.colors.primary}
+                title={item.label}
+                subtitle={t('pois.subtitle')}
+                last={index === waypoints.length - 1}
+                accessibilityLabel={`Modifier ${item.label}`}
+                onPress={() =>
+                  router.push({
+                    pathname: '/trips/[id]/pois/[poiId]/edit',
+                    params: { id: tripId, poiId: item.id },
+                  })
+                }
+                right={
+                  <Pressable
+                    onPress={() => confirmDelete(item.id, item.label)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Supprimer ${item.label}`}
+                    hitSlop={8}
+                    style={({ pressed }) => [pressed && styles.pressed]}
+                  >
+                    <Ionicons name="trash-outline" size={20} color={theme.colors.destructive} />
+                  </Pressable>
+                }
+              />
+            </Animated.View>
           ))}
-        </View>
+        </Animated.View>
       )}
 
       <View style={styles.spacer} />
@@ -186,6 +212,23 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: theme.gap(8),
+  },
+  pressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.92 }],
+  },
+  skeletonList: {
+    marginTop: theme.gap(4),
+    gap: theme.gap(3),
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+  },
+  skeletonText: {
+    flex: 1,
+    gap: theme.gap(1),
   },
   mapPreview: {
     height: 200,
