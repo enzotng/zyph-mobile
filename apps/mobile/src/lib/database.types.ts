@@ -651,6 +651,8 @@ export type Database = {
           end_date: string | null
           id: string
           invite_code: string
+          latitude: number | null
+          longitude: number | null
           owner_id: string
           start_date: string | null
           title: string
@@ -666,6 +668,8 @@ export type Database = {
           end_date?: string | null
           id?: string
           invite_code?: string
+          latitude?: number | null
+          longitude?: number | null
           owner_id: string
           start_date?: string | null
           title: string
@@ -681,6 +685,8 @@ export type Database = {
           end_date?: string | null
           id?: string
           invite_code?: string
+          latitude?: number | null
+          longitude?: number | null
           owner_id?: string
           start_date?: string | null
           title?: string

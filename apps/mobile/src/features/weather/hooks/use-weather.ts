@@ -7,10 +7,18 @@ type WeatherTrip = {
   destination: string | null
   start_date: string | null
   end_date: string | null
+  latitude: number | null
+  longitude: number | null
 }
 
-export function tripWeatherQueryKey(tripId: string, today: string) {
-  return ['weather', tripId, today] as const
+export function tripWeatherQueryKey(
+  tripId: string,
+  today: string,
+  destination: string,
+  latitude: number | null,
+  longitude: number | null,
+) {
+  return ['weather', tripId, today, destination, latitude, longitude] as const
 }
 
 // Local calendar date (YYYY-MM-DD), not UTC, so the date-window math and the daily cache key
@@ -29,10 +37,19 @@ function localToday(): string {
 export function useTripWeather(trip: WeatherTrip | undefined) {
   const today = localToday()
   const destination = trip?.destination?.trim() ?? ''
+  const latitude = trip?.latitude ?? null
+  const longitude = trip?.longitude ?? null
   return useQuery({
-    queryKey: tripWeatherQueryKey(trip?.id ?? '', today),
+    queryKey: tripWeatherQueryKey(trip?.id ?? '', today, destination, latitude, longitude),
     queryFn: () =>
-      getTripWeather(destination, trip?.start_date ?? null, trip?.end_date ?? null, today),
+      getTripWeather(
+        destination,
+        trip?.start_date ?? null,
+        trip?.end_date ?? null,
+        today,
+        latitude,
+        longitude,
+      ),
     enabled: Boolean(trip?.id) && destination.length > 0,
     staleTime: 60 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,

@@ -6,6 +6,7 @@ import { Alert, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { DestinationField } from '@/components/destination-field'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { TripDatesField } from '@/components/trip-dates-field'
@@ -34,12 +35,23 @@ export default function EditTripScreen() {
           currency: trip.currency,
           startDate: trip.start_date,
           endDate: trip.end_date,
+          latitude: trip.latitude,
+          longitude: trip.longitude,
         }
-      : { title: '', destination: '', currency: 'EUR', startDate: null, endDate: null },
+      : {
+          title: '',
+          destination: '',
+          currency: 'EUR',
+          startDate: null,
+          endDate: null,
+          latitude: null,
+          longitude: null,
+        },
   })
 
   const startDate = useWatch({ control, name: 'startDate' })
   const endDate = useWatch({ control, name: 'endDate' })
+  const destination = useWatch({ control, name: 'destination' })
 
   async function onSubmit(values: CreateTripValues) {
     try {
@@ -97,18 +109,20 @@ export default function EditTripScreen() {
         )}
       />
 
-      <Controller
-        control={control}
-        name="destination"
-        render={({ field }) => (
-          <TextField
-            label={t('tripForm.destination')}
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            error={errors.destination?.message}
-          />
-        )}
+      <DestinationField
+        label={t('tripForm.destination')}
+        value={destination}
+        error={errors.destination?.message}
+        onChangeText={(text) => {
+          setValue('destination', text, { shouldValidate: true })
+          setValue('latitude', null)
+          setValue('longitude', null)
+        }}
+        onSelectPlace={(place) => {
+          setValue('destination', place.label, { shouldValidate: true })
+          setValue('latitude', place.lat)
+          setValue('longitude', place.lng)
+        }}
       />
 
       <Controller

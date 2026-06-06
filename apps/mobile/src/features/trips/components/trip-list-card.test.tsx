@@ -36,6 +36,8 @@ function makeTrip(overrides: Partial<TripCard> = {}): TripCard {
     title: 'Summer in Lisbon',
     destination: 'Lisbon',
     currency: 'EUR',
+    latitude: null,
+    longitude: null,
     cover_photo_url: null,
     cover_photo_author: null,
     cover_photo_author_url: null,

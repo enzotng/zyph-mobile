@@ -69,19 +69,35 @@ export async function fetchForecast(
   }))
 }
 
-// Geocodes the destination then fetches the forecast for the trip dates (or a 7-day outlook).
-// `today` is passed in ('YYYY-MM-DD') so the date-window logic stays deterministic/testable.
+// Fetches the forecast for the trip dates (or a 7-day outlook). Uses the saved coordinates
+// directly when present (set by the destination autocomplete) - more reliable and one fewer
+// request - and otherwise geocodes the free-text destination. `today` is passed in
+// ('YYYY-MM-DD') so the date-window logic stays deterministic/testable.
 export async function getTripWeather(
   destination: string,
   startDate: string | null,
   endDate: string | null,
   today: string,
+  latitude: number | null,
+  longitude: number | null,
 ): Promise<TripWeather | null> {
-  const geo = await geocodeDestination(destination)
-  if (!geo) {
-    return null
+  let place: string
+  let lat: number
+  let lng: number
+  if (latitude != null && longitude != null) {
+    place = destination
+    lat = latitude
+    lng = longitude
+  } else {
+    const geo = await geocodeDestination(destination)
+    if (!geo) {
+      return null
+    }
+    place = geo.label
+    lat = geo.lat
+    lng = geo.lng
   }
   const range = resolveForecastRange(startDate, endDate, today)
-  const days = await fetchForecast(geo.lat, geo.lng, range)
-  return { place: geo.label, mode: range.mode, days }
+  const days = await fetchForecast(lat, lng, range)
+  return { place, mode: range.mode, days }
 }

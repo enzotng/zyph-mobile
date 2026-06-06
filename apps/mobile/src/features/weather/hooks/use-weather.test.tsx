@@ -12,6 +12,8 @@ const trip = {
   destination: 'Lisbon',
   start_date: '2026-06-10',
   end_date: '2026-06-12',
+  latitude: 38.7,
+  longitude: -9.1,
 }
 
 const weather = {
@@ -38,6 +40,8 @@ describe('useTripWeather', () => {
       '2026-06-10',
       '2026-06-12',
       expect.any(String),
+      38.7,
+      -9.1,
     )
   })
 

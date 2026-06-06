@@ -96,10 +96,12 @@ describe('fetchForecast', () => {
 describe('getTripWeather', () => {
   it('returns null when the destination cannot be geocoded', async () => {
     mockFetch.mockResolvedValueOnce(ok({}))
-    await expect(getTripWeather('Nowhere', null, null, '2026-06-06')).resolves.toBeNull()
+    await expect(
+      getTripWeather('Nowhere', null, null, '2026-06-06', null, null),
+    ).resolves.toBeNull()
   })
 
-  it('geocodes then forecasts the trip dates', async () => {
+  it('geocodes then forecasts when no coordinates are provided', async () => {
     mockFetch
       .mockResolvedValueOnce(
         ok({ results: [{ latitude: 38.7, longitude: -9.1, name: 'Lisbon', country: 'Portugal' }] }),
@@ -115,11 +117,34 @@ describe('getTripWeather', () => {
         }),
       )
     await expect(
-      getTripWeather('Lisbon', '2026-06-10', '2026-06-12', '2026-06-06'),
+      getTripWeather('Lisbon', '2026-06-10', '2026-06-12', '2026-06-06', null, null),
     ).resolves.toEqual({
       place: 'Lisbon, Portugal',
       mode: 'trip',
       days: [{ date: '2026-06-10', condition: 'clear', tempMaxC: 25, tempMinC: 15 }],
     })
+  })
+
+  it('uses provided coordinates and skips geocoding', async () => {
+    mockFetch.mockResolvedValueOnce(
+      ok({
+        daily: {
+          time: ['2026-06-10'],
+          weather_code: [0],
+          temperature_2m_max: [25],
+          temperature_2m_min: [15],
+        },
+      }),
+    )
+    await expect(
+      getTripWeather('Angers', '2026-06-10', '2026-06-12', '2026-06-06', 47.47, -0.55),
+    ).resolves.toEqual({
+      place: 'Angers',
+      mode: 'trip',
+      days: [{ date: '2026-06-10', condition: 'clear', tempMaxC: 25, tempMinC: 15 }],
+    })
+    // Only the forecast call, no geocoding.
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('latitude=47.47'))
   })
 })
