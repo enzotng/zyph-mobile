@@ -27,7 +27,12 @@ import {
   useRemoveTripMember,
   useTripMembers,
 } from '@/features/group'
-import { useRecordSettlement } from '@/features/settlements'
+import {
+  type TripSettlement,
+  useRecordSettlement,
+  useReverseSettlement,
+  useSettlements,
+} from '@/features/settlements'
 import { useDeleteTrip, useTrip } from '@/features/trips'
 import { useShareLocation } from '@/features/wayfinder'
 import { withAlpha } from '@/lib/color'
@@ -45,12 +50,14 @@ export default function TripGroupScreen() {
   const { session } = useAuth()
   const userId = session?.user.id
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const deleteTrip = useDeleteTrip()
   const regenerate = useRegenerateInviteCode(tripId)
   const leaveTripMutation = useLeaveTrip()
   const removeMember = useRemoveTripMember(tripId)
   const recordSettlement = useRecordSettlement(tripId)
+  const { data: paymentHistory } = useSettlements(tripId)
+  const reverseSettlementMutation = useReverseSettlement(tripId)
   const { theme } = useUnistyles()
 
   const [sharing, setSharing] = useState(() => getShareLocation(tripId))
@@ -280,9 +287,30 @@ export default function TripGroupScreen() {
     }
   }
 
+  function confirmUndo(settlement: TripSettlement) {
+    Alert.alert(t('group.confirmUndoTitle'), t('group.confirmUndoBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('group.undo'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await reverseSettlementMutation.mutateAsync(settlement.id)
+          } catch (error) {
+            Alert.alert(
+              t('group.undoFailedTitle'),
+              error instanceof Error ? error.message : t('common.tryAgain'),
+            )
+          }
+        },
+      },
+    ])
+  }
+
   const hasSettlements = settlements.length > 0
   const hasBalances = balances != null && balances.length > 0
   const hasMembers = members != null && members.length > 0
+  const hasHistory = paymentHistory != null && paymentHistory.length > 0
 
   return (
     <Screen
@@ -431,6 +459,51 @@ export default function TripGroupScreen() {
                   size={15}
                   signed
                 />
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {/* Payment history */}
+      {hasHistory ? (
+        <View>
+          <SectionTitle>{t('group.paymentHistory')}</SectionTitle>
+          <View style={styles.listBody}>
+            {paymentHistory.map((settlement, index) => (
+              <View
+                key={settlement.id}
+                style={[styles.listRow, index === paymentHistory.length - 1 && styles.listRowLast]}
+              >
+                <View style={styles.historyInfo}>
+                  <Text style={styles.historyParties} numberOfLines={1}>
+                    <Text style={styles.settleName}>{labelForMember(settlement.from_member)}</Text>
+                    {` ${t('group.paysTo')} `}
+                    <Text style={styles.settleName}>{labelForMember(settlement.to_member)}</Text>
+                  </Text>
+                  <Text style={styles.historyDate}>
+                    {new Date(settlement.paid_at).toLocaleDateString(i18n.language, {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </Text>
+                </View>
+                <Amount
+                  cents={settlement.amount_cents}
+                  currency={settlement.currency}
+                  size={15}
+                  neutral
+                />
+                <Pressable
+                  onPress={() => confirmUndo(settlement)}
+                  disabled={reverseSettlementMutation.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('group.undo')}
+                  hitSlop={6}
+                  style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+                >
+                  <Text style={styles.removeText}>{t('group.undo')}</Text>
+                </Pressable>
               </View>
             ))}
           </View>
@@ -712,6 +785,21 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '500',
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
+  },
+  historyInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: theme.gap(0.5),
+  },
+  historyParties: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foreground,
+  },
+  historyDate: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
   },
   removeText: {
     fontFamily: theme.fonts.sans.semibold,

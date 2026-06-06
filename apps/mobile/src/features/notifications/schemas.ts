@@ -13,6 +13,7 @@ export const NOTIFICATION_TYPES = [
   'expense.added',
   'expense.updated',
   'settlement.created',
+  'settlement.reversed',
   'event.added',
 ] as const
 
@@ -45,6 +46,9 @@ export function notificationMessageKey(type: string, payload: unknown): string {
   if (type === 'settlement.created') {
     const role = (payload as { role?: string } | null)?.role
     return role === 'to' ? 'notifications.types.settlementTo' : 'notifications.types.settlementFrom'
+  }
+  if (type === 'settlement.reversed') {
+    return 'notifications.types.settlementReversed'
   }
   const map: Record<string, string> = {
     'member.joined': 'notifications.types.memberJoined',
