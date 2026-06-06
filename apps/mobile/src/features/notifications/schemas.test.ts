@@ -60,6 +60,12 @@ describe('notificationMessageKey', () => {
     )
   })
 
+  it('maps settlement.reversed to a single key', () => {
+    expect(notificationMessageKey('settlement.reversed', { role: 'to' })).toBe(
+      'notifications.types.settlementReversed',
+    )
+  })
+
   it('falls back to a generic key for unknown types', () => {
     expect(notificationMessageKey('weird.thing', {})).toBe('notifications.types.generic')
   })

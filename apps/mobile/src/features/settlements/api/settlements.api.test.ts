@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
 
-import { listSettlements, recordSettlement } from './settlements.api'
+import { listSettlements, recordSettlement, reverseSettlement } from './settlements.api'
 
 jest.mock('@/lib/supabase')
 
@@ -68,5 +68,20 @@ describe('listSettlements', () => {
     from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('list fail') }))
 
     await expect(listSettlements('t1')).rejects.toThrow('list fail')
+  })
+})
+
+describe('reverseSettlement', () => {
+  it('calls rpc reverse_settlement with the id', async () => {
+    rpc.mockResolvedValue({ data: { ...settlement, status: 'reversed' }, error: null })
+
+    await expect(reverseSettlement('s1')).resolves.toEqual({ ...settlement, status: 'reversed' })
+    expect(rpc).toHaveBeenCalledWith('reverse_settlement', { _id: 's1' })
+  })
+
+  it('throws when rpc errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('settlement is not active') })
+
+    await expect(reverseSettlement('s1')).rejects.toThrow('settlement is not active')
   })
 })

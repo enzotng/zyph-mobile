@@ -785,6 +785,27 @@ export type Database = {
       }
       regenerate_invite_code: { Args: { _trip_id: string }; Returns: string }
       remove_trip_member: { Args: { _member_id: string }; Returns: undefined }
+      reverse_settlement: {
+        Args: { _id: string }
+        Returns: {
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          from_member: string
+          id: string
+          paid_at: string
+          status: Database['public']['Enums']['settlement_status']
+          to_member: string
+          trip_id: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'trip_settlements'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       update_expense_with_splits:
         | {
             Args: {

@@ -43,3 +43,14 @@ export async function listSettlements(tripId: string): Promise<TripSettlement[]>
   }
   return data
 }
+
+// Soft-voids a recorded payment (status -> 'reversed'). The RPC (SECURITY DEFINER) enforces
+// active membership and that the settlement is still active; balances re-credit automatically
+// because get_trip_balances only nets active settlements.
+export async function reverseSettlement(id: string): Promise<TripSettlement> {
+  const { data, error } = await supabase.rpc('reverse_settlement', { _id: id })
+  if (error) {
+    throw error
+  }
+  return data
+}
