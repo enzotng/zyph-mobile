@@ -350,6 +350,18 @@ export const en = {
       timeline: 'Timeline & events',
     },
   },
+  weather: {
+    title: 'Weather',
+    outlook: 'Forecast for the next days at your destination.',
+    conditions: {
+      clear: 'Clear',
+      cloudy: 'Cloudy',
+      fog: 'Fog',
+      rain: 'Rain',
+      snow: 'Snow',
+      storm: 'Storm',
+    },
+  },
   home: {
     greeting: 'Hello, {{name}}',
     greetingFallback: 'traveller',
