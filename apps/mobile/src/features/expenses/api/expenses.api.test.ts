@@ -218,20 +218,15 @@ describe('updateExpense', () => {
 })
 
 describe('deleteExpense', () => {
-  it('soft-deletes by setting deleted_at', async () => {
-    const builder = makeQueryBuilder({ data: null, error: null })
-    from.mockReturnValue(builder)
+  it('soft-deletes via the soft_delete_expense rpc', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
 
     await expect(deleteExpense('e1')).resolves.toBeUndefined()
-    expect(from).toHaveBeenCalledWith('expenses')
-    expect(builder.update).toHaveBeenCalledWith(
-      expect.objectContaining({ deleted_at: expect.any(String) }),
-    )
-    expect(builder.eq).toHaveBeenCalledWith('id', 'e1')
+    expect(rpc).toHaveBeenCalledWith('soft_delete_expense', { _expense_id: 'e1' })
   })
 
   it('throws on error', async () => {
-    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('del fail') }))
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('del fail') })
     await expect(deleteExpense('e1')).rejects.toThrow('del fail')
   })
 })
