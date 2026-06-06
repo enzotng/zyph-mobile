@@ -172,6 +172,8 @@ describe('createTrip', () => {
     currency: 'EUR',
     startDate: null,
     endDate: null,
+    latitude: null,
+    longitude: null,
   }
 
   it('inserts a trip owned by the signed-in user', async () => {
@@ -187,7 +189,20 @@ describe('createTrip', () => {
       currency: 'EUR',
       start_date: null,
       end_date: null,
+      latitude: null,
+      longitude: null,
     })
+  })
+
+  it('persists the picked coordinates', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const builder = makeQueryBuilder({ data: trip, error: null })
+    from.mockReturnValue(builder)
+
+    await createTrip({ ...input, latitude: 38.72, longitude: -9.14 })
+    expect(builder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ latitude: 38.72, longitude: -9.14 }),
+    )
   })
 
   it('persists travel dates when provided', async () => {
@@ -307,6 +322,8 @@ describe('updateTrip', () => {
         currency: 'EUR',
         startDate: '2026-06-10',
         endDate: '2026-06-14',
+        latitude: 12.34,
+        longitude: 56.78,
       }),
     ).resolves.toEqual(trip)
     expect(builder.update).toHaveBeenCalledWith({
@@ -315,6 +332,8 @@ describe('updateTrip', () => {
       currency: 'EUR',
       start_date: '2026-06-10',
       end_date: '2026-06-14',
+      latitude: 12.34,
+      longitude: 56.78,
     })
     expect(builder.eq).toHaveBeenCalledWith('id', 't1')
   })
@@ -330,6 +349,8 @@ describe('updateTrip', () => {
         currency: 'EUR',
         startDate: null,
         endDate: null,
+        latitude: null,
+        longitude: null,
       }),
     ).rejects.toThrow('update fail')
   })

@@ -14,6 +14,10 @@ export const createTripSchema = z
     currency: z.string().trim().length(3, 'Use a 3-letter code'),
     startDate: z.string().regex(ISO_DAY).nullable(),
     endDate: z.string().regex(ISO_DAY).nullable(),
+    // Coordinates of the picked place (autocomplete); null for a free-text destination. Bounded
+    // so a non-finite / out-of-range value can never be persisted or reach the weather URL.
+    latitude: z.number().finite().min(-90).max(90).nullable(),
+    longitude: z.number().finite().min(-180).max(180).nullable(),
   })
   .refine((v) => v.startDate === null || v.endDate === null || v.endDate >= v.startDate, {
     // Zero-padded ISO days compare lexically == chronologically. The UI also clamps the end
