@@ -353,6 +353,18 @@ export const fr: Translations = {
       timeline: 'Planning et événements',
     },
   },
+  weather: {
+    title: 'Météo',
+    outlook: 'Prévisions des prochains jours à ta destination.',
+    conditions: {
+      clear: 'Dégagé',
+      cloudy: 'Nuageux',
+      fog: 'Brouillard',
+      rain: 'Pluie',
+      snow: 'Neige',
+      storm: 'Orage',
+    },
+  },
   home: {
     greeting: 'Bonjour, {{name}}',
     greetingFallback: 'voyageur',

@@ -33,6 +33,7 @@ import {
 import { useLeaveTrip, useRegenerateInviteCode, useTripMembers } from '@/features/group'
 import { eventStatus, eventTypeIcon, formatCountdown, useEvents } from '@/features/timeline'
 import { formatTripDates, useDeleteTrip, useTrip } from '@/features/trips'
+import { useTripWeather, WeatherCard } from '@/features/weather'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
@@ -124,6 +125,7 @@ export default function TripDashboardScreen() {
   const { data: members } = useTripMembers(tripId)
   const { data: events } = useEvents(tripId)
   const { data: expenses } = useExpenses(tripId)
+  const { data: weather } = useTripWeather(trip)
   // Snapshot once on mount; the countdown badge does not need to tick on this screen.
   const [now] = useState(() => Date.now())
 
@@ -444,6 +446,13 @@ export default function TripDashboardScreen() {
               onPress={() => router.push({ pathname: '/trips/[id]/ar', params: { id: tripId } })}
             />
           </Animated.View>
+
+          {/* Destination weather */}
+          {weather && weather.days.length > 0 ? (
+            <Animated.View entering={enter(2)}>
+              <WeatherCard weather={weather} />
+            </Animated.View>
+          ) : null}
 
           {/* Next event */}
           {nextEvent && nextStatus?.kind === 'upcoming' ? (
