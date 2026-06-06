@@ -429,3 +429,11 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/place-search/deno.json"
 entrypoint = "./functions/place-search/index.ts"
+
+[functions.generate-packing]
+enabled = true
+# Authenticated-only: the app always invokes with the user JWT. Prevents anonymous
+# callers from burning the Groq quota. Requires a redeploy to take effect on cloud.
+verify_jwt = true
+import_map = "./functions/generate-packing/deno.json"
+entrypoint = "./functions/generate-packing/index.ts"
