@@ -2,6 +2,7 @@ import {
   categoryIcon,
   dedupeSuggestions,
   groupByCategory,
+  inferCategory,
   PACKING_CATEGORIES,
   type PackingItem,
 } from './schemas'
@@ -49,6 +50,21 @@ describe('groupByCategory', () => {
 
   it('returns nothing for an empty list', () => {
     expect(groupByCategory([])).toEqual([])
+  })
+})
+
+describe('inferCategory', () => {
+  it('infers a category from keywords (fr + en)', () => {
+    expect(inferCategory('Passeport')).toBe('documents')
+    expect(inferCategory('Brosse à dents')).toBe('toiletries')
+    expect(inferCategory('Chargeur USB')).toBe('electronics')
+    expect(inferCategory('T-shirt')).toBe('clothes')
+    expect(inferCategory('Masque')).toBe('health')
+  })
+
+  it('falls back to other for unknown labels', () => {
+    expect(inferCategory('Licorne')).toBe('other')
+    expect(inferCategory('')).toBe('other')
   })
 })
 

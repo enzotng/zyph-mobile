@@ -6,9 +6,10 @@ import * as api from '../api/packing.api'
 import {
   packingQueryKey,
   useAddPackingItem,
+  useAddPackingItems,
   useDeletePackingItem,
-  useGeneratePacking,
   usePackingItems,
+  useSuggestPacking,
   useUpdatePackingItem,
 } from './use-packing'
 
@@ -102,32 +103,53 @@ describe('useDeletePackingItem', () => {
   })
 })
 
-describe('useGeneratePacking', () => {
-  it('generates, drops duplicates, bulk-inserts the rest and returns the count', async () => {
+describe('useSuggestPacking', () => {
+  it('returns deduped suggestions without inserting', async () => {
     jest.mocked(api.generatePackingSuggestions).mockResolvedValue([
       { label: 'Passport', category: 'documents', quantity: 1 },
-      { label: 'Socks', category: 'clothes', quantity: 3 },
+      { label: 'Socks', category: 'clothes', quantity: 3, reason: 'cold' },
     ])
-    jest.mocked(api.addPackingItems).mockResolvedValue()
-    const { wrapper, queryClient } = createQueryWrapper()
-    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+    const { wrapper } = createQueryWrapper()
 
-    const { result } = renderHook(() => useGeneratePacking('t1'), { wrapper })
+    const { result } = renderHook(() => useSuggestPacking(), { wrapper })
     result.current.mutate({
-      scope: 'shared',
-      ownerId: 'u1',
       destination: 'Lisbon',
       days: 3,
       weather: 'mild',
       language: 'en',
+      activities: '- [hike] Sintra',
+      mode: 'generate',
       existing: [{ label: 'Passport' }],
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data).toBe(1)
-    expect(api.addPackingItems).toHaveBeenCalledWith([
-      expect.objectContaining({ label: 'Socks', scope: 'shared', ownerId: 'u1', tripId: 't1' }),
+    expect(result.current.data).toEqual([
+      { label: 'Socks', category: 'clothes', quantity: 3, reason: 'cold' },
     ])
+    expect(api.addPackingItems).not.toHaveBeenCalled()
+  })
+})
+
+describe('useAddPackingItems', () => {
+  it('bulk-adds then invalidates the packing query', async () => {
+    jest.mocked(api.addPackingItems).mockResolvedValue()
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useAddPackingItems('t1'), { wrapper })
+    result.current.mutate([
+      {
+        tripId: 't1',
+        scope: 'shared',
+        ownerId: 'u1',
+        label: 'Socks',
+        category: 'clothes',
+        quantity: 3,
+      },
+    ])
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(api.addPackingItems).toHaveBeenCalled()
     expect(invalidate).toHaveBeenCalledWith({ queryKey: packingQueryKey('t1') })
   })
 })

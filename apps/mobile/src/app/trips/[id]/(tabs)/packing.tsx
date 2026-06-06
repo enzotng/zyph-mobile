@@ -24,16 +24,20 @@ import { useTripMembers } from '@/features/group'
 import {
   categoryIcon,
   groupByCategory,
+  inferCategory,
   PACKING_CATEGORIES,
   type PackingCategory,
   type PackingItem,
   type PackingScope,
+  type SuggestedItem,
   useAddPackingItem,
+  useAddPackingItems,
   useDeletePackingItem,
-  useGeneratePacking,
   usePackingItems,
+  useSuggestPacking,
   useUpdatePackingItem,
 } from '@/features/packing'
+import { useEvents } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
 import { useTripWeather } from '@/features/weather'
 import { withAlpha } from '@/lib/color'
@@ -62,18 +66,25 @@ export default function PackingScreen() {
   const { data: items, isLoading } = usePackingItems(tripId)
   const { data: members } = useTripMembers(tripId)
   const { data: weather } = useTripWeather(trip)
+  const { data: events } = useEvents(tripId)
 
   const addItem = useAddPackingItem(tripId)
   const updateItem = useUpdatePackingItem(tripId)
   const deleteItem = useDeletePackingItem(tripId)
-  const generate = useGeneratePacking(tripId)
+  const suggest = useSuggestPacking()
+  const addMany = useAddPackingItems(tripId)
 
   const [scope, setScope] = useState<PackingScope>('shared')
   const [addOpen, setAddOpen] = useState(false)
   const [assignTarget, setAssignTarget] = useState<PackingItem | null>(null)
   const [label, setLabel] = useState('')
   const [category, setCategory] = useState<PackingCategory>('clothes')
+  const [categoryTouched, setCategoryTouched] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [hint, setHint] = useState('')
+  // Suggestion preview: the deduped suggestions + which ones are checked for adding.
+  const [preview, setPreview] = useState<SuggestedItem[] | null>(null)
+  const [picked, setPicked] = useState<Set<number>>(new Set())
 
   const nameById = useMemo(
     () => new Map((members ?? []).map((m) => [m.id, m.display_name ?? t('common.member')])),
@@ -93,10 +104,30 @@ export default function PackingScreen() {
     return `${Math.min(...mins)}-${Math.max(...maxs)}°C`
   }, [weather])
 
-  function resetAddForm() {
+  // Compact summary of the planned events, so the AI list matches the actual activities.
+  const activities = useMemo(
+    () =>
+      (events ?? [])
+        .slice(0, 20)
+        .map((e) => `- [${e.type}] ${e.title}`)
+        .join('\n'),
+    [events],
+  )
+
+  function openAdd() {
     setLabel('')
     setCategory('clothes')
+    setCategoryTouched(false)
     setQuantity(1)
+    setAddOpen(true)
+  }
+
+  // Auto-categorise as the user types, unless they picked a category manually.
+  function onLabelChange(text: string) {
+    setLabel(text)
+    if (!categoryTouched) {
+      setCategory(inferCategory(text))
+    }
   }
 
   async function submitAdd() {
@@ -114,37 +145,37 @@ export default function PackingScreen() {
         quantity,
       })
       setAddOpen(false)
-      resetAddForm()
     } catch (error) {
       Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : '')
     }
   }
 
-  function runGenerate() {
-    // Wait for the list to load so dedupe runs against the full set (avoids re-adding existing items).
-    if (!trip?.destination || !userId || isLoading || generate.isPending) {
+  // Generate / gaps / refine all run a suggestion and open the preview sheet so the user picks.
+  function runSuggest(mode: 'generate' | 'gaps', refine?: string) {
+    if (!trip?.destination || !userId || isLoading || suggest.isPending) {
       return
     }
     haptics.light()
-    generate.mutate(
+    suggest.mutate(
       {
-        scope,
-        ownerId: userId,
         destination: trip.destination,
         days: tripDays(trip.start_date, trip.end_date),
         weather: weatherSummary,
         language: i18n.language === 'fr' ? 'fr' : 'en',
+        activities,
+        hint: refine,
+        mode,
         existing: scoped.map((i) => ({ label: i.label })),
       },
       {
-        onSuccess: (count) => {
-          const message =
-            count === 0
-              ? t('packing.generatedNone')
-              : count === 1
-                ? t('packing.generatedOne', { count })
-                : t('packing.generatedOther', { count })
-          Alert.alert(t('packing.generate'), message)
+        onSuccess: (result) => {
+          setHint('')
+          if (result.length === 0) {
+            Alert.alert(t('packing.generate'), t('packing.generatedNone'))
+            return
+          }
+          setPreview(result)
+          setPicked(new Set(result.map((_, index) => index)))
         },
         onError: (error) => {
           Alert.alert(
@@ -152,6 +183,40 @@ export default function PackingScreen() {
             error instanceof Error ? error.message : t('common.tryAgain'),
           )
         },
+      },
+    )
+  }
+
+  function togglePick(index: number) {
+    setPicked((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) {
+        next.delete(index)
+      } else {
+        next.add(index)
+      }
+      return next
+    })
+  }
+
+  function confirmPreview() {
+    if (!preview || !userId) {
+      return
+    }
+    const chosen = preview.filter((_, index) => picked.has(index))
+    addMany.mutate(
+      chosen.map((s) => ({
+        tripId,
+        scope,
+        ownerId: userId,
+        label: s.label,
+        category: s.category as PackingCategory,
+        quantity: s.quantity,
+      })),
+      {
+        onSuccess: () => setPreview(null),
+        onError: (error) =>
+          Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : ''),
       },
     )
   }
@@ -166,7 +231,7 @@ export default function PackingScreen() {
 
   const addButton = (
     <Pressable
-      onPress={() => setAddOpen(true)}
+      onPress={openAdd}
       accessibilityRole="button"
       accessibilityLabel={t('packing.addItem')}
       hitSlop={8}
@@ -180,7 +245,12 @@ export default function PackingScreen() {
     <Screen title={trip?.title} showBack scroll right={addButton}>
       <Segmented
         value={scope}
-        onChange={(v) => setScope(v as PackingScope)}
+        onChange={(v) => {
+          setScope(v as PackingScope)
+          // Drop any open suggestion preview so picks can't land in the wrong list.
+          setPreview(null)
+          setPicked(new Set())
+        }}
         options={[
           { value: 'shared', label: t('packing.shared') },
           { value: 'personal', label: t('packing.personal') },
@@ -191,16 +261,54 @@ export default function PackingScreen() {
         <Text style={styles.progress}>
           {t('packing.progress', { packed: packedCount, total: scoped.length })}
         </Text>
-        <Button
-          label={generate.isPending ? t('packing.generating') : t('packing.generate')}
-          icon="sparkles"
-          variant="secondary"
-          size="sm"
-          block={false}
-          disabled={!trip?.destination || isLoading || generate.isPending}
-          onPress={runGenerate}
-        />
+        <View style={styles.toolbarActions}>
+          <Button
+            label={suggest.isPending ? t('packing.generating') : t('packing.generate')}
+            icon="sparkles"
+            variant="secondary"
+            size="sm"
+            block={false}
+            disabled={!trip?.destination || isLoading || suggest.isPending}
+            onPress={() => runSuggest('generate')}
+          />
+          <Button
+            label={t('packing.gaps')}
+            icon="search"
+            variant="ghost"
+            size="sm"
+            block={false}
+            disabled={!trip?.destination || isLoading || suggest.isPending}
+            onPress={() => runSuggest('gaps')}
+          />
+        </View>
       </View>
+
+      {trip?.destination ? (
+        <View style={styles.refineRow}>
+          <View style={styles.refineInput}>
+            <TextField
+              value={hint}
+              onChangeText={setHint}
+              placeholder={t('packing.refinePlaceholder')}
+              autoCorrect={false}
+            />
+          </View>
+          <Pressable
+            onPress={() => runSuggest('generate', hint.trim() || undefined)}
+            accessibilityRole="button"
+            accessibilityLabel={t('packing.refine')}
+            disabled={hint.trim().length === 0 || suggest.isPending}
+            style={({ pressed }) => [
+              styles.refineSend,
+              { backgroundColor: theme.colors.primary },
+              (hint.trim().length === 0 || suggest.isPending) && styles.refineSendOff,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons name="sparkles" size={18} color={theme.colors.primaryForeground} />
+          </Pressable>
+        </View>
+      ) : null}
 
       {isLoading ? (
         <View style={styles.center}>
@@ -213,7 +321,7 @@ export default function PackingScreen() {
             title={t('packing.emptyTitle')}
             body={t('packing.emptyBody')}
             cta={t('packing.addItem')}
-            onCta={() => setAddOpen(true)}
+            onCta={openAdd}
           />
         </View>
       ) : (
@@ -300,7 +408,7 @@ export default function PackingScreen() {
           <TextField
             label={t('packing.itemLabel')}
             value={label}
-            onChangeText={setLabel}
+            onChangeText={onLabelChange}
             placeholder={t('packing.itemPlaceholder')}
             autoFocus
           />
@@ -313,7 +421,10 @@ export default function PackingScreen() {
                 return (
                   <Pressable
                     key={c}
-                    onPress={() => setCategory(c)}
+                    onPress={() => {
+                      setCategoryTouched(true)
+                      setCategory(c)
+                    }}
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
                     style={[
@@ -407,6 +518,57 @@ export default function PackingScreen() {
           ))}
         </View>
       </BottomSheet>
+
+      {/* AI suggestions preview */}
+      <BottomSheet
+        open={preview != null}
+        onClose={() => setPreview(null)}
+        title={t('packing.previewTitle')}
+      >
+        <View style={styles.sheet}>
+          <View>
+            {(preview ?? []).map((s, index) => {
+              const on = picked.has(index)
+              return (
+                <Pressable
+                  key={`${s.label}-${index}`}
+                  onPress={() => togglePick(index)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on }}
+                  style={({ pressed }) => [styles.previewRow, pressed && styles.pressed]}
+                >
+                  <Ionicons
+                    name={on ? 'checkbox' : 'square-outline'}
+                    size={22}
+                    color={on ? theme.colors.primary : theme.colors.muted}
+                  />
+                  <View style={styles.previewInfo}>
+                    <Text style={styles.previewLabel} numberOfLines={1}>
+                      {s.label}
+                      {s.quantity > 1 ? ` x${s.quantity}` : ''}
+                    </Text>
+                    {s.reason ? (
+                      <Text style={styles.previewReason} numberOfLines={1}>
+                        {s.reason}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Ionicons
+                    name={categoryIcon(s.category) as Glyph}
+                    size={16}
+                    color={theme.colors.muted}
+                  />
+                </Pressable>
+              )
+            })}
+          </View>
+          <Button
+            label={t('packing.addSelected', { count: picked.size })}
+            onPress={confirmPreview}
+            disabled={picked.size === 0 || addMany.isPending}
+          />
+        </View>
+      </BottomSheet>
     </Screen>
   )
 }
@@ -423,6 +585,52 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.medium,
     fontWeight: '500',
     fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+  },
+  toolbarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(1),
+  },
+  refineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+    marginTop: theme.gap(2),
+  },
+  refineInput: {
+    flex: 1,
+  },
+  refineSend: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.md,
+  },
+  refineSendOff: {
+    opacity: 0.4,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+    paddingVertical: theme.gap(2.5),
+  },
+  previewInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: theme.gap(0.5),
+  },
+  previewLabel: {
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.foreground,
+  },
+  previewReason: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
     color: theme.colors.muted,
   },
   center: {

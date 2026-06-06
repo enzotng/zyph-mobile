@@ -10,7 +10,7 @@ import {
   type PackingItemPatch,
   updatePackingItem,
 } from '../api/packing.api'
-import { dedupeSuggestions, type PackingCategory, type PackingScope } from '../schemas'
+import { dedupeSuggestions, type SuggestedItem } from '../schemas'
 
 export function packingQueryKey(tripId: string) {
   return ['trips', tripId, 'packing'] as const
@@ -55,41 +55,42 @@ export function useDeletePackingItem(tripId: string) {
   })
 }
 
-export type GeneratePackingVars = {
-  scope: PackingScope
-  ownerId: string
+export type SuggestPackingVars = {
   destination: string
   days: number | null
   weather: string
   language: string
+  activities: string
+  hint?: string
+  mode: 'generate' | 'gaps'
   existing: { label: string }[]
 }
 
-// Generates suggestions via the Edge Function, drops duplicates against the current list, and
-// bulk-inserts the rest. Returns how many were actually added.
-export function useGeneratePacking(tripId: string) {
-  const queryClient = useQueryClient()
+// Asks the Edge Function for suggestions and drops anything already on the list. Does NOT
+// insert - the screen previews the result so the user picks what to add.
+export function useSuggestPacking() {
   return useMutation({
-    mutationFn: async (vars: GeneratePackingVars): Promise<number> => {
+    mutationFn: async (vars: SuggestPackingVars): Promise<SuggestedItem[]> => {
       const suggestions = await generatePackingSuggestions({
         destination: vars.destination,
         days: vars.days,
         weather: vars.weather,
         language: vars.language,
+        activities: vars.activities,
+        hint: vars.hint,
+        mode: vars.mode,
+        existing: vars.existing.map((i) => i.label),
       })
-      const fresh = dedupeSuggestions(vars.existing, suggestions)
-      await addPackingItems(
-        fresh.map((s) => ({
-          tripId,
-          scope: vars.scope,
-          ownerId: vars.ownerId,
-          label: s.label,
-          category: s.category as PackingCategory,
-          quantity: s.quantity,
-        })),
-      )
-      return fresh.length
+      return dedupeSuggestions(vars.existing, suggestions)
     },
+  })
+}
+
+// Bulk-adds the items the user confirmed from a suggestion preview.
+export function useAddPackingItems(tripId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (items: NewPackingItem[]) => addPackingItems(items),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: packingQueryKey(tripId) })
     },

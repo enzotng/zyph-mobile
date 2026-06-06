@@ -10,18 +10,20 @@ export {
   updatePackingItem,
 } from './api/packing.api'
 export {
-  type GeneratePackingVars,
   packingQueryKey,
+  type SuggestPackingVars,
   useAddPackingItem,
+  useAddPackingItems,
   useDeletePackingItem,
-  useGeneratePacking,
   usePackingItems,
+  useSuggestPacking,
   useUpdatePackingItem,
 } from './hooks/use-packing'
 export {
   categoryIcon,
   dedupeSuggestions,
   groupByCategory,
+  inferCategory,
   PACKING_CATEGORIES,
   type PackingCategory,
   type PackingGroup,

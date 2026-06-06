@@ -144,7 +144,16 @@ describe('generatePackingSuggestions', () => {
 
     await expect(generatePackingSuggestions(input)).resolves.toEqual(items)
     expect(invoke).toHaveBeenCalledWith('generate-packing', {
-      body: { destination: 'Lisbon', days: 3, weather: 'mild', language: 'en' },
+      body: {
+        destination: 'Lisbon',
+        days: 3,
+        weather: 'mild',
+        language: 'en',
+        activities: '',
+        hint: '',
+        mode: 'generate',
+        existing: [],
+      },
     })
   })
 

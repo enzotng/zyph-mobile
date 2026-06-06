@@ -54,7 +54,92 @@ export function groupByCategory(items: PackingItem[]): PackingGroup[] {
   }))
 }
 
-export type SuggestedItem = { label: string; category: string; quantity: number }
+export type SuggestedItem = {
+  label: string
+  category: string
+  quantity: number
+  reason?: string
+}
+
+// Keyword heuristic to pre-fill the category of a manually typed item (the user can override).
+const CATEGORY_KEYWORDS: Record<PackingCategory, string[]> = {
+  documents: ['passport', 'passeport', 'visa', 'ticket', 'billet', 'boarding', 'permis', 'carte'],
+  toiletries: [
+    'toothbrush',
+    'brosse',
+    'dentifrice',
+    'shampoo',
+    'shampoing',
+    'soap',
+    'savon',
+    'towel',
+    'serviette',
+    'deodorant',
+    'déodorant',
+    'sunscreen',
+    'crème',
+    'razor',
+    'rasoir',
+  ],
+  electronics: [
+    'charger',
+    'chargeur',
+    'phone',
+    'adapter',
+    'adaptateur',
+    'camera',
+    'laptop',
+    'headphone',
+    'écouteur',
+    'cable',
+    'câble',
+    'battery',
+    'batterie',
+    'powerbank',
+  ],
+  health: ['medicine', 'médicament', 'pills', 'aspirin', 'bandage', 'mask', 'masque', 'vitamin'],
+  clothes: [
+    'shirt',
+    't-shirt',
+    'tshirt',
+    'pants',
+    'pantalon',
+    'jacket',
+    'veste',
+    'shoe',
+    'chaussure',
+    'sock',
+    'chaussette',
+    'underwear',
+    'jean',
+    'dress',
+    'robe',
+    'swimsuit',
+    'maillot',
+    'hat',
+    'chapeau',
+    'coat',
+    'manteau',
+    'pull',
+    'sweater',
+    'short',
+  ],
+  other: [],
+}
+
+export function inferCategory(label: string): PackingCategory {
+  const l = label.trim().toLowerCase()
+  if (!l) {
+    return 'other'
+  }
+  const order: PackingCategory[] = ['documents', 'toiletries', 'electronics', 'health', 'clothes']
+  for (const category of order) {
+    if (CATEGORY_KEYWORDS[category].some((k) => l.includes(k))) {
+      return category
+    }
+  }
+  return 'other'
+}
 
 // Keeps only suggestions whose label is not already present (case-insensitive) in the list,
 // so "Generate" never creates duplicates of items the user already has.

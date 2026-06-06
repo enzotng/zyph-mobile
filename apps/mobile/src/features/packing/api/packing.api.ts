@@ -92,6 +92,14 @@ export type GeneratePackingInput = {
   days: number | null
   weather: string
   language: string
+  // Compact summary of the trip's planned events, so the list reflects the actual activities.
+  activities?: string
+  // Optional free-text "refine with Zo" request.
+  hint?: string
+  // 'generate' builds a fresh list; 'gaps' returns only missing items (with a reason each).
+  mode?: 'generate' | 'gaps'
+  // Current item labels, so gaps mode does not repeat what is already there.
+  existing?: string[]
 }
 
 // Asks the generate-packing Edge Function for a tailored list. The function validates and
@@ -105,6 +113,10 @@ export async function generatePackingSuggestions(
       days: input.days,
       weather: input.weather,
       language: input.language,
+      activities: input.activities ?? '',
+      hint: input.hint ?? '',
+      mode: input.mode ?? 'generate',
+      existing: input.existing ?? [],
     },
   })
   if (error) {
