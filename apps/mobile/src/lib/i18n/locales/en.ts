@@ -315,6 +315,40 @@ export const en = {
   offline: {
     banner: 'Offline - showing saved data',
   },
+  notifications: {
+    title: 'Notifications',
+    empty: {
+      title: 'No notifications',
+      body: 'Activity on your trips shows up here.',
+    },
+    markAllRead: 'Mark all read',
+    time: {
+      today: 'Today',
+      yesterday: 'Yesterday',
+      earlier: 'Earlier',
+    },
+    types: {
+      memberJoined: 'A new member joined the trip',
+      memberLeft: 'A member left the trip',
+      memberRemoved: 'You were removed from a trip',
+      expenseAdded: 'New expense added',
+      expenseUpdated: 'An expense was updated',
+      settlementFrom: 'Your payment was recorded',
+      settlementTo: 'You received a payment',
+      eventAdded: 'New event added',
+      generic: 'New activity',
+    },
+    preferences: {
+      title: 'Notification settings',
+      push: 'Push notifications',
+      pushHint: 'Receive alerts on this device.',
+      categories: 'Categories',
+      members: 'Members & trips',
+      expenses: 'Expenses',
+      settlements: 'Settlements',
+      timeline: 'Timeline & events',
+    },
+  },
   home: {
     greeting: 'Hello, {{name}}',
     greetingFallback: 'traveller',

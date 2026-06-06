@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useFocusEffect, useRouter } from 'expo-router'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshControl, ScrollView, Text, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
@@ -9,6 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { EmptyState, SectionTitle, Skeleton, Surface } from '@/components/ui'
+import { useUnreadNotificationCount } from '@/features/notifications'
 import { useProfile } from '@/features/profile'
 import {
   daysUntil,
@@ -40,7 +41,15 @@ export default function HomeScreen() {
   const { t, i18n } = useTranslation()
   const { data: trips, isLoading, isError, isRefetching, refetch } = useTrips()
   const { data: profile } = useProfile()
+  const { data: unreadCount, refetch: refetchUnread } = useUnreadNotificationCount()
   const [nowMs] = useState(() => Date.now())
+
+  // The app has no realtime, so the unread badge stays current by refetching on focus.
+  useFocusEffect(
+    useCallback(() => {
+      void refetchUnread()
+    }, [refetchUnread]),
+  )
 
   const now = useMemo(() => new Date(nowMs), [nowMs])
   const home = useMemo(() => selectHomeTrips(trips ?? [], now), [trips, now])
@@ -65,6 +74,9 @@ export default function HomeScreen() {
         avatarName={profile?.display_name ?? undefined}
         avatarUrl={profile?.avatar_url}
         onAvatarPress={() => router.push('/profile')}
+        unreadCount={unreadCount ?? 0}
+        onNotificationsPress={() => router.push('/notifications')}
+        notificationsLabel={t('notifications.title')}
       />
 
       {isLoading ? (
