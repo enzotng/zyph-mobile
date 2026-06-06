@@ -806,6 +806,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      soft_delete_expense: { Args: { _expense_id: string }; Returns: undefined }
       update_expense_with_splits:
         | {
             Args: {

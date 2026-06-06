@@ -148,12 +148,10 @@ export async function updateExpense({
 }
 
 export async function deleteExpense(expenseId: string): Promise<void> {
-  // Soft delete; list queries filter on deleted_at is null. Splits stay tied to the
-  // expense row so balances stop counting it but history is preserved.
-  const { error } = await supabase
-    .from('expenses')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', expenseId)
+  // Soft delete via RPC; list queries filter on deleted_at is null. Splits stay tied to the
+  // expense row so balances stop counting it but history is preserved. Goes through the
+  // SECURITY DEFINER RPC because direct writes to expenses are locked down (RLS is SELECT-only).
+  const { error } = await supabase.rpc('soft_delete_expense', { _expense_id: expenseId })
   if (error) {
     throw error
   }
