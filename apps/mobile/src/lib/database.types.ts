@@ -293,6 +293,99 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          expenses_enabled: boolean
+          members_enabled: boolean
+          push_enabled: boolean
+          settlements_enabled: boolean
+          timeline_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          expenses_enabled?: boolean
+          members_enabled?: boolean
+          push_enabled?: boolean
+          settlements_enabled?: boolean
+          timeline_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          expenses_enabled?: boolean
+          members_enabled?: boolean
+          push_enabled?: boolean
+          settlements_enabled?: boolean
+          timeline_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'notification_preferences_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: true
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          payload: Json
+          read_at: string | null
+          recipient_id: string
+          trip_id: string | null
+          type: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          recipient_id: string
+          trip_id?: string | null
+          type: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          recipient_id?: string
+          trip_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_actor_id_fkey'
+            columns: ['actor_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'notifications_recipient_id_fkey'
+            columns: ['recipient_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'notifications_trip_id_fkey'
+            columns: ['trip_id']
+            isOneToOne: false
+            referencedRelation: 'trips'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -662,6 +755,8 @@ export type Database = {
       }
       join_trip_by_code: { Args: { _code: string }; Returns: string }
       leave_trip: { Args: { _trip_id: string }; Returns: undefined }
+      mark_all_notifications_read: { Args: never; Returns: undefined }
+      mark_notification_read: { Args: { _id: string }; Returns: undefined }
       record_settlement: {
         Args: {
           _amount_cents: number

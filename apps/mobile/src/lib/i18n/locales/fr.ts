@@ -318,6 +318,40 @@ export const fr: Translations = {
   offline: {
     banner: 'Hors ligne - affichage des données enregistrées',
   },
+  notifications: {
+    title: 'Notifications',
+    empty: {
+      title: 'Aucune notification',
+      body: 'L’activité de tes voyages apparaîtra ici.',
+    },
+    markAllRead: 'Tout marquer comme lu',
+    time: {
+      today: 'Aujourd’hui',
+      yesterday: 'Hier',
+      earlier: 'Plus tôt',
+    },
+    types: {
+      memberJoined: 'Un nouveau membre a rejoint le voyage',
+      memberLeft: 'Un membre a quitté le voyage',
+      memberRemoved: 'On t’a retiré d’un voyage',
+      expenseAdded: 'Nouvelle dépense ajoutée',
+      expenseUpdated: 'Une dépense a été modifiée',
+      settlementFrom: 'Ton paiement a été enregistré',
+      settlementTo: 'Tu as reçu un paiement',
+      eventAdded: 'Nouvel événement ajouté',
+      generic: 'Nouvelle activité',
+    },
+    preferences: {
+      title: 'Réglages des notifications',
+      push: 'Notifications push',
+      pushHint: 'Recevoir les alertes sur cet appareil.',
+      categories: 'Catégories',
+      members: 'Membres et voyages',
+      expenses: 'Dépenses',
+      settlements: 'Remboursements',
+      timeline: 'Planning et événements',
+    },
+  },
   home: {
     greeting: 'Bonjour, {{name}}',
     greetingFallback: 'voyageur',

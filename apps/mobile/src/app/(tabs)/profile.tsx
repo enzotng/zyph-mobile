@@ -120,7 +120,7 @@ export default function ProfileScreen() {
             icon="notifications-outline"
             iconColor={theme.colors.warning}
             title={t('profile.notifications')}
-            detail={t('profile.notificationsOn')}
+            onPress={() => router.push('/profile/notifications')}
             last
           />
         </Surface>
