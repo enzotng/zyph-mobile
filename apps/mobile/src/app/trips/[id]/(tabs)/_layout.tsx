@@ -10,11 +10,12 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   timeline: 'time',
   expenses: 'wallet',
   pois: 'navigate',
+  packing: 'bag-handle',
 }
 
 // Explicit left-group order (Zo is the standalone right action, not a tab) - expo-router
 // would otherwise sort the tab routes alphabetically.
-const TAB_ORDER = ['index', 'timeline', 'expenses', 'pois'] as const
+const TAB_ORDER = ['index', 'timeline', 'expenses', 'pois', 'packing'] as const
 
 export const unstable_settings = {
   initialRouteName: 'index',
@@ -78,6 +79,7 @@ export default function TripTabsLayout() {
       <Tabs.Screen name="timeline" options={{ title: t('tabs.timeline') }} />
       <Tabs.Screen name="expenses" options={{ title: t('tabs.expenses') }} />
       <Tabs.Screen name="pois" options={{ title: t('tabs.places') }} />
+      <Tabs.Screen name="packing" options={{ title: t('tabs.packing') }} />
     </Tabs>
   )
 }

@@ -386,6 +386,67 @@ export type Database = {
           },
         ]
       }
+      packing_items: {
+        Row: {
+          assigned_member: string | null
+          category: string
+          created_at: string
+          id: string
+          label: string
+          owner_id: string
+          packed: boolean
+          quantity: number
+          scope: string
+          trip_id: string
+        }
+        Insert: {
+          assigned_member?: string | null
+          category: string
+          created_at?: string
+          id?: string
+          label: string
+          owner_id: string
+          packed?: boolean
+          quantity?: number
+          scope: string
+          trip_id: string
+        }
+        Update: {
+          assigned_member?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          label?: string
+          owner_id?: string
+          packed?: boolean
+          quantity?: number
+          scope?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'packing_items_assigned_member_fkey'
+            columns: ['assigned_member']
+            isOneToOne: false
+            referencedRelation: 'trip_members'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'packing_items_owner_id_fkey'
+            columns: ['owner_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'packing_items_trip_id_fkey'
+            columns: ['trip_id']
+            isOneToOne: false
+            referencedRelation: 'trips'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
