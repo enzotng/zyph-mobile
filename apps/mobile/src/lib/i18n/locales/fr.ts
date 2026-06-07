@@ -339,6 +339,11 @@ export const fr: Translations = {
     send: 'Envoyer',
     thinking: 'Zo réfléchit…',
     error: 'Désolé, je ne peux pas répondre pour le moment. Réessaie.',
+    confirm: 'Confirmer',
+    actionRunning: 'Je m’en occupe…',
+    actionDone: 'C’est fait',
+    actionCancelled: 'Annulé',
+    actionError: 'Impossible de réaliser cette action.',
     suggestions: {
       owe: 'Combien je dois ?',
       next: 'C’est quoi la suite du programme ?',

@@ -336,6 +336,11 @@ export const en = {
     send: 'Send',
     thinking: 'Zo is thinking…',
     error: 'Sorry, I could not answer right now. Please try again.',
+    confirm: 'Confirm',
+    actionRunning: 'Working on it…',
+    actionDone: 'Done',
+    actionCancelled: 'Cancelled',
+    actionError: 'Could not complete that action.',
     suggestions: {
       owe: 'How much do I owe?',
       next: 'What’s next on the timeline?',
