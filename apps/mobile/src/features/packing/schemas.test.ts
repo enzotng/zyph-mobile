@@ -3,14 +3,23 @@ import {
   assignCommunalRoundRobin,
   categoryIcon,
   dedupeSuggestions,
+  duplicateSharedOwner,
+  filterByTraveler,
+  findDuplicateSharedItem,
   groupByCategory,
+  groupReadiness,
   inferCategory,
+  memberPackingProgress,
   PACKING_CATEGORIES,
   type PackingItem,
   type SuggestedItem,
+  UNASSIGNED_FILTER,
+  unassignedSharedCount,
 } from './schemas'
 
-function item(category: string, label: string): PackingItem {
+type ItemOverrides = Partial<Pick<PackingItem, 'scope' | 'assigned_member' | 'packed'>>
+
+function item(category: string, label: string, overrides: ItemOverrides = {}): PackingItem {
   return {
     id: `${category}-${label}`,
     trip_id: 't1',
@@ -22,6 +31,7 @@ function item(category: string, label: string): PackingItem {
     assigned_member: null,
     packed: false,
     created_at: '2026-06-06T00:00:00.000Z',
+    ...overrides,
   }
 }
 
@@ -147,5 +157,125 @@ describe('dedupeSuggestions', () => {
       ],
     )
     expect(result.map((r) => r.label)).toEqual(['Socks'])
+  })
+})
+
+const members = [
+  { id: 'm1', display_name: 'Ana' },
+  { id: 'm2', display_name: 'Bob' },
+]
+
+describe('memberPackingProgress', () => {
+  it('counts assigned + packed per member, including members with zero assigned', () => {
+    const items = [
+      item('other', 'Tent', { assigned_member: 'm1', packed: true }),
+      item('other', 'Stove', { assigned_member: 'm1', packed: false }),
+    ]
+    expect(memberPackingProgress(items, members)).toEqual([
+      { memberId: 'm1', name: 'Ana', assigned: 2, packed: 1 },
+      { memberId: 'm2', name: 'Bob', assigned: 0, packed: 0 },
+    ])
+  })
+
+  it('ignores items assigned to an id absent from members, and keeps member order', () => {
+    const items = [item('other', 'Ghost', { assigned_member: 'gone', packed: true })]
+    expect(memberPackingProgress(items, members).map((p) => p.assigned)).toEqual([0, 0])
+  })
+
+  it('returns [] for no members', () => {
+    expect(memberPackingProgress([item('other', 'Tent')], [])).toEqual([])
+  })
+})
+
+describe('unassignedSharedCount', () => {
+  it('counts items with no assignee', () => {
+    expect(
+      unassignedSharedCount([
+        item('other', 'Tent', { assigned_member: 'm1' }),
+        item('other', 'Stove'),
+        item('other', 'Speaker'),
+      ]),
+    ).toBe(2)
+  })
+
+  it('is 0 when all assigned', () => {
+    expect(unassignedSharedCount([item('other', 'Tent', { assigned_member: 'm1' })])).toBe(0)
+  })
+})
+
+describe('groupReadiness', () => {
+  it('returns 0/false for an empty list', () => {
+    expect(groupReadiness([])).toEqual({ percent: 0, ready: false })
+  })
+
+  it('is ready only when everything is packed AND assigned', () => {
+    const packedAssigned = item('other', 'Tent', { assigned_member: 'm1', packed: true })
+    expect(groupReadiness([packedAssigned])).toEqual({ percent: 100, ready: true })
+  })
+
+  it('is 100% but not ready when a packed item is unassigned', () => {
+    expect(groupReadiness([item('other', 'Tent', { packed: true })])).toEqual({
+      percent: 100,
+      ready: false,
+    })
+  })
+
+  it('rounds the percent', () => {
+    const items = [
+      item('other', 'a', { assigned_member: 'm1', packed: true }),
+      item('other', 'b', { assigned_member: 'm1' }),
+      item('other', 'c', { assigned_member: 'm1' }),
+    ]
+    expect(groupReadiness(items).percent).toBe(33)
+  })
+})
+
+describe('filterByTraveler', () => {
+  const items = [
+    item('other', 'Tent', { assigned_member: 'm1' }),
+    item('other', 'Stove', { assigned_member: 'm2' }),
+    item('other', 'Speaker'),
+  ]
+
+  it('returns all (new array) for null', () => {
+    const result = filterByTraveler(items, null)
+    expect(result).toHaveLength(3)
+    expect(result).not.toBe(items)
+  })
+
+  it('filters by member id and to unassigned', () => {
+    expect(filterByTraveler(items, 'm1').map((i) => i.label)).toEqual(['Tent'])
+    expect(filterByTraveler(items, UNASSIGNED_FILTER).map((i) => i.label)).toEqual(['Speaker'])
+  })
+
+  it('returns [] for an unknown id', () => {
+    expect(filterByTraveler(items, 'nobody')).toEqual([])
+  })
+})
+
+describe('findDuplicateSharedItem / duplicateSharedOwner', () => {
+  const items = [
+    item('toiletries', 'Sunscreen', { assigned_member: 'm2' }),
+    { ...item('toiletries', 'Sunscreen'), scope: 'personal' as const, id: 'perso' },
+  ]
+  const nameById = new Map([['m2', 'Bob']])
+
+  it('matches a shared label case-insensitively, ignoring personal items', () => {
+    expect(findDuplicateSharedItem(items, '  sunSCREEN ')?.id).toBe('toiletries-Sunscreen')
+  })
+
+  it('returns null for no match or an empty label', () => {
+    expect(findDuplicateSharedItem(items, 'Tent')).toBeNull()
+    expect(findDuplicateSharedItem(items, '  ')).toBeNull()
+  })
+
+  it('resolves the duplicate owner name', () => {
+    expect(duplicateSharedOwner(items, 'Sunscreen', nameById)).toEqual({ name: 'Bob' })
+  })
+
+  it('returns name null for an unassigned duplicate and null for no duplicate', () => {
+    const unowned = [item('other', 'Rope')]
+    expect(duplicateSharedOwner(unowned, 'Rope', nameById)).toEqual({ name: null })
+    expect(duplicateSharedOwner(unowned, 'Axe', nameById)).toBeNull()
   })
 })

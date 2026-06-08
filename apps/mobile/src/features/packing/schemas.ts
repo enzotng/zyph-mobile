@@ -204,20 +204,107 @@ export function inferCategory(label: string): PackingCategory {
   return 'other'
 }
 
+// Canonical label key for case-insensitive matching (trim + lowercase).
+const normalizeLabel = (label: string): string => label.trim().toLowerCase()
+
 // Keeps only suggestions whose label is not already present (case-insensitive) in the list,
 // so "Generate" never creates duplicates of items the user already has.
 export function dedupeSuggestions(
   existing: { label: string }[],
   incoming: SuggestedItem[],
 ): SuggestedItem[] {
-  const seen = new Set(existing.map((i) => i.label.trim().toLowerCase()))
+  const seen = new Set(existing.map((i) => normalizeLabel(i.label)))
   const out: SuggestedItem[] = []
   for (const item of incoming) {
-    const key = item.label.trim().toLowerCase()
+    const key = normalizeLabel(item.label)
     if (key && !seen.has(key)) {
       seen.add(key)
       out.push(item)
     }
   }
   return out
+}
+
+// --- Group visibility (Increment 3) -------------------------------------------------------
+// All pure and deterministic. assigned_member is a trip_members.id (never a user_id). Callers
+// pass the already-scoped (shared) item array so these compose with groupByCategory.
+
+// Sentinel for the "Unassigned" choice in the traveler filter.
+export const UNASSIGNED_FILTER = '__unassigned__' as const
+
+export type MemberProgress = {
+  memberId: string
+  name: string | null
+  assigned: number
+  packed: number
+}
+
+// One row per member (in the given order, members with 0 assigned included), counting items
+// assigned to that member and how many of those are packed. Items assigned to an id not in
+// `members` are counted by nobody.
+export function memberPackingProgress(
+  items: PackingItem[],
+  members: { id: string; display_name: string | null }[],
+): MemberProgress[] {
+  return members.map((member) => {
+    const assigned = items.filter((i) => i.assigned_member === member.id)
+    return {
+      memberId: member.id,
+      name: member.display_name,
+      assigned: assigned.length,
+      packed: assigned.filter((i) => i.packed).length,
+    }
+  })
+}
+
+// Count of items nobody is bringing yet.
+export function unassignedSharedCount(items: PackingItem[]): number {
+  return items.filter((i) => i.assigned_member == null).length
+}
+
+// Group-wide readiness: percent packed (0 when empty) and a "ready" flag that requires every
+// item packed AND every item assigned (nothing left hanging).
+export function groupReadiness(items: PackingItem[]): { percent: number; ready: boolean } {
+  if (items.length === 0) {
+    return { percent: 0, ready: false }
+  }
+  const packed = items.filter((i) => i.packed).length
+  const ready = packed === items.length && items.every((i) => i.assigned_member != null)
+  return { percent: Math.round((packed / items.length) * 100), ready }
+}
+
+// Filters items to one traveler. null = everyone, UNASSIGNED_FILTER = unassigned only, otherwise
+// a member id. Always returns a new array, preserving order, never mutating the input.
+export function filterByTraveler(items: PackingItem[], filter: string | null): PackingItem[] {
+  if (filter === null) {
+    return [...items]
+  }
+  if (filter === UNASSIGNED_FILTER) {
+    return items.filter((i) => i.assigned_member == null)
+  }
+  return items.filter((i) => i.assigned_member === filter)
+}
+
+// First SHARED item whose label matches (case-insensitive), so a manual/AI add can warn instead
+// of silently duplicating. Ignores personal-scope items and an empty label.
+export function findDuplicateSharedItem(items: PackingItem[], label: string): PackingItem | null {
+  const key = normalizeLabel(label)
+  if (!key) {
+    return null
+  }
+  return items.find((i) => i.scope === 'shared' && normalizeLabel(i.label) === key) ?? null
+}
+
+// Resolves who already added a duplicate shared item, for the warning copy. Returns the owner's
+// name (null when unassigned or unknown), or null when there is no duplicate.
+export function duplicateSharedOwner(
+  items: PackingItem[],
+  label: string,
+  nameById: Map<string, string>,
+): { name: string | null } | null {
+  const hit = findDuplicateSharedItem(items, label)
+  if (!hit) {
+    return null
+  }
+  return { name: hit.assigned_member ? (nameById.get(hit.assigned_member) ?? null) : null }
 }
