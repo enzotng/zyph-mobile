@@ -3,10 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addPackingItem,
   addPackingItems,
+  assignPackingItem,
+  claimPackingItem,
   deletePackingItem,
   generatePackingSuggestions,
   listPackingItems,
   type NewPackingItem,
+  nudgePackingItem,
   type PackingItemPatch,
   updatePackingItem,
 } from '../api/packing.api'
@@ -52,6 +55,36 @@ export function useDeletePackingItem(tripId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: packingQueryKey(tripId) })
     },
+  })
+}
+
+// Assigns/unassigns a shared item to a member (notifies the assignee via the RPC).
+export function useAssignPackingItem(tripId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ itemId, memberId }: { itemId: string; memberId: string | null }) =>
+      assignPackingItem(itemId, memberId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: packingQueryKey(tripId) })
+    },
+  })
+}
+
+// Self-assigns a shared item to the current user's member.
+export function useClaimPackingItem(tripId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (itemId: string) => claimPackingItem(itemId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: packingQueryKey(tripId) })
+    },
+  })
+}
+
+// Pings the item's assignee. No cache invalidation - it changes no packing row.
+export function useNudgePackingItem() {
+  return useMutation({
+    mutationFn: (itemId: string) => nudgePackingItem(itemId),
   })
 }
 

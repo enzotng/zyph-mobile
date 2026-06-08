@@ -59,6 +59,31 @@ export type SuggestedItem = {
   category: string
   quantity: number
   reason?: string
+  // True when one of the item serves the whole group (tent, first-aid kit). Optional so
+  // gaps/refine/seed/cached suggestions without the field stay valid.
+  communal?: boolean
+}
+
+// Round-robins communal items across the trip's members so the group shares the load. Personal
+// (non-communal) items stay unassigned (null). The counter only advances on communal items, so
+// the few communal items spread evenly even within a mostly-personal list. Deterministic on
+// input order; returns one assignment (member id or null) per item.
+export function assignCommunalRoundRobin(
+  items: SuggestedItem[],
+  memberIds: string[],
+): (string | null)[] {
+  if (memberIds.length === 0) {
+    return items.map(() => null)
+  }
+  let counter = 0
+  return items.map((item) => {
+    if (item.communal !== true) {
+      return null
+    }
+    const memberId = memberIds[counter % memberIds.length]
+    counter += 1
+    return memberId
+  })
 }
 
 // Keyword heuristic to pre-fill the category of a manually typed item (the user can override).

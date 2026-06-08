@@ -32,6 +32,7 @@ const preferences = {
   expenses_enabled: false,
   settlements_enabled: true,
   timeline_enabled: true,
+  packing_enabled: true,
   updated_at: '2026-06-06T10:00:00.000Z',
 }
 
@@ -111,6 +112,7 @@ describe('upsertNotificationPreferences', () => {
     expensesEnabled: false,
     settlementsEnabled: true,
     timelineEnabled: true,
+    packingEnabled: true,
   }
 
   it('upserts the full row mapped to db columns', async () => {
@@ -126,6 +128,7 @@ describe('upsertNotificationPreferences', () => {
         expenses_enabled: false,
         settlements_enabled: true,
         timeline_enabled: true,
+        packing_enabled: true,
       },
       { onConflict: 'user_id' },
     )

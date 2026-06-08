@@ -1,11 +1,14 @@
 export {
   addPackingItem,
   addPackingItems,
+  assignPackingItem,
+  claimPackingItem,
   deletePackingItem,
   type GeneratePackingInput,
   generatePackingSuggestions,
   listPackingItems,
   type NewPackingItem,
+  nudgePackingItem,
   type PackingItemPatch,
   updatePackingItem,
 } from './api/packing.api'
@@ -14,13 +17,17 @@ export {
   type SuggestPackingVars,
   useAddPackingItem,
   useAddPackingItems,
+  useAssignPackingItem,
+  useClaimPackingItem,
   useDeletePackingItem,
+  useNudgePackingItem,
   usePackingItems,
   useSuggestPacking,
   useUpdatePackingItem,
 } from './hooks/use-packing'
 export {
   applyPackLight,
+  assignCommunalRoundRobin,
   categoryIcon,
   dedupeSuggestions,
   groupByCategory,

@@ -7,7 +7,10 @@ import {
   packingQueryKey,
   useAddPackingItem,
   useAddPackingItems,
+  useAssignPackingItem,
+  useClaimPackingItem,
   useDeletePackingItem,
+  useNudgePackingItem,
   usePackingItems,
   useSuggestPacking,
   useUpdatePackingItem,
@@ -100,6 +103,51 @@ describe('useDeletePackingItem', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(api.deletePackingItem).toHaveBeenCalledWith('p1')
     expect(invalidate).toHaveBeenCalledWith({ queryKey: packingQueryKey('t1') })
+  })
+})
+
+describe('useAssignPackingItem', () => {
+  it('assigns then invalidates', async () => {
+    jest.mocked(api.assignPackingItem).mockResolvedValue()
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useAssignPackingItem('t1'), { wrapper })
+    result.current.mutate({ itemId: 'p1', memberId: 'm2' })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(api.assignPackingItem).toHaveBeenCalledWith('p1', 'm2')
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: packingQueryKey('t1') })
+  })
+})
+
+describe('useClaimPackingItem', () => {
+  it('claims then invalidates', async () => {
+    jest.mocked(api.claimPackingItem).mockResolvedValue()
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useClaimPackingItem('t1'), { wrapper })
+    result.current.mutate('p1')
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(api.claimPackingItem).toHaveBeenCalledWith('p1')
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: packingQueryKey('t1') })
+  })
+})
+
+describe('useNudgePackingItem', () => {
+  it('nudges without invalidating the packing query', async () => {
+    jest.mocked(api.nudgePackingItem).mockResolvedValue()
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useNudgePackingItem(), { wrapper })
+    result.current.mutate('p1')
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(api.nudgePackingItem).toHaveBeenCalledWith('p1')
+    expect(invalidate).not.toHaveBeenCalled()
   })
 })
 

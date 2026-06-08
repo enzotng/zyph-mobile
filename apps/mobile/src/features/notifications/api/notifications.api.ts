@@ -56,6 +56,7 @@ export type NotificationPreferenceInput = {
   expensesEnabled: boolean
   settlementsEnabled: boolean
   timelineEnabled: boolean
+  packingEnabled: boolean
 }
 
 // Upserts the full preferences row (the UI always sends the complete set), so a toggle can
@@ -73,6 +74,7 @@ export async function upsertNotificationPreferences(
         expenses_enabled: input.expensesEnabled,
         settlements_enabled: input.settlementsEnabled,
         timeline_enabled: input.timelineEnabled,
+        packing_enabled: input.packingEnabled,
       },
       { onConflict: 'user_id' },
     )

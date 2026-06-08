@@ -4,9 +4,12 @@ import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock
 import {
   addPackingItem,
   addPackingItems,
+  assignPackingItem,
+  claimPackingItem,
   deletePackingItem,
   generatePackingSuggestions,
   listPackingItems,
+  nudgePackingItem,
   updatePackingItem,
 } from './packing.api'
 
@@ -14,6 +17,7 @@ jest.mock('@/lib/supabase')
 
 const from = supabase.from as jest.Mock
 const invoke = supabase.functions.invoke as jest.Mock
+const rpc = supabase.rpc as jest.Mock
 
 const row = {
   id: 'p1',
@@ -105,18 +109,48 @@ describe('addPackingItems', () => {
 })
 
 describe('updatePackingItem', () => {
-  it('updates only the provided fields, mapped to columns', async () => {
+  it('updates only the provided fields, mapped to columns (never assignment)', async () => {
     const builder = makeQueryBuilder({ data: null, error: null })
     from.mockReturnValue(builder)
 
-    await updatePackingItem('p1', { packed: true, assignedMember: 'm3' })
-    expect(builder.update).toHaveBeenCalledWith({ packed: true, assigned_member: 'm3' })
+    await updatePackingItem('p1', { packed: true, label: 'Boots' })
+    expect(builder.update).toHaveBeenCalledWith({ packed: true, label: 'Boots' })
     expect(builder.eq).toHaveBeenCalledWith('id', 'p1')
   })
 
   it('throws on error', async () => {
     from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('up fail') }))
     await expect(updatePackingItem('p1', { quantity: 2 })).rejects.toThrow('up fail')
+  })
+})
+
+describe('assign/claim/nudge RPCs', () => {
+  it('assignPackingItem calls the rpc with snake_case params', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+    await assignPackingItem('p1', 'm2')
+    expect(rpc).toHaveBeenCalledWith('assign_packing_item', { _item_id: 'p1', _member_id: 'm2' })
+  })
+
+  it('assignPackingItem sends undefined member id when unassigning', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+    await assignPackingItem('p1', null)
+    expect(rpc).toHaveBeenCalledWith('assign_packing_item', {
+      _item_id: 'p1',
+      _member_id: undefined,
+    })
+  })
+
+  it('claimPackingItem and nudgePackingItem call their rpcs', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+    await claimPackingItem('p1')
+    expect(rpc).toHaveBeenCalledWith('claim_packing_item', { _item_id: 'p1' })
+    await nudgePackingItem('p1')
+    expect(rpc).toHaveBeenCalledWith('nudge_packing_item', { _item_id: 'p1' })
+  })
+
+  it('throws when the rpc errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('rpc fail') })
+    await expect(assignPackingItem('p1', 'm2')).rejects.toThrow('rpc fail')
   })
 })
 
