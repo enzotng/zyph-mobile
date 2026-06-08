@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useQueryClient } from '@tanstack/react-query'
-import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { memo, useMemo, useRef, useState } from 'react'
+import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
@@ -17,6 +17,8 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
+import { PackingReadiness } from '@/components/packing/packing-readiness'
+import { TravelerFilter } from '@/components/packing/traveler-filter'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import {
@@ -38,14 +40,20 @@ import {
   assignCommunalRoundRobin,
   assignPackingItem,
   categoryIcon,
+  duplicateSharedOwner,
+  filterByTraveler,
   groupByCategory,
+  groupReadiness,
   inferCategory,
+  memberPackingProgress,
   PACKING_CATEGORIES,
   type PackingCategory,
   type PackingItem,
   type PackingScope,
   packingQueryKey,
   type SuggestedItem,
+  UNASSIGNED_FILTER,
+  unassignedSharedCount,
   useAddPackingItem,
   useAddPackingItems,
   useAssignPackingItem,
@@ -178,7 +186,7 @@ export default function PackingScreen() {
 
   const { data: trip } = useTrip(tripId)
   const { data: items, isLoading, isError, refetch } = usePackingItems(tripId)
-  const { data: members } = useTripMembers(tripId)
+  const { data: members, refetch: refetchMembers } = useTripMembers(tripId)
   const { data: weather } = useTripWeather(trip)
   const { data: events } = useEvents(tripId)
 
@@ -207,9 +215,20 @@ export default function PackingScreen() {
   // Suggestion preview: the deduped suggestions + which ones are checked for adding.
   const [preview, setPreview] = useState<SuggestedItem[] | null>(null)
   const [picked, setPicked] = useState<Set<number>>(new Set())
+  // Traveler filter for the shared list: null = everyone, a member id, or UNASSIGNED_FILTER.
+  const [travelerFilter, setTravelerFilter] = useState<string | null>(null)
   // Focused only once the add sheet has slid up (see BottomSheet onOpened), so the keyboard
   // does not race the entrance.
   const addLabelRef = useRef<TextInput>(null)
+
+  // Refetch on focus so a co-editor's assignment/claim shows up when you return to the tab
+  // (the live 2-phone demo) without realtime.
+  useFocusEffect(
+    useCallback(() => {
+      void refetch()
+      void refetchMembers()
+    }, [refetch, refetchMembers]),
+  )
 
   const nameById = useMemo(
     () => new Map((members ?? []).map((m) => [m.id, m.display_name ?? t('common.member')])),
@@ -222,8 +241,32 @@ export default function PackingScreen() {
   )
 
   const scoped = useMemo(() => (items ?? []).filter((i) => i.scope === scope), [items, scope])
-  const groups = useMemo(() => groupByCategory(scoped), [scoped])
   const packedCount = useMemo(() => scoped.filter((i) => i.packed).length, [scoped])
+
+  // Group-readiness is computed from the FULL shared list (scoped), never the filtered view, so
+  // filtering to one traveler can't make the group look "ready".
+  const progress = useMemo(() => memberPackingProgress(scoped, members ?? []), [scoped, members])
+  const readiness = useMemo(() => groupReadiness(scoped), [scoped])
+  const unassignedCount = useMemo(() => unassignedSharedCount(scoped), [scoped])
+
+  // Drop a stale traveler filter (e.g. the member left) so the list never silently shows empty.
+  const safeFilter = useMemo(() => {
+    if (
+      travelerFilter &&
+      travelerFilter !== UNASSIGNED_FILTER &&
+      !(members ?? []).some((m) => m.id === travelerFilter)
+    ) {
+      return null
+    }
+    return travelerFilter
+  }, [travelerFilter, members])
+
+  // The list is grouped from the FILTERED view; readiness above stays on the full list.
+  const visible = useMemo(
+    () => filterByTraveler(scoped, scope === 'shared' ? safeFilter : null),
+    [scoped, safeFilter, scope],
+  )
+  const groups = useMemo(() => groupByCategory(visible), [visible])
 
   // Per-day forecast text for the LLM ("date condition max/min"), so Zo can justify items by the
   // actual day (e.g. "rain jacket - rain Tue") instead of reasoning from a flat min-max range.
@@ -241,6 +284,9 @@ export default function PackingScreen() {
 
   const hasDestination = Boolean(trip?.destination)
   const noEvents = (events ?? []).length === 0
+  // Non-blocking warning if the item being typed already exists on the shared list (any owner).
+  const dupOwner =
+    scope === 'shared' && label.trim() ? duplicateSharedOwner(items ?? [], label, nameById) : null
   // Empty list -> always show the bootstrap controls; otherwise gate them behind the toggle.
   const showAiControls = aiExpanded || scoped.length === 0
   const aiBusy = suggest.isPending
@@ -494,6 +540,7 @@ export default function PackingScreen() {
           // Drop any open suggestion preview so picks can't land in the wrong list.
           setPreview(null)
           setPicked(new Set())
+          setTravelerFilter(null)
         }}
         options={[
           { value: 'shared', label: t('packing.shared') },
@@ -630,6 +677,29 @@ export default function PackingScreen() {
           />
         </Surface>
       )}
+
+      {scope === 'shared' &&
+      !isLoading &&
+      !isError &&
+      scoped.length > 0 &&
+      (members?.length ?? 0) >= 1 ? (
+        <Animated.View entering={FadeInDown.duration(280).delay(60)} layout={LinearTransition}>
+          <PackingReadiness
+            progress={progress}
+            unassignedCount={unassignedCount}
+            readyPercent={readiness.percent}
+            onPressMember={(id) => setTravelerFilter(id)}
+          />
+        </Animated.View>
+      ) : null}
+
+      {scope === 'shared' && scoped.length > 0 && (members?.length ?? 0) >= 2 ? (
+        <TravelerFilter
+          members={(members ?? []).map((m) => ({ id: m.id, display_name: m.display_name }))}
+          selected={safeFilter}
+          onChange={setTravelerFilter}
+        />
+      ) : null}
 
       {isLoading ? (
         <PackingSkeleton />
@@ -778,13 +848,25 @@ export default function PackingScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <TextField
-            ref={addLabelRef}
-            label={t('packing.itemLabel')}
-            value={label}
-            onChangeText={onLabelChange}
-            placeholder={t('packing.itemPlaceholder')}
-          />
+          <View style={styles.addLabelBlock}>
+            <TextField
+              ref={addLabelRef}
+              label={t('packing.itemLabel')}
+              value={label}
+              onChangeText={onLabelChange}
+              placeholder={t('packing.itemPlaceholder')}
+            />
+            {dupOwner ? (
+              <View style={styles.dupWarn}>
+                <Ionicons name="alert-circle-outline" size={15} color={theme.colors.destructive} />
+                <Text style={styles.dupWarnText}>
+                  {dupOwner.name
+                    ? t('packing.dupWarning', { name: dupOwner.name, label: label.trim() })
+                    : t('packing.dupWarningUnowned')}
+                </Text>
+              </View>
+            ) : null}
+          </View>
 
           <View>
             <Text style={styles.fieldLabel}>{t('packing.category')}</Text>
@@ -1094,6 +1176,20 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   sheet: {
     gap: theme.gap(4),
+  },
+  addLabelBlock: {
+    gap: theme.gap(1.5),
+  },
+  dupWarn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(1.5),
+  },
+  dupWarnText: {
+    flex: 1,
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.destructive,
   },
   fieldLabel: {
     fontFamily: theme.fonts.sans.semibold,
