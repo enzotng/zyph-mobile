@@ -1,4 +1,10 @@
-import { conditionIcon, resolveForecastRange, weatherCodeToCondition } from './schemas'
+import {
+  conditionIcon,
+  forecastToPrompt,
+  resolveForecastRange,
+  type TripWeather,
+  weatherCodeToCondition,
+} from './schemas'
 
 describe('weatherCodeToCondition', () => {
   it('maps WMO codes to coarse conditions', () => {
@@ -26,6 +32,39 @@ describe('conditionIcon', () => {
     expect(conditionIcon('snow')).toBe('snow-outline')
     expect(conditionIcon('storm')).toBe('thunderstorm-outline')
     expect(conditionIcon('rain')).toBe('rainy-outline')
+  })
+})
+
+describe('forecastToPrompt', () => {
+  const weather: TripWeather = {
+    place: 'Lisbon',
+    mode: 'trip',
+    days: [
+      { date: '2026-06-20', condition: 'rain', tempMaxC: 18.4, tempMinC: 11.2 },
+      { date: '2026-06-21', condition: 'clear', tempMaxC: 24.6, tempMinC: 14.1 },
+    ],
+  }
+
+  it('renders a compact per-day line with rounded temps', () => {
+    expect(forecastToPrompt(weather)).toBe('2026-06-20 rain 18/11C; 2026-06-21 clear 25/14C')
+  })
+
+  it('caps the number of days', () => {
+    const many: TripWeather = {
+      ...weather,
+      days: Array.from({ length: 20 }, (_, i) => ({
+        date: `2026-06-${String(i + 1).padStart(2, '0')}`,
+        condition: 'clear' as const,
+        tempMaxC: 20,
+        tempMinC: 10,
+      })),
+    }
+    expect(forecastToPrompt(many, 5).split(';')).toHaveLength(5)
+  })
+
+  it('is empty when there is no forecast', () => {
+    expect(forecastToPrompt(null)).toBe('')
+    expect(forecastToPrompt({ place: 'X', mode: 'outlook', days: [] })).toBe('')
   })
 })
 

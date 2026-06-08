@@ -1,10 +1,12 @@
 import {
+  applyPackLight,
   categoryIcon,
   dedupeSuggestions,
   groupByCategory,
   inferCategory,
   PACKING_CATEGORIES,
   type PackingItem,
+  type SuggestedItem,
 } from './schemas'
 
 function item(category: string, label: string): PackingItem {
@@ -65,6 +67,40 @@ describe('inferCategory', () => {
   it('falls back to other for unknown labels', () => {
     expect(inferCategory('Licorne')).toBe('other')
     expect(inferCategory('')).toBe('other')
+  })
+})
+
+describe('applyPackLight', () => {
+  const sug = (label: string, category: string, quantity: number): SuggestedItem => ({
+    label,
+    category,
+    quantity,
+  })
+
+  it('caps repeat-wear clothing to a laundry-aware count', () => {
+    const result = applyPackLight(
+      [sug('T-shirts', 'clothes', 12), sug('Socks', 'clothes', 14), sug('Boxers', 'clothes', 10)],
+      10,
+    )
+    expect(result.every((r) => r.quantity <= 5)).toBe(true)
+  })
+
+  it('uses the trip length when shorter than the cap', () => {
+    const [socks] = applyPackLight([sug('Socks', 'clothes', 8)], 3)
+    expect(socks.quantity).toBe(3)
+  })
+
+  it('never raises a quantity and leaves one-off / non-clothing items alone', () => {
+    const result = applyPackLight(
+      [sug('Socks', 'clothes', 2), sug('Jacket', 'clothes', 1), sug('Sunscreen', 'toiletries', 9)],
+      10,
+    )
+    expect(result.map((r) => r.quantity)).toEqual([2, 1, 9])
+  })
+
+  it('defaults the cap when the trip length is unknown', () => {
+    const [tops] = applyPackLight([sug('Tops', 'clothes', 12)], null)
+    expect(tops.quantity).toBe(5)
   })
 })
 

@@ -1,9 +1,17 @@
 import { Ionicons } from '@expo/vector-icons'
-import { useGlobalSearchParams } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useGlobalSearchParams, useRouter } from 'expo-router'
+import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, Pressable, Text, View } from 'react-native'
-import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated'
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native'
+import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -13,15 +21,19 @@ import { TextField } from '@/components/text-field'
 import {
   Avatar,
   BottomSheet,
+  Chip,
   EmptyState,
+  ErrorState,
   ListRow,
   SectionTitle,
   Segmented,
-  Spinner,
+  Skeleton,
+  Surface,
 } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import { useTripMembers } from '@/features/group'
 import {
+  applyPackLight,
   categoryIcon,
   groupByCategory,
   inferCategory,
@@ -39,12 +51,25 @@ import {
 } from '@/features/packing'
 import { useEvents } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
-import { useTripWeather } from '@/features/weather'
-import { withAlpha } from '@/lib/color'
+import { forecastToPrompt, useTripWeather, WeatherCard } from '@/features/weather'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
 type Glyph = keyof typeof Ionicons.glyphMap
+
+// One-tap activity seeds shown when a trip has no planned events yet, so Zo can still build a
+// relevant list. The hint is sent to the LLM (English is fine - it answers in the user locale);
+// the label is localised via `packing.seeds.<key>`.
+const ACTIVITY_SEEDS = [
+  { key: 'beach', icon: 'sunny-outline', hint: 'beach holiday, swimming and sun' },
+  { key: 'hike', icon: 'trail-sign-outline', hint: 'hiking and outdoors' },
+  { key: 'city', icon: 'business-outline', hint: 'city break and sightseeing' },
+  { key: 'business', icon: 'briefcase-outline', hint: 'business trip with meetings' },
+  { key: 'ski', icon: 'snow-outline', hint: 'ski and snow, cold weather' },
+  { key: 'festival', icon: 'musical-notes-outline', hint: 'festival and camping' },
+] as const
+
+const SKELETON_ROWS = [0, 1, 2, 3, 4]
 
 function tripDays(start: string | null, end: string | null): number | null {
   if (!start || !end) {
@@ -54,16 +79,97 @@ function tripDays(start: string | null, end: string | null): number | null {
   return Math.max(1, Math.round(ms / 86_400_000) + 1)
 }
 
+// Loading placeholder shaped like the packing content (a title bar + a few rows), matching the
+// pois/expenses skeletons so the load->list transition crossfades instead of snapping.
+function PackingSkeleton() {
+  const { t } = useTranslation()
+  const { theme } = useUnistyles()
+  return (
+    <Animated.View
+      entering={FadeIn.duration(280)}
+      style={styles.skeleton}
+      accessibilityRole="progressbar"
+      accessibilityLabel={t('common.loading')}
+    >
+      <Skeleton width="40%" height={18} radius={theme.radius.sm} />
+      {SKELETON_ROWS.map((row) => (
+        <View key={row} style={styles.skeletonRow}>
+          <Skeleton width={38} height={38} radius={theme.radius.md} />
+          <View style={styles.skeletonText}>
+            <Skeleton width="55%" height={15} radius={theme.radius.sm} />
+            <Skeleton width="30%" height={12} radius={theme.radius.sm} />
+          </View>
+        </View>
+      ))}
+    </Animated.View>
+  )
+}
+
+// The "Refine with Zo" input owns its own text state so typing never re-renders the packing
+// list (which would reconcile every row on each keystroke).
+const RefineField = memo(function RefineField({
+  onSubmit,
+  disabled,
+  busy,
+}: {
+  onSubmit: (text: string) => void
+  disabled: boolean
+  busy: boolean
+}) {
+  const { t } = useTranslation()
+  const { theme } = useUnistyles()
+  const [value, setValue] = useState('')
+  const off = value.trim().length === 0 || disabled || busy
+
+  return (
+    <View style={styles.refineRow}>
+      <View style={styles.refineInput}>
+        <TextField
+          value={value}
+          onChangeText={setValue}
+          placeholder={t('packing.refinePlaceholder')}
+          accessibilityLabel={t('packing.refine')}
+          autoCorrect={false}
+        />
+      </View>
+      <Pressable
+        onPress={() => {
+          if (!off) {
+            onSubmit(value.trim())
+            setValue('')
+          }
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={t('packing.refine')}
+        disabled={off}
+        style={({ pressed }) => [
+          styles.refineSend,
+          { backgroundColor: theme.colors.primary },
+          off && styles.refineSendOff,
+          pressed && styles.pressed,
+        ]}
+      >
+        {busy ? (
+          <ActivityIndicator size="small" color={theme.colors.primaryForeground} />
+        ) : (
+          <Ionicons name="sparkles" size={18} color={theme.colors.primaryForeground} />
+        )}
+      </Pressable>
+    </View>
+  )
+})
+
 export default function PackingScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
+  const router = useRouter()
   const { t, i18n } = useTranslation()
   const { theme } = useUnistyles()
   const { session } = useAuth()
   const userId = session?.user.id ?? ''
 
   const { data: trip } = useTrip(tripId)
-  const { data: items, isLoading } = usePackingItems(tripId)
+  const { data: items, isLoading, isError, refetch } = usePackingItems(tripId)
   const { data: members } = useTripMembers(tripId)
   const { data: weather } = useTripWeather(trip)
   const { data: events } = useEvents(tripId)
@@ -81,10 +187,18 @@ export default function PackingScreen() {
   const [category, setCategory] = useState<PackingCategory>('clothes')
   const [categoryTouched, setCategoryTouched] = useState(false)
   const [quantity, setQuantity] = useState(1)
-  const [hint, setHint] = useState('')
+  const [packLight, setPackLight] = useState(false)
+  // Which AI trigger is running, so only that control shows progress during the LLM call.
+  const [busy, setBusy] = useState<string | null>(null)
+  // The AI options panel is open by default while the list is empty (you need it to bootstrap),
+  // and collapsible once items exist so the list isn't pushed below the fold.
+  const [aiExpanded, setAiExpanded] = useState(false)
   // Suggestion preview: the deduped suggestions + which ones are checked for adding.
   const [preview, setPreview] = useState<SuggestedItem[] | null>(null)
   const [picked, setPicked] = useState<Set<number>>(new Set())
+  // Focused only once the add sheet has slid up (see BottomSheet onOpened), so the keyboard
+  // does not race the entrance.
+  const addLabelRef = useRef<TextInput>(null)
 
   const nameById = useMemo(
     () => new Map((members ?? []).map((m) => [m.id, m.display_name ?? t('common.member')])),
@@ -93,16 +207,11 @@ export default function PackingScreen() {
 
   const scoped = useMemo(() => (items ?? []).filter((i) => i.scope === scope), [items, scope])
   const groups = useMemo(() => groupByCategory(scoped), [scoped])
-  const packedCount = scoped.filter((i) => i.packed).length
+  const packedCount = useMemo(() => scoped.filter((i) => i.packed).length, [scoped])
 
-  const weatherSummary = useMemo(() => {
-    if (!weather?.days?.length) {
-      return ''
-    }
-    const mins = weather.days.map((d) => d.tempMinC)
-    const maxs = weather.days.map((d) => d.tempMaxC)
-    return `${Math.min(...mins)}-${Math.max(...maxs)}°C`
-  }, [weather])
+  // Per-day forecast text for the LLM ("date condition max/min"), so Zo can justify items by the
+  // actual day (e.g. "rain jacket - rain Tue") instead of reasoning from a flat min-max range.
+  const weatherText = useMemo(() => forecastToPrompt(weather), [weather])
 
   // Compact summary of the planned events, so the AI list matches the actual activities.
   const activities = useMemo(
@@ -113,6 +222,12 @@ export default function PackingScreen() {
         .join('\n'),
     [events],
   )
+
+  const hasDestination = Boolean(trip?.destination)
+  const noEvents = (events ?? []).length === 0
+  // Empty list -> always show the bootstrap controls; otherwise gate them behind the toggle.
+  const showAiControls = aiExpanded || scoped.length === 0
+  const aiBusy = suggest.isPending
 
   function openAdd() {
     setLabel('')
@@ -150,28 +265,38 @@ export default function PackingScreen() {
     }
   }
 
-  // Generate / gaps / refine all run a suggestion and open the preview sheet so the user picks.
-  function runSuggest(mode: 'generate' | 'gaps', refine?: string) {
+  // Generate / gaps / refine / seeds all run a suggestion and open the preview sheet. `source`
+  // labels which control fired, so only it shows a busy state.
+  function runSuggest(mode: 'generate' | 'gaps', source: string, refine?: string) {
     if (!trip?.destination || !userId || isLoading || suggest.isPending) {
       return
     }
     haptics.light()
+    setBusy(source)
+    const days = tripDays(trip.start_date, trip.end_date)
     suggest.mutate(
       {
         destination: trip.destination,
-        days: tripDays(trip.start_date, trip.end_date),
-        weather: weatherSummary,
+        days,
+        weather: weatherText,
         language: i18n.language === 'fr' ? 'fr' : 'en',
         activities,
         hint: refine,
         mode,
         existing: scoped.map((i) => ({ label: i.label })),
+        travelers: members?.length ?? 1,
+        shared: scope === 'shared',
+        packLight,
       },
       {
-        onSuccess: (result) => {
-          setHint('')
+        onSuccess: (suggestions) => {
+          // Deterministic pack-light: guarantees repeat-wear caps even if the LLM over-suggests.
+          const result = packLight ? applyPackLight(suggestions, days) : suggestions
           if (result.length === 0) {
-            Alert.alert(t('packing.generate'), t('packing.generatedNone'))
+            Alert.alert(
+              t('packing.generate'),
+              mode === 'gaps' ? t('packing.gapsComplete') : t('packing.generatedNone'),
+            )
             return
           }
           setPreview(result)
@@ -183,8 +308,16 @@ export default function PackingScreen() {
             error instanceof Error ? error.message : t('common.tryAgain'),
           )
         },
+        onSettled: () => setBusy(null),
       },
     )
+  }
+
+  function togglePackLight() {
+    setPackLight((v) => !v)
+    // Drop a stale preview so its quantities can't bypass the new pack-light setting.
+    setPreview(null)
+    setPicked(new Set())
   }
 
   function togglePick(index: number) {
@@ -199,6 +332,14 @@ export default function PackingScreen() {
     })
   }
 
+  function toggleAllPicks() {
+    setPicked((prev) =>
+      prev.size === (preview?.length ?? 0)
+        ? new Set()
+        : new Set((preview ?? []).map((_, index) => index)),
+    )
+  }
+
   function confirmPreview() {
     if (!preview || !userId) {
       return
@@ -210,7 +351,10 @@ export default function PackingScreen() {
         scope,
         ownerId: userId,
         label: s.label,
-        category: s.category as PackingCategory,
+        // Coerce an off-list LLM category to 'other' so the insert never fails the DB check.
+        category: (PACKING_CATEGORIES as readonly string[]).includes(s.category)
+          ? (s.category as PackingCategory)
+          : 'other',
         quantity: s.quantity,
       })),
       {
@@ -229,12 +373,32 @@ export default function PackingScreen() {
     setAssignTarget(null)
   }
 
+  function confirmDelete(item: PackingItem) {
+    Alert.alert(t('packing.deleteTitle'), t('packing.deleteBody', { label: item.label }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteItem.mutateAsync(item.id)
+          } catch (error) {
+            Alert.alert(
+              t('packing.deleteError'),
+              error instanceof Error ? error.message : t('common.tryAgain'),
+            )
+          }
+        },
+      },
+    ])
+  }
+
   const addButton = (
     <Pressable
       onPress={openAdd}
       accessibilityRole="button"
       accessibilityLabel={t('packing.addItem')}
-      hitSlop={8}
+      hitSlop={10}
       style={({ pressed }) => [pressed && styles.pressed]}
     >
       <Ionicons name="add" size={26} color={theme.colors.foreground} />
@@ -257,65 +421,139 @@ export default function PackingScreen() {
         ]}
       />
 
-      <View style={styles.toolbar}>
-        <Text style={styles.progress}>
-          {t('packing.progress', { packed: packedCount, total: scoped.length })}
-        </Text>
-        <View style={styles.toolbarActions}>
+      {weather?.days?.length ? (
+        <Animated.View entering={FadeInDown.duration(320).springify()} layout={LinearTransition}>
+          <WeatherCard weather={weather} />
+        </Animated.View>
+      ) : null}
+
+      {hasDestination ? (
+        <Animated.View entering={FadeInDown.duration(280).delay(40)} style={styles.aiZone}>
+          <View style={styles.aiHeader}>
+            <Text style={styles.progress}>
+              {t('packing.progress', { packed: packedCount, total: scoped.length })}
+            </Text>
+            <View style={styles.aiHeaderActions}>
+              <Button
+                label={busy === 'generate' ? t('packing.generating') : t('packing.generate')}
+                icon="sparkles"
+                variant="secondary"
+                size="sm"
+                block={false}
+                disabled={isLoading || aiBusy}
+                onPress={() => runSuggest('generate', 'generate')}
+              />
+              <Button
+                label={t('packing.gaps')}
+                icon="search"
+                variant="ghost"
+                size="sm"
+                block={false}
+                disabled={isLoading || aiBusy || scoped.length === 0}
+                onPress={() => runSuggest('gaps', 'gaps')}
+              />
+              {scoped.length > 0 ? (
+                <Pressable
+                  onPress={() => setAiExpanded((v) => !v)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('packing.aiOptions')}
+                  accessibilityState={{ expanded: aiExpanded }}
+                  hitSlop={10}
+                  style={({ pressed }) => [styles.chevron, pressed && styles.pressed]}
+                >
+                  <Ionicons
+                    name={aiExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color={theme.colors.muted}
+                  />
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+
+          {showAiControls ? (
+            <Animated.View
+              entering={FadeInDown.duration(240)}
+              exiting={FadeOut.duration(160)}
+              layout={LinearTransition}
+              style={styles.aiControls}
+            >
+              <Chip
+                label={t('packing.packLight')}
+                icon="leaf-outline"
+                selected={packLight}
+                accessibilityLabel={`${t('packing.packLight')}. ${t('packing.packLightHint')}`}
+                onPress={togglePackLight}
+              />
+              <Text style={styles.hint}>{t('packing.packLightHint')}</Text>
+
+              <RefineField
+                onSubmit={(text) => runSuggest('generate', 'refine', text)}
+                disabled={isLoading || aiBusy}
+                busy={busy === 'refine'}
+              />
+
+              {noEvents ? (
+                <View style={styles.seedsBlock}>
+                  <Text style={styles.hint}>{t('packing.seedsHint')}</Text>
+                  <View style={styles.seeds}>
+                    {ACTIVITY_SEEDS.map((seed) => (
+                      <Chip
+                        key={seed.key}
+                        label={t(`packing.seeds.${seed.key}`)}
+                        icon={seed.icon as Glyph}
+                        selected={busy === `seed:${seed.key}`}
+                        accessibilityLabel={t('packing.generateFor', {
+                          activity: t(`packing.seeds.${seed.key}`),
+                        })}
+                        onPress={() => runSuggest('generate', `seed:${seed.key}`, seed.hint)}
+                      />
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+            </Animated.View>
+          ) : null}
+        </Animated.View>
+      ) : (
+        <Surface
+          color={theme.colors.card}
+          borderColor={theme.colors.border}
+          borderWidth={1}
+          radius={theme.radius.lg}
+          style={styles.noDestination}
+        >
+          <Ionicons
+            name="sparkles-outline"
+            size={22}
+            color={theme.colors.muted}
+            importantForAccessibility="no"
+          />
+          <Text style={styles.noDestinationText}>{t('packing.needDestination')}</Text>
           <Button
-            label={suggest.isPending ? t('packing.generating') : t('packing.generate')}
-            icon="sparkles"
+            label={t('packing.editTrip')}
             variant="secondary"
             size="sm"
             block={false}
-            disabled={!trip?.destination || isLoading || suggest.isPending}
-            onPress={() => runSuggest('generate')}
+            onPress={() => router.push({ pathname: '/trips/[id]/edit', params: { id: tripId } })}
           />
-          <Button
-            label={t('packing.gaps')}
-            icon="search"
-            variant="ghost"
-            size="sm"
-            block={false}
-            disabled={!trip?.destination || isLoading || suggest.isPending}
-            onPress={() => runSuggest('gaps')}
-          />
-        </View>
-      </View>
-
-      {trip?.destination ? (
-        <View style={styles.refineRow}>
-          <View style={styles.refineInput}>
-            <TextField
-              value={hint}
-              onChangeText={setHint}
-              placeholder={t('packing.refinePlaceholder')}
-              autoCorrect={false}
-            />
-          </View>
-          <Pressable
-            onPress={() => runSuggest('generate', hint.trim() || undefined)}
-            accessibilityRole="button"
-            accessibilityLabel={t('packing.refine')}
-            disabled={hint.trim().length === 0 || suggest.isPending}
-            style={({ pressed }) => [
-              styles.refineSend,
-              { backgroundColor: theme.colors.primary },
-              (hint.trim().length === 0 || suggest.isPending) && styles.refineSendOff,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Ionicons name="sparkles" size={18} color={theme.colors.primaryForeground} />
-          </Pressable>
-        </View>
-      ) : null}
+        </Surface>
+      )}
 
       {isLoading ? (
-        <View style={styles.center}>
-          <Spinner />
-        </View>
+        <PackingSkeleton />
+      ) : isError ? (
+        <Animated.View entering={FadeIn.duration(220)} style={styles.stateWrap}>
+          <ErrorState
+            icon="cloud-offline-outline"
+            title={t('packing.loadErrorTitle')}
+            body={t('packing.loadErrorBody')}
+            retryLabel={t('common.retry')}
+            onRetry={() => void refetch()}
+          />
+        </Animated.View>
       ) : scoped.length === 0 ? (
-        <View style={styles.emptyWrap}>
+        <Animated.View entering={FadeIn.duration(220)} style={styles.stateWrap}>
           <EmptyState
             icon="bag-handle-outline"
             title={t('packing.emptyTitle')}
@@ -323,12 +561,19 @@ export default function PackingScreen() {
             cta={t('packing.addItem')}
             onCta={openAdd}
           />
-        </View>
+        </Animated.View>
       ) : (
         groups.map((group) => (
-          <View key={group.category} style={styles.section}>
+          // Animated so removing the last item in a category fades the whole section out
+          // instead of unmounting instantly (which would cut the row's own exit short).
+          <Animated.View
+            key={group.category}
+            style={styles.section}
+            exiting={FadeOut.duration(160)}
+            layout={LinearTransition}
+          >
             <SectionTitle>{t(`packing.categories.${group.category}`)}</SectionTitle>
-            <Animated.View entering={FadeIn.duration(250)}>
+            <Animated.View entering={FadeIn.duration(280)}>
               {group.items.map((item, index) => {
                 const assignedName = item.assigned_member
                   ? nameById.get(item.assigned_member)
@@ -343,6 +588,7 @@ export default function PackingScreen() {
                   <Animated.View
                     key={item.id}
                     entering={FadeInDown.duration(220).delay(Math.min(index, 6) * 35)}
+                    exiting={FadeOut.duration(160)}
                     layout={LinearTransition}
                   >
                     <ListRow
@@ -350,6 +596,8 @@ export default function PackingScreen() {
                       iconColor={item.packed ? theme.colors.success : theme.colors.muted}
                       title={item.label}
                       subtitle={subtitleParts.length > 0 ? subtitleParts.join(' · ') : undefined}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: item.packed }}
                       onPress={() => {
                         haptics.selection()
                         updateItem.mutate({ id: item.id, patch: { packed: !item.packed } })
@@ -361,8 +609,8 @@ export default function PackingScreen() {
                             <Pressable
                               onPress={() => setAssignTarget(item)}
                               accessibilityRole="button"
-                              accessibilityLabel={t('packing.assignTitle')}
-                              hitSlop={6}
+                              accessibilityLabel={`${t('packing.assignTitle')}, ${item.label}`}
+                              hitSlop={11}
                               style={({ pressed }) => [pressed && styles.pressed]}
                             >
                               {assignedName ? (
@@ -377,10 +625,10 @@ export default function PackingScreen() {
                             </Pressable>
                           ) : null}
                           <Pressable
-                            onPress={() => deleteItem.mutate(item.id)}
+                            onPress={() => confirmDelete(item)}
                             accessibilityRole="button"
-                            accessibilityLabel={t('packing.deleteItem')}
-                            hitSlop={6}
+                            accessibilityLabel={`${t('packing.deleteItem')}, ${item.label}`}
+                            hitSlop={11}
                             style={({ pressed }) => [pressed && styles.pressed]}
                           >
                             <Ionicons
@@ -396,63 +644,47 @@ export default function PackingScreen() {
                 )
               })}
             </Animated.View>
-          </View>
+          </Animated.View>
         ))
       )}
 
       <View style={styles.spacer} />
 
       {/* Add item */}
-      <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title={t('packing.addItem')}>
-        <View style={styles.sheet}>
+      <BottomSheet
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        title={t('packing.addItem')}
+        onOpened={() => addLabelRef.current?.focus()}
+      >
+        <ScrollView
+          contentContainerStyle={styles.sheet}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <TextField
+            ref={addLabelRef}
             label={t('packing.itemLabel')}
             value={label}
             onChangeText={onLabelChange}
             placeholder={t('packing.itemPlaceholder')}
-            autoFocus
           />
 
           <View>
             <Text style={styles.fieldLabel}>{t('packing.category')}</Text>
             <View style={styles.chips}>
-              {PACKING_CATEGORIES.map((c) => {
-                const selected = c === category
-                return (
-                  <Pressable
-                    key={c}
-                    onPress={() => {
-                      setCategoryTouched(true)
-                      setCategory(c)
-                    }}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    style={[
-                      styles.chip,
-                      {
-                        backgroundColor: selected
-                          ? withAlpha(theme.colors.primary, 0.14)
-                          : theme.colors.card,
-                        borderColor: selected ? theme.colors.primary : theme.colors.border,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={categoryIcon(c) as Glyph}
-                      size={15}
-                      color={selected ? theme.colors.primary : theme.colors.muted}
-                    />
-                    <Text
-                      style={[
-                        styles.chipText,
-                        { color: selected ? theme.colors.primary : theme.colors.foreground },
-                      ]}
-                    >
-                      {t(`packing.categories.${c}`)}
-                    </Text>
-                  </Pressable>
-                )
-              })}
+              {PACKING_CATEGORIES.map((c) => (
+                <Chip
+                  key={c}
+                  label={t(`packing.categories.${c}`)}
+                  icon={categoryIcon(c) as Glyph}
+                  selected={c === category}
+                  onPress={() => {
+                    setCategoryTouched(true)
+                    setCategory(c)
+                  }}
+                />
+              ))}
             </View>
           </View>
 
@@ -462,16 +694,18 @@ export default function PackingScreen() {
               <Pressable
                 onPress={() => setQuantity((q) => Math.max(1, q - 1))}
                 accessibilityRole="button"
-                accessibilityLabel="-"
+                accessibilityLabel={t('common.decrease')}
                 style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}
               >
                 <Ionicons name="remove" size={18} color={theme.colors.foreground} />
               </Pressable>
-              <Text style={styles.qtyValue}>{quantity}</Text>
+              <Text style={styles.qtyValue} accessibilityLabel={String(quantity)}>
+                {quantity}
+              </Text>
               <Pressable
                 onPress={() => setQuantity((q) => Math.min(99, q + 1))}
                 accessibilityRole="button"
-                accessibilityLabel="+"
+                accessibilityLabel={t('common.increase')}
                 style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}
               >
                 <Ionicons name="add" size={18} color={theme.colors.foreground} />
@@ -484,7 +718,7 @@ export default function PackingScreen() {
             onPress={() => void submitAdd()}
             disabled={label.trim().length === 0 || addItem.isPending}
           />
-        </View>
+        </ScrollView>
       </BottomSheet>
 
       {/* Assign a member (shared items) */}
@@ -526,42 +760,65 @@ export default function PackingScreen() {
         title={t('packing.previewTitle')}
       >
         <View style={styles.sheet}>
-          <View>
+          <Pressable
+            onPress={toggleAllPicks}
+            accessibilityRole="button"
+            accessibilityLabel={
+              picked.size === (preview?.length ?? 0) ? t('common.clear') : t('common.selectAll')
+            }
+            style={({ pressed }) => [styles.previewHeader, pressed && styles.pressed]}
+          >
+            <Text style={styles.previewCount}>
+              {t('packing.addSelected', { count: picked.size })}
+            </Text>
+            <Text style={styles.previewToggle}>
+              {picked.size === (preview?.length ?? 0) ? t('common.clear') : t('common.selectAll')}
+            </Text>
+          </Pressable>
+
+          <ScrollView style={styles.previewScroll} showsVerticalScrollIndicator={false}>
             {(preview ?? []).map((s, index) => {
               const on = picked.has(index)
               return (
-                <Pressable
+                <Animated.View
                   key={`${s.label}-${index}`}
-                  onPress={() => togglePick(index)}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: on }}
-                  style={({ pressed }) => [styles.previewRow, pressed && styles.pressed]}
+                  entering={FadeInDown.duration(220).delay(Math.min(index, 8) * 30)}
                 >
-                  <Ionicons
-                    name={on ? 'checkbox' : 'square-outline'}
-                    size={22}
-                    color={on ? theme.colors.primary : theme.colors.muted}
-                  />
-                  <View style={styles.previewInfo}>
-                    <Text style={styles.previewLabel} numberOfLines={1}>
-                      {s.label}
-                      {s.quantity > 1 ? ` x${s.quantity}` : ''}
-                    </Text>
-                    {s.reason ? (
-                      <Text style={styles.previewReason} numberOfLines={1}>
-                        {s.reason}
+                  <Pressable
+                    onPress={() => togglePick(index)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: on }}
+                    accessibilityLabel={s.label}
+                    style={({ pressed }) => [styles.previewRow, pressed && styles.pressed]}
+                  >
+                    <Ionicons
+                      name={on ? 'checkbox' : 'square-outline'}
+                      size={22}
+                      color={on ? theme.colors.primary : theme.colors.muted}
+                    />
+                    <View style={styles.previewInfo}>
+                      <Text style={styles.previewLabel} numberOfLines={1}>
+                        {s.label}
+                        {s.quantity > 1 ? ` x${s.quantity}` : ''}
                       </Text>
-                    ) : null}
-                  </View>
-                  <Ionicons
-                    name={categoryIcon(s.category) as Glyph}
-                    size={16}
-                    color={theme.colors.muted}
-                  />
-                </Pressable>
+                      {s.reason ? (
+                        <Text style={styles.previewReason} numberOfLines={1}>
+                          {s.reason}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Ionicons
+                      name={categoryIcon(s.category) as Glyph}
+                      size={16}
+                      color={theme.colors.muted}
+                      importantForAccessibility="no"
+                    />
+                  </Pressable>
+                </Animated.View>
               )
             })}
-          </View>
+          </ScrollView>
+
           <Button
             label={t('packing.addSelected', { count: picked.size })}
             onPress={confirmPreview}
@@ -573,13 +830,26 @@ export default function PackingScreen() {
   )
 }
 
-const styles = StyleSheet.create((theme) => ({
-  toolbar: {
+const styles = StyleSheet.create((theme, rt) => ({
+  aiZone: {
+    gap: theme.gap(2.5),
+  },
+  aiHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: theme.gap(3),
-    marginTop: theme.gap(3),
+    gap: theme.gap(2),
+  },
+  aiHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(1),
+  },
+  chevron: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   progress: {
     fontFamily: theme.fonts.sans.medium,
@@ -587,16 +857,18 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
   },
-  toolbarActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(1),
+  aiControls: {
+    gap: theme.gap(2),
+  },
+  hint: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
   },
   refineRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(2),
-    marginTop: theme.gap(2),
   },
   refineInput: {
     flex: 1,
@@ -609,7 +881,48 @@ const styles = StyleSheet.create((theme) => ({
     borderRadius: theme.radius.md,
   },
   refineSendOff: {
-    opacity: 0.4,
+    opacity: 0.5,
+  },
+  seedsBlock: {
+    gap: theme.gap(2),
+  },
+  seeds: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.gap(2),
+  },
+  noDestination: {
+    alignItems: 'center',
+    gap: theme.gap(2.5),
+    paddingVertical: theme.gap(5),
+    paddingHorizontal: theme.gap(4),
+  },
+  noDestinationText: {
+    textAlign: 'center',
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+    maxWidth: 260,
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  previewCount: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foreground,
+  },
+  previewToggle: {
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
+  },
+  previewScroll: {
+    maxHeight: rt.screen.height * 0.46,
   },
   previewRow: {
     flexDirection: 'row',
@@ -633,16 +946,22 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.xs,
     color: theme.colors.muted,
   },
-  center: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.gap(8),
-  },
-  emptyWrap: {
+  stateWrap: {
     marginTop: theme.gap(4),
   },
+  skeleton: {
+    gap: theme.gap(3),
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+  },
+  skeletonText: {
+    flex: 1,
+    gap: theme.gap(1),
+  },
   section: {
-    marginTop: theme.gap(3),
     gap: theme.gap(1),
   },
   rowActions: {
@@ -652,7 +971,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   pressed: {
     opacity: 0.85,
-    transform: [{ scale: 0.92 }],
+    transform: [{ scale: 0.97 }],
   },
   spacer: {
     height: FLOATING_TAB_BAR_CLEARANCE,
@@ -671,20 +990,6 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.gap(2),
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(1.5),
-    paddingVertical: theme.gap(2),
-    paddingHorizontal: theme.gap(3),
-    borderRadius: theme.radius.full,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontFamily: theme.fonts.sans.medium,
-    fontWeight: '500',
-    fontSize: theme.fontSize.sm,
   },
   qtyRow: {
     flexDirection: 'row',

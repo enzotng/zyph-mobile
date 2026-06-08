@@ -20,6 +20,7 @@ export {
   useUpdatePackingItem,
 } from './hooks/use-packing'
 export {
+  applyPackLight,
   categoryIcon,
   dedupeSuggestions,
   groupByCategory,

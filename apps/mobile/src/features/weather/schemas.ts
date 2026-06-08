@@ -92,6 +92,19 @@ export function conditionIcon(condition: WeatherCondition): string {
   }
 }
 
+// Compact, language-neutral per-day forecast for the packing LLM, e.g.
+// "2026-06-20 rain 18/11C; 2026-06-21 clear 24/14C". Capped so the prompt stays small. Empty
+// when there is no forecast, so the caller can fall back to "unknown".
+export function forecastToPrompt(weather: TripWeather | null | undefined, maxDays = 12): string {
+  if (!weather?.days?.length) {
+    return ''
+  }
+  return weather.days
+    .slice(0, maxDays)
+    .map((d) => `${d.date} ${d.condition} ${Math.round(d.tempMaxC)}/${Math.round(d.tempMinC)}C`)
+    .join('; ')
+}
+
 export type ForecastRange = { mode: 'trip' | 'outlook'; start?: string; end?: string }
 
 const FORECAST_HORIZON_DAYS = 16

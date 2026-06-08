@@ -1,6 +1,12 @@
 import { Ionicons } from '@expo/vector-icons'
 import { type ReactNode } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import {
+  type AccessibilityRole,
+  type AccessibilityState,
+  Pressable,
+  Text,
+  View,
+} from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { withAlpha } from '@/lib/color'
@@ -19,6 +25,10 @@ type ListRowProps = {
   last?: boolean
   danger?: boolean
   accessibilityLabel?: string
+  // Defaults to "button"; pass "checkbox" so a togglable row exposes its checked state to
+  // screen readers (the visual icon alone does not).
+  accessibilityRole?: AccessibilityRole
+  accessibilityState?: AccessibilityState
 }
 
 export function ListRow({
@@ -32,6 +42,8 @@ export function ListRow({
   last = false,
   danger = false,
   accessibilityLabel,
+  accessibilityRole = 'button',
+  accessibilityState,
 }: ListRowProps) {
   const { theme } = useUnistyles()
 
@@ -87,7 +99,8 @@ export function ListRow({
       <Pressable
         style={({ pressed }) => [styles.row(last), pressed && styles.pressed]}
         onPress={handlePress}
-        accessibilityRole="button"
+        accessibilityRole={accessibilityRole}
+        accessibilityState={accessibilityState}
         accessibilityLabel={accessibilityLabel ?? title}
       >
         {inner}

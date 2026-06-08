@@ -64,6 +64,9 @@ export type SuggestPackingVars = {
   hint?: string
   mode: 'generate' | 'gaps'
   existing: { label: string }[]
+  travelers?: number
+  shared?: boolean
+  packLight?: boolean
 }
 
 // Asks the Edge Function for suggestions and drops anything already on the list. Does NOT
@@ -80,6 +83,9 @@ export function useSuggestPacking() {
         hint: vars.hint,
         mode: vars.mode,
         existing: vars.existing.map((i) => i.label),
+        travelers: vars.travelers,
+        shared: vars.shared,
+        packLight: vars.packLight,
       })
       return dedupeSuggestions(vars.existing, suggestions)
     },

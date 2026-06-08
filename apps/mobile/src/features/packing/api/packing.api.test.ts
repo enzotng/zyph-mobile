@@ -153,8 +153,23 @@ describe('generatePackingSuggestions', () => {
         hint: '',
         mode: 'generate',
         existing: [],
+        travelers: 1,
+        shared: false,
+        packLight: false,
       },
     })
+  })
+
+  it('forwards group size, shared scope and pack-light flags', async () => {
+    invoke.mockResolvedValue({ data: { items: [] }, error: null })
+
+    await generatePackingSuggestions({ ...input, travelers: 4, shared: true, packLight: true })
+    expect(invoke).toHaveBeenCalledWith(
+      'generate-packing',
+      expect.objectContaining({
+        body: expect.objectContaining({ travelers: 4, shared: true, packLight: true }),
+      }),
+    )
   })
 
   it('returns [] when the function returns no items', async () => {

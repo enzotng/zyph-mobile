@@ -5,6 +5,7 @@ export {
   conditionIcon,
   type ForecastDay,
   type ForecastRange,
+  forecastToPrompt,
   type GeocodeResult,
   resolveForecastRange,
   type TripWeather,
