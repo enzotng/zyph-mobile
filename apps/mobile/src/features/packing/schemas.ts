@@ -127,6 +127,44 @@ const CATEGORY_KEYWORDS: Record<PackingCategory, string[]> = {
   other: [],
 }
 
+// Daily-wear clothing whose count a laundry cycle lets you repeat, so "pack light" caps them
+// instead of packing one per day. Matched case-insensitively against the label (FR + EN).
+const REPEAT_WEAR_KEYWORDS = [
+  'sock',
+  'chaussette',
+  'underwear',
+  'sous-vêtement',
+  'sous-vetement',
+  'slip',
+  'culotte',
+  'boxer',
+  't-shirt',
+  'tshirt',
+  'tee-shirt',
+  'tee',
+  'top',
+  'haut',
+  'shirt',
+  'chemise',
+  'débardeur',
+]
+
+// Most you sensibly carry of a daily-wear item when you can do laundry on the road.
+const LAUNDRY_CAP = 5
+
+// Deterministic "pack light": with occasional laundry you never need one daily-wear item per
+// day, so cap repeat-wear clothing to a laundry-aware count. Unlike a fuzzy LLM hint this is
+// guaranteed, so the demo never shows "12 t-shirts". Non-clothing and one-off items untouched.
+export function applyPackLight(items: SuggestedItem[], days: number | null): SuggestedItem[] {
+  const cap = Math.max(2, Math.min(days ?? LAUNDRY_CAP, LAUNDRY_CAP))
+  return items.map((item) => {
+    const label = item.label.trim().toLowerCase()
+    const isRepeatWear =
+      item.category === 'clothes' && REPEAT_WEAR_KEYWORDS.some((k) => label.includes(k))
+    return isRepeatWear && item.quantity > cap ? { ...item, quantity: cap } : item
+  })
+}
+
 export function inferCategory(label: string): PackingCategory {
   const l = label.trim().toLowerCase()
   if (!l) {

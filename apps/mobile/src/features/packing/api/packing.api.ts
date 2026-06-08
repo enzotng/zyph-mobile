@@ -100,6 +100,12 @@ export type GeneratePackingInput = {
   mode?: 'generate' | 'gaps'
   // Current item labels, so gaps mode does not repeat what is already there.
   existing?: string[]
+  // Group size and whether this is the SHARED list, so Zo packs communal gear once for the
+  // group (one tent) instead of one per traveller.
+  travelers?: number
+  shared?: boolean
+  // Minimise clothing quantities assuming laundry is available.
+  packLight?: boolean
 }
 
 // Asks the generate-packing Edge Function for a tailored list. The function validates and
@@ -117,6 +123,9 @@ export async function generatePackingSuggestions(
       hint: input.hint ?? '',
       mode: input.mode ?? 'generate',
       existing: input.existing ?? [],
+      travelers: input.travelers ?? 1,
+      shared: input.shared ?? false,
+      packLight: input.packLight ?? false,
     },
   })
   if (error) {

@@ -22,9 +22,12 @@ Return ONLY JSON of the exact shape:
 
 Rules:
 - Tailor the list to the DESTINATION, TRIP LENGTH, WEATHER and PLANNED ACTIVITIES (e.g. a hike -> boots, a beach -> swimwear, a dinner -> smart outfit).
+- WEATHER is a per-day forecast ("date condition max/min"). Pack for the actual conditions and, when an item is weather-driven, justify it by the day/condition in the reason (e.g. "rain Tue", "cold nights").
 - Quantities are realistic for the trip length assuming occasional laundry (e.g. tops ~ min(days, 7), underwear ~ days, one jacket).
+- If SHARED is true and TRAVELERS > 1, this is ONE communal list for the whole GROUP: pack ONE of each communal item (tent, first-aid kit, speaker, sunscreen, board games, power strip) for the group, NOT one per person. Never multiply shared gear by the number of travellers.
+- If PACK LIGHT is true, minimise clothing: assume laundry is available, cap repeat-wear basics (socks, underwear, tops) to about 5, and prefer versatile layers.
 - "label" is short (1-4 words), no brand names.
-- "reason" is a SHORT justification (max 6 words), concrete, e.g. "rain expected", "hike planned", "5-day trip".
+- "reason" is a SHORT justification (max 6 words), concrete, e.g. "rain Tue", "hike planned", "5-day trip".
 - If a USER REQUEST is given, bias the list strongly toward it.
 - In gaps MODE you are given the CURRENT LIST: return ONLY items that are MISSING yet clearly needed given the weather/activities (e.g. rain forecast but no rain jacket). Never repeat items already present.
 - generate MODE: 8 to 20 items. gaps MODE: up to 12 items. No duplicates ever.
@@ -45,6 +48,9 @@ export default {
       hint?: unknown
       mode?: unknown
       existing?: unknown
+      travelers?: unknown
+      shared?: unknown
+      packLight?: unknown
     }
     try {
       body = await req.json()
@@ -69,6 +75,12 @@ export default {
           .slice(0, 120)
           .map((x) => x.trim().slice(0, 80))
       : []
+    const travelers =
+      typeof body.travelers === "number" && Number.isFinite(body.travelers)
+        ? Math.max(1, Math.min(50, Math.floor(body.travelers)))
+        : 1
+    const shared = body.shared === true
+    const packLight = body.packLight === true
 
     if (!destination) {
       return Response.json({ error: "destination is required" }, { status: 400 })
@@ -85,6 +97,9 @@ export default {
 MODE: ${mode}
 DESTINATION: ${destination}
 TRIP LENGTH: ${days ? `${days} days` : "unknown"}
+TRAVELERS: ${travelers}
+LIST TYPE: ${shared ? "shared group list" : "personal list"}
+PACK LIGHT: ${packLight ? "yes" : "no"}
 WEATHER: ${weather || "unknown"}
 PLANNED ACTIVITIES:
 ${activities || "(none listed)"}${hint ? `\nUSER REQUEST: ${hint}` : ""}${
