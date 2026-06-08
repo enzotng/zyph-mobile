@@ -10,7 +10,7 @@ import {
   useUpdateNotificationPreferences,
 } from '@/features/notifications'
 
-type PrefKey = 'push' | 'members' | 'expenses' | 'settlements' | 'timeline'
+type PrefKey = 'push' | 'members' | 'expenses' | 'settlements' | 'timeline' | 'packing'
 
 export default function NotificationPreferencesScreen() {
   const { t } = useTranslation()
@@ -27,6 +27,7 @@ export default function NotificationPreferencesScreen() {
     expenses: data?.expenses_enabled ?? true,
     settlements: data?.settlements_enabled ?? true,
     timeline: data?.timeline_enabled ?? true,
+    packing: data?.packing_enabled ?? true,
   }
 
   function toggle(key: PrefKey, value: boolean) {
@@ -38,6 +39,7 @@ export default function NotificationPreferencesScreen() {
       expensesEnabled: next.expenses,
       settlementsEnabled: next.settlements,
       timelineEnabled: next.timeline,
+      packingEnabled: next.packing,
     })
   }
 
@@ -108,6 +110,11 @@ export default function NotificationPreferencesScreen() {
             icon="calendar-outline"
             title={t('notifications.preferences.timeline')}
             right={switchFor('timeline')}
+          />
+          <ListRow
+            icon="bag-handle-outline"
+            title={t('notifications.preferences.packing')}
+            right={switchFor('packing')}
             last
           />
         </Surface>

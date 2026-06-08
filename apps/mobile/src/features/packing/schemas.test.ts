@@ -1,5 +1,6 @@
 import {
   applyPackLight,
+  assignCommunalRoundRobin,
   categoryIcon,
   dedupeSuggestions,
   groupByCategory,
@@ -101,6 +102,36 @@ describe('applyPackLight', () => {
   it('defaults the cap when the trip length is unknown', () => {
     const [tops] = applyPackLight([sug('Tops', 'clothes', 12)], null)
     expect(tops.quantity).toBe(5)
+  })
+})
+
+describe('assignCommunalRoundRobin', () => {
+  const sug = (label: string, communal?: boolean): SuggestedItem => ({
+    label,
+    category: 'other',
+    quantity: 1,
+    communal,
+  })
+
+  it('returns all null when there are no members', () => {
+    expect(assignCommunalRoundRobin([sug('Tent', true), sug('Socks')], [])).toEqual([null, null])
+  })
+
+  it('assigns only communal items, leaving personal ones null', () => {
+    const result = assignCommunalRoundRobin(
+      [sug('Tent', true), sug('Socks'), sug('Speaker', true)],
+      ['m1', 'm2'],
+    )
+    expect(result).toEqual(['m1', null, 'm2'])
+  })
+
+  it('advances the counter only on communal items and wraps around', () => {
+    const items = [sug('a', true), sug('b', true), sug('c', true), sug('d', true), sug('e', true)]
+    expect(assignCommunalRoundRobin(items, ['m0', 'm1'])).toEqual(['m0', 'm1', 'm0', 'm1', 'm0'])
+  })
+
+  it('treats a missing communal flag as not communal', () => {
+    expect(assignCommunalRoundRobin([sug('Socks'), sug('Shirt')], ['m1'])).toEqual([null, null])
   })
 })
 

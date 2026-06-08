@@ -19,6 +19,7 @@ const preferences = {
   expenses_enabled: false,
   settlements_enabled: true,
   timeline_enabled: true,
+  packing_enabled: true,
   updated_at: '2026-06-06T10:00:00.000Z',
 }
 
@@ -62,6 +63,7 @@ describe('useUpdateNotificationPreferences', () => {
       expensesEnabled: false,
       settlementsEnabled: true,
       timelineEnabled: true,
+      packingEnabled: true,
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))

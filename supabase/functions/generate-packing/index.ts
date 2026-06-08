@@ -18,9 +18,10 @@ const MAX_ITEMS = 40
 const SYSTEM_PROMPT = `You are Zo, ZYPH's travel copilot. You build a smart packing list for ONE trip.
 
 Return ONLY JSON of the exact shape:
-{"items":[{"label": string, "category": one of ["clothes","toiletries","documents","electronics","health","other"], "quantity": integer >= 1, "reason": string}]}
+{"items":[{"label": string, "category": one of ["clothes","toiletries","documents","electronics","health","other"], "quantity": integer >= 1, "reason": string, "communal": boolean}]}
 
 Rules:
+- Set "communal" true for gear ONE of which serves the whole group (tent, first-aid kit, speaker, board games, power strip, sunscreen); false for per-person items (clothes, toothbrush, passport). When LIST TYPE is personal, "communal" MUST always be false.
 - Tailor the list to the DESTINATION, TRIP LENGTH, WEATHER and PLANNED ACTIVITIES (e.g. a hike -> boots, a beach -> swimwear, a dinner -> smart outfit).
 - WEATHER is a per-day forecast ("date condition max/min"). Pack for the actual conditions and, when an item is weather-driven, justify it by the day/condition in the reason (e.g. "rain Tue", "cold nights").
 - Quantities are realistic for the trip length assuming occasional laundry (e.g. tops ~ min(days, 7), underwear ~ days, one jacket).
@@ -151,13 +152,20 @@ ${activities || "(none listed)"}${hint ? `\nUSER REQUEST: ${hint}` : ""}${
     const rawItems = Array.isArray((parsed as { items?: unknown })?.items)
       ? ((parsed as { items: unknown[] }).items)
       : []
-    const items: { label: string; category: string; quantity: number; reason: string }[] = []
+    const items: {
+      label: string
+      category: string
+      quantity: number
+      reason: string
+      communal: boolean
+    }[] = []
     for (const raw of rawItems) {
       const item = raw as {
         label?: unknown
         category?: unknown
         quantity?: unknown
         reason?: unknown
+        communal?: unknown
       }
       const label = typeof item.label === "string" ? item.label.trim().slice(0, 80) : ""
       const category =
@@ -169,8 +177,11 @@ ${activities || "(none listed)"}${hint ? `\nUSER REQUEST: ${hint}` : ""}${
           ? Math.max(1, Math.min(99, Math.floor(item.quantity)))
           : 1
       const reason = typeof item.reason === "string" ? item.reason.trim().slice(0, 60) : ""
+      // Communal only makes sense for a multi-traveller shared list; never trust the model on
+      // a personal or single-traveller list.
+      const communal = item.communal === true && shared && travelers > 1
       if (label) {
-        items.push({ label, category, quantity, reason })
+        items.push({ label, category, quantity, reason, communal })
       }
       if (items.length >= MAX_ITEMS) {
         break

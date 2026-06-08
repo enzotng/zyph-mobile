@@ -56,12 +56,13 @@ export async function addPackingItems(items: NewPackingItem[]): Promise<void> {
   }
 }
 
+// Assignment is NOT here on purpose: it flows through assign/claim/nudge RPCs so it can emit a
+// notification (a direct UPDATE could not). label/category/quantity/packed stay direct CRUD.
 export type PackingItemPatch = {
   label?: string
   category?: PackingCategory
   quantity?: number
   packed?: boolean
-  assignedMember?: string | null
 }
 
 export async function updatePackingItem(id: string, patch: PackingItemPatch): Promise<void> {
@@ -72,9 +73,36 @@ export async function updatePackingItem(id: string, patch: PackingItemPatch): Pr
       ...(patch.category !== undefined ? { category: patch.category } : {}),
       ...(patch.quantity !== undefined ? { quantity: patch.quantity } : {}),
       ...(patch.packed !== undefined ? { packed: patch.packed } : {}),
-      ...(patch.assignedMember !== undefined ? { assigned_member: patch.assignedMember } : {}),
     })
     .eq('id', id)
+  if (error) {
+    throw error
+  }
+}
+
+// Assigns a shared item to a member (or unassigns with null) via the RPC, which notifies the
+// assignee. The RPC derives the actor from auth.uid() and validates trip membership.
+export async function assignPackingItem(itemId: string, memberId: string | null): Promise<void> {
+  const { error } = await supabase.rpc('assign_packing_item', {
+    _item_id: itemId,
+    _member_id: memberId ?? undefined,
+  })
+  if (error) {
+    throw error
+  }
+}
+
+// Self-assigns a shared item to the caller's own member (no notification).
+export async function claimPackingItem(itemId: string): Promise<void> {
+  const { error } = await supabase.rpc('claim_packing_item', { _item_id: itemId })
+  if (error) {
+    throw error
+  }
+}
+
+// Pings the item's current assignee with a packing.nudged notification.
+export async function nudgePackingItem(itemId: string): Promise<void> {
+  const { error } = await supabase.rpc('nudge_packing_item', { _item_id: itemId })
   if (error) {
     throw error
   }

@@ -297,6 +297,7 @@ export type Database = {
         Row: {
           expenses_enabled: boolean
           members_enabled: boolean
+          packing_enabled: boolean
           push_enabled: boolean
           settlements_enabled: boolean
           timeline_enabled: boolean
@@ -306,6 +307,7 @@ export type Database = {
         Insert: {
           expenses_enabled?: boolean
           members_enabled?: boolean
+          packing_enabled?: boolean
           push_enabled?: boolean
           settlements_enabled?: boolean
           timeline_enabled?: boolean
@@ -315,6 +317,7 @@ export type Database = {
         Update: {
           expenses_enabled?: boolean
           members_enabled?: boolean
+          packing_enabled?: boolean
           push_enabled?: boolean
           settlements_enabled?: boolean
           timeline_enabled?: boolean
@@ -768,6 +771,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_packing_item: { Args: { _item_id: string; _member_id?: string }; Returns: undefined }
+      claim_packing_item: { Args: { _item_id: string }; Returns: undefined }
       clear_member_location: { Args: { _trip_id: string }; Returns: undefined }
       create_expense_with_splits: {
         Args: {
@@ -824,6 +829,7 @@ export type Database = {
       leave_trip: { Args: { _trip_id: string }; Returns: undefined }
       mark_all_notifications_read: { Args: never; Returns: undefined }
       mark_notification_read: { Args: { _id: string }; Returns: undefined }
+      nudge_packing_item: { Args: { _item_id: string }; Returns: undefined }
       record_settlement: {
         Args: {
           _amount_cents: number

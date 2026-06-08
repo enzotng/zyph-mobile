@@ -33,6 +33,7 @@ describe('categoryForType', () => {
     expect(categoryForType('expense.updated')).toBe('expenses')
     expect(categoryForType('settlement.created')).toBe('settlements')
     expect(categoryForType('event.added')).toBe('timeline')
+    expect(categoryForType('packing.assigned')).toBe('packing')
   })
 
   it('returns null for an unknown prefix', () => {
@@ -66,6 +67,13 @@ describe('notificationMessageKey', () => {
     )
   })
 
+  it('maps packing types to their keys', () => {
+    expect(notificationMessageKey('packing.assigned', {})).toBe(
+      'notifications.types.packingAssigned',
+    )
+    expect(notificationMessageKey('packing.nudged', {})).toBe('notifications.types.packingNudged')
+  })
+
   it('falls back to a generic key for unknown types', () => {
     expect(notificationMessageKey('weird.thing', {})).toBe('notifications.types.generic')
   })
@@ -77,6 +85,7 @@ describe('notificationIcon', () => {
     expect(notificationIcon('expense.added')).toBe('card-outline')
     expect(notificationIcon('settlement.created')).toBe('swap-horizontal-outline')
     expect(notificationIcon('event.added')).toBe('calendar-outline')
+    expect(notificationIcon('packing.assigned')).toBe('bag-handle-outline')
     expect(notificationIcon('weird.thing')).toBe('notifications-outline')
   })
 })

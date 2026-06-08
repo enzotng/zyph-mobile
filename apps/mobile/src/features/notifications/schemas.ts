@@ -15,11 +15,19 @@ export const NOTIFICATION_TYPES = [
   'settlement.created',
   'settlement.reversed',
   'event.added',
+  'packing.assigned',
+  'packing.nudged',
 ] as const
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]
 
-export const NOTIFICATION_CATEGORIES = ['members', 'expenses', 'settlements', 'timeline'] as const
+export const NOTIFICATION_CATEGORIES = [
+  'members',
+  'expenses',
+  'settlements',
+  'timeline',
+  'packing',
+] as const
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number]
 
 // Derives the category (used for preference toggles and grouping) from a type's prefix,
@@ -34,6 +42,8 @@ export function categoryForType(type: string): NotificationCategory | null {
       return 'settlements'
     case 'event':
       return 'timeline'
+    case 'packing':
+      return 'packing'
     default:
       return null
   }
@@ -57,6 +67,8 @@ export function notificationMessageKey(type: string, payload: unknown): string {
     'expense.added': 'notifications.types.expenseAdded',
     'expense.updated': 'notifications.types.expenseUpdated',
     'event.added': 'notifications.types.eventAdded',
+    'packing.assigned': 'notifications.types.packingAssigned',
+    'packing.nudged': 'notifications.types.packingNudged',
   }
   return map[type] ?? 'notifications.types.generic'
 }
@@ -72,6 +84,8 @@ export function notificationIcon(type: string): string {
       return 'swap-horizontal-outline'
     case 'timeline':
       return 'calendar-outline'
+    case 'packing':
+      return 'bag-handle-outline'
     default:
       return 'notifications-outline'
   }

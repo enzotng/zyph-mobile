@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
+import { useQueryClient } from '@tanstack/react-query'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,6 +35,8 @@ import { useAuth } from '@/features/auth'
 import { useTripMembers } from '@/features/group'
 import {
   applyPackLight,
+  assignCommunalRoundRobin,
+  assignPackingItem,
   categoryIcon,
   groupByCategory,
   inferCategory,
@@ -41,10 +44,14 @@ import {
   type PackingCategory,
   type PackingItem,
   type PackingScope,
+  packingQueryKey,
   type SuggestedItem,
   useAddPackingItem,
   useAddPackingItems,
+  useAssignPackingItem,
+  useClaimPackingItem,
   useDeletePackingItem,
+  useNudgePackingItem,
   usePackingItems,
   useSuggestPacking,
   useUpdatePackingItem,
@@ -167,6 +174,7 @@ export default function PackingScreen() {
   const { theme } = useUnistyles()
   const { session } = useAuth()
   const userId = session?.user.id ?? ''
+  const queryClient = useQueryClient()
 
   const { data: trip } = useTrip(tripId)
   const { data: items, isLoading, isError, refetch } = usePackingItems(tripId)
@@ -177,6 +185,9 @@ export default function PackingScreen() {
   const addItem = useAddPackingItem(tripId)
   const updateItem = useUpdatePackingItem(tripId)
   const deleteItem = useDeletePackingItem(tripId)
+  const assignItem = useAssignPackingItem(tripId)
+  const claimItem = useClaimPackingItem(tripId)
+  const nudgeItem = useNudgePackingItem()
   const suggest = useSuggestPacking()
   const addMany = useAddPackingItems(tripId)
 
@@ -203,6 +214,11 @@ export default function PackingScreen() {
   const nameById = useMemo(
     () => new Map((members ?? []).map((m) => [m.id, m.display_name ?? t('common.member')])),
     [members, t],
+  )
+  // The caller's own member (assigned_member stores a member id, not a user id).
+  const myMember = useMemo(
+    () => (members ?? []).find((m) => m.user_id === userId),
+    [members, userId],
   )
 
   const scoped = useMemo(() => (items ?? []).filter((i) => i.scope === scope), [items, scope])
@@ -345,8 +361,13 @@ export default function PackingScreen() {
       return
     }
     const chosen = preview.filter((_, index) => picked.has(index))
+    // On a shared list, round-robin Zo's communal items across the members so the group shares
+    // the load. Personal lists and non-communal items stay unassigned.
+    const memberIds = (members ?? []).map((m) => m.id)
+    const assignments =
+      scope === 'shared' ? assignCommunalRoundRobin(chosen, memberIds) : chosen.map(() => null)
     addMany.mutate(
-      chosen.map((s) => ({
+      chosen.map((s, index) => ({
         tripId,
         scope,
         ownerId: userId,
@@ -356,6 +377,7 @@ export default function PackingScreen() {
           ? (s.category as PackingCategory)
           : 'other',
         quantity: s.quantity,
+        assignedMember: assignments[index],
       })),
       {
         onSuccess: () => setPreview(null),
@@ -369,8 +391,66 @@ export default function PackingScreen() {
     if (!assignTarget) {
       return
     }
-    updateItem.mutate({ id: assignTarget.id, patch: { assignedMember: memberId } })
+    // Through the RPC so the assignee gets a notification.
+    assignItem.mutate(
+      { itemId: assignTarget.id, memberId },
+      {
+        onError: (error) =>
+          Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : ''),
+      },
+    )
     setAssignTarget(null)
+  }
+
+  function claim(item: PackingItem) {
+    if (!myMember) {
+      return
+    }
+    claimItem.mutate(item.id, {
+      onSuccess: () => haptics.success(),
+      onError: (error) =>
+        Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : ''),
+    })
+  }
+
+  function nudge(item: PackingItem) {
+    const name = item.assigned_member
+      ? (nameById.get(item.assigned_member) ?? t('common.member'))
+      : t('common.member')
+    nudgeItem.mutate(item.id, {
+      onSuccess: () => {
+        haptics.success()
+        Alert.alert(t('packing.nudge'), t('packing.nudged', { name }))
+      },
+      onError: (error) =>
+        Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : ''),
+    })
+  }
+
+  // Round-robins the currently-unassigned shared items across the members. Awaits every assign
+  // (each emits a notify), invalidates the list once, and only confirms on real success.
+  async function splitAcrossGroup() {
+    const memberIds = (members ?? []).map((m) => m.id)
+    if (memberIds.length < 2) {
+      return
+    }
+    const unassigned = scoped.filter((i) => !i.assigned_member)
+    if (unassigned.length === 0) {
+      return
+    }
+    haptics.light()
+    try {
+      await Promise.all(
+        unassigned.map((item, index) =>
+          assignPackingItem(item.id, memberIds[index % memberIds.length]),
+        ),
+      )
+      await queryClient.invalidateQueries({ queryKey: packingQueryKey(tripId) })
+      haptics.success()
+      Alert.alert(t('packing.splitGroup'), t('packing.splitDone'))
+    } catch (error) {
+      Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : '')
+    }
   }
 
   function confirmDelete(item: PackingItem) {
@@ -493,6 +573,17 @@ export default function PackingScreen() {
                 busy={busy === 'refine'}
               />
 
+              {scope === 'shared' && scoped.length > 0 && (members?.length ?? 0) >= 2 ? (
+                <Button
+                  label={t('packing.splitGroup')}
+                  icon="people-outline"
+                  variant="ghost"
+                  size="sm"
+                  block={false}
+                  onPress={() => void splitAcrossGroup()}
+                />
+              ) : null}
+
               {noEvents ? (
                 <View style={styles.seedsBlock}>
                   <Text style={styles.hint}>{t('packing.seedsHint')}</Text>
@@ -605,6 +696,31 @@ export default function PackingScreen() {
                       last={index === group.items.length - 1}
                       right={
                         <View style={styles.rowActions}>
+                          {scope === 'shared' && !item.assigned_member && myMember ? (
+                            <Chip
+                              label={t('packing.claim')}
+                              icon="hand-left-outline"
+                              accessibilityLabel={`${t('packing.claim')}, ${item.label}`}
+                              onPress={() => claim(item)}
+                            />
+                          ) : null}
+                          {scope === 'shared' &&
+                          item.assigned_member &&
+                          item.assigned_member !== myMember?.id ? (
+                            <Pressable
+                              onPress={() => nudge(item)}
+                              accessibilityRole="button"
+                              accessibilityLabel={`${t('packing.nudge')}, ${item.label}`}
+                              hitSlop={11}
+                              style={({ pressed }) => [pressed && styles.pressed]}
+                            >
+                              <Ionicons
+                                name="notifications-outline"
+                                size={20}
+                                color={theme.colors.muted}
+                              />
+                            </Pressable>
+                          ) : null}
                           {scope === 'shared' ? (
                             <Pressable
                               onPress={() => setAssignTarget(item)}
