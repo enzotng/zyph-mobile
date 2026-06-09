@@ -69,7 +69,15 @@
           "cameraPermission": "Allow ZYPH to access your camera to scan expense receipts."
         }
       ],
-      "expo-localization",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": ["en", "fr"],
+            "android": ["en", "fr"]
+          }
+        }
+      ],
       "expo-image",
       "expo-notifications"
     ],

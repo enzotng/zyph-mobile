@@ -319,6 +319,7 @@ export const en = {
     section: {
       account: 'Account',
       appearance: 'Appearance',
+      language: 'Language',
     },
     displayName: 'Display name',
     namePlaceholder: 'Your name',
@@ -332,6 +333,11 @@ export const en = {
       dark: 'Dark',
     },
     appearanceHint: '“System” follows the device’s light/dark setting.',
+    language: {
+      system: 'System',
+    },
+    languageHint: '“System” follows your device and the per-app language in your system settings.',
+    openSystemLanguage: 'Open in system settings',
     signOut: 'Sign out',
     signOutErrorTitle: 'Sign-out failed',
     saveErrorTitle: 'Save failed',

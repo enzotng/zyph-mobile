@@ -322,6 +322,7 @@ export const fr: Translations = {
     section: {
       account: 'Compte',
       appearance: 'Apparence',
+      language: 'Langue',
     },
     displayName: 'Nom affiché',
     namePlaceholder: 'Ton nom',
@@ -335,6 +336,12 @@ export const fr: Translations = {
       dark: 'Sombre',
     },
     appearanceHint: '« Système » suit le réglage clair/sombre de l’appareil.',
+    language: {
+      system: 'Système',
+    },
+    languageHint:
+      '« Système » suit ton appareil et la langue par application de tes réglages système.',
+    openSystemLanguage: 'Ouvrir dans les réglages système',
     signOut: 'Se déconnecter',
     signOutErrorTitle: 'Déconnexion impossible',
     saveErrorTitle: 'Enregistrement impossible',
