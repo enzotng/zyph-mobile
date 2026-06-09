@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, Pressable, Text, View } from 'react-native'
+import { Alert, Linking, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -11,7 +11,14 @@ import { Screen } from '@/components/screen'
 import { Avatar, ListRow, Segmented, Spinner, Surface } from '@/components/ui'
 import { signOut, useAuth } from '@/features/auth'
 import { useProfile } from '@/features/profile'
-import { getThemePreference, setThemePreference, type ThemePreference } from '@/lib/preferences'
+import { setAppLanguage } from '@/lib/i18n'
+import {
+  getLanguagePreference,
+  getThemePreference,
+  type LanguagePreference,
+  setThemePreference,
+  type ThemePreference,
+} from '@/lib/preferences'
 
 export default function ProfileScreen() {
   const { t } = useTranslation()
@@ -21,6 +28,7 @@ export default function ProfileScreen() {
   const { data: profile, isLoading, isError, refetch } = useProfile()
   const [signingOut, setSigningOut] = useState(false)
   const [themePref, setThemePref] = useState<ThemePreference>(getThemePreference())
+  const [langPref, setLangPref] = useState<LanguagePreference>(getLanguagePreference())
 
   const themeOptions = [
     { value: 'system', label: t('profile.theme.system') },
@@ -28,10 +36,29 @@ export default function ProfileScreen() {
     { value: 'dark', label: t('profile.theme.dark') },
   ]
 
+  // FR/EN are shown as autonyms (their own name) so each is recognisable whatever the current UI
+  // language; only "System" is translated.
+  const languageOptions = [
+    { value: 'system', label: t('profile.language.system') },
+    { value: 'fr', label: 'Français' },
+    { value: 'en', label: 'English' },
+  ]
+
   function selectTheme(value: string) {
     const preference = value as ThemePreference
     setThemePref(preference)
     setThemePreference(preference)
+  }
+
+  function selectLanguage(value: string) {
+    const preference = value as LanguagePreference
+    setLangPref(preference)
+    setAppLanguage(preference)
+  }
+
+  // Opens the OS settings page for the app, where iOS/Android expose the native per-app language.
+  function openSystemLanguageSettings() {
+    void Linking.openSettings()
   }
 
   async function onSignOut() {
@@ -131,6 +158,27 @@ export default function ProfileScreen() {
         <Text style={styles.groupTitle}>{t('profile.section.appearance')}</Text>
         <Segmented value={themePref} onChange={selectTheme} options={themeOptions} />
         <Text style={styles.groupHint}>{t('profile.appearanceHint')}</Text>
+      </View>
+
+      {/* Language */}
+      <View style={styles.group}>
+        <Text style={styles.groupTitle}>{t('profile.section.language')}</Text>
+        <Segmented value={langPref} onChange={selectLanguage} options={languageOptions} />
+        <Surface
+          color={theme.colors.card}
+          borderColor={theme.colors.border}
+          borderWidth={1}
+          radius={theme.radius.lg}
+          style={styles.groupCard}
+        >
+          <ListRow
+            icon="language-outline"
+            title={t('profile.openSystemLanguage')}
+            onPress={openSystemLanguageSettings}
+            last
+          />
+        </Surface>
+        <Text style={styles.groupHint}>{t('profile.languageHint')}</Text>
       </View>
 
       <Button
