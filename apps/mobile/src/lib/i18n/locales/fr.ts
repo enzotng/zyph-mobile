@@ -687,6 +687,32 @@ export const fr: Translations = {
     deleteTrip: 'Supprimer le voyage',
     leaveTrip: 'Quitter le voyage',
     shareLocationToggle: 'Partager ma position',
+    confirmRegenerateTitle: 'Régénérer le code d’invitation',
+    confirmRegenerateBody:
+      'Le code actuel cessera de fonctionner. Les personnes déjà inscrites conservent leur accès.',
+    regenerateFailedTitle: 'Régénération impossible',
+    confirmDeleteBody: 'Cette action supprime définitivement le voyage et toutes ses données.',
+    deleteFailedTitle: 'Suppression impossible',
+    deleting: 'Suppression…',
+    confirmLeaveBody:
+      'Tu ne verras plus ce voyage ni ses dépenses. Les dépenses passées que tu as payées ou que tu dois restent comptabilisées.',
+    leave: 'Quitter',
+    leaving: 'En cours…',
+    leaveFailedTitle: 'Impossible de quitter',
+    confirmRemoveTitle: 'Retirer le membre',
+    confirmRemoveBody:
+      '{{name}} perdra l’accès à ce voyage. Les dépenses passées payées ou dues restent comptabilisées.',
+    removeFailedTitle: 'Retrait impossible',
+    removeMemberLabel: 'Retirer {{name}}',
+    editTripLabel: 'Modifier le voyage',
+    shareLocationTitle: 'Partager ta position',
+    shareLocationBody:
+      'Les autres membres de ce voyage verront ta position en direct tant que le partage est actif. Désactive-le à tout moment pour arrêter.',
+    sharingActive: 'Position partagée',
+    shareStatusDenied: 'Autorisation refusée. Active la localisation dans les Réglages.',
+    shareStatusError: 'Impossible de démarrer le partage. Touche pour réessayer.',
+    shareStatusOn: 'Les autres membres te voient en temps réel.',
+    shareStatusOff: 'Désactivé - ta position reste privée.',
     shareInvite: 'Rejoins mon voyage « {{title}} » sur ZYPH avec le code d’invitation : {{code}}',
   },
   countdown: {
