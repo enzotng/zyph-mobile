@@ -17,6 +17,7 @@ export const NOTIFICATION_TYPES = [
   'event.added',
   'packing.assigned',
   'packing.nudged',
+  'packing.reminder',
 ] as const
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]
@@ -69,6 +70,7 @@ export function notificationMessageKey(type: string, payload: unknown): string {
     'event.added': 'notifications.types.eventAdded',
     'packing.assigned': 'notifications.types.packingAssigned',
     'packing.nudged': 'notifications.types.packingNudged',
+    'packing.reminder': 'notifications.types.packingReminder',
   }
   return map[type] ?? 'notifications.types.generic'
 }

@@ -7,6 +7,8 @@ import {
   assignPackingItem,
   claimPackingItem,
   deletePackingItem,
+  deletePackingItems,
+  expensePackingItem,
   generatePackingSuggestions,
   listPackingItems,
   nudgePackingItem,
@@ -30,6 +32,7 @@ const row = {
   assigned_member: null,
   packed: false,
   created_at: '2026-06-06T00:00:00.000Z',
+  expense_id: null,
 }
 
 const newItem = {
@@ -86,19 +89,23 @@ describe('addPackingItem', () => {
 })
 
 describe('addPackingItems', () => {
-  it('bulk-inserts mapped rows', async () => {
-    const builder = makeQueryBuilder({ data: null, error: null })
+  it('bulk-inserts mapped rows and returns the inserted rows', async () => {
+    const inserted = [row, { ...row, id: 'p2', label: 'Socks' }]
+    const builder = makeQueryBuilder({ data: inserted, error: null })
     from.mockReturnValue(builder)
 
-    await addPackingItems([newItem, { ...newItem, label: 'Socks', assignedMember: 'm2' }])
+    await expect(
+      addPackingItems([newItem, { ...newItem, label: 'Socks', assignedMember: 'm2' }]),
+    ).resolves.toEqual(inserted)
     expect(builder.insert).toHaveBeenCalledWith([
       expect.objectContaining({ label: 'Passport', assigned_member: null }),
       expect.objectContaining({ label: 'Socks', assigned_member: 'm2' }),
     ])
+    expect(builder.select).toHaveBeenCalled()
   })
 
-  it('does nothing for an empty list', async () => {
-    await addPackingItems([])
+  it('returns an empty array for an empty list', async () => {
+    await expect(addPackingItems([])).resolves.toEqual([])
     expect(from).not.toHaveBeenCalled()
   })
 
@@ -166,6 +173,44 @@ describe('deletePackingItem', () => {
   it('throws on error', async () => {
     from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('del fail') }))
     await expect(deletePackingItem('p1')).rejects.toThrow('del fail')
+  })
+})
+
+describe('deletePackingItems', () => {
+  it('bulk-deletes by id list', async () => {
+    const builder = makeQueryBuilder({ data: null, error: null })
+    from.mockReturnValue(builder)
+
+    await deletePackingItems(['p1', 'p2'])
+    expect(builder.delete).toHaveBeenCalled()
+    expect(builder.in).toHaveBeenCalledWith('id', ['p1', 'p2'])
+  })
+
+  it('does nothing for an empty list', async () => {
+    await deletePackingItems([])
+    expect(from).not.toHaveBeenCalled()
+  })
+
+  it('throws on error', async () => {
+    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('bulk del') }))
+    await expect(deletePackingItems(['p1'])).rejects.toThrow('bulk del')
+  })
+})
+
+describe('expensePackingItem', () => {
+  it('calls the rpc with snake_case params', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+    await expensePackingItem('p1', 4500, ['m1', 'm2'])
+    expect(rpc).toHaveBeenCalledWith('expense_packing_item', {
+      _item_id: 'p1',
+      _amount_cents: 4500,
+      _member_ids: ['m1', 'm2'],
+    })
+  })
+
+  it('throws when the rpc errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('split fail') })
+    await expect(expensePackingItem('p1', 4500, ['m1'])).rejects.toThrow('split fail')
   })
 })
 

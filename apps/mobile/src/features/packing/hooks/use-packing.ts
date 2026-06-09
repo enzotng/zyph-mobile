@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { balancesQueryKey, expensesQueryKey } from '@/features/expenses/hooks/use-expenses'
+
 import {
   addPackingItem,
   addPackingItems,
   assignPackingItem,
   claimPackingItem,
   deletePackingItem,
+  deletePackingItems,
+  expensePackingItem,
   generatePackingSuggestions,
   listPackingItems,
   type NewPackingItem,
@@ -54,6 +58,39 @@ export function useDeletePackingItem(tripId: string) {
     mutationFn: (id: string) => deletePackingItem(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: packingQueryKey(tripId) })
+    },
+  })
+}
+
+// Bulk-deletes a set of items (the "undo all" of a Zo batch).
+export function useDeletePackingItems(tripId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => deletePackingItems(ids),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: packingQueryKey(tripId) })
+    },
+  })
+}
+
+// Splits a shared item's cost as a trip expense. Refreshes packing (paid badge), expenses and
+// balances, since the RPC touches all three.
+export function useExpensePackingItem(tripId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      itemId,
+      amountCents,
+      memberIds,
+    }: {
+      itemId: string
+      amountCents: number
+      memberIds: string[]
+    }) => expensePackingItem(itemId, amountCents, memberIds),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: packingQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
     },
   })
 }
