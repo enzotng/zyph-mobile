@@ -1,6 +1,7 @@
 import * as Linking from 'expo-linking'
 import * as WebBrowser from 'expo-web-browser'
 
+import { unregisterForPushNotifications } from '@/features/notifications/push'
 import { supabase } from '@/lib/supabase'
 import type { SignInValues, SignUpValues } from '../schemas'
 
@@ -31,6 +32,9 @@ export async function signIn({ email, password }: SignInValues) {
 }
 
 export async function signOut() {
+  // Remove this device's push token while still authenticated (the RLS delete needs the session),
+  // so a signed-out user stops receiving pushes. Best-effort - never blocks sign-out.
+  await unregisterForPushNotifications()
   const { error } = await supabase.auth.signOut()
   if (error) {
     throw error

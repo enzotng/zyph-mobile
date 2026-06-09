@@ -44,6 +44,18 @@ jest.mock('expo-haptics', () => ({
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }))
 
+// expo-notifications: importing the real module runs its device-push auto-registration side
+// effect (and warns about Expo Go) in tests. Stub the handful of methods push.ts uses; permission
+// defaults to 'denied' so registerForPushNotifications() no-ops deterministically.
+jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  getPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'denied' })),
+  requestPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'denied' })),
+  getExpoPushTokenAsync: jest.fn(() => Promise.resolve({ data: 'ExpoPushToken[test]' })),
+  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+}))
+
 // react-native-reanimated: the native worklets runtime is absent in unit tests, so its
 // real entry crashes on import. Provide a lightweight mock - Animated.View/Text are plain
 // RN views, layout-animation builders and hooks are chainable no-ops, and any other export

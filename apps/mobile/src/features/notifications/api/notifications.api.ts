@@ -49,6 +49,29 @@ export async function getNotificationPreferences(
   return data
 }
 
+export type PushPlatform = 'ios' | 'android' | 'web'
+
+// Registers (or reassigns) this device's Expo push token to the calling user via the RPC, which
+// pins user_id to auth.uid(). token is the primary key, so re-registering reassigns the device.
+export async function registerPushToken(token: string, platform: PushPlatform): Promise<void> {
+  const { error } = await supabase.rpc('register_push_token', {
+    _token: token,
+    _platform: platform,
+  })
+  if (error) {
+    throw error
+  }
+}
+
+// Removes this device's token (on sign-out) so a signed-out user stops receiving pushes. RLS
+// scopes the delete to the caller's own tokens.
+export async function deletePushToken(token: string): Promise<void> {
+  const { error } = await supabase.from('push_tokens').delete().eq('token', token)
+  if (error) {
+    throw error
+  }
+}
+
 export type NotificationPreferenceInput = {
   userId: string
   pushEnabled: boolean
