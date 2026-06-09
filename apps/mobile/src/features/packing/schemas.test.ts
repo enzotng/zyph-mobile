@@ -4,6 +4,7 @@ import {
   categoryIcon,
   dedupeSuggestions,
   duplicateSharedOwner,
+  equalSplitCents,
   filterByTraveler,
   findDuplicateSharedItem,
   groupByCategory,
@@ -31,6 +32,7 @@ function item(category: string, label: string, overrides: ItemOverrides = {}): P
     assigned_member: null,
     packed: false,
     created_at: '2026-06-06T00:00:00.000Z',
+    expense_id: null,
     ...overrides,
   }
 }
@@ -277,5 +279,27 @@ describe('findDuplicateSharedItem / duplicateSharedOwner', () => {
     const unowned = [item('other', 'Rope')]
     expect(duplicateSharedOwner(unowned, 'Rope', nameById)).toEqual({ name: null })
     expect(duplicateSharedOwner(unowned, 'Axe', nameById)).toBeNull()
+  })
+})
+
+describe('equalSplitCents', () => {
+  it('splits evenly when divisible', () => {
+    expect(equalSplitCents(900, 3)).toEqual([300, 300, 300])
+  })
+
+  it('gives the leading members the extra cent and always sums to the total', () => {
+    const parts = equalSplitCents(100, 3)
+    expect(parts).toEqual([34, 33, 33])
+    expect(parts.reduce((a, b) => a + b, 0)).toBe(100)
+  })
+
+  it('handles a total smaller than the member count (zero shares allowed)', () => {
+    expect(equalSplitCents(2, 5)).toEqual([1, 1, 0, 0, 0])
+  })
+
+  it('returns [] for a non-positive count or an invalid total', () => {
+    expect(equalSplitCents(100, 0)).toEqual([])
+    expect(equalSplitCents(-5, 2)).toEqual([])
+    expect(equalSplitCents(Number.NaN, 2)).toEqual([])
   })
 })

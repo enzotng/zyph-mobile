@@ -10,6 +10,8 @@ import {
   useAssignPackingItem,
   useClaimPackingItem,
   useDeletePackingItem,
+  useDeletePackingItems,
+  useExpensePackingItem,
   useNudgePackingItem,
   usePackingItems,
   useSuggestPacking,
@@ -30,6 +32,7 @@ const row = {
   assigned_member: null,
   packed: false,
   created_at: '2026-06-06T00:00:00.000Z',
+  expense_id: null,
 }
 
 beforeEach(() => {
@@ -180,7 +183,7 @@ describe('useSuggestPacking', () => {
 
 describe('useAddPackingItems', () => {
   it('bulk-adds then invalidates the packing query', async () => {
-    jest.mocked(api.addPackingItems).mockResolvedValue()
+    jest.mocked(api.addPackingItems).mockResolvedValue([row])
     const { wrapper, queryClient } = createQueryWrapper()
     const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
 
@@ -199,5 +202,36 @@ describe('useAddPackingItems', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(api.addPackingItems).toHaveBeenCalled()
     expect(invalidate).toHaveBeenCalledWith({ queryKey: packingQueryKey('t1') })
+  })
+})
+
+describe('useDeletePackingItems', () => {
+  it('bulk-deletes then invalidates the packing query', async () => {
+    jest.mocked(api.deletePackingItems).mockResolvedValue()
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useDeletePackingItems('t1'), { wrapper })
+    result.current.mutate(['p1', 'p2'])
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(api.deletePackingItems).toHaveBeenCalledWith(['p1', 'p2'])
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: packingQueryKey('t1') })
+  })
+})
+
+describe('useExpensePackingItem', () => {
+  it('splits the cost then invalidates packing, expenses and balances', async () => {
+    jest.mocked(api.expensePackingItem).mockResolvedValue()
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useExpensePackingItem('t1'), { wrapper })
+    result.current.mutate({ itemId: 'p1', amountCents: 4500, memberIds: ['m1', 'm2'] })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(api.expensePackingItem).toHaveBeenCalledWith('p1', 4500, ['m1', 'm2'])
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips', 't1', 'expenses'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips', 't1', 'balances'] })
   })
 })

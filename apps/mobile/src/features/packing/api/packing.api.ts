@@ -45,15 +45,17 @@ export async function addPackingItem(item: NewPackingItem): Promise<PackingItem>
   return data
 }
 
-// Bulk insert (used by the AI generation, which adds several deduped items at once).
-export async function addPackingItems(items: NewPackingItem[]): Promise<void> {
+// Bulk insert (used by the AI generation, which adds several deduped items at once). Returns the
+// inserted rows so the caller can offer a one-tap "undo all" of the batch just added.
+export async function addPackingItems(items: NewPackingItem[]): Promise<PackingItem[]> {
   if (items.length === 0) {
-    return
+    return []
   }
-  const { error } = await supabase.from('packing_items').insert(items.map(toRow))
+  const { data, error } = await supabase.from('packing_items').insert(items.map(toRow)).select()
   if (error) {
     throw error
   }
+  return data ?? []
 }
 
 // Assignment is NOT here on purpose: it flows through assign/claim/nudge RPCs so it can emit a
@@ -110,6 +112,35 @@ export async function nudgePackingItem(itemId: string): Promise<void> {
 
 export async function deletePackingItem(id: string): Promise<void> {
   const { error } = await supabase.from('packing_items').delete().eq('id', id)
+  if (error) {
+    throw error
+  }
+}
+
+// Bulk delete by id (used to undo a whole batch of Zo-suggested items at once).
+export async function deletePackingItems(ids: string[]): Promise<void> {
+  if (ids.length === 0) {
+    return
+  }
+  const { error } = await supabase.from('packing_items').delete().in('id', ids)
+  if (error) {
+    throw error
+  }
+}
+
+// Turns a shared packing item into a trip expense, split equally across the chosen members, and
+// links the expense back to the item. The RPC derives the payer from auth.uid(), computes the
+// shares server-side and notifies the group (expense.added) - here we only forward the inputs.
+export async function expensePackingItem(
+  itemId: string,
+  amountCents: number,
+  memberIds: string[],
+): Promise<void> {
+  const { error } = await supabase.rpc('expense_packing_item', {
+    _item_id: itemId,
+    _amount_cents: amountCents,
+    _member_ids: memberIds,
+  })
   if (error) {
     throw error
   }

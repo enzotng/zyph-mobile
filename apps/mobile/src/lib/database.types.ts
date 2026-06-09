@@ -394,6 +394,7 @@ export type Database = {
           assigned_member: string | null
           category: string
           created_at: string
+          expense_id: string | null
           id: string
           label: string
           owner_id: string
@@ -406,6 +407,7 @@ export type Database = {
           assigned_member?: string | null
           category: string
           created_at?: string
+          expense_id?: string | null
           id?: string
           label: string
           owner_id: string
@@ -418,6 +420,7 @@ export type Database = {
           assigned_member?: string | null
           category?: string
           created_at?: string
+          expense_id?: string | null
           id?: string
           label?: string
           owner_id?: string
@@ -432,6 +435,13 @@ export type Database = {
             columns: ['assigned_member']
             isOneToOne: false
             referencedRelation: 'trip_members'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'packing_items_expense_id_fkey'
+            columns: ['expense_id']
+            isOneToOne: false
+            referencedRelation: 'expenses'
             referencedColumns: ['id']
           },
           {
@@ -784,6 +794,35 @@ export type Database = {
           _fx_rate: number
           _splits: Json
           _trip_id: string
+        }
+        Returns: {
+          amount_cents: number
+          base_amount_cents: number
+          category: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          description: string
+          fx_rate: number
+          id: string
+          paid_by: string | null
+          trip_id: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'expenses'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      expense_packing_item: {
+        Args: {
+          _amount_cents: number
+          _item_id: string
+          _member_ids: string[]
         }
         Returns: {
           amount_cents: number

@@ -308,3 +308,17 @@ export function duplicateSharedOwner(
   }
   return { name: hit.assigned_member ? (nameById.get(hit.assigned_member) ?? null) : null }
 }
+
+// --- Expense split preview (Increment 4) --------------------------------------------------
+// Splits a total (in cents) equally across `count` people, the first (total % count) people
+// carrying the extra cent so the parts always sum exactly to the total. Mirrors the server-side
+// split in expense_packing_item, used to preview each traveller's share in the split sheet.
+// Returns [] for a non-positive count or a non-finite/negative total.
+export function equalSplitCents(totalCents: number, count: number): number[] {
+  if (count <= 0 || !Number.isFinite(totalCents) || totalCents < 0) {
+    return []
+  }
+  const base = Math.floor(totalCents / count)
+  const remainder = totalCents % count
+  return Array.from({ length: count }, (_, i) => base + (i < remainder ? 1 : 0))
+}

@@ -72,6 +72,9 @@ describe('notificationMessageKey', () => {
       'notifications.types.packingAssigned',
     )
     expect(notificationMessageKey('packing.nudged', {})).toBe('notifications.types.packingNudged')
+    expect(notificationMessageKey('packing.reminder', {})).toBe(
+      'notifications.types.packingReminder',
+    )
   })
 
   it('falls back to a generic key for unknown types', () => {

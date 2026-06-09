@@ -113,7 +113,7 @@ describe('useExecuteCopilotAction', () => {
     jest
       .mocked(generatePackingSuggestions)
       .mockResolvedValue([{ label: 'Boots', category: 'clothes', quantity: 1 }])
-    jest.mocked(addPackingItems).mockResolvedValue()
+    jest.mocked(addPackingItems).mockResolvedValue([])
     const result = run({
       tool: 'add_packing',
       args: { scope: 'shared', request: 'hiking gear' },
