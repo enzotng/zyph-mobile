@@ -679,6 +679,32 @@ export const en = {
     deleteTrip: 'Delete trip',
     leaveTrip: 'Leave trip',
     shareLocationToggle: 'Share my location',
+    confirmRegenerateTitle: 'Regenerate invite code',
+    confirmRegenerateBody:
+      'The current code will stop working. People who already joined keep their access.',
+    regenerateFailedTitle: 'Could not regenerate',
+    confirmDeleteBody: 'This permanently deletes the trip and all its data.',
+    deleteFailedTitle: 'Could not delete',
+    deleting: 'Deleting…',
+    confirmLeaveBody:
+      'You will no longer see this trip or its expenses. Past expenses you paid or owe are still counted.',
+    leave: 'Leave',
+    leaving: 'Leaving…',
+    leaveFailedTitle: 'Could not leave',
+    confirmRemoveTitle: 'Remove member',
+    confirmRemoveBody:
+      '{{name}} will lose access to this trip. Past expenses paid or owed are still counted.',
+    removeFailedTitle: 'Could not remove',
+    removeMemberLabel: 'Remove {{name}}',
+    editTripLabel: 'Edit trip',
+    shareLocationTitle: 'Share your location',
+    shareLocationBody:
+      'Other members of this trip will see your live location while sharing is on. Turn it off anytime to stop.',
+    sharingActive: 'Location shared',
+    shareStatusDenied: 'Permission denied. Enable location in Settings.',
+    shareStatusError: 'Could not start sharing. Tap to retry.',
+    shareStatusOn: 'Other members see you in real time.',
+    shareStatusOff: 'Off - your location stays private.',
     shareInvite: 'Join my trip “{{title}}” on ZYPH with the invite code: {{code}}',
   },
   countdown: {

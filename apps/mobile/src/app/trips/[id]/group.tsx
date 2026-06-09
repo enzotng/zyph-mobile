@@ -110,14 +110,10 @@ export default function TripGroupScreen() {
       setSharing(false)
       return
     }
-    Alert.alert(
-      'Partager ta position',
-      'Les autres membres de ce voyage verront ta position en direct tant que le partage est actif. Désactive-le à tout moment pour arrêter.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('group.share'), onPress: () => setSharing(true) },
-      ],
-    )
+    Alert.alert(t('group.shareLocationTitle'), t('group.shareLocationBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('group.share'), onPress: () => setSharing(true) },
+    ])
   }
 
   if (isLoading) {
@@ -159,103 +155,87 @@ export default function TripGroupScreen() {
   }
 
   function confirmRegenerate() {
-    Alert.alert(
-      'Régénérer le code d’invitation',
-      'Le code actuel cessera de fonctionner. Les personnes déjà inscrites conservent leur accès.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('group.regenerate'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await regenerate.mutateAsync()
-            } catch (error) {
-              Alert.alert(
-                'Régénération impossible',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
+    Alert.alert(t('group.confirmRegenerateTitle'), t('group.confirmRegenerateBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('group.regenerate'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await regenerate.mutateAsync()
+          } catch (error) {
+            Alert.alert(
+              t('group.regenerateFailedTitle'),
+              error instanceof Error ? error.message : t('common.tryAgain'),
+            )
+          }
         },
-      ],
-    )
+      },
+    ])
   }
 
   const isOwner = trip.owner_id === userId
 
   function confirmDelete() {
-    Alert.alert(
-      t('group.deleteTrip'),
-      'Cette action supprime définitivement le voyage et toutes ses données.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteTrip.mutateAsync(tripId)
-              router.replace('/')
-            } catch (error) {
-              Alert.alert(
-                'Suppression impossible',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
+    Alert.alert(t('group.deleteTrip'), t('group.confirmDeleteBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteTrip.mutateAsync(tripId)
+            router.replace('/')
+          } catch (error) {
+            Alert.alert(
+              t('group.deleteFailedTitle'),
+              error instanceof Error ? error.message : t('common.tryAgain'),
+            )
+          }
         },
-      ],
-    )
+      },
+    ])
   }
 
   function confirmLeave() {
-    Alert.alert(
-      t('group.leaveTrip'),
-      'Tu ne verras plus ce voyage ni ses dépenses. Les dépenses passées que tu as payées ou que tu dois restent comptabilisées.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: 'Quitter',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await leaveTripMutation.mutateAsync(tripId)
-              router.replace('/')
-            } catch (error) {
-              Alert.alert(
-                'Impossible de quitter',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
+    Alert.alert(t('group.leaveTrip'), t('group.confirmLeaveBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('group.leave'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await leaveTripMutation.mutateAsync(tripId)
+            router.replace('/')
+          } catch (error) {
+            Alert.alert(
+              t('group.leaveFailedTitle'),
+              error instanceof Error ? error.message : t('common.tryAgain'),
+            )
+          }
         },
-      ],
-    )
+      },
+    ])
   }
 
   function confirmRemove(memberId: string, name: string) {
-    Alert.alert(
-      'Retirer le membre',
-      `${name} perdra l’accès à ce voyage. Les dépenses passées payées ou dues restent comptabilisées.`,
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('group.remove'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeMember.mutateAsync(memberId)
-            } catch (error) {
-              Alert.alert(
-                'Retrait impossible',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
+    Alert.alert(t('group.confirmRemoveTitle'), t('group.confirmRemoveBody', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('group.remove'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await removeMember.mutateAsync(memberId)
+          } catch (error) {
+            Alert.alert(
+              t('group.removeFailedTitle'),
+              error instanceof Error ? error.message : t('common.tryAgain'),
+            )
+          }
         },
-      ],
-    )
+      },
+    ])
   }
 
   function openSettle(settlement: Settlement) {
@@ -322,7 +302,7 @@ export default function TripGroupScreen() {
           <Pressable
             onPress={() => router.push({ pathname: '/trips/[id]/edit', params: { id: tripId } })}
             accessibilityRole="button"
-            accessibilityLabel="Modifier le voyage"
+            accessibilityLabel={t('group.editTripLabel')}
             hitSlop={8}
           >
             <Ionicons name="create-outline" size={22} color={theme.colors.foreground} />
@@ -537,7 +517,7 @@ export default function TripGroupScreen() {
                       onPress={() => confirmRemove(member.id, name)}
                       disabled={removeMember.isPending}
                       accessibilityRole="button"
-                      accessibilityLabel={`Retirer ${name}`}
+                      accessibilityLabel={t('group.removeMemberLabel', { name })}
                       hitSlop={6}
                       style={({ pressed }) => (pressed ? styles.pressed : undefined)}
                     >
@@ -568,16 +548,16 @@ export default function TripGroupScreen() {
             />
             <View style={styles.shareInfo}>
               <Text style={styles.shareTitle}>
-                {sharing ? 'Position partagée' : t('group.shareLocationToggle')}
+                {sharing ? t('group.sharingActive') : t('group.shareLocationToggle')}
               </Text>
               <Text style={styles.shareSub} numberOfLines={2}>
                 {shareStatus === 'denied'
-                  ? 'Autorisation refusée. Active la localisation dans les Réglages.'
+                  ? t('group.shareStatusDenied')
                   : shareStatus === 'error'
-                    ? 'Impossible de démarrer le partage. Touche pour réessayer.'
+                    ? t('group.shareStatusError')
                     : sharing
-                      ? 'Les autres membres te voient en temps réel.'
-                      : 'Désactivé - ta position reste privée.'}
+                      ? t('group.shareStatusOn')
+                      : t('group.shareStatusOff')}
               </Text>
             </View>
             <Ionicons
@@ -600,7 +580,7 @@ export default function TripGroupScreen() {
           style={({ pressed }) => [styles.dangerBtn, pressed && styles.pressed]}
         >
           <Text style={styles.dangerText} numberOfLines={1}>
-            {deleteTrip.isPending ? 'Suppression…' : t('group.deleteTrip')}
+            {deleteTrip.isPending ? t('group.deleting') : t('group.deleteTrip')}
           </Text>
         </Pressable>
       ) : (
@@ -613,7 +593,7 @@ export default function TripGroupScreen() {
           style={({ pressed }) => [styles.dangerBtn, pressed && styles.pressed]}
         >
           <Text style={styles.dangerText} numberOfLines={1}>
-            {leaveTripMutation.isPending ? 'En cours…' : t('group.leaveTrip')}
+            {leaveTripMutation.isPending ? t('group.leaving') : t('group.leaveTrip')}
           </Text>
         </Pressable>
       )}
