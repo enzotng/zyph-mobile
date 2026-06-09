@@ -3,7 +3,12 @@ import { renderHook, waitFor } from '@testing-library/react-native'
 import { createQueryWrapper } from '@/test-utils/query-wrapper'
 
 import * as api from '../api/settlements.api'
-import { settlementsQueryKey, useRecordSettlement, useSettlements } from './use-settlements'
+import {
+  settlementsQueryKey,
+  useRecordSettlement,
+  useReverseSettlement,
+  useSettlements,
+} from './use-settlements'
 
 jest.mock('@/lib/supabase')
 jest.mock('../api/settlements.api')
@@ -62,6 +67,23 @@ describe('useRecordSettlement', () => {
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: settlementsQueryKey('t1') })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips', 't1', 'balances'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips'], exact: true })
+  })
+})
+
+describe('useReverseSettlement', () => {
+  it('reverses then invalidates settlements and balances on success', async () => {
+    jest.mocked(api.reverseSettlement).mockResolvedValue({ ...settlement, status: 'reversed' })
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useReverseSettlement('t1'), { wrapper })
+    result.current.mutate('s1')
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(api.reverseSettlement).toHaveBeenCalledWith('s1')
     expect(invalidate).toHaveBeenCalledWith({ queryKey: settlementsQueryKey('t1') })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips', 't1', 'balances'] })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips'], exact: true })

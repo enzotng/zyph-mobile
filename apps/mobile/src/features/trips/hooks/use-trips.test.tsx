@@ -25,6 +25,8 @@ const trip = {
   invite_code: 'ABC123',
   start_date: null,
   end_date: null,
+  latitude: null,
+  longitude: null,
   cover_photo_url: null,
   cover_photo_author: null,
   cover_photo_author_url: null,
@@ -84,6 +86,8 @@ describe('useCreateTrip', () => {
       currency: 'EUR',
       startDate: null,
       endDate: null,
+      latitude: null,
+      longitude: null,
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -107,6 +111,8 @@ describe('useUpdateTrip', () => {
       currency: 'EUR',
       startDate: null,
       endDate: null,
+      latitude: null,
+      longitude: null,
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))

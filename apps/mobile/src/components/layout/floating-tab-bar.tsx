@@ -69,6 +69,9 @@ type TabPillProps = {
   radius: number
   iconSize: number
   solo?: boolean
+  // When false, the active pill stays icon-only (no expanding label) - used when the bar holds
+  // many tabs and the expanded label would overflow on narrow screens.
+  showLabel?: boolean
 }
 
 function TabPill({
@@ -83,7 +86,9 @@ function TabPill({
   radius,
   iconSize,
   solo = false,
+  showLabel = true,
 }: TabPillProps) {
+  const expanded = active && showLabel
   const progress = useSharedValue(active ? 1 : 0)
 
   useEffect(() => {
@@ -116,15 +121,17 @@ function TabPill({
         accessibilityLabel={tab.label}
         style={({ pressed }) => [
           styles.pillPress,
-          { height, width: active ? undefined : height },
-          active && styles.pillPressActive,
+          { height, width: expanded ? undefined : height },
+          expanded && styles.pillPressActive,
           pressed && styles.pressed,
         ]}
       >
         <Ionicons name={tab.icon} size={iconSize} color={active ? activeFg : inactiveFg} />
-        {active ? (
+        {expanded ? (
           <Animated.View entering={LABEL_FADE_IN} exiting={LABEL_FADE_OUT}>
-            <Text style={[styles.label, { color: activeFg }]}>{tab.label}</Text>
+            <Text style={[styles.label, { color: activeFg }]} numberOfLines={1}>
+              {tab.label}
+            </Text>
           </Animated.View>
         ) : null}
       </Pressable>
@@ -144,6 +151,9 @@ export function FloatingTabBar({ tabs, activeName, onSelect, soloAction }: Float
   // With a solo action, all tabs share the left group and the action is the right pill.
   const leftTabs = soloAction ? tabs : tabs.slice(0, -1)
   const rightTab = soloAction ? undefined : tabs[tabs.length - 1]
+  // From 5 left tabs, keep them icon-only so the expanded active label can't push the bar
+  // past a narrow screen (iPhone SE / mini).
+  const showLeftLabels = leftTabs.length < 5
 
   return (
     <Animated.View
@@ -166,6 +176,7 @@ export function FloatingTabBar({ tabs, activeName, onSelect, soloAction }: Float
               height={ITEM_HEIGHT}
               radius={ITEM_RADIUS}
               iconSize={18}
+              showLabel={showLeftLabels}
             />
           ))}
         </View>

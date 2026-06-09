@@ -11,9 +11,12 @@ type ChipProps = {
   icon?: keyof typeof Ionicons.glyphMap
   selected?: boolean
   onPress?: () => void
+  // Defaults to the label; pass when the visible label alone is not a clear action for a
+  // screen reader (e.g. a seed chip that triggers a generation).
+  accessibilityLabel?: string
 }
 
-export function Chip({ label, icon, selected = false, onPress }: ChipProps) {
+export function Chip({ label, icon, selected = false, onPress, accessibilityLabel }: ChipProps) {
   styles.useVariants({ selected })
   const { theme } = useUnistyles()
 
@@ -30,6 +33,7 @@ export function Chip({ label, icon, selected = false, onPress }: ChipProps) {
       onPress={handlePress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
+      accessibilityLabel={accessibilityLabel ?? label}
     >
       {icon ? <Ionicons name={icon} size={16} color={iconColor} /> : null}
       <Text style={styles.label}>{label}</Text>

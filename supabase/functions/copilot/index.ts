@@ -21,19 +21,32 @@ const MAX_MESSAGES = 30
 const MAX_MESSAGE_CHARS = 2000
 const MAX_CONTEXT_CHARS = 12000
 
+const TOOLS = ["add_expense", "add_event", "add_packing", "record_settlement"]
+
 const SYSTEM_PROMPT = `You are Zo, ZYPH's friendly travel copilot, scoped to a SINGLE trip, in a multi-turn chat. If asked who you are, say you're Zo, the trip copilot.
 
-You are given a TRIP CONTEXT block (facts about this trip: dates, members, timeline events, expenses and balances) followed by the conversation. Use the earlier turns for follow-up questions ("and him?", "what about the hotel?").
+You are given a TRIP CONTEXT block (facts about this trip: dates, members, timeline events, expenses, balances, places and packing) followed by the conversation. Use earlier turns for follow-ups.
+
+You can do TWO things:
+1) ANSWER a question about this trip.
+2) PROPOSE ONE ACTION, only when the user clearly asks to DO/ADD/CREATE/RECORD something in the app.
+
+ALWAYS reply with a SINGLE JSON object, exactly one of these shapes:
+{"type":"answer","text":"<your reply>"}
+{"type":"action","tool":"<tool>","args":{...},"text":"<one short sentence, in the user's language, asking them to confirm>"}
+
+Available tools (propose at most one; the user will confirm before anything is written):
+- "add_expense": {"description": string, "amount": number, "splitWith": "all" OR array of member names}. Paid by the current user. amount is in the trip currency.
+- "add_event": {"title": string, "type": string (flight|hotel|activity|restaurant|transport|event), "date": "YYYY-MM-DD", "time": "HH:MM" optional}.
+- "add_packing": {"scope": "shared" OR "personal", "request": string describing what to pack}.
+- "record_settlement": {"from": member name who paid, "to": member name who received, "amount": number}.
 
 Rules:
-- Answer ONLY from the TRIP CONTEXT. Never invent flights, amounts, dates, places or people that are not in the context.
-- If the context does not contain the answer, say briefly that you don't have that information for this trip. Do not guess.
-- Refuse politely and briefly anything unrelated to this trip (general knowledge, other trips, coding, etc.).
-- Money is given already formatted (e.g. "45.00 EUR"); quote amounts exactly as shown.
-- Balances: a POSITIVE balance means the member is owed money; NEGATIVE means they owe money.
-- Be concise: 1-3 sentences, plain text, no markdown, no bullet lists unless the user asks to list things.
-- Be warm and friendly, like a helpful travel buddy. Address the user informally (in French, use "tu", never "vous").
-- Reply in the language indicated by LANGUAGE (fr = French, en = English), regardless of the question's language.`
+- Propose an action ONLY for an explicit add/create/record request. Anything else -> ANSWER.
+- Use member names exactly as in MEMBERS. For the current user use "me".
+- Answers: 1-3 sentences, plain text, grounded ONLY in the TRIP CONTEXT, never invent facts; if unknown, say so briefly. Refuse politely anything unrelated to this trip.
+- Money in context is already formatted; quote exactly. POSITIVE balance = owed money; NEGATIVE = owes.
+- Be warm; address the user informally (in French use "tu"). Reply in the language given by LANGUAGE (fr/en). Output JSON only, no markdown.`
 
 type ChatMessage = { role: "user" | "assistant"; content: string }
 
@@ -112,7 +125,8 @@ export default {
           ...messages,
         ],
         temperature: 0.2,
-        max_tokens: 400,
+        max_tokens: 600,
+        response_format: { type: "json_object" },
       }),
     })
 
@@ -125,11 +139,30 @@ export default {
     const groqJson = (await groqResponse.json()) as {
       choices?: { message?: { content?: string } }[]
     }
-    const answer = groqJson.choices?.[0]?.message?.content?.trim()
-    if (!answer) {
+    const content = groqJson.choices?.[0]?.message?.content?.trim()
+    if (!content) {
       return Response.json({ error: "LLM returned an empty response" }, { status: 502 })
     }
 
-    return Response.json({ answer })
+    let parsed: { type?: unknown; text?: unknown; tool?: unknown; args?: unknown }
+    try {
+      parsed = JSON.parse(content)
+    } catch {
+      // Defensive: if the model ignored JSON mode, surface the raw text as an answer.
+      return Response.json({ answer: content })
+    }
+
+    const text = typeof parsed.text === "string" ? parsed.text.trim() : ""
+
+    // An action is only ever PROPOSED here - the client confirms and executes it under the
+    // user's own RLS. We just validate the envelope shape.
+    if (parsed.type === "action" && typeof parsed.tool === "string" && TOOLS.includes(parsed.tool)) {
+      const args = parsed.args && typeof parsed.args === "object" ? parsed.args : {}
+      // The client schema requires a non-empty text; fall back in the user's language.
+      const fallback = language === "fr" ? "Je confirme ?" : "Confirm?"
+      return Response.json({ action: { tool: parsed.tool, args, text: text || fallback } })
+    }
+
+    return Response.json({ answer: text || content })
   }),
 }

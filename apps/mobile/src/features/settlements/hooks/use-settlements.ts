@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { listSettlements, recordSettlement } from '../api/settlements.api'
+import { listSettlements, recordSettlement, reverseSettlement } from '../api/settlements.api'
 
 export function settlementsQueryKey(tripId: string) {
   return ['trips', tripId, 'settlements'] as const
@@ -25,6 +25,19 @@ export function useRecordSettlement(tripId: string) {
       void queryClient.invalidateQueries({ queryKey: settlementsQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: ['trips', tripId, 'balances'] })
       // Refresh the trips-list card balance (get_my_trip_balances), keyed exactly ['trips'].
+      void queryClient.invalidateQueries({ queryKey: ['trips'], exact: true })
+    },
+  })
+}
+
+// Voiding a settlement re-credits the balances, so it invalidates the same keys as recording.
+export function useReverseSettlement(tripId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => reverseSettlement(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: settlementsQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: ['trips', tripId, 'balances'] })
       void queryClient.invalidateQueries({ queryKey: ['trips'], exact: true })
     },
   })

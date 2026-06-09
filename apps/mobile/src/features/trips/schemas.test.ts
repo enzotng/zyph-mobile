@@ -1,6 +1,14 @@
 import { createTripSchema, dateToIsoDay, isoDayToDate } from './schemas'
 
-const base = { title: 'Rome', destination: '', currency: 'EUR', startDate: null, endDate: null }
+const base = {
+  title: 'Rome',
+  destination: '',
+  currency: 'EUR',
+  startDate: null,
+  endDate: null,
+  latitude: null,
+  longitude: null,
+}
 
 describe('createTripSchema', () => {
   it('requires a title', () => {

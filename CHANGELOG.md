@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.3.0](https://github.com/enzotng/zyph-mobile/compare/v1.2.1...v1.3.0) (2026-06-09)
+
+
+### Features
+
+* intelligent packing lists and agentic Zo copilot ([#138](https://github.com/enzotng/zyph-mobile/issues/138)) ([43ef5da](https://github.com/enzotng/zyph-mobile/commit/43ef5daaf111c0625e485a76d4db261716546e3b))
+* **notifications:** add in-app notification feed and preferences ([#133](https://github.com/enzotng/zyph-mobile/issues/133)) ([b0f5439](https://github.com/enzotng/zyph-mobile/commit/b0f5439a41e48b4b0632b6af2bbf580041593e02))
+* **packing:** group readiness board, traveler filter and dup warning ([#141](https://github.com/enzotng/zyph-mobile/issues/141)) ([10dcb13](https://github.com/enzotng/zyph-mobile/commit/10dcb1330589cd74b36df9360c9c90f832b1f731))
+* **packing:** group split, claim, nudge and assignment notifications ([#140](https://github.com/enzotng/zyph-mobile/issues/140)) ([270e580](https://github.com/enzotng/zyph-mobile/commit/270e580c67183e2d667e9223fffc29590ad7a977))
+* **packing:** smarter AI, UI/animation overhaul, and keyboard-aware sheets/forms ([#139](https://github.com/enzotng/zyph-mobile/issues/139)) ([ac8bca5](https://github.com/enzotng/zyph-mobile/commit/ac8bca5f996fa98789e6fea4e1ab48b4ca82e4bc))
+* **packing:** split shared items as expenses and add J-2 reminders ([#142](https://github.com/enzotng/zyph-mobile/issues/142)) ([7f30565](https://github.com/enzotng/zyph-mobile/commit/7f30565ec2ca23b2f819a09ea7393fb12c89f545))
+* **settlements:** add payment history with reversal ([#134](https://github.com/enzotng/zyph-mobile/issues/134)) ([afdf9ab](https://github.com/enzotng/zyph-mobile/commit/afdf9ab7b05675da00f8c27ae90287f51cad130f))
+* **trips:** autocomplete destination and store its coordinates ([#137](https://github.com/enzotng/zyph-mobile/issues/137)) ([b780106](https://github.com/enzotng/zyph-mobile/commit/b780106e9b9f99cb838b4d767e83b2854dcfe552))
+* **weather:** add destination weather on the trip dashboard ([#136](https://github.com/enzotng/zyph-mobile/issues/136)) ([30b2b49](https://github.com/enzotng/zyph-mobile/commit/30b2b49a1619da6cd575fcd255ba025d025d763b))
+
+
+### Bug Fixes
+
+* **api:** lock financial-ledger tables to their RPC write paths ([#135](https://github.com/enzotng/zyph-mobile/issues/135)) ([66be7c6](https://github.com/enzotng/zyph-mobile/commit/66be7c633b8f5b6357789907e012a2c0f6ff2645))
+
 ## [1.2.1](https://github.com/enzotng/zyph-mobile/compare/v1.2.0...v1.2.1) (2026-06-05)
 
 

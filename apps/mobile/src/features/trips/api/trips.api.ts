@@ -125,6 +125,8 @@ export async function createTrip(input: CreateTripValues): Promise<Trip> {
       currency: input.currency,
       start_date: input.startDate,
       end_date: input.endDate,
+      latitude: input.latitude,
+      longitude: input.longitude,
     })
     .select()
     .single()
@@ -143,6 +145,8 @@ export async function updateTrip({
   currency,
   startDate,
   endDate,
+  latitude,
+  longitude,
 }: UpdateTripInput): Promise<Trip> {
   const { data, error } = await supabase
     .from('trips')
@@ -152,6 +156,8 @@ export async function updateTrip({
       currency,
       start_date: startDate,
       end_date: endDate,
+      latitude,
+      longitude,
     })
     .eq('id', id)
     .select()

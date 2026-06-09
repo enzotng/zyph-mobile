@@ -58,6 +58,7 @@ export default function JoinTripScreen() {
           contentContainerStyle={styles.body}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets
         >
           <Surface
             width={64}

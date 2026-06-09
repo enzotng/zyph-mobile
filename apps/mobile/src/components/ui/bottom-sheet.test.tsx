@@ -25,6 +25,7 @@ jest.mock('react-native-reanimated', () => {
     },
     Easing: { bezier: () => () => 0 },
     useSharedValue: (initial: unknown) => ({ value: initial }),
+    useAnimatedKeyboard: () => ({ height: { value: 0 }, state: { value: 0 } }),
     useAnimatedStyle: (worklet: () => unknown) => worklet(),
     withTiming: (value: unknown, _config?: unknown, callback?: (finished: boolean) => void) => {
       callback?.(mockAnimationFinished)

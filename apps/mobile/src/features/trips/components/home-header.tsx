@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons'
 import { Pressable, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Avatar } from '@/components/ui'
 
@@ -9,18 +10,26 @@ type HomeHeaderProps = {
   avatarName?: string
   avatarUrl?: string | null
   onAvatarPress: () => void
+  unreadCount?: number
+  onNotificationsPress?: () => void
+  notificationsLabel?: string
 }
 
-// Left-aligned greeting + trip-count subtitle, with a tappable circular avatar on the right.
-// Reproduces the safe-area top padding that AppHeader provides (the home screen drops the
-// shared title bar in favour of this).
+// Left-aligned greeting + trip-count subtitle, with a notifications bell (unread badge) and a
+// tappable circular avatar on the right. Reproduces the safe-area top padding that AppHeader
+// provides (the home screen drops the shared title bar in favour of this).
 export function HomeHeader({
   greeting,
   subtitle,
   avatarName,
   avatarUrl,
   onAvatarPress,
+  unreadCount = 0,
+  onNotificationsPress,
+  notificationsLabel,
 }: HomeHeaderProps) {
+  const { theme } = useUnistyles()
+
   return (
     <View style={styles.header}>
       <View style={styles.text}>
@@ -31,9 +40,27 @@ export function HomeHeader({
           {subtitle}
         </Text>
       </View>
-      <Pressable onPress={onAvatarPress} accessibilityRole="button" hitSlop={8}>
-        <Avatar name={avatarName} imageUrl={avatarUrl} size={44} />
-      </Pressable>
+      <View style={styles.actions}>
+        {onNotificationsPress ? (
+          <Pressable
+            onPress={onNotificationsPress}
+            accessibilityRole="button"
+            accessibilityLabel={notificationsLabel}
+            hitSlop={8}
+            style={styles.bell}
+          >
+            <Ionicons name="notifications-outline" size={22} color={theme.colors.foreground} />
+            {unreadCount > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+        ) : null}
+        <Pressable onPress={onAvatarPress} accessibilityRole="button" hitSlop={8}>
+          <Avatar name={avatarName} imageUrl={avatarUrl} size={44} />
+        </Pressable>
+      </View>
     </View>
   )
 }
@@ -50,6 +77,35 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   text: {
     flexShrink: 1,
+  },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+  },
+  bell: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    fontFamily: theme.fonts.sans.bold,
+    fontWeight: '700',
+    fontSize: 10,
+    color: theme.colors.primaryForeground,
   },
   greeting: {
     fontFamily: theme.fonts.display.bold,

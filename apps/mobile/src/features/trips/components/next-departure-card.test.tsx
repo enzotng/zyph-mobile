@@ -48,6 +48,8 @@ function makeTrip(overrides: Partial<TripCard> = {}): TripCard {
     currency: 'EUR',
     destination: 'Paris',
     end_date: null,
+    latitude: null,
+    longitude: null,
     id: 't1',
     invite_code: 'ABC123',
     owner_id: 'owner1',

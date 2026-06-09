@@ -24,6 +24,17 @@ describe('askCopilot', () => {
     expect(invoke).toHaveBeenCalledWith('copilot', { body: input })
   })
 
+  it('returns a proposed action', async () => {
+    const action = {
+      tool: 'add_expense',
+      args: { description: 'Dinner', amount: 40 },
+      text: 'Add the 40 EUR dinner?',
+    }
+    invoke.mockResolvedValue({ data: { action }, error: null })
+
+    await expect(askCopilot(input)).resolves.toEqual({ action })
+  })
+
   it('throws when the function errors', async () => {
     invoke.mockResolvedValue({ data: null, error: new Error('boom') })
 

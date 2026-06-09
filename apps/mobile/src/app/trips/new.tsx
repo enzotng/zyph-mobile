@@ -7,6 +7,7 @@ import { Alert, ScrollView, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { DestinationField } from '@/components/destination-field'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { TripDatesField } from '@/components/trip-dates-field'
@@ -48,11 +49,20 @@ export default function NewTripScreen() {
   } = useForm<CreateTripValues>({
     resolver: zodResolver(createTripSchema),
     mode: 'onChange',
-    defaultValues: { title: '', destination: '', currency: 'EUR', startDate: null, endDate: null },
+    defaultValues: {
+      title: '',
+      destination: '',
+      currency: 'EUR',
+      startDate: null,
+      endDate: null,
+      latitude: null,
+      longitude: null,
+    },
   })
 
   const startDate = useWatch({ control, name: 'startDate' })
   const endDate = useWatch({ control, name: 'endDate' })
+  const destination = useWatch({ control, name: 'destination' })
 
   async function onSubmit(values: CreateTripValues) {
     try {
@@ -83,6 +93,7 @@ export default function NewTripScreen() {
           contentContainerStyle={styles.body}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets
         >
           <Controller
             control={control}
@@ -104,25 +115,26 @@ export default function NewTripScreen() {
             )}
           />
 
-          <Controller
-            control={control}
-            name="destination"
-            render={({ field }) => (
-              <View style={styles.fieldRow}>
-                <FieldIcon name="location-outline" />
-                <View style={styles.fieldInput}>
-                  <TextField
-                    label={t('tripForm.destination')}
-                    placeholder={t('tripForm.destinationPlaceholder')}
-                    value={field.value}
-                    onChangeText={field.onChange}
-                    onBlur={field.onBlur}
-                    error={errors.destination?.message}
-                  />
-                </View>
-              </View>
-            )}
-          />
+          <View style={styles.fieldRow}>
+            <FieldIcon name="location-outline" />
+            <View style={styles.fieldInput}>
+              <DestinationField
+                label={t('tripForm.destination')}
+                value={destination}
+                error={errors.destination?.message}
+                onChangeText={(text) => {
+                  setValue('destination', text, { shouldValidate: true })
+                  setValue('latitude', null)
+                  setValue('longitude', null)
+                }}
+                onSelectPlace={(place) => {
+                  setValue('destination', place.label, { shouldValidate: true })
+                  setValue('latitude', place.lat)
+                  setValue('longitude', place.lng)
+                }}
+              />
+            </View>
+          </View>
 
           <Controller
             control={control}

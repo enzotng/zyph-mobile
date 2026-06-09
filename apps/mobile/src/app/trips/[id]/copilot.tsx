@@ -20,12 +20,21 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { Button } from '@/components/button'
 import { Spinner, Surface } from '@/components/ui'
-import { buildTripContext, type CopilotMessage, useAskCopilot } from '@/features/copilot'
+import { useAuth } from '@/features/auth'
+import {
+  buildTripContext,
+  type CopilotAction,
+  type CopilotMessage,
+  useAskCopilot,
+  useExecuteCopilotAction,
+} from '@/features/copilot'
 import { useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
 import { useEvents } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
 // Suggested starter questions (i18n keys under copilot.suggestions.*). The label is both
@@ -35,7 +44,15 @@ const SUGGESTIONS = ['owe', 'next', 'topPayer', 'airport'] as const
 // Header height below the safe-area top inset, for the keyboard avoiding offset.
 const HEADER_HEIGHT = 54
 
-type ChatMessage = { id: string; role: 'user' | 'assistant'; text: string; error?: boolean }
+type ChatMessage = {
+  id: string
+  role: 'user' | 'assistant'
+  text: string
+  error?: boolean
+  // When present, this assistant turn is a proposed action awaiting confirmation.
+  action?: CopilotAction
+  actionState?: 'pending' | 'executing' | 'done' | 'cancelled'
+}
 
 // Zo's mark: a sparkles glyph in a primary circle.
 function ZoAvatar({ size }: { size: number }) {
@@ -74,11 +91,17 @@ export default function CopilotScreen() {
   const balances = useTripBalances(tripId)
   const members = useTripMembers(tripId)
   const ask = useAskCopilot()
+  const execute = useExecuteCopilotAction(tripId)
+  const { session } = useAuth()
+  const myUserId = session?.user.id ?? ''
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const idCounter = useRef(0)
   const scrollRef = useRef<ScrollView>(null)
+  // Ids whose action is being executed, tracked synchronously so a double-tap cannot fire the
+  // mutation twice before the 'executing' state has re-rendered (a stale-closure double-write).
+  const inFlight = useRef<Set<string>>(new Set())
 
   const dataReady = Boolean(
     trip.data && events.data && expenses.data && balances.data && members.data,
@@ -93,9 +116,10 @@ export default function CopilotScreen() {
       return
     }
 
-    // History excludes error bubbles so the model never treats an error as its own turn.
+    // History drops error bubbles and any action card that is not yet done (pending, executing,
+    // cancelled), so the model never echoes a proposal as a turn but stays aware of what it did.
     const history: CopilotMessage[] = messages
-      .filter((message) => !message.error)
+      .filter((message) => !message.error && !(message.action && message.actionState !== 'done'))
       .map((message) => ({ role: message.role, content: message.text }))
 
     idCounter.current += 1
@@ -116,9 +140,18 @@ export default function CopilotScreen() {
       {
         onSuccess: (res) => {
           idCounter.current += 1
+          const id = `m${idCounter.current}`
           setMessages((prev) => [
             ...prev,
-            { id: `m${idCounter.current}`, role: 'assistant', text: res.answer },
+            res.action
+              ? {
+                  id,
+                  role: 'assistant',
+                  text: res.action.text,
+                  action: res.action,
+                  actionState: 'pending',
+                }
+              : { id, role: 'assistant', text: res.answer ?? '' },
           ])
         },
         onError: () => {
@@ -129,6 +162,53 @@ export default function CopilotScreen() {
               id: `m${idCounter.current}`,
               role: 'assistant',
               text: t('copilot.error'),
+              error: true,
+            },
+          ])
+        },
+      },
+    )
+  }
+
+  function setActionState(id: string, actionState: ChatMessage['actionState']) {
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, actionState } : m)))
+  }
+
+  function confirmAction(message: ChatMessage) {
+    // Guard against a double-tap (or a tap on an already-executing/resolved card) writing twice.
+    // The ref check is synchronous, so it holds even before 'executing' has re-rendered.
+    if (message.actionState !== 'pending' || inFlight.current.has(message.id)) {
+      return
+    }
+    if (!message.action || !trip.data || !members.data || !myUserId) {
+      return
+    }
+    inFlight.current.add(message.id)
+    haptics.light()
+    setActionState(message.id, 'executing')
+    execute.mutate(
+      {
+        action: message.action,
+        members: members.data,
+        myUserId,
+        trip: trip.data,
+        language: i18n.language === 'fr' ? 'fr' : 'en',
+      },
+      {
+        onSuccess: () => {
+          inFlight.current.delete(message.id)
+          setActionState(message.id, 'done')
+        },
+        onError: () => {
+          inFlight.current.delete(message.id)
+          setActionState(message.id, 'pending')
+          idCounter.current += 1
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `m${idCounter.current}`,
+              role: 'assistant',
+              text: t('copilot.actionError'),
               error: true,
             },
           ])
@@ -223,6 +303,36 @@ export default function CopilotScreen() {
                       <Text style={isUser ? styles.bubbleTextUser : styles.bubbleText}>
                         {message.text}
                       </Text>
+                      {message.action ? (
+                        message.actionState === 'pending' ? (
+                          <View style={styles.actionButtons}>
+                            <Button
+                              label={t('copilot.confirm')}
+                              size="sm"
+                              block={false}
+                              disabled={execute.isPending}
+                              onPress={() => confirmAction(message)}
+                            />
+                            <Button
+                              label={t('common.cancel')}
+                              variant="ghost"
+                              size="sm"
+                              block={false}
+                              onPress={() => setActionState(message.id, 'cancelled')}
+                            />
+                          </View>
+                        ) : message.actionState === 'executing' ? (
+                          <View style={styles.actionStatusRow}>
+                            <Spinner label={t('copilot.actionRunning')} />
+                          </View>
+                        ) : (
+                          <Text style={styles.actionStatus}>
+                            {message.actionState === 'done'
+                              ? `✓ ${t('copilot.actionDone')}`
+                              : t('copilot.actionCancelled')}
+                          </Text>
+                        )
+                      ) : null}
                     </Surface>
                   </View>
                 )
@@ -383,6 +493,22 @@ const styles = StyleSheet.create((theme, rt) => ({
     color: theme.colors.primaryForeground,
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.md,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+    marginTop: theme.gap(2.5),
+  },
+  actionStatus: {
+    marginTop: theme.gap(2),
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+  },
+  actionStatusRow: {
+    marginTop: theme.gap(2),
   },
   composer: {
     paddingHorizontal: theme.gap(4),

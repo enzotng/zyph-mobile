@@ -293,6 +293,173 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          expenses_enabled: boolean
+          members_enabled: boolean
+          packing_enabled: boolean
+          push_enabled: boolean
+          settlements_enabled: boolean
+          timeline_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          expenses_enabled?: boolean
+          members_enabled?: boolean
+          packing_enabled?: boolean
+          push_enabled?: boolean
+          settlements_enabled?: boolean
+          timeline_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          expenses_enabled?: boolean
+          members_enabled?: boolean
+          packing_enabled?: boolean
+          push_enabled?: boolean
+          settlements_enabled?: boolean
+          timeline_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'notification_preferences_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: true
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          payload: Json
+          read_at: string | null
+          recipient_id: string
+          trip_id: string | null
+          type: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          recipient_id: string
+          trip_id?: string | null
+          type: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          recipient_id?: string
+          trip_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_actor_id_fkey'
+            columns: ['actor_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'notifications_recipient_id_fkey'
+            columns: ['recipient_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'notifications_trip_id_fkey'
+            columns: ['trip_id']
+            isOneToOne: false
+            referencedRelation: 'trips'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      packing_items: {
+        Row: {
+          assigned_member: string | null
+          category: string
+          created_at: string
+          expense_id: string | null
+          id: string
+          label: string
+          owner_id: string
+          packed: boolean
+          quantity: number
+          scope: string
+          trip_id: string
+        }
+        Insert: {
+          assigned_member?: string | null
+          category: string
+          created_at?: string
+          expense_id?: string | null
+          id?: string
+          label: string
+          owner_id: string
+          packed?: boolean
+          quantity?: number
+          scope: string
+          trip_id: string
+        }
+        Update: {
+          assigned_member?: string | null
+          category?: string
+          created_at?: string
+          expense_id?: string | null
+          id?: string
+          label?: string
+          owner_id?: string
+          packed?: boolean
+          quantity?: number
+          scope?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'packing_items_assigned_member_fkey'
+            columns: ['assigned_member']
+            isOneToOne: false
+            referencedRelation: 'trip_members'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'packing_items_expense_id_fkey'
+            columns: ['expense_id']
+            isOneToOne: false
+            referencedRelation: 'expenses'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'packing_items_owner_id_fkey'
+            columns: ['owner_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'packing_items_trip_id_fkey'
+            columns: ['trip_id']
+            isOneToOne: false
+            referencedRelation: 'trips'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -558,6 +725,8 @@ export type Database = {
           end_date: string | null
           id: string
           invite_code: string
+          latitude: number | null
+          longitude: number | null
           owner_id: string
           start_date: string | null
           title: string
@@ -573,6 +742,8 @@ export type Database = {
           end_date?: string | null
           id?: string
           invite_code?: string
+          latitude?: number | null
+          longitude?: number | null
           owner_id: string
           start_date?: string | null
           title: string
@@ -588,6 +759,8 @@ export type Database = {
           end_date?: string | null
           id?: string
           invite_code?: string
+          latitude?: number | null
+          longitude?: number | null
           owner_id?: string
           start_date?: string | null
           title?: string
@@ -608,6 +781,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_packing_item: { Args: { _item_id: string; _member_id?: string }; Returns: undefined }
+      claim_packing_item: { Args: { _item_id: string }; Returns: undefined }
       clear_member_location: { Args: { _trip_id: string }; Returns: undefined }
       create_expense_with_splits: {
         Args: {
@@ -619,6 +794,35 @@ export type Database = {
           _fx_rate: number
           _splits: Json
           _trip_id: string
+        }
+        Returns: {
+          amount_cents: number
+          base_amount_cents: number
+          category: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          description: string
+          fx_rate: number
+          id: string
+          paid_by: string | null
+          trip_id: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'expenses'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      expense_packing_item: {
+        Args: {
+          _amount_cents: number
+          _item_id: string
+          _member_ids: string[]
         }
         Returns: {
           amount_cents: number
@@ -662,6 +866,9 @@ export type Database = {
       }
       join_trip_by_code: { Args: { _code: string }; Returns: string }
       leave_trip: { Args: { _trip_id: string }; Returns: undefined }
+      mark_all_notifications_read: { Args: never; Returns: undefined }
+      mark_notification_read: { Args: { _id: string }; Returns: undefined }
+      nudge_packing_item: { Args: { _item_id: string }; Returns: undefined }
       record_settlement: {
         Args: {
           _amount_cents: number
@@ -690,6 +897,28 @@ export type Database = {
       }
       regenerate_invite_code: { Args: { _trip_id: string }; Returns: string }
       remove_trip_member: { Args: { _member_id: string }; Returns: undefined }
+      reverse_settlement: {
+        Args: { _id: string }
+        Returns: {
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          from_member: string
+          id: string
+          paid_at: string
+          status: Database['public']['Enums']['settlement_status']
+          to_member: string
+          trip_id: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'trip_settlements'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      soft_delete_expense: { Args: { _expense_id: string }; Returns: undefined }
       update_expense_with_splits:
         | {
             Args: {
