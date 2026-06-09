@@ -8,12 +8,12 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Screen } from '@/components/screen'
 import { EmptyState, ListRow, SectionTitle, Spinner, Surface } from '@/components/ui'
 import {
-  categoryForType,
   groupNotificationsByDay,
   type Notification,
   notificationContext,
   notificationIcon,
   notificationMessageKey,
+  routeToNotification,
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
@@ -44,32 +44,12 @@ export default function NotificationsScreen() {
     if (n.read_at === null) {
       markRead.mutate(n.id)
     }
-    // A removed member can no longer read the trip (RLS gates on active membership), so this
-    // notification is informational only - do not route into an inaccessible trip.
-    if (n.type === 'member.removed') {
-      return
-    }
-    const tripId = n.trip_id
-    if (!tripId) {
-      return
-    }
-    const payload = (n.payload ?? {}) as { expenseId?: string; eventId?: string }
-    const category = categoryForType(n.type)
-    if (category === 'expenses' && payload.expenseId) {
-      router.push({
-        pathname: '/trips/[id]/expenses/[expenseId]',
-        params: { id: tripId, expenseId: payload.expenseId },
-      })
-    } else if (category === 'timeline' && payload.eventId) {
-      router.push({
-        pathname: '/trips/[id]/events/[eventId]',
-        params: { id: tripId, eventId: payload.eventId },
-      })
-    } else if (category === 'members') {
-      router.push({ pathname: '/trips/[id]/group', params: { id: tripId } })
-    } else {
-      router.push({ pathname: '/trips/[id]', params: { id: tripId } })
-    }
+    routeToNotification(
+      router,
+      n.type,
+      n.trip_id,
+      (n.payload ?? {}) as { expenseId?: string; eventId?: string },
+    )
   }
 
   const markAllAction = hasUnread ? (

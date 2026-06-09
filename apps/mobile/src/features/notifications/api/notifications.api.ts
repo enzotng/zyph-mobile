@@ -53,10 +53,16 @@ export type PushPlatform = 'ios' | 'android' | 'web'
 
 // Registers (or reassigns) this device's Expo push token to the calling user via the RPC, which
 // pins user_id to auth.uid(). token is the primary key, so re-registering reassigns the device.
-export async function registerPushToken(token: string, platform: PushPlatform): Promise<void> {
+// locale is the app's active language so lock-screen push copy can match it.
+export async function registerPushToken(
+  token: string,
+  platform: PushPlatform,
+  locale?: string,
+): Promise<void> {
   const { error } = await supabase.rpc('register_push_token', {
     _token: token,
     _platform: platform,
+    _locale: locale,
   })
   if (error) {
     throw error

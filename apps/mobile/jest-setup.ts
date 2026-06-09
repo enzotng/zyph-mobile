@@ -52,6 +52,7 @@ jest.mock('expo-notifications', () => ({
   getPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'denied' })),
   requestPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'denied' })),
   getExpoPushTokenAsync: jest.fn(() => Promise.resolve({ data: 'ExpoPushToken[test]' })),
+  getLastNotificationResponseAsync: jest.fn(() => Promise.resolve(null)),
   addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
 }))

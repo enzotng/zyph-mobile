@@ -10,6 +10,7 @@ import { ErrorBoundary } from '@/components/error-boundary'
 import { OfflineBanner } from '@/components/offline-banner'
 import { Spinner } from '@/components/ui'
 import { AuthProvider, useAuth } from '@/features/auth'
+import { usePushNotificationResponder } from '@/features/notifications'
 import '@/lib/i18n'
 import '@/lib/online-manager'
 import { hasSeenOnboarding } from '@/lib/preferences'
@@ -73,6 +74,8 @@ function RootNavigator() {
   const { session, isLoading, recovering } = useAuth()
   const [fontsLoaded] = useFonts(BRAND_FONTS)
   useProtectedRoute(session, isLoading, recovering)
+  // Deep-link a tapped lock-screen push once the user is signed in.
+  usePushNotificationResponder(Boolean(session))
 
   if (isLoading || !fontsLoaded) {
     return (

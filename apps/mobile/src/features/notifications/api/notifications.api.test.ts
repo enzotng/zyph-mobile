@@ -86,12 +86,13 @@ describe('markAllNotificationsRead', () => {
 })
 
 describe('registerPushToken', () => {
-  it('calls the rpc with the token and platform', async () => {
+  it('calls the rpc with the token, platform and locale', async () => {
     rpc.mockResolvedValue({ data: null, error: null })
-    await expect(registerPushToken('ExpoTok[abc]', 'ios')).resolves.toBeUndefined()
+    await expect(registerPushToken('ExpoTok[abc]', 'ios', 'en-US')).resolves.toBeUndefined()
     expect(rpc).toHaveBeenCalledWith('register_push_token', {
       _token: 'ExpoTok[abc]',
       _platform: 'ios',
+      _locale: 'en-US',
     })
   })
 
