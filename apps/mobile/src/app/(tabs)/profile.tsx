@@ -108,7 +108,12 @@ export default function ProfileScreen() {
         accessibilityRole="button"
         accessibilityLabel={t('profile.editProfile')}
       >
-        <Avatar name={displayName} size={60} tint={theme.colors.primary} />
+        <Avatar
+          name={displayName}
+          imageUrl={profile?.avatar_url}
+          size={60}
+          tint={theme.colors.primary}
+        />
         <View style={styles.heroInfo}>
           <Text style={styles.heroName} numberOfLines={1}>
             {displayName}

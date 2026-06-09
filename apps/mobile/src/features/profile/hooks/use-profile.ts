@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useAuth } from '@/features/auth'
-import { getProfile, updateProfile } from '../api/profile.api'
+import { getProfile, updateProfile, uploadAvatar } from '../api/profile.api'
 
 // The profile (name, email, preferred currency) rarely changes within a session.
 const FIVE_MINUTES = 5 * 60 * 1000
@@ -26,6 +26,20 @@ export function useUpdateProfile() {
     onSuccess: (updated) => {
       // Seed the cache so the profile tab reflects the new values immediately.
       queryClient.setQueryData(profileQueryKey, updated)
+    },
+  })
+}
+
+export function useUploadAvatar() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ uri, contentType }: { uri: string; contentType: string }) =>
+      uploadAvatar(uri, contentType),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(profileQueryKey, updated)
+      // The new avatar also shows in trip member lists, cards and the overview (keyed under
+      // ['trips', ...]); refresh them so the uploader's own views update immediately.
+      void queryClient.invalidateQueries({ queryKey: ['trips'] })
     },
   })
 }

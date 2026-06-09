@@ -341,6 +341,12 @@ export const en = {
     signOut: 'Sign out',
     signOutErrorTitle: 'Sign-out failed',
     saveErrorTitle: 'Save failed',
+    changePhoto: 'Change photo',
+    photoLibrary: 'Choose from library',
+    takePhoto: 'Take a photo',
+    photoPermissionTitle: 'Permission needed',
+    photoPermissionBody: 'Allow photo access in Settings to set a profile picture.',
+    photoErrorTitle: 'Could not update photo',
     validation: {
       nameRequired: 'Name is required',
       currency: 'Pick a currency',

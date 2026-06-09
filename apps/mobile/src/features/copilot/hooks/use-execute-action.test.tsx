@@ -27,6 +27,7 @@ const members: TripMember[] = [
     role: 'owner',
     status: 'active',
     display_name: 'Ana',
+    avatar_url: null,
   },
   {
     id: 'm2',
@@ -34,6 +35,7 @@ const members: TripMember[] = [
     role: 'member',
     status: 'active',
     display_name: 'Bob',
+    avatar_url: null,
   },
 ]
 
