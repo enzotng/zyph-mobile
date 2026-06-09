@@ -3,6 +3,8 @@ import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
 import { Platform } from 'react-native'
 
+import i18n from '@/lib/i18n'
+
 import { deletePushToken, type PushPlatform, registerPushToken } from './api/notifications.api'
 
 // Show incoming pushes while the app is foregrounded too (banner + sound), matching the in-app feed.
@@ -59,7 +61,8 @@ export async function registerForPushNotifications(): Promise<void> {
       return
     }
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId })
-    await registerPushToken(token, currentPlatform())
+    // Pass the app's active language so lock-screen push copy matches it.
+    await registerPushToken(token, currentPlatform(), i18n.language)
     // Only remember the token once it is actually saved, so sign-out never tries to delete a token
     // that never made it to the DB.
     lastToken = token

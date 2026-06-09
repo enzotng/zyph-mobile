@@ -490,6 +490,7 @@ export type Database = {
       push_tokens: {
         Row: {
           created_at: string
+          locale: string | null
           platform: string
           token: string
           updated_at: string
@@ -497,6 +498,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          locale?: string | null
           platform: string
           token: string
           updated_at?: string
@@ -504,6 +506,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          locale?: string | null
           platform?: string
           token?: string
           updated_at?: string
@@ -928,7 +931,10 @@ export type Database = {
         }
       }
       regenerate_invite_code: { Args: { _trip_id: string }; Returns: string }
-      register_push_token: { Args: { _token: string; _platform: string }; Returns: undefined }
+      register_push_token: {
+        Args: { _token: string; _platform: string; _locale?: string }
+        Returns: undefined
+      }
       remove_trip_member: { Args: { _member_id: string }; Returns: undefined }
       reverse_settlement: {
         Args: { _id: string }
