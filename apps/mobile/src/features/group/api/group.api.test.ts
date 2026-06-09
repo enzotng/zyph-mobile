@@ -20,7 +20,7 @@ const rawMember = {
   user_id: 'u1',
   role: 'member' as const,
   status: 'active' as const,
-  profiles: { display_name: 'Alice' },
+  profiles: { display_name: 'Alice', avatar_url: 'https://cdn.example.com/avatars/u1/avatar?v=1' },
 }
 
 const mappedMember = {
@@ -29,6 +29,7 @@ const mappedMember = {
   role: 'member' as const,
   status: 'active' as const,
   display_name: 'Alice',
+  avatar_url: 'https://cdn.example.com/avatars/u1/avatar?v=1',
 }
 
 beforeEach(() => {
@@ -47,13 +48,17 @@ describe('listTripMembers', () => {
     expect(builder.order).toHaveBeenCalledWith('joined_at', { ascending: true })
   })
 
-  it('maps null profiles.display_name to null', async () => {
-    const memberWithNullProfile = { ...rawMember, profiles: { display_name: null } }
+  it('maps null profiles fields to null', async () => {
+    const memberWithNullProfile = {
+      ...rawMember,
+      profiles: { display_name: null, avatar_url: null },
+    }
     const builder = makeQueryBuilder({ data: [memberWithNullProfile], error: null })
     from.mockReturnValue(builder)
 
     const result = await listTripMembers('t1')
     expect(result[0].display_name).toBeNull()
+    expect(result[0].avatar_url).toBeNull()
   })
 
   it('throws when the query errors', async () => {

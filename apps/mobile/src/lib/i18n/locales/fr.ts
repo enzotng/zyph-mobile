@@ -345,6 +345,13 @@ export const fr: Translations = {
     signOut: 'Se déconnecter',
     signOutErrorTitle: 'Déconnexion impossible',
     saveErrorTitle: 'Enregistrement impossible',
+    changePhoto: 'Changer la photo',
+    photoLibrary: 'Choisir dans la galerie',
+    takePhoto: 'Prendre une photo',
+    photoPermissionTitle: 'Autorisation requise',
+    photoPermissionBody:
+      'Autorise l’accès aux photos dans les Réglages pour définir une photo de profil.',
+    photoErrorTitle: 'Photo non mise à jour',
     validation: {
       nameRequired: 'Le nom est requis',
       currency: 'Choisis une devise',

@@ -79,7 +79,14 @@
         }
       ],
       "expo-image",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow ZYPH to access your photos to set your profile picture.",
+          "cameraPermission": "Allow ZYPH to use your camera to take your profile picture."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

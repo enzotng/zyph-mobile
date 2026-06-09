@@ -5,12 +5,13 @@ type MemberRow = Database['public']['Tables']['trip_members']['Row']
 
 export type TripMember = Pick<MemberRow, 'id' | 'user_id' | 'role' | 'status'> & {
   display_name: string | null
+  avatar_url: string | null
 }
 
 export async function listTripMembers(tripId: string): Promise<TripMember[]> {
   const { data, error } = await supabase
     .from('trip_members')
-    .select('id, user_id, role, status, profiles(display_name)')
+    .select('id, user_id, role, status, profiles(display_name, avatar_url)')
     .eq('trip_id', tripId)
     .eq('status', 'active')
     .order('joined_at', { ascending: true })
@@ -23,6 +24,7 @@ export async function listTripMembers(tripId: string): Promise<TripMember[]> {
     role: member.role,
     status: member.status,
     display_name: member.profiles?.display_name ?? null,
+    avatar_url: member.profiles?.avatar_url ?? null,
   }))
 }
 

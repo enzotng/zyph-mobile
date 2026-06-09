@@ -507,7 +507,7 @@ export default function TripGroupScreen() {
                   style={[styles.listRow, index === members.length - 1 && styles.listRowLast]}
                 >
                   <View style={styles.rowMember}>
-                    <Avatar name={name} size={34} />
+                    <Avatar name={name} imageUrl={member.avatar_url} size={34} />
                     <Text style={styles.memberName}>{name}</Text>
                   </View>
                   {member.role === 'owner' ? (

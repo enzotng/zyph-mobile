@@ -177,6 +177,7 @@ export default function TripDashboardScreen() {
       (members ?? []).map((member) => ({
         id: member.id,
         name: member.display_name ?? undefined,
+        imageUrl: member.avatar_url,
       })),
     [members],
   )
