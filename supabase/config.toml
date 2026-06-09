@@ -437,3 +437,12 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/generate-packing/deno.json"
 entrypoint = "./functions/generate-packing/index.ts"
+
+[functions.send-push]
+enabled = true
+# Invoked by the notifications AFTER INSERT trigger via pg_net, NOT by the app, so there is no
+# user JWT. Authorisation is the shared secret in the x-push-secret header (checked against the
+# PUSH_HOOK_SECRET function secret). Requires a redeploy to take effect on cloud.
+verify_jwt = false
+import_map = "./functions/send-push/deno.json"
+entrypoint = "./functions/send-push/index.ts"

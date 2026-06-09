@@ -487,6 +487,38 @@ export type Database = {
         }
         Relationships: []
       }
+      push_tokens: {
+        Row: {
+          created_at: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'push_tokens_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       trip_events: {
         Row: {
           created_at: string
@@ -896,6 +928,7 @@ export type Database = {
         }
       }
       regenerate_invite_code: { Args: { _trip_id: string }; Returns: string }
+      register_push_token: { Args: { _token: string; _platform: string }; Returns: undefined }
       remove_trip_member: { Args: { _member_id: string }; Returns: undefined }
       reverse_settlement: {
         Args: { _id: string }
