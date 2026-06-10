@@ -455,3 +455,11 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/send-push/deno.json"
 entrypoint = "./functions/send-push/index.ts"
+
+[functions.trip-cover]
+enabled = true
+# Authenticated-only (verify_jwt on by default). Rate-limited per user so a signed-in caller
+# cannot burn the Unsplash quota. import_map declared so the rate-limit client resolves.
+verify_jwt = true
+import_map = "./functions/trip-cover/deno.json"
+entrypoint = "./functions/trip-cover/index.ts"

@@ -14,6 +14,8 @@
 import "@supabase/functions-js/edge-runtime.d.ts"
 import { withSupabase } from "@supabase/server"
 
+import { isWithinRateLimit } from "../_shared/rate-limit.ts"
+
 const DEFAULT_MODEL = "llama-3.1-8b-instant"
 const DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 
@@ -75,9 +77,12 @@ function parseMessages(raw: unknown): ChatMessage[] | null {
 }
 
 export default {
-  fetch: withSupabase({ auth: ["publishable"] }, async (req) => {
+  fetch: withSupabase({ auth: ["publishable"] }, async (req, ctx) => {
     if (req.method !== "POST") {
       return new Response("Method not allowed", { status: 405 })
+    }
+    if (!(await isWithinRateLimit(ctx.supabase, "copilot", 20, 60))) {
+      return Response.json({ error: "Too many requests, please slow down." }, { status: 429 })
     }
 
     let body: { context?: unknown; language?: unknown; messages?: unknown }
