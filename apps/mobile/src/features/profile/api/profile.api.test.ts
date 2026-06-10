@@ -1,3 +1,5 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
+
 import { supabase } from '@/lib/supabase'
 import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
 
@@ -5,17 +7,9 @@ import { getProfile, updateProfile, uploadAvatar } from './profile.api'
 
 jest.mock('@/lib/supabase')
 
-// Stub expo-file-system's File so new File(uri).arrayBuffer() is controllable.
-let mockArrayBuffer: () => Promise<ArrayBuffer>
-jest.mock('expo-file-system', () => ({
-  File: jest.fn().mockImplementation(() => ({
-    arrayBuffer: () => mockArrayBuffer(),
-  })),
-}))
-
 const from = supabase.from as jest.Mock
 const getSession = supabase.auth.getSession as jest.Mock
-const storageFrom = supabase.storage.from as jest.Mock
+const invoke = supabase.functions.invoke as jest.Mock
 
 const profile = {
   id: 'u1',
@@ -28,7 +22,6 @@ const profile = {
 
 beforeEach(() => {
   jest.clearAllMocks()
-  mockArrayBuffer = () => Promise.resolve(new ArrayBuffer(8))
 })
 
 describe('getProfile', () => {
@@ -92,80 +85,34 @@ describe('updateProfile', () => {
 })
 
 describe('uploadAvatar', () => {
-  function makeStorageMock(uploadError: Error | null = null) {
-    return {
-      upload: jest.fn().mockResolvedValue({ data: { path: 'u1/avatar' }, error: uploadError }),
-      getPublicUrl: jest.fn().mockReturnValue({
-        data: { publicUrl: 'https://cdn.example.com/avatars/u1/avatar' },
-      }),
-    }
-  }
-
-  it('uploads the image and writes the public url onto the profile', async () => {
-    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
-    const storage = makeStorageMock()
-    storageFrom.mockReturnValue(storage)
+  it('invokes the upload-avatar function and returns the updated profile', async () => {
     const updated = { ...profile, avatar_url: 'https://cdn.example.com/avatars/u1/avatar?v=1' }
-    const builder = makeQueryBuilder({ data: updated, error: null })
-    from.mockReturnValue(builder)
+    invoke.mockResolvedValue({ data: { profile: updated }, error: null })
 
-    await expect(uploadAvatar('file:///cache/pic.jpg', 'image/jpeg')).resolves.toEqual(updated)
-
-    expect(storageFrom).toHaveBeenCalledWith('avatars')
-    expect(storage.upload).toHaveBeenCalledWith(
-      'u1/avatar',
-      expect.any(ArrayBuffer),
-      expect.objectContaining({ contentType: 'image/jpeg', upsert: true }),
-    )
-    expect(builder.update).toHaveBeenCalledWith({
-      avatar_url: expect.stringContaining('https://cdn.example.com/avatars/u1/avatar?v='),
+    await expect(uploadAvatar('YmFzZTY0', 'image/jpeg')).resolves.toEqual(updated)
+    expect(invoke).toHaveBeenCalledWith('upload-avatar', {
+      body: { imageBase64: 'YmFzZTY0', contentType: 'image/jpeg' },
     })
-    expect(builder.eq).toHaveBeenCalledWith('id', 'u1')
   })
 
-  it('falls back to image/jpeg when the content type is empty', async () => {
-    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
-    const storage = makeStorageMock()
-    storageFrom.mockReturnValue(storage)
-    from.mockReturnValue(makeQueryBuilder({ data: profile, error: null }))
+  it('surfaces the function error body on a non-2xx response', async () => {
+    const httpError = new FunctionsHttpError({
+      json: async () => ({ error: 'Unsupported image type' }),
+    } as unknown as Response)
+    invoke.mockResolvedValue({ data: null, error: httpError })
 
-    await uploadAvatar('file:///cache/pic', '')
-
-    expect(storage.upload).toHaveBeenCalledWith(
-      'u1/avatar',
-      expect.any(ArrayBuffer),
-      expect.objectContaining({ contentType: 'image/jpeg' }),
-    )
+    await expect(uploadAvatar('YmFzZTY0', 'image/jpeg')).rejects.toThrow('Unsupported image type')
   })
 
-  it('rejects when there is no session', async () => {
-    getSession.mockResolvedValue({ data: { session: null } })
+  it('passes through a non-HTTP error', async () => {
+    invoke.mockResolvedValue({ data: null, error: new Error('network down') })
 
-    await expect(uploadAvatar('file:///x.jpg', 'image/jpeg')).rejects.toThrow('signed in')
-    expect(storageFrom).not.toHaveBeenCalled()
+    await expect(uploadAvatar('YmFzZTY0', 'image/jpeg')).rejects.toThrow('network down')
   })
 
-  it('rejects when the image is 0 bytes', async () => {
-    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
-    mockArrayBuffer = () => Promise.resolve(new ArrayBuffer(0))
+  it('throws when the function returns no profile', async () => {
+    invoke.mockResolvedValue({ data: null, error: null })
 
-    await expect(uploadAvatar('file:///x.jpg', 'image/jpeg')).rejects.toThrow('empty')
-    expect(storageFrom).not.toHaveBeenCalled()
-  })
-
-  it('throws when the storage upload fails', async () => {
-    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
-    storageFrom.mockReturnValue(makeStorageMock(new Error('storage error')))
-
-    await expect(uploadAvatar('file:///x.jpg', 'image/jpeg')).rejects.toThrow('storage error')
-    expect(from).not.toHaveBeenCalled()
-  })
-
-  it('throws when the profile update fails', async () => {
-    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
-    storageFrom.mockReturnValue(makeStorageMock())
-    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('rls denied') }))
-
-    await expect(uploadAvatar('file:///x.jpg', 'image/jpeg')).rejects.toThrow('rls denied')
+    await expect(uploadAvatar('YmFzZTY0', 'image/jpeg')).rejects.toThrow('no profile')
   })
 })

@@ -438,6 +438,15 @@ verify_jwt = true
 import_map = "./functions/generate-packing/deno.json"
 entrypoint = "./functions/generate-packing/index.ts"
 
+[functions.upload-avatar]
+enabled = true
+# Authenticated-only: resolves the caller from their JWT and writes their avatar with the service
+# role (Storage rejects ES256 user tokens under RLS, so a direct client upload fails). Requires a
+# redeploy to take effect on cloud.
+verify_jwt = true
+import_map = "./functions/upload-avatar/deno.json"
+entrypoint = "./functions/upload-avatar/index.ts"
+
 [functions.send-push]
 enabled = true
 # Invoked by the notifications AFTER INSERT trigger via pg_net, NOT by the app, so there is no

@@ -104,12 +104,19 @@ export default function EditProfileScreen() {
         return
       }
       // Downscale to a 512px JPEG before upload so we never store/serve a multi-MB full-resolution
-      // photo to every co-member.
+      // photo to every co-member; the base64 is sent to the upload-avatar edge function.
       const rendered = await ImageManipulator.manipulate(result.assets[0].uri)
         .resize({ width: 512 })
         .renderAsync()
-      const image = await rendered.saveAsync({ compress: 0.7, format: SaveFormat.JPEG })
-      await uploadAvatar.mutateAsync({ uri: image.uri, contentType: 'image/jpeg' })
+      const image = await rendered.saveAsync({
+        compress: 0.7,
+        format: SaveFormat.JPEG,
+        base64: true,
+      })
+      if (!image.base64) {
+        throw new Error('Could not read the selected image.')
+      }
+      await uploadAvatar.mutateAsync({ imageBase64: image.base64, contentType: 'image/jpeg' })
     } catch (error) {
       Alert.alert(
         t('profile.photoErrorTitle'),
