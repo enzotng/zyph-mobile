@@ -7,6 +7,10 @@
 //
 // Auth: verify_jwt is on by default, so only signed-in users can invoke this.
 
+import { createClient } from '@supabase/supabase-js'
+
+import { isWithinRateLimit } from '../_shared/rate-limit.ts'
+
 const UNSPLASH = 'https://api.unsplash.com'
 const ACCESS_KEY = Deno.env.get('UNSPLASH_ACCESS_KEY') ?? ''
 const UTM = '?utm_source=zyph&utm_medium=referral'
@@ -30,6 +34,20 @@ Deno.serve(async (req: Request) => {
   }
   if (!ACCESS_KEY) {
     return json({ error: 'UNSPLASH_ACCESS_KEY is not configured' }, 500)
+  }
+
+  // Per-user rate limit so a signed-in caller cannot burn the Unsplash quota. User-scoped client
+  // (built from the caller's bearer) so check_rate_limit sees auth.uid().
+  const userClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    {
+      global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
+      auth: { persistSession: false },
+    },
+  )
+  if (!(await isWithinRateLimit(userClient, 'trip-cover', 15, 60))) {
+    return json({ error: 'Too many requests, please slow down.' }, 429)
   }
 
   try {
