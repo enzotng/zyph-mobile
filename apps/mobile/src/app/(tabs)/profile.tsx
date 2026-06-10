@@ -153,6 +153,11 @@ export default function ProfileScreen() {
             iconColor={theme.colors.warning}
             title={t('profile.notifications')}
             onPress={() => router.push('/profile/notifications')}
+          />
+          <ListRow
+            icon="lock-closed-outline"
+            title={t('profile.changePassword')}
+            onPress={() => router.push('/profile/change-password')}
             last
           />
         </Surface>

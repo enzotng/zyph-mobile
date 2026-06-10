@@ -29,5 +29,15 @@ export function makeSignUpSchema(t: TFunction) {
   })
 }
 
+export function makeChangePasswordSchema(t: TFunction) {
+  return z
+    .object({ password: makePasswordSchema(t), confirmPassword: z.string() })
+    .refine((values) => values.password === values.confirmPassword, {
+      message: t('auth.validation.passwordMismatch'),
+      path: ['confirmPassword'],
+    })
+}
+
 export type SignInValues = z.infer<ReturnType<typeof makeSignInSchema>>
 export type SignUpValues = z.infer<ReturnType<typeof makeSignUpSchema>>
+export type ChangePasswordValues = z.infer<ReturnType<typeof makeChangePasswordSchema>>
