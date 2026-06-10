@@ -82,7 +82,7 @@ describe('useUploadAvatar', () => {
     const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries')
 
     const { result } = renderHook(() => useUploadAvatar(), { wrapper })
-    result.current.mutate({ uri: 'file:///cache/pic.jpg', contentType: 'image/jpeg' })
+    result.current.mutate({ imageBase64: 'YmFzZTY0', contentType: 'image/jpeg' })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(setQueryData).toHaveBeenCalledWith(profileQueryKey, updated)

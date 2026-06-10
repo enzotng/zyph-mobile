@@ -1,11 +1,9 @@
-import { File } from 'expo-file-system'
+import { FunctionsHttpError } from '@supabase/supabase-js'
 
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
 
 export type Profile = Database['public']['Tables']['profiles']['Row']
-
-const AVATAR_BUCKET = 'avatars'
 
 export async function getProfile(): Promise<Profile> {
   const { data: auth } = await supabase.auth.getSession()
@@ -46,41 +44,24 @@ export async function updateProfile({
   return data
 }
 
-// Uploads a picked image as the user's avatar and writes the public URL onto their profile.
-// The object lives at a stable per-user path (overwritten on each change); the stored URL is
-// cache-busted with a ?v= timestamp so a replaced photo is fetched fresh.
-export async function uploadAvatar(uri: string, contentType: string): Promise<Profile> {
-  const { data: auth } = await supabase.auth.getSession()
-  const userId = auth.session?.user.id
-  if (!userId) {
-    throw new Error('You must be signed in.')
-  }
-
-  const bytes = await new File(uri).arrayBuffer()
-  if (bytes.byteLength === 0) {
-    throw new Error('The selected image is empty or could not be read.')
-  }
-
-  // First path segment is the user id - Storage RLS checks it against auth.uid().
-  const path = `${userId}/avatar`
-  const { error: uploadError } = await supabase.storage
-    .from(AVATAR_BUCKET)
-    .upload(path, bytes, { contentType: contentType || 'image/jpeg', upsert: true })
-  if (uploadError) {
-    throw uploadError
-  }
-
-  const { publicUrl } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path).data
-  const versionedUrl = `${publicUrl}?v=${Date.now()}`
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({ avatar_url: versionedUrl })
-    .eq('id', userId)
-    .select()
-    .single()
+// Uploads a base64 image as the user's avatar via the upload-avatar edge function, which writes
+// it with the service role and returns the updated profile. We go through an edge function (not a
+// direct Storage upload) because the project's ES256 user tokens are rejected by Storage RLS.
+export async function uploadAvatar(imageBase64: string, contentType: string): Promise<Profile> {
+  const { data, error } = await supabase.functions.invoke<{ profile: Profile }>('upload-avatar', {
+    body: { imageBase64, contentType },
+  })
   if (error) {
+    // invoke wraps a non-2xx response in a FunctionsHttpError with a generic message; surface the
+    // function's own { error } body so the user sees the real reason (bad type, too large, ...).
+    if (error instanceof FunctionsHttpError) {
+      const body = (await error.context.json().catch(() => null)) as { error?: string } | null
+      throw new Error(body?.error ?? error.message)
+    }
     throw error
   }
-  return data
+  if (!data?.profile) {
+    throw new Error('Avatar upload returned no profile.')
+  }
+  return data.profile
 }

@@ -33,8 +33,8 @@ export function useUpdateProfile() {
 export function useUploadAvatar() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ uri, contentType }: { uri: string; contentType: string }) =>
-      uploadAvatar(uri, contentType),
+    mutationFn: ({ imageBase64, contentType }: { imageBase64: string; contentType: string }) =>
+      uploadAvatar(imageBase64, contentType),
     onSuccess: (updated) => {
       queryClient.setQueryData(profileQueryKey, updated)
       // The new avatar also shows in trip member lists, cards and the overview (keyed under
