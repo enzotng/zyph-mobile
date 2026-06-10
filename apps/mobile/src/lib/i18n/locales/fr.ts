@@ -7,6 +7,7 @@ export const fr: Translations = {
     add: 'Ajouter',
     save: 'Enregistrer',
     cancel: 'Annuler',
+    ok: 'OK',
     delete: 'Supprimer',
     edit: 'Modifier',
     done: 'Terminer',
@@ -293,6 +294,7 @@ export const fr: Translations = {
       passwordMin: 'Au moins 8 caractères',
       passwordLetter: 'Ajoute au moins une lettre',
       passwordNumber: 'Ajoute au moins un chiffre',
+      passwordMismatch: 'Les mots de passe ne correspondent pas',
       passwordRequired: 'Le mot de passe est requis',
       nameRequired: 'Le nom est requis',
     },
@@ -352,6 +354,11 @@ export const fr: Translations = {
     photoPermissionBody:
       'Autorise l’accès aux photos dans les Réglages pour définir une photo de profil.',
     photoErrorTitle: 'Photo non mise à jour',
+    changePassword: 'Changer le mot de passe',
+    newPassword: 'Nouveau mot de passe',
+    confirmPassword: 'Confirmer le mot de passe',
+    passwordChanged: 'Mot de passe mis à jour',
+    changePasswordError: 'Modification impossible',
     validation: {
       nameRequired: 'Le nom est requis',
       currency: 'Choisis une devise',
