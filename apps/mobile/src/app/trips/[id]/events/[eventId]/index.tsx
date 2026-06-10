@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as DocumentPicker from 'expo-document-picker'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
+import * as WebBrowser from 'expo-web-browser'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, Linking, Pressable, Text, View } from 'react-native'
+import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -96,7 +97,8 @@ export default function EventDetailScreen() {
   async function openDocument(doc: TripDocument) {
     try {
       const url = await getDocumentUrl(doc.storage_path)
-      await Linking.openURL(url)
+      // Open in an in-app browser sheet (native PDF viewer on iOS) instead of leaving the app.
+      await WebBrowser.openBrowserAsync(url)
     } catch (error) {
       Alert.alert(
         t('events.detail.openError'),
