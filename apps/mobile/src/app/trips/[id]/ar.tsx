@@ -15,7 +15,14 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { poiIconName } from '@/components/poi-icon-picker'
-import { ArArrow, ArOverlay, useWayfinderTargets, type WayfinderTarget } from '@/features/wayfinder'
+import {
+  ARRIVAL_RADIUS_M,
+  ArArrow,
+  ArOverlay,
+  ArPath,
+  useWayfinderTargets,
+  type WayfinderTarget,
+} from '@/features/wayfinder'
 import { bearing, formatDistance, formatWalkingTime, haversine, relativeHeading } from '@/lib/geo'
 import { paramString } from '@/lib/routing'
 import { useDeviceTilt, useHeading, useUserLocation } from '@/lib/sensors'
@@ -113,8 +120,18 @@ export default function ArScreen() {
         activeId={active?.id ?? null}
       />
 
+      {stats && stats.distance > ARRIVAL_RADIUS_M ? (
+        <ArPath width={width} height={height} delta={stats.delta} pitch={tilt.pitch} />
+      ) : null}
+
       {stats ? (
-        <ArArrow width={width} height={height} delta={stats.delta} pitch={tilt.pitch} />
+        <ArArrow
+          width={width}
+          height={height}
+          delta={stats.delta}
+          pitch={tilt.pitch}
+          distance={stats.distance}
+        />
       ) : null}
 
       <View style={styles.topBar}>
@@ -172,9 +189,11 @@ export default function ArScreen() {
               <Text style={styles.hudValue}>{formatWalkingTime(stats.distance)}</Text>
               <Text style={styles.hudSep}>·</Text>
               <Text style={styles.hudDelta}>
-                {Math.abs(stats.delta) < 5
-                  ? t('ar.rightAhead')
-                  : `${stats.delta > 0 ? '→' : '←'} ${Math.abs(Math.round(stats.delta))}°`}
+                {stats.distance <= ARRIVAL_RADIUS_M
+                  ? t('ar.arrived')
+                  : Math.abs(stats.delta) < 5
+                    ? t('ar.rightAhead')
+                    : `${stats.delta > 0 ? '→' : '←'} ${Math.abs(Math.round(stats.delta))}°`}
               </Text>
             </View>
           ) : (
@@ -207,7 +226,7 @@ function TargetChip({
       <Ionicons
         name={poiIconName(target.icon)}
         size={14}
-        color={active ? theme.colors.primaryForeground : theme.colors.foreground}
+        color={active ? theme.colors.primaryForeground : 'rgba(255,255,255,0.82)'}
       />
       <Text style={[styles.chipLabel, active ? styles.chipLabelActive : null]} numberOfLines={1}>
         {target.label}
@@ -291,20 +310,30 @@ const styles = StyleSheet.create((theme, rt) => ({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.gap(1),
+    gap: theme.gap(1.5),
     paddingHorizontal: theme.gap(3),
     paddingVertical: theme.gap(2),
     borderRadius: theme.gap(5),
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    // Inactive: dark glass that recedes against the camera (matches the POI cards).
+    backgroundColor: 'rgba(15,23,42,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
   },
   chipActive: {
+    // Active: solid indigo with an indigo halo so it clearly dominates (no white rim).
     backgroundColor: theme.colors.primary,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.75,
+    shadowRadius: 8,
+    elevation: 6,
   },
   chipLabel: {
     fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
-    color: theme.colors.foreground,
+    // Inactive label on the dark-glass chip: light but slightly muted so it recedes.
+    color: 'rgba(255,255,255,0.82)',
     maxWidth: theme.gap(40),
   },
   chipLabelActive: {
