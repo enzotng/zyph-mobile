@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
+import * as WebBrowser from 'expo-web-browser'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Linking, Pressable, Text, View } from 'react-native'
@@ -60,6 +61,11 @@ export default function ProfileScreen() {
   // Opens the OS settings page for the app, where iOS/Android expose the native per-app language.
   function openSystemLanguageSettings() {
     void Linking.openSettings()
+  }
+
+  // Opens the hosted legal pages (privacy policy + terms) in an in-app browser.
+  function openLegal() {
+    void WebBrowser.openBrowserAsync('https://enzotng.github.io/zyph-mobile/')
   }
 
   async function onSignOut() {
@@ -219,6 +225,25 @@ export default function ProfileScreen() {
           />
         </Surface>
         <Text style={styles.groupHint}>{t('profile.languageHint')}</Text>
+      </View>
+
+      {/* About / legal */}
+      <View style={styles.group}>
+        <Text style={styles.groupTitle}>{t('profile.section.about')}</Text>
+        <Surface
+          color={theme.colors.card}
+          borderColor={theme.colors.border}
+          borderWidth={1}
+          radius={theme.radius.lg}
+          style={styles.groupCard}
+        >
+          <ListRow
+            icon="document-text-outline"
+            title={t('profile.legal')}
+            onPress={openLegal}
+            last
+          />
+        </Surface>
       </View>
 
       <Button

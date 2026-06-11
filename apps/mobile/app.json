@@ -13,7 +13,8 @@
       "supportsTablet": true,
       "config": {
         "usesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "2"
     },
     "android": {
       "package": "fr.enzotang.zyph",
@@ -74,8 +75,14 @@
         "expo-localization",
         {
           "supportedLocales": {
-            "ios": ["en", "fr"],
-            "android": ["en", "fr"]
+            "ios": [
+              "en",
+              "fr"
+            ],
+            "android": [
+              "en",
+              "fr"
+            ]
           }
         }
       ],
