@@ -447,6 +447,16 @@ verify_jwt = true
 import_map = "./functions/upload-avatar/deno.json"
 entrypoint = "./functions/upload-avatar/index.ts"
 
+[functions.delete-account]
+enabled = true
+# Authenticated-only: resolves the caller from their JWT and runs the account-deletion teardown
+# with the service role (block owned shared trips, delete solo trips, soft-remove guest
+# memberships, anonymise the profile, then disable or erase the auth user). Requires a redeploy to
+# take effect on cloud.
+verify_jwt = true
+import_map = "./functions/delete-account/deno.json"
+entrypoint = "./functions/delete-account/index.ts"
+
 [functions.send-push]
 enabled = true
 # Invoked by the notifications AFTER INSERT trigger via pg_net, NOT by the app, so there is no
