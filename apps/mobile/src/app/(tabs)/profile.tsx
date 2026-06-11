@@ -10,7 +10,7 @@ import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar
 import { Screen } from '@/components/screen'
 import { Avatar, ListRow, Segmented, Spinner, Surface } from '@/components/ui'
 import { signOut, useAuth } from '@/features/auth'
-import { useProfile } from '@/features/profile'
+import { ACCOUNT_HAS_SHARED_TRIPS, deleteAccount, useProfile } from '@/features/profile'
 import { setAppLanguage } from '@/lib/i18n'
 import {
   getLanguagePreference,
@@ -27,6 +27,7 @@ export default function ProfileScreen() {
   const { session } = useAuth()
   const { data: profile, isLoading, isError, refetch } = useProfile()
   const [signingOut, setSigningOut] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [themePref, setThemePref] = useState<ThemePreference>(getThemePreference())
   const [langPref, setLangPref] = useState<LanguagePreference>(getLanguagePreference())
 
@@ -72,6 +73,35 @@ export default function ProfileScreen() {
       )
     } finally {
       setSigningOut(false)
+    }
+  }
+
+  function confirmDeleteAccount() {
+    Alert.alert(t('profile.deleteAccountConfirmTitle'), t('profile.deleteAccountConfirmBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('profile.deleteAccount'),
+        style: 'destructive',
+        onPress: () => void onDeleteAccount(),
+      },
+    ])
+  }
+
+  async function onDeleteAccount() {
+    setDeleting(true)
+    try {
+      await deleteAccount()
+      // The server session is now invalidated; drop the local one to return to the auth flow.
+      await signOut().catch(() => undefined)
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message === ACCOUNT_HAS_SHARED_TRIPS
+          ? t('profile.deleteAccountBlocked')
+          : error instanceof Error
+            ? error.message
+            : t('common.tryAgain')
+      Alert.alert(t('profile.deleteAccountErrorTitle'), message)
+      setDeleting(false)
     }
   }
 
@@ -196,8 +226,22 @@ export default function ProfileScreen() {
         variant="destructive"
         icon="log-out-outline"
         onPress={onSignOut}
-        disabled={signingOut}
+        disabled={signingOut || deleting}
       />
+
+      <Pressable
+        onPress={confirmDeleteAccount}
+        disabled={deleting}
+        accessibilityRole="button"
+        accessibilityLabel={t('profile.deleteAccount')}
+        style={({ pressed }) => [
+          styles.dangerLink,
+          pressed && styles.pressed,
+          deleting && styles.dangerLinkDisabled,
+        ]}
+      >
+        <Text style={styles.dangerLinkText}>{t('profile.deleteAccount')}</Text>
+      </Pressable>
 
       <View style={styles.spacer} />
     </Screen>
@@ -248,6 +292,19 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.xs,
     color: theme.colors.muted,
     paddingLeft: 2,
+  },
+  dangerLink: {
+    alignItems: 'center',
+    paddingVertical: theme.gap(2),
+  },
+  dangerLinkText: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.destructive,
+  },
+  dangerLinkDisabled: {
+    opacity: 0.5,
   },
   statusCenter: {
     flex: 1,

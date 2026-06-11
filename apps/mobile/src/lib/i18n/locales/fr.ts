@@ -359,6 +359,13 @@ export const fr: Translations = {
     confirmPassword: 'Confirmer le mot de passe',
     passwordChanged: 'Mot de passe mis à jour',
     changePasswordError: 'Modification impossible',
+    deleteAccount: 'Supprimer le compte',
+    deleteAccountConfirmTitle: 'Supprimer ton compte ?',
+    deleteAccountConfirmBody:
+      'Cela supprime définitivement ton profil et tes données personnelles. Les voyages que tu as rejoints conservent leur historique de dépenses, anonymisé. Cette action est irréversible.',
+    deleteAccountErrorTitle: 'Suppression impossible',
+    deleteAccountBlocked:
+      'Tu possèdes encore des voyages partagés avec d’autres voyageurs. Quitte ou supprime ces voyages d’abord, puis réessaie.',
     validation: {
       nameRequired: 'Le nom est requis',
       currency: 'Choisis une devise',

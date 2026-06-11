@@ -65,3 +65,25 @@ export async function uploadAvatar(imageBase64: string, contentType: string): Pr
   }
   return data.profile
 }
+
+// Thrown (as the Error message) when the account cannot be deleted because the user still owns
+// trips other travellers are part of. The UI maps it to a dedicated, actionable message.
+export const ACCOUNT_HAS_SHARED_TRIPS = 'owns_shared_trips'
+
+// Permanently deletes the signed-in user's account via the delete-account edge function (block
+// owned shared trips, delete solo trips, soft-remove guest memberships, anonymise + disable/erase
+// the auth user). On success the server session is invalidated, so the caller should sign out.
+export async function deleteAccount(): Promise<void> {
+  const { error } = await supabase.functions.invoke<{ success: boolean }>('delete-account', {
+    body: {},
+  })
+  if (error) {
+    // Surface the function's own { error } body (e.g. the owns_shared_trips sentinel) so the UI can
+    // react, instead of invoke's generic FunctionsHttpError message.
+    if (error instanceof FunctionsHttpError) {
+      const body = (await error.context.json().catch(() => null)) as { error?: string } | null
+      throw new Error(body?.error ?? error.message)
+    }
+    throw error
+  }
+}

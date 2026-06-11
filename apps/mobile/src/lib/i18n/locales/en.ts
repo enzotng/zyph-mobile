@@ -354,6 +354,13 @@ export const en = {
     confirmPassword: 'Confirm password',
     passwordChanged: 'Password updated',
     changePasswordError: 'Could not change password',
+    deleteAccount: 'Delete account',
+    deleteAccountConfirmTitle: 'Delete your account?',
+    deleteAccountConfirmBody:
+      'This permanently removes your profile and personal data. Trips you joined keep their expense history, anonymised. This cannot be undone.',
+    deleteAccountErrorTitle: 'Deletion failed',
+    deleteAccountBlocked:
+      'You still own trips shared with other travellers. Leave or delete those trips first, then try again.',
     validation: {
       nameRequired: 'Name is required',
       currency: 'Pick a currency',
