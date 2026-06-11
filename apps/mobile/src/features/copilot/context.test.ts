@@ -6,6 +6,9 @@ type LooseInput = {
   events?: Record<string, unknown>[]
   expenses?: Record<string, unknown>[]
   balances?: Record<string, unknown>[]
+  packing?: Record<string, unknown>[]
+  settlements?: Record<string, unknown>[]
+  weather?: Record<string, unknown> | null
 }
 
 // Builds a context input with sensible defaults; only the fields buildTripContext reads
@@ -33,11 +36,48 @@ function makeInput(over: LooseInput = {}): CopilotContextInput {
       },
     ],
     expenses: over.expenses ?? [
-      { description: 'Dinner', amount_cents: 4500, currency: 'EUR', paid_by: 'm1' },
+      { description: 'Dinner', amount_cents: 4500, currency: 'EUR', paid_by: 'm1', category: null },
     ],
     balances: over.balances ?? [
       { member_id: 'm1', balance_cents: 1250, paid_cents: 4500, owed_cents: 3250, user_id: 'u1' },
     ],
+    packing: over.packing ?? [
+      {
+        id: 'p1',
+        label: 'Sunscreen',
+        category: 'toiletries',
+        scope: 'shared',
+        packed: false,
+        quantity: 1,
+        assigned_member: 'm1',
+      },
+      {
+        id: 'p2',
+        label: 'Charger',
+        category: 'tech',
+        scope: 'personal',
+        packed: true,
+        quantity: 2,
+        assigned_member: null,
+      },
+    ],
+    settlements: over.settlements ?? [
+      {
+        from_member: 'm2',
+        to_member: 'm1',
+        amount_cents: 1000,
+        currency: 'EUR',
+        paid_at: '2026-06-12T10:00:00Z',
+      },
+    ],
+    weather:
+      over.weather === undefined
+        ? {
+            place: 'Rome',
+            mode: 'trip',
+            days: [{ date: '2026-06-10', condition: 'clear', tempMaxC: 28, tempMinC: 18 }],
+          }
+        : over.weather,
   } as unknown as CopilotContextInput
 }
 
@@ -57,14 +97,65 @@ describe('buildTripContext', () => {
     expect(ctx).not.toContain('m1')
   })
 
+  it('tags an expense with its category when present', () => {
+    const ctx = buildTripContext(
+      makeInput({
+        expenses: [
+          {
+            description: 'Pizza',
+            amount_cents: 2000,
+            currency: 'EUR',
+            paid_by: 'm2',
+            category: 'food',
+          },
+        ],
+      }),
+    )
+    expect(ctx).toContain('Pizza [food]: 20.00 EUR paid by Bob')
+  })
+
   it('formats balances with paid/owes and the net amount', () => {
     const ctx = buildTripContext(makeInput())
     expect(ctx).toContain('Alice: net 12.50 EUR (paid 45.00 EUR, owes 32.50 EUR)')
   })
 
+  it('summarises packing with a packed count and the assignee name', () => {
+    const ctx = buildTripContext(makeInput())
+    expect(ctx).toContain('Packing (1/2 packed):')
+    expect(ctx).toContain('Sunscreen (shared): to pack, Alice')
+    expect(ctx).toContain('Charger x2: packed')
+  })
+
+  it('lists recorded settlements with member names', () => {
+    const ctx = buildTripContext(makeInput())
+    expect(ctx).toContain('Settlements (1 recorded):')
+    expect(ctx).toContain('Bob -> Alice: 10.00 EUR')
+  })
+
+  it('includes a compact weather forecast when available', () => {
+    const ctx = buildTripContext(makeInput())
+    expect(ctx).toContain('Weather: 2026-06-10 clear 28/18C')
+  })
+
+  it('omits the weather line when there is no forecast', () => {
+    const ctx = buildTripContext(makeInput({ weather: null }))
+    expect(ctx).not.toContain('Weather:')
+  })
+
   it('emits "- none" lines for an empty trip and never throws', () => {
-    const ctx = buildTripContext(makeInput({ events: [], expenses: [], balances: [] }))
+    const ctx = buildTripContext(
+      makeInput({
+        events: [],
+        expenses: [],
+        balances: [],
+        packing: [],
+        settlements: [],
+        weather: null,
+      }),
+    )
     expect(ctx).toContain('Timeline (0 events):')
+    expect(ctx).toContain('Packing (0/0 packed):')
+    expect(ctx).toContain('Settlements (0 recorded):')
     expect(ctx).toContain('- none')
   })
 
