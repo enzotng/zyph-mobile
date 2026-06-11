@@ -328,6 +328,7 @@ export const fr: Translations = {
       account: 'Compte',
       appearance: 'Apparence',
       language: 'Langue',
+      about: 'À propos',
     },
     displayName: 'Nom affiché',
     namePlaceholder: 'Ton nom',
@@ -347,6 +348,7 @@ export const fr: Translations = {
     languageHint:
       '« Système » suit ton appareil et la langue par application de tes réglages système.',
     openSystemLanguage: 'Ouvrir dans les réglages système',
+    legal: 'Mentions légales',
     signOut: 'Se déconnecter',
     signOutErrorTitle: 'Déconnexion impossible',
     saveErrorTitle: 'Enregistrement impossible',
