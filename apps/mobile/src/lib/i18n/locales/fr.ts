@@ -535,6 +535,7 @@ export const fr: Translations = {
     rightAhead: 'Droit devant',
     lookingForGps: 'Recherche du GPS…',
     calibrateHint: 'Bouge ton téléphone en formant un huit pour calibrer la boussole.',
+    arrived: 'Arrivé !',
   },
   expenseForm: {
     addTitle: 'Nouvelle dépense',

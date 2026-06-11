@@ -528,6 +528,7 @@ export const en = {
     rightAhead: 'Right ahead',
     lookingForGps: 'Looking for GPS…',
     calibrateHint: 'Move your phone in a figure-of-eight to calibrate the compass.',
+    arrived: 'Arrived',
   },
   expenseForm: {
     addTitle: 'Add expense',

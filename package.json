@@ -35,6 +35,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@shopify/react-native-skia",
       "msgpackr-extract",
       "unrs-resolver"
     ]
