@@ -27,6 +27,8 @@ module.exports = {
     // sensor-driven AR wayfinder overlay + live-location sharing.
     '!src/lib/sensors/**',
     '!src/components/receipt-scanner.tsx',
+    // Native "Sign in with Apple" button (AppleAuthenticationButton) - validated on-device.
+    '!src/features/auth/components/apple-button.tsx',
     '!src/features/wayfinder/components/**',
     '!src/features/wayfinder/hooks/use-share-location.ts',
     '!src/features/wayfinder/hooks/use-wayfinder.ts',

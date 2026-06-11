@@ -271,6 +271,9 @@ export const en = {
       signingIn: 'Signing in…',
       errorTitle: 'Google sign-in failed',
     },
+    apple: {
+      errorTitle: 'Apple sign-in failed',
+    },
     orSeparator: 'or',
     fields: {
       email: 'Email',

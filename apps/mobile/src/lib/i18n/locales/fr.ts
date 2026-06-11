@@ -274,6 +274,9 @@ export const fr: Translations = {
       signingIn: 'Connexion…',
       errorTitle: 'Connexion Google impossible',
     },
+    apple: {
+      errorTitle: 'Connexion Apple impossible',
+    },
     orSeparator: 'ou',
     fields: {
       email: 'E-mail',

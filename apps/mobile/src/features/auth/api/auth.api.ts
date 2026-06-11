@@ -1,3 +1,5 @@
+import * as AppleAuthentication from 'expo-apple-authentication'
+import * as Crypto from 'expo-crypto'
 import * as Linking from 'expo-linking'
 import * as WebBrowser from 'expo-web-browser'
 
@@ -101,4 +103,41 @@ export async function signInWithGoogle(): Promise<{ cancelled: boolean }> {
     }
   }
   return { cancelled: false }
+}
+
+// Native "Sign in with Apple" (iOS): Apple returns an identity token bound to a nonce. We send the
+// SHA-256 hash of the nonce to Apple and the raw nonce to Supabase, which re-hashes it and checks
+// it against the token's claim. Requires the Apple provider enabled in Supabase (iOS only).
+export async function signInWithApple(): Promise<{ cancelled: boolean }> {
+  const rawNonce = Crypto.randomUUID()
+  const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce)
+
+  try {
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+      nonce: hashedNonce,
+    })
+    if (!credential.identityToken) {
+      throw new Error('Apple sign-in returned no identity token')
+    }
+
+    const { error } = await supabase.auth.signInWithIdToken({
+      provider: 'apple',
+      token: credential.identityToken,
+      nonce: rawNonce,
+    })
+    if (error) {
+      throw error
+    }
+    return { cancelled: false }
+  } catch (error) {
+    // The user dismissed the Apple sheet; not an error.
+    if ((error as { code?: string }).code === 'ERR_REQUEST_CANCELED') {
+      return { cancelled: true }
+    }
+    throw error
+  }
 }
