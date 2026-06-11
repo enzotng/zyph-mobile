@@ -1,3 +1,4 @@
+import * as AppleAuthentication from 'expo-apple-authentication'
 import * as Linking from 'expo-linking'
 import * as WebBrowser from 'expo-web-browser'
 
@@ -6,6 +7,7 @@ import {
   AUTH_REDIRECT_URL,
   requestPasswordReset,
   signIn,
+  signInWithApple,
   signInWithGoogle,
   signOut,
   signUp,
@@ -15,6 +17,15 @@ import {
 jest.mock('@/lib/supabase')
 jest.mock('expo-web-browser')
 jest.mock('expo-linking')
+jest.mock('expo-apple-authentication', () => ({
+  signInAsync: jest.fn(),
+  AppleAuthenticationScope: { FULL_NAME: 1, EMAIL: 0 },
+}))
+jest.mock('expo-crypto', () => ({
+  randomUUID: () => 'raw-nonce',
+  digestStringAsync: jest.fn().mockResolvedValue('hashed-nonce'),
+  CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+}))
 
 const signUpMock = supabase.auth.signUp as jest.Mock
 const signInMock = supabase.auth.signInWithPassword as jest.Mock
@@ -26,6 +37,8 @@ const openAuthMock = WebBrowser.openAuthSessionAsync as jest.Mock
 const parseMock = Linking.parse as jest.Mock
 const resetPasswordMock = supabase.auth.resetPasswordForEmail as jest.Mock
 const updateUserMock = supabase.auth.updateUser as jest.Mock
+const idTokenMock = supabase.auth.signInWithIdToken as jest.Mock
+const appleSignInMock = AppleAuthentication.signInAsync as jest.Mock
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -200,5 +213,43 @@ describe('signInWithGoogle', () => {
     getSessionMock.mockResolvedValue({ data: { session: { access_token: 't' } } })
 
     await expect(signInWithGoogle()).resolves.toEqual({ cancelled: false })
+  })
+})
+
+describe('signInWithApple', () => {
+  it('sends the hashed nonce to Apple and the raw nonce + identity token to Supabase', async () => {
+    appleSignInMock.mockResolvedValue({ identityToken: 'apple-id-token' })
+    idTokenMock.mockResolvedValue({ error: null })
+
+    await expect(signInWithApple()).resolves.toEqual({ cancelled: false })
+    expect(appleSignInMock).toHaveBeenCalledWith(expect.objectContaining({ nonce: 'hashed-nonce' }))
+    expect(idTokenMock).toHaveBeenCalledWith({
+      provider: 'apple',
+      token: 'apple-id-token',
+      nonce: 'raw-nonce',
+    })
+  })
+
+  it('returns cancelled when the user dismisses the Apple sheet', async () => {
+    appleSignInMock.mockRejectedValue(
+      Object.assign(new Error('cancelled'), { code: 'ERR_REQUEST_CANCELED' }),
+    )
+
+    await expect(signInWithApple()).resolves.toEqual({ cancelled: true })
+    expect(idTokenMock).not.toHaveBeenCalled()
+  })
+
+  it('throws when Apple returns no identity token', async () => {
+    appleSignInMock.mockResolvedValue({ identityToken: null })
+
+    await expect(signInWithApple()).rejects.toThrow('no identity token')
+    expect(idTokenMock).not.toHaveBeenCalled()
+  })
+
+  it('rethrows a Supabase sign-in error', async () => {
+    appleSignInMock.mockResolvedValue({ identityToken: 'apple-id-token' })
+    idTokenMock.mockResolvedValue({ error: new Error('Unverified email') })
+
+    await expect(signInWithApple()).rejects.toThrow('Unverified email')
   })
 })
