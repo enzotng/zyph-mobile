@@ -14,10 +14,18 @@ import { paramString } from '@/lib/routing'
 
 export default function NewPoiScreen() {
   const { t } = useTranslation()
-  const params = useLocalSearchParams<{ id: string }>()
+  const params = useLocalSearchParams<{ id: string; lat?: string; lng?: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
   const createPoi = useCreatePoi(tripId)
+
+  // Optional prefill when arriving from a tap on the map (add-place mode).
+  const prefillLat = Number(paramString(params.lat))
+  const prefillLng = Number(paramString(params.lng))
+  const hasPrefill =
+    Number.isFinite(prefillLat) &&
+    Number.isFinite(prefillLng) &&
+    (prefillLat !== 0 || prefillLng !== 0)
 
   const {
     control,
@@ -26,7 +34,12 @@ export default function NewPoiScreen() {
     formState: { errors },
   } = useForm<PoiValues>({
     resolver: zodResolver(poiSchema),
-    defaultValues: { label: '', icon: 'pin', lat: 0, lng: 0 },
+    defaultValues: {
+      label: '',
+      icon: 'pin',
+      lat: hasPrefill ? prefillLat : 0,
+      lng: hasPrefill ? prefillLng : 0,
+    },
   })
 
   const lat = useWatch({ control, name: 'lat' })
