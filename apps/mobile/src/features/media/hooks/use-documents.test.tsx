@@ -5,9 +5,13 @@ import type { TripDocument } from '../api/media.api'
 import * as api from '../api/media.api'
 import {
   eventDocumentsQueryKey,
+  tripDocumentsQueryKey,
   useDeleteDocument,
+  useDeleteTripDocument,
   useEventDocuments,
+  useTripDocuments,
   useUploadDocument,
+  useUploadTripDocument,
 } from './use-documents'
 
 jest.mock('@/lib/supabase')
@@ -116,5 +120,59 @@ describe('useDeleteDocument', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true))
     expect(result.current.error).toBeInstanceOf(Error)
+  })
+})
+
+const tripDoc: TripDocument = { ...doc, id: 'd2', event_id: null }
+const tripUploadInput = { ...uploadInput, eventId: null }
+
+describe('useTripDocuments', () => {
+  it('fetches every document for a trip', async () => {
+    jest.mocked(api.listTripDocuments).mockResolvedValue([doc])
+    const { wrapper } = createQueryWrapper()
+
+    const { result } = renderHook(() => useTripDocuments('trip1'), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toEqual([doc])
+    expect(api.listTripDocuments).toHaveBeenCalledWith('trip1')
+  })
+
+  it('is disabled when tripId is empty', () => {
+    const { wrapper } = createQueryWrapper()
+
+    const { result } = renderHook(() => useTripDocuments(''), { wrapper })
+
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(api.listTripDocuments).not.toHaveBeenCalled()
+  })
+})
+
+describe('useUploadTripDocument', () => {
+  it('uploads a trip-level doc and invalidates the trip documents query', async () => {
+    jest.mocked(api.uploadDocument).mockResolvedValue(tripDoc)
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useUploadTripDocument('trip1'), { wrapper })
+    result.current.mutate(tripUploadInput)
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: tripDocumentsQueryKey('trip1') })
+  })
+})
+
+describe('useDeleteTripDocument', () => {
+  it('deletes and invalidates the trip documents query', async () => {
+    jest.mocked(api.deleteDocument).mockResolvedValue(undefined)
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useDeleteTripDocument('trip1'), { wrapper })
+    result.current.mutate(tripDoc)
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(api.deleteDocument).toHaveBeenCalledWith(tripDoc)
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: tripDocumentsQueryKey('trip1') })
   })
 })
