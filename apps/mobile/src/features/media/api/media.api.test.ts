@@ -5,6 +5,7 @@ import {
   deleteDocument,
   getDocumentUrl,
   listEventDocuments,
+  listTripDocuments,
   type TripDocument,
   uploadDocument,
 } from './media.api'
@@ -171,6 +172,32 @@ describe('listEventDocuments', () => {
     dbFrom.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('list fail') }))
 
     await expect(listEventDocuments('ev1')).rejects.toThrow('list fail')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// listTripDocuments
+// ---------------------------------------------------------------------------
+
+describe('listTripDocuments', () => {
+  it('returns every trip document ordered by creation date', async () => {
+    const builder = makeQueryBuilder({ data: [doc], error: null })
+    dbFrom.mockReturnValue(builder)
+
+    await expect(listTripDocuments('trip1')).resolves.toEqual([doc])
+    expect(dbFrom).toHaveBeenCalledWith('media')
+    // Pin both filters and their order so the kind='document' scope cannot silently regress.
+    expect(builder.eq).toHaveBeenNthCalledWith(1, 'trip_id', 'trip1')
+    expect(builder.eq).toHaveBeenNthCalledWith(2, 'kind', 'document')
+    expect(builder.order).toHaveBeenCalledWith('created_at', { ascending: false })
+  })
+
+  it('throws on query error', async () => {
+    dbFrom.mockReturnValue(
+      makeQueryBuilder({ data: null, error: makePostgrestError('trip list fail') }),
+    )
+
+    await expect(listTripDocuments('trip1')).rejects.toThrow('trip list fail')
   })
 })
 

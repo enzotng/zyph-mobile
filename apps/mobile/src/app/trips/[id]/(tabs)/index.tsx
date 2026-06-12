@@ -446,6 +446,13 @@ export default function TripDashboardScreen() {
               label={t('trip.ar')}
               onPress={() => router.push({ pathname: '/trips/[id]/ar', params: { id: tripId } })}
             />
+            <QuickAction
+              icon="document-text"
+              label={t('trip.documents')}
+              onPress={() =>
+                router.push({ pathname: '/trips/[id]/documents', params: { id: tripId } })
+              }
+            />
           </Animated.View>
 
           {/* Destination weather */}
