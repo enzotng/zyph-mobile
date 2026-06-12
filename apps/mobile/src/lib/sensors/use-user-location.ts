@@ -13,9 +13,28 @@ export type UserLocationState = {
   status: 'idle' | 'requesting' | 'denied' | 'watching' | 'error'
 }
 
+// 'precise' drives live AR wayfinding (navigation-grade, sub-second); 'coarse' backs static
+// readouts like a distance label, where a 5s/25m cadence is ample and spares battery + the map.
+export type LocationProfile = 'precise' | 'coarse'
+
+const PROFILES: Record<
+  LocationProfile,
+  { accuracy: Location.Accuracy; timeInterval: number; distanceInterval: number }
+> = {
+  precise: {
+    accuracy: Location.Accuracy.BestForNavigation,
+    timeInterval: 1_000,
+    distanceInterval: 1,
+  },
+  coarse: { accuracy: Location.Accuracy.High, timeInterval: 5_000, distanceInterval: 25 },
+}
+
 const INITIAL: UserLocationState = { location: null, error: null, status: 'idle' }
 
-export function useUserLocation(enabled: boolean): UserLocationState {
+export function useUserLocation(
+  enabled: boolean,
+  profile: LocationProfile = 'precise',
+): UserLocationState {
   const [state, setState] = useState<UserLocationState>(INITIAL)
 
   useEffect(() => {
@@ -25,6 +44,7 @@ export function useUserLocation(enabled: boolean): UserLocationState {
 
     let cancelled = false
     let sub: Location.LocationSubscription | null = null
+    const watch = PROFILES[profile]
 
     async function start() {
       setState({ location: null, error: null, status: 'requesting' })
@@ -39,9 +59,9 @@ export function useUserLocation(enabled: boolean): UserLocationState {
       try {
         sub = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.BestForNavigation,
-            timeInterval: 1_000,
-            distanceInterval: 1,
+            accuracy: watch.accuracy,
+            timeInterval: watch.timeInterval,
+            distanceInterval: watch.distanceInterval,
           },
           (position) => {
             setState({
@@ -71,7 +91,7 @@ export function useUserLocation(enabled: boolean): UserLocationState {
       cancelled = true
       sub?.remove()
     }
-  }, [enabled])
+  }, [enabled, profile])
 
   return enabled ? state : INITIAL
 }
