@@ -573,6 +573,7 @@ export const fr: Translations = {
     addTitle: 'Nouvelle dépense',
     editTitle: 'Modifier la dépense',
     scanReceipt: 'Scanner un ticket',
+    splitByItem: 'Répartir par article',
     description: 'Description',
     descriptionPlaceholder: 'Dîner, taxi, hôtel…',
     currency: 'Devise',
