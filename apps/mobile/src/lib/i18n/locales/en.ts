@@ -570,6 +570,7 @@ export const en = {
     descriptionPlaceholder: 'Dinner, taxi, hotel…',
     currency: 'Currency',
     category: 'Category',
+    paidBy: 'Paid by',
     amount: 'Amount ({{currency}})',
     splitBetween: 'Split between',
     rateUnavailable: 'Exchange rate for {{currency}} is unavailable.',

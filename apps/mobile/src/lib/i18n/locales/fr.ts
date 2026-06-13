@@ -577,6 +577,7 @@ export const fr: Translations = {
     descriptionPlaceholder: 'Dîner, taxi, hôtel…',
     currency: 'Devise',
     category: 'Catégorie',
+    paidBy: 'Payé par',
     amount: 'Montant ({{currency}})',
     splitBetween: 'Partager entre',
     rateUnavailable: 'Le taux de change pour {{currency}} est indisponible.',
