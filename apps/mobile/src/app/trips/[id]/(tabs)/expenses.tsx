@@ -174,7 +174,7 @@ export default function TripExpensesScreen() {
                 <Pressable
                   onPress={() => {
                     haptics.light()
-                    router.push({ pathname: '/trips/[id]/group', params: { id: tripId } })
+                    router.push({ pathname: '/trips/[id]/balances', params: { id: tripId } })
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={t('trip.viewBalances')}

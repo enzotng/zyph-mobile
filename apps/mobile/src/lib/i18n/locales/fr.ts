@@ -600,6 +600,17 @@ export const fr: Translations = {
     createError: 'Ajout de la dépense impossible',
     updateError: 'Mise à jour de la dépense impossible',
   },
+  balances: {
+    title: 'Soldes',
+    errorTitle: 'Impossible de charger les soldes',
+    errorBody: 'Une erreur est survenue lors du chargement des soldes.',
+    emptyTitle: 'Rien à équilibrer',
+    emptyBody: 'Ajoute une dépense et les soldes apparaîtront ici.',
+    paid: 'Payé',
+    owed: 'Part',
+    pays: 'Paie {{amount}} à {{name}}',
+    receives: 'Reçoit {{amount}} de {{name}}',
+  },
   currencyPicker: {
     title: 'Devise',
     search: 'Rechercher une devise',
