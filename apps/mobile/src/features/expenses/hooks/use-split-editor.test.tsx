@@ -48,6 +48,25 @@ describe('useSplitEditor - add mode', () => {
     const { result } = renderHook(() => useSplitEditor({ members, baseCents: null }))
     expect(result.current.shareByMember.size).toBe(0)
   })
+
+  it('clears then selects all members', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 1200 }))
+    act(() => result.current.clearAll())
+    expect(result.current.includedCount).toBe(0)
+    act(() => result.current.toggle('a'))
+    expect(result.current.includedCount).toBe(1)
+    act(() => result.current.selectAll())
+    expect(result.current.includedCount).toBe(3)
+  })
+
+  it('preserves weights through a clear/select-all round trip in shares mode', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 1200 }))
+    act(() => result.current.setMode('shares'))
+    act(() => result.current.setWeight('a', 3))
+    act(() => result.current.clearAll())
+    act(() => result.current.selectAll())
+    expect(result.current.weightFor('a')).toBe(3)
+  })
 })
 
 describe('useSplitEditor - edit mode', () => {

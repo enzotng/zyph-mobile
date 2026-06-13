@@ -13,7 +13,7 @@ import { CurrencyPicker } from '@/components/currency-picker'
 import { ReceiptScanner } from '@/components/receipt-scanner'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Spinner, Surface } from '@/components/ui'
+import { Card, SectionTitle, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
@@ -32,6 +32,7 @@ import { SplitModeSelector } from '@/features/expenses/components/split-mode-sel
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
 import { useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
+import { formatAmount } from '@/lib/money'
 import { paramString } from '@/lib/routing'
 
 const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
@@ -154,6 +155,24 @@ export default function AddExpenseScreen() {
 
   const blocked = (isForeign && !canConvert) || !split.canSubmit || !payersEditor.canSubmit
 
+  // Concise reason shown next to a disabled submit, so the user is not hunting for the off-screen
+  // banner that is blocking them.
+  const blockReason = !blocked
+    ? null
+    : isForeign && !canConvert
+      ? t('expenseForm.rateUnavailable', { currency })
+      : split.includedCount === 0
+        ? t('expenseForm.selectSomeoneTitle')
+        : !split.isBalanced && baseCents !== null
+          ? t('expenseForm.remainderLeft', {
+              amount: formatAmount(Math.abs(split.remainderCents), tripCurrency),
+            })
+          : payersEditor.mode === 'multiple' && !payersEditor.isBalanced && baseCents !== null
+            ? t('expenseForm.remainderLeft', {
+                amount: formatAmount(Math.abs(payersEditor.remainderCents), tripCurrency),
+              })
+            : t('expenseForm.incomplete')
+
   async function onSubmit(values: CreateExpenseValues) {
     const amountCents = toCents(values.amount)
     let baseAmountCents = amountCents
@@ -221,11 +240,14 @@ export default function AddExpenseScreen() {
       title={t('expenseForm.addTitle')}
       scroll
       footer={
-        <Button
-          label={createExpense.isPending ? t('expenseForm.submitting') : t('expenseForm.submit')}
-          onPress={handleSubmit(onSubmit)}
-          disabled={createExpense.isPending || blocked}
-        />
+        <View style={styles.footerBar}>
+          {blockReason ? <Text style={styles.footerReason}>{blockReason}</Text> : null}
+          <Button
+            label={createExpense.isPending ? t('expenseForm.submitting') : t('expenseForm.submit')}
+            onPress={handleSubmit(onSubmit)}
+            disabled={createExpense.isPending || blocked}
+          />
+        </View>
       }
     >
       <View style={styles.quickActions}>
@@ -271,78 +293,112 @@ export default function AddExpenseScreen() {
         onResult={applyScan}
       />
 
-      <Controller
-        control={control}
-        name="description"
-        render={({ field }) => (
-          <TextField
-            label={t('expenseForm.description')}
-            placeholder={t('expenseForm.descriptionPlaceholder')}
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            error={errors.description?.message}
+      <View style={styles.section}>
+        <SectionTitle>{t('expenseForm.sectionDetails')}</SectionTitle>
+        <Card>
+          <View style={styles.cardStack}>
+            <Controller
+              control={control}
+              name="description"
+              render={({ field }) => (
+                <TextField
+                  label={t('expenseForm.description')}
+                  placeholder={t('expenseForm.descriptionPlaceholder')}
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
+                  error={errors.description?.message}
+                />
+              )}
+            />
+            <CategoryPicker
+              label={t('expenseForm.category')}
+              value={category}
+              onChange={setCategory}
+            />
+          </View>
+        </Card>
+      </View>
+
+      <View style={styles.section}>
+        <SectionTitle>{t('expenseForm.sectionAmount')}</SectionTitle>
+        <Card>
+          <View style={styles.cardStack}>
+            <Controller
+              control={control}
+              name="amount"
+              render={({ field }) => (
+                <TextField
+                  label={t('expenseForm.amount', { currency })}
+                  placeholder="45.00"
+                  keyboardType="decimal-pad"
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
+                  error={errors.amount?.message}
+                />
+              )}
+            />
+            <CurrencyPicker
+              label={t('expenseForm.currency')}
+              value={currency}
+              currencies={currencies}
+              onChange={setPicked}
+            />
+            {isForeign && !canConvert ? (
+              <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
+            ) : null}
+          </View>
+        </Card>
+      </View>
+
+      <View style={styles.section}>
+        <SectionTitle>{t('expenseForm.paidBy')}</SectionTitle>
+        <Card>
+          <PayersEditor
+            editor={payersEditor}
+            members={members}
+            currentUserId={userId}
+            tripCurrency={tripCurrency}
+            baseCents={baseCents}
           />
-        )}
-      />
+        </Card>
+      </View>
 
-      <CurrencyPicker
-        label={t('expenseForm.currency')}
-        value={currency}
-        currencies={currencies}
-        onChange={setPicked}
-      />
-
-      <CategoryPicker label={t('expenseForm.category')} value={category} onChange={setCategory} />
-
-      <PayersEditor
-        label={t('expenseForm.paidBy')}
-        editor={payersEditor}
-        members={members}
-        currentUserId={userId}
-        tripCurrency={tripCurrency}
-        baseCents={baseCents}
-      />
-
-      <Controller
-        control={control}
-        name="amount"
-        render={({ field }) => (
-          <TextField
-            label={t('expenseForm.amount', { currency })}
-            placeholder="45.00"
-            keyboardType="decimal-pad"
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            error={errors.amount?.message}
-          />
-        )}
-      />
-
-      {isForeign && !canConvert ? (
-        <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
-      ) : null}
-
-      <Text style={styles.sectionTitle}>{t('expenseForm.splitBetween')}</Text>
-      <SplitModeSelector mode={split.mode} onChange={split.setMode} />
-      {members.map((member) => (
-        <SplitMemberRow
-          key={member.id}
-          member={member}
-          split={split}
-          tripCurrency={tripCurrency}
-          currentUserId={userId}
-        />
-      ))}
-      <RemainderBanner
-        mode={split.mode}
-        allocatedCents={split.allocatedCents}
-        remainderCents={split.remainderCents}
-        isBalanced={split.isBalanced}
-        baseCents={baseCents}
-        tripCurrency={tripCurrency}
-      />
+      <View style={styles.section}>
+        <SectionTitle
+          action={
+            split.includedCount === members.length
+              ? t('expenseForm.selectNone')
+              : t('expenseForm.selectAll')
+          }
+          onAction={split.includedCount === members.length ? split.clearAll : split.selectAll}
+        >
+          {`${t('expenseForm.splitBetween')} · ${split.includedCount}/${members.length}`}
+        </SectionTitle>
+        <Card>
+          <View style={styles.cardStack}>
+            <SplitModeSelector mode={split.mode} onChange={split.setMode} />
+            {members.map((member) => (
+              <SplitMemberRow
+                key={member.id}
+                member={member}
+                split={split}
+                tripCurrency={tripCurrency}
+                currentUserId={userId}
+              />
+            ))}
+            <RemainderBanner
+              mode={split.mode}
+              allocatedCents={split.allocatedCents}
+              remainderCents={split.remainderCents}
+              isBalanced={split.isBalanced}
+              baseCents={baseCents}
+              tripCurrency={tripCurrency}
+            />
+          </View>
+        </Card>
+      </View>
     </Screen>
   )
 }
@@ -350,12 +406,24 @@ export default function AddExpenseScreen() {
 const styles = StyleSheet.create((theme) => ({
   warn: {
     fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.regular,
     color: theme.colors.warning,
   },
-  sectionTitle: {
+  section: {
+    gap: theme.gap(2),
+  },
+  cardStack: {
+    gap: theme.gap(3),
+  },
+  footerBar: {
+    gap: theme.gap(2),
+  },
+  footerReason: {
     fontSize: theme.fontSize.sm,
-    fontFamily: theme.fonts.sans.bold,
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
     color: theme.colors.muted,
+    textAlign: 'center',
   },
   quickActions: {
     flexDirection: 'row',
