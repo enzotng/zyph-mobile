@@ -826,6 +826,40 @@ export type Database = {
       }
       claim_packing_item: { Args: { _item_id: string }; Returns: undefined }
       clear_member_location: { Args: { _trip_id: string }; Returns: undefined }
+      create_expense_with_items: {
+        Args: {
+          _amount_cents: number
+          _assignments: Json
+          _base_amount_cents: number
+          _currency: string
+          _description: string
+          _fx_rate: number
+          _items: Json
+          _trip_id: string
+        }
+        Returns: {
+          amount_cents: number
+          base_amount_cents: number
+          category: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          description: string
+          fx_rate: number
+          id: string
+          paid_by: string | null
+          trip_id: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'expenses'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_expense_with_splits: {
         Args: {
           _amount_cents: number

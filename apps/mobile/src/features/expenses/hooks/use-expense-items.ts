@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  createExpenseWithItems,
   listExpenseItemAssignments,
   listExpenseItems,
   upsertExpenseWithItems,
@@ -34,6 +35,18 @@ export function useExpenseItemAssignments(expenseId: string) {
     queryKey: expenseItemAssignmentsQueryKey(expenseId),
     queryFn: () => listExpenseItemAssignments(expenseId),
     enabled: Boolean(expenseId),
+  })
+}
+
+export function useCreateExpenseWithItems(tripId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createExpenseWithItems,
+    onSuccess: () => {
+      // A new itemised expense changes the list and recomputes balances.
+      void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
+    },
   })
 }
 

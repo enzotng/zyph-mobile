@@ -56,6 +56,53 @@ export type UpsertExpenseWithItemsInput = {
   assignments: SmartSplitAssignment[]
 }
 
+export type CreateExpenseWithItemsInput = {
+  tripId: string
+  description: string
+  amountCents: number
+  currency: string
+  baseAmountCents: number
+  fxRate: number
+  items: SmartSplitItem[]
+  assignments: SmartSplitAssignment[]
+}
+
+// Atomic Smart Split create: one RPC inserts the expense + items + assignments + splits, replacing
+// the old bootstrap-then-upsert two-step that could orphan an expense on partial failure.
+export async function createExpenseWithItems({
+  tripId,
+  description,
+  amountCents,
+  currency,
+  baseAmountCents,
+  fxRate,
+  items,
+  assignments,
+}: CreateExpenseWithItemsInput) {
+  const { data, error } = await supabase.rpc('create_expense_with_items', {
+    _trip_id: tripId,
+    _description: description,
+    _amount_cents: amountCents,
+    _currency: currency,
+    _base_amount_cents: baseAmountCents,
+    _fx_rate: fxRate,
+    _items: items.map((item) => ({
+      label: item.label,
+      amount_cents: item.amountCents,
+      position: item.position,
+    })),
+    _assignments: assignments.map((assignment) => ({
+      position: assignment.position,
+      member_id: assignment.memberId,
+      share: assignment.share,
+    })),
+  })
+  if (error) {
+    throw error
+  }
+  return data
+}
+
 export async function upsertExpenseWithItems({
   expenseId,
   description,
