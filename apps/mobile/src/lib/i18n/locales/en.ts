@@ -593,6 +593,17 @@ export const en = {
     createError: 'Could not add expense',
     updateError: 'Could not update expense',
   },
+  balances: {
+    title: 'Balances',
+    errorTitle: 'Could not load balances',
+    errorBody: 'Something went wrong while loading the balances.',
+    emptyTitle: 'Nothing to balance yet',
+    emptyBody: 'Add an expense and the balances will appear here.',
+    paid: 'Paid',
+    owed: 'Share',
+    pays: 'Pays {{amount}} to {{name}}',
+    receives: 'Receives {{amount}} from {{name}}',
+  },
   currencyPicker: {
     title: 'Currency',
     search: 'Search currency',
