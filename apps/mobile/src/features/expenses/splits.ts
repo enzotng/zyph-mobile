@@ -11,6 +11,8 @@ export type ExpenseSplit = {
 
 // Divide an integer-cents amount across participants by weight, using the
 // largest-remainder method so the shares always sum back to exactly `baseCents`.
+// Precondition: baseCents >= 0 and weights >= 0 (all callers satisfy this); a negative base would
+// under-distribute since the remainder loop only adds the leftover cents.
 export function computeSplits(baseCents: number, participants: SplitParticipant[]): ExpenseSplit[] {
   const totalWeight = participants.reduce((sum, p) => sum + p.weight, 0)
   if (participants.length === 0 || totalWeight <= 0) {

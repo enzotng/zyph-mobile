@@ -1,11 +1,10 @@
-import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Alert, Pressable, Text, View } from 'react-native'
-import { StyleSheet, useUnistyles } from 'react-native-unistyles'
+import { Alert, Text, View } from 'react-native'
+import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { CategoryPicker } from '@/components/category-picker'
@@ -13,20 +12,22 @@ import { CurrencySelect } from '@/components/currency-select'
 import { PaidBySelect } from '@/components/paid-by-select'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Spinner, Surface } from '@/components/ui'
+import { Spinner } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
   createExpenseSchema,
   EXPENSE_CATEGORIES,
   type ExpenseCategory,
-  formatAmount,
   toCents,
   useExpense,
   useExpenseSplits,
   useSplitEditor,
   useUpdateExpense,
 } from '@/features/expenses'
+import { RemainderBanner } from '@/features/expenses/components/remainder-banner'
+import { SplitMemberRow } from '@/features/expenses/components/split-member-row'
+import { SplitModeSelector } from '@/features/expenses/components/split-mode-selector'
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
 import { useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
@@ -40,7 +41,6 @@ export default function EditExpenseScreen() {
   const expenseId = paramString(params.expenseId)
   const router = useRouter()
   const { t } = useTranslation()
-  const { theme } = useUnistyles()
   const { session } = useAuth()
   const userId = session?.user.id
 
@@ -112,9 +112,9 @@ export default function EditExpenseScreen() {
     return convertCents(cents, currency, tripCurrency, fx.rates)
   }, [amount, canConvert, currency, fx, isForeign, tripCurrency])
 
-  const split = useSplitEditor({ members, baseCents, initialSplits: splits })
+  const split = useSplitEditor({ members, baseCents, initialSplits: splits, initialMode: 'shares' })
 
-  const blocked = (isForeign && !canConvert) || split.includedCount === 0
+  const blocked = (isForeign && !canConvert) || !split.canSubmit
 
   async function onSubmit(values: CreateExpenseValues) {
     const amountCents = toCents(values.amount)
@@ -244,63 +244,24 @@ export default function EditExpenseScreen() {
       ) : null}
 
       <Text style={styles.sectionTitle}>{t('expenseForm.splitBetween')}</Text>
-      {members.map((member) => {
-        const included = split.isIncluded(member.id)
-        const weight = split.weightFor(member.id)
-        const name =
-          member.user_id === userId ? t('common.you') : (member.display_name ?? t('common.member'))
-        const share = split.shareByMember.get(member.id)
-        return (
-          <View key={member.id} style={styles.memberRow}>
-            <Pressable
-              style={styles.memberLeft}
-              onPress={() => split.toggle(member.id)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: included }}
-            >
-              <Ionicons
-                name={included ? 'checkbox' : 'square-outline'}
-                size={22}
-                color={included ? theme.colors.primary : theme.colors.muted}
-              />
-              <Text style={styles.memberName}>{name}</Text>
-            </Pressable>
-
-            {included ? (
-              <View style={styles.memberRight}>
-                <Surface
-                  color="transparent"
-                  borderColor={theme.colors.border}
-                  borderWidth={1}
-                  radius={theme.radius.md}
-                  style={styles.stepper}
-                >
-                  <Pressable
-                    onPress={() => split.setWeight(member.id, weight - 1)}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('expenseForm.decreaseShares')}
-                    hitSlop={6}
-                  >
-                    <Ionicons name="remove" size={18} color={theme.colors.foreground} />
-                  </Pressable>
-                  <Text style={styles.weight}>{weight}</Text>
-                  <Pressable
-                    onPress={() => split.setWeight(member.id, weight + 1)}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('expenseForm.increaseShares')}
-                    hitSlop={6}
-                  >
-                    <Ionicons name="add" size={18} color={theme.colors.foreground} />
-                  </Pressable>
-                </Surface>
-                <Text style={styles.share}>
-                  {share === undefined ? '-' : formatAmount(share, tripCurrency)}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        )
-      })}
+      <SplitModeSelector mode={split.mode} onChange={split.setMode} />
+      {members.map((member) => (
+        <SplitMemberRow
+          key={member.id}
+          member={member}
+          split={split}
+          tripCurrency={tripCurrency}
+          currentUserId={userId}
+        />
+      ))}
+      <RemainderBanner
+        mode={split.mode}
+        allocatedCents={split.allocatedCents}
+        remainderCents={split.remainderCents}
+        isBalanced={split.isBalanced}
+        baseCents={baseCents}
+        tripCurrency={tripCurrency}
+      />
     </Screen>
   )
 }
@@ -320,46 +281,5 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.sans.bold,
     color: theme.colors.muted,
-  },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.gap(2),
-  },
-  memberLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(2),
-    flex: 1,
-  },
-  memberName: {
-    fontSize: theme.fontSize.md,
-    fontFamily: theme.fonts.sans.regular,
-    color: theme.colors.foreground,
-  },
-  memberRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(3),
-  },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(2),
-    paddingHorizontal: theme.gap(2),
-    paddingVertical: theme.gap(1),
-  },
-  weight: {
-    minWidth: theme.gap(4),
-    textAlign: 'center',
-    fontFamily: theme.fonts.sans.semibold,
-    color: theme.colors.foreground,
-  },
-  share: {
-    minWidth: theme.gap(16),
-    textAlign: 'right',
-    fontFamily: theme.fonts.display.bold,
-    color: theme.colors.foreground,
   },
 }))
