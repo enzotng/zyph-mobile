@@ -620,6 +620,7 @@ export const fr: Translations = {
     deleteTitle: 'Supprimer la dépense',
     deleteBody: 'Cette action supprime définitivement la dépense de ce voyage.',
     deleteError: 'Suppression impossible',
+    rateLocked: 'Taux figé',
   },
   smartSplit: {
     title: 'Smart Split',

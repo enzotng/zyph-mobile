@@ -1,4 +1,4 @@
-import { formatAmount, signedAmount } from './money'
+import { formatAmount, formatRate, signedAmount } from './money'
 
 describe('formatAmount', () => {
   it('formats cents with two decimals and the currency', () => {
@@ -21,5 +21,19 @@ describe('signedAmount', () => {
 
   it('does not sign zero', () => {
     expect(signedAmount(0, 'USD')).toBe('0.00 USD')
+  })
+})
+
+describe('formatRate', () => {
+  it('formats a sub-unit rate trimming trailing zeros', () => {
+    expect(formatRate(0.92, 'USD', 'EUR')).toBe('1 USD = 0.92 EUR')
+  })
+
+  it('keeps significant decimals up to four places', () => {
+    expect(formatRate(1.0832, 'EUR', 'USD')).toBe('1 EUR = 1.0832 USD')
+  })
+
+  it('drops the decimal part for whole rates', () => {
+    expect(formatRate(150, 'EUR', 'JPY')).toBe('1 EUR = 150 JPY')
   })
 })
