@@ -614,6 +614,11 @@ export const en = {
     settleAllPartial:
       '{{done}} of {{total}} payments recorded, the rest failed. Try the remaining ones again.',
   },
+  payers: {
+    single: 'One payer',
+    multiple: 'Several',
+    amountsIn: 'Amounts in {{currency}}',
+  },
   currencyPicker: {
     title: 'Currency',
     search: 'Search currency',

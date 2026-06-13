@@ -10,7 +10,6 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { CategoryPicker } from '@/components/category-picker'
 import { CurrencyPicker } from '@/components/currency-picker'
-import { PaidBySelect } from '@/components/paid-by-select'
 import { ReceiptScanner } from '@/components/receipt-scanner'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
@@ -23,8 +22,10 @@ import {
   type ParsedReceiptItems,
   toCents,
   useCreateExpense,
+  usePayersEditor,
   useSplitEditor,
 } from '@/features/expenses'
+import { PayersEditor } from '@/features/expenses/components/payers-editor'
 import { RemainderBanner } from '@/features/expenses/components/remainder-banner'
 import { SplitMemberRow } from '@/features/expenses/components/split-member-row'
 import { SplitModeSelector } from '@/features/expenses/components/split-mode-selector'
@@ -53,10 +54,8 @@ export default function AddExpenseScreen() {
   const [picked, setPicked] = useState<string | null>(null)
   const currency = picked ?? tripCurrency
 
-  // Payer defaults to the current user's membership; lazily overridden when the user picks another.
-  const [pickedPayer, setPickedPayer] = useState<string | null>(null)
+  // Payer defaults to the current user's membership; the editor allows one or several payers.
   const ownMemberId = members?.find((m) => m.user_id === userId)?.id ?? null
-  const paidBy = pickedPayer ?? ownMemberId
 
   const [scannerOpen, setScannerOpen] = useState(false)
   const [category, setCategory] = useState<ExpenseCategory | null>(null)
@@ -151,8 +150,9 @@ export default function AddExpenseScreen() {
   }, [amount, canConvert, currency, fx, isForeign, tripCurrency])
 
   const split = useSplitEditor({ members, baseCents })
+  const payersEditor = usePayersEditor({ members, baseCents, defaultPayerId: ownMemberId })
 
-  const blocked = (isForeign && !canConvert) || !split.canSubmit
+  const blocked = (isForeign && !canConvert) || !split.canSubmit || !payersEditor.canSubmit
 
   async function onSubmit(values: CreateExpenseValues) {
     const amountCents = toCents(values.amount)
@@ -182,6 +182,8 @@ export default function AddExpenseScreen() {
       return
     }
 
+    const { paidBy, payers } = payersEditor.resolve()
+
     try {
       await createExpense.mutateAsync({
         tripId,
@@ -193,6 +195,7 @@ export default function AddExpenseScreen() {
         splits,
         category,
         paidBy,
+        payers,
       })
       router.back()
     } catch (error) {
@@ -292,12 +295,13 @@ export default function AddExpenseScreen() {
 
       <CategoryPicker label={t('expenseForm.category')} value={category} onChange={setCategory} />
 
-      <PaidBySelect
+      <PayersEditor
         label={t('expenseForm.paidBy')}
-        value={paidBy}
+        editor={payersEditor}
         members={members}
         currentUserId={userId}
-        onChange={setPickedPayer}
+        tripCurrency={tripCurrency}
+        baseCents={baseCents}
       />
 
       <Controller

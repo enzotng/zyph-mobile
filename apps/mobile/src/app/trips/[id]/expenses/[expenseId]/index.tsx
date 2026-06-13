@@ -17,6 +17,7 @@ import {
   useExpense,
   useExpenseItemAssignments,
   useExpenseItems,
+  useExpensePayers,
   useExpenseSplits,
 } from '@/features/expenses'
 import { useTripMemberNames } from '@/features/group'
@@ -46,6 +47,7 @@ export default function ExpenseDetailScreen() {
 
   const { data: expense, isLoading } = useExpense(expenseId)
   const { data: splits } = useExpenseSplits(expenseId)
+  const { data: payers } = useExpensePayers(expenseId)
   const { data: items } = useExpenseItems(expenseId)
   const { data: itemAssignments } = useExpenseItemAssignments(expenseId)
   const { data: trip } = useTrip(tripId)
@@ -110,6 +112,11 @@ export default function ExpenseDetailScreen() {
 
   const category = (expense.category as ExpenseCategory | null) ?? null
   const isForeign = expense.currency !== trip.currency
+  // Several payers -> list them; otherwise the single primary payer.
+  const paidByName =
+    payers && payers.length > 1
+      ? payers.map((p) => labelFor(p.member_id)).join(', ')
+      : labelFor(expense.paid_by)
   const dateLabel = new Date(expense.created_at).toLocaleDateString(undefined, {
     day: 'numeric',
     month: 'long',
@@ -158,9 +165,7 @@ export default function ExpenseDetailScreen() {
 
         <View style={styles.amountRow}>
           <View style={styles.amountLeft}>
-            <Text style={styles.paidBy}>
-              {t('trip.paidBy', { name: labelFor(expense.paid_by) })}
-            </Text>
+            <Text style={styles.paidBy}>{t('trip.paidBy', { name: paidByName })}</Text>
             {category ? (
               <View style={styles.badgeWrap}>
                 <Badge

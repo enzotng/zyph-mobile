@@ -5,6 +5,7 @@ import {
   deleteExpense,
   getExpense,
   getTripBalances,
+  listExpensePayers,
   listExpenseSplits,
   listExpenses,
   updateExpense,
@@ -24,6 +25,10 @@ export function expenseQueryKey(expenseId: string) {
 
 export function expenseSplitsQueryKey(expenseId: string) {
   return ['expenses', expenseId, 'splits'] as const
+}
+
+export function expensePayersQueryKey(expenseId: string) {
+  return ['expenses', expenseId, 'payers'] as const
 }
 
 export function useExpenses(tripId: string) {
@@ -46,6 +51,14 @@ export function useExpenseSplits(expenseId: string) {
   return useQuery({
     queryKey: expenseSplitsQueryKey(expenseId),
     queryFn: () => listExpenseSplits(expenseId),
+    enabled: Boolean(expenseId),
+  })
+}
+
+export function useExpensePayers(expenseId: string) {
+  return useQuery({
+    queryKey: expensePayersQueryKey(expenseId),
+    queryFn: () => listExpensePayers(expenseId),
     enabled: Boolean(expenseId),
   })
 }
@@ -79,6 +92,7 @@ export function useUpdateExpense(tripId: string) {
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: expenseQueryKey(updated.id) })
       void queryClient.invalidateQueries({ queryKey: expenseSplitsQueryKey(updated.id) })
+      void queryClient.invalidateQueries({ queryKey: expensePayersQueryKey(updated.id) })
     },
   })
 }
@@ -92,6 +106,7 @@ export function useDeleteExpense(tripId: string) {
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
       queryClient.removeQueries({ queryKey: expenseQueryKey(expenseId) })
       queryClient.removeQueries({ queryKey: expenseSplitsQueryKey(expenseId) })
+      queryClient.removeQueries({ queryKey: expensePayersQueryKey(expenseId) })
     },
   })
 }

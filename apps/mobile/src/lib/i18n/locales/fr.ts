@@ -621,6 +621,11 @@ export const fr: Translations = {
     settleAllPartial:
       '{{done}} paiement(s) sur {{total}} enregistré(s), les autres ont échoué. Réessaie les restants.',
   },
+  payers: {
+    single: 'Un payeur',
+    multiple: 'Plusieurs',
+    amountsIn: 'Montants en {{currency}}',
+  },
   currencyPicker: {
     title: 'Devise',
     search: 'Rechercher une devise',

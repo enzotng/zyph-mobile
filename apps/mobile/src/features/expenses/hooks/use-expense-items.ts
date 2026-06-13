@@ -9,6 +9,7 @@ import {
 
 import {
   balancesQueryKey,
+  expensePayersQueryKey,
   expenseQueryKey,
   expenseSplitsQueryKey,
   expensesQueryKey,
@@ -60,6 +61,7 @@ export function useUpsertExpenseWithItems(tripId: string) {
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: expenseQueryKey(updated.id) })
       void queryClient.invalidateQueries({ queryKey: expenseSplitsQueryKey(updated.id) })
+      void queryClient.invalidateQueries({ queryKey: expensePayersQueryKey(updated.id) })
       void queryClient.invalidateQueries({ queryKey: expenseItemsQueryKey(updated.id) })
       void queryClient.invalidateQueries({
         queryKey: expenseItemAssignmentsQueryKey(updated.id),

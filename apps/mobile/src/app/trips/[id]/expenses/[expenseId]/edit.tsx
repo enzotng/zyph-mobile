@@ -9,7 +9,6 @@ import { StyleSheet } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { CategoryPicker } from '@/components/category-picker'
 import { CurrencyPicker } from '@/components/currency-picker'
-import { PaidBySelect } from '@/components/paid-by-select'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { Spinner } from '@/components/ui'
@@ -21,10 +20,13 @@ import {
   type ExpenseCategory,
   toCents,
   useExpense,
+  useExpensePayers,
   useExpenseSplits,
+  usePayersEditor,
   useSplitEditor,
   useUpdateExpense,
 } from '@/features/expenses'
+import { PayersEditor } from '@/features/expenses/components/payers-editor'
 import { RemainderBanner } from '@/features/expenses/components/remainder-banner'
 import { SplitMemberRow } from '@/features/expenses/components/split-member-row'
 import { SplitModeSelector } from '@/features/expenses/components/split-mode-selector'
@@ -46,6 +48,7 @@ export default function EditExpenseScreen() {
 
   const { data: expense, isLoading: expLoading } = useExpense(expenseId)
   const { data: splits, isLoading: splitsLoading } = useExpenseSplits(expenseId)
+  const { data: payers, isLoading: payersLoading } = useExpensePayers(expenseId)
   const { data: trip } = useTrip(tripId)
   const { data: members } = useTripMembers(tripId)
   const { data: fx } = useFxRates()
@@ -66,10 +69,13 @@ export default function EditExpenseScreen() {
     : null
   const category = pickedCategory === undefined ? expenseCategory : pickedCategory
 
-  // Payer: lazy override of the loaded paid_by, falling back to the current user's membership.
-  const [pickedPayer, setPickedPayer] = useState<string | null>(null)
+  // Payer falls back to the loaded paid_by then the current user; the editor seeds from the stored
+  // payer rows (more than one opens it in multiple mode).
   const ownMemberId = members?.find((m) => m.user_id === userId)?.id ?? null
-  const paidBy = pickedPayer ?? expense?.paid_by ?? ownMemberId
+  const initialPayers = useMemo(
+    () => payers?.map((p) => ({ memberId: p.member_id, paidCents: p.paid_cents })),
+    [payers],
+  )
 
   const {
     control,
@@ -113,8 +119,14 @@ export default function EditExpenseScreen() {
   }, [amount, canConvert, currency, fx, isForeign, tripCurrency])
 
   const split = useSplitEditor({ members, baseCents, initialSplits: splits, initialMode: 'shares' })
+  const payersEditor = usePayersEditor({
+    members,
+    baseCents,
+    defaultPayerId: expense?.paid_by ?? ownMemberId,
+    initialPayers,
+  })
 
-  const blocked = (isForeign && !canConvert) || !split.canSubmit
+  const blocked = (isForeign && !canConvert) || !split.canSubmit || !payersEditor.canSubmit
 
   async function onSubmit(values: CreateExpenseValues) {
     const amountCents = toCents(values.amount)
@@ -144,6 +156,8 @@ export default function EditExpenseScreen() {
       return
     }
 
+    const { paidBy, payers: resolvedPayers } = payersEditor.resolve()
+
     try {
       await updateExpense.mutateAsync({
         expenseId,
@@ -155,6 +169,7 @@ export default function EditExpenseScreen() {
         splits: splitInputs,
         category,
         paidBy,
+        payers: resolvedPayers,
       })
       router.back()
     } catch (error) {
@@ -165,7 +180,7 @@ export default function EditExpenseScreen() {
     }
   }
 
-  if (expLoading || splitsLoading || !expense || !trip || !members) {
+  if (expLoading || splitsLoading || payersLoading || !expense || !trip || !members) {
     return (
       <Screen title={t('expenseForm.editTitle')} showBack>
         <View style={styles.center}>
@@ -215,12 +230,13 @@ export default function EditExpenseScreen() {
         onChange={setPickedCategory}
       />
 
-      <PaidBySelect
+      <PayersEditor
         label={t('expenseForm.paidBy')}
-        value={paidBy}
+        editor={payersEditor}
         members={members}
         currentUserId={userId}
-        onChange={setPickedPayer}
+        tripCurrency={tripCurrency}
+        baseCents={baseCents}
       />
 
       <Controller
