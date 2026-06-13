@@ -26,8 +26,9 @@ describe('useSplitEditor - add mode', () => {
     ])
   })
 
-  it('weights an included member', () => {
+  it('weights an included member in shares mode', () => {
     const { result } = renderHook(() => useSplitEditor({ members, baseCents: 900 }))
+    act(() => result.current.setMode('shares'))
     act(() => result.current.toggle('c'))
     act(() => result.current.setWeight('a', 2))
     expect(result.current.weightFor('a')).toBe(2)
@@ -132,5 +133,49 @@ describe('useSplitEditor - edit mode', () => {
       { memberId: 'a', shareCents: 500 },
       { memberId: 'b', shareCents: 500 },
     ])
+  })
+})
+
+describe('useSplitEditor - split modes', () => {
+  it('equal mode ignores any stored weight', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 900 }))
+    act(() => result.current.setWeight('a', 5))
+    expect(result.current.mode).toBe('equal')
+    expect(result.current.splitsFor(900)).toEqual([
+      { memberId: 'a', shareCents: 300 },
+      { memberId: 'b', shareCents: 300 },
+      { memberId: 'c', shareCents: 300 },
+    ])
+    expect(result.current.canSubmit).toBe(true)
+  })
+
+  it('exact mode uses entered amounts and gates submit until balanced', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 4500 }))
+    act(() => result.current.setMode('exact'))
+    act(() => result.current.setExactValue('a', '15'))
+    act(() => result.current.setExactValue('b', '15'))
+    act(() => result.current.setExactValue('c', '10'))
+    expect(result.current.remainderCents).toBe(500)
+    expect(result.current.canSubmit).toBe(false)
+    act(() => result.current.setExactValue('c', '15'))
+    expect(result.current.isBalanced).toBe(true)
+    expect(result.current.canSubmit).toBe(true)
+    expect(result.current.splitsFor(4500)).toEqual([
+      { memberId: 'a', shareCents: 1500 },
+      { memberId: 'b', shareCents: 1500 },
+      { memberId: 'c', shareCents: 1500 },
+    ])
+  })
+
+  it('percent mode always sums to the base and balances only at 100%', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 10000 }))
+    act(() => result.current.setMode('percent'))
+    act(() => result.current.setPercentValue('a', '50'))
+    act(() => result.current.setPercentValue('b', '25'))
+    act(() => result.current.setPercentValue('c', '20'))
+    expect(result.current.isBalanced).toBe(false)
+    act(() => result.current.setPercentValue('c', '25'))
+    expect(result.current.isBalanced).toBe(true)
+    expect(result.current.splitsFor(10000).reduce((s, x) => s + x.shareCents, 0)).toBe(10000)
   })
 })
