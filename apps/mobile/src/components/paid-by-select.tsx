@@ -15,7 +15,7 @@ type PaidBySelectProps = {
   onChange: (memberId: string) => void
 }
 
-// Horizontal chip selector for the expense payer (one active member), styled like CurrencySelect.
+// Horizontal chip selector for the expense payer (one active member), styled as a chip row.
 export function PaidBySelect({
   label,
   value,

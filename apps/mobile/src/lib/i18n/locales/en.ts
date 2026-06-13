@@ -593,6 +593,11 @@ export const en = {
     createError: 'Could not add expense',
     updateError: 'Could not update expense',
   },
+  currencyPicker: {
+    title: 'Currency',
+    search: 'Search currency',
+    noResults: 'No currency found',
+  },
   expenseDetail: {
     deleteTitle: 'Delete expense',
     deleteBody: 'This permanently removes the expense from the trip.',

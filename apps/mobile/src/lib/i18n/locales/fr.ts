@@ -600,6 +600,11 @@ export const fr: Translations = {
     createError: 'Ajout de la dépense impossible',
     updateError: 'Mise à jour de la dépense impossible',
   },
+  currencyPicker: {
+    title: 'Devise',
+    search: 'Rechercher une devise',
+    noResults: 'Aucune devise trouvée',
+  },
   expenseDetail: {
     deleteTitle: 'Supprimer la dépense',
     deleteBody: 'Cette action supprime définitivement la dépense de ce voyage.',

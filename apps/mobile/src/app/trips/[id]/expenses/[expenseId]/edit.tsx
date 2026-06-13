@@ -8,7 +8,7 @@ import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { CategoryPicker } from '@/components/category-picker'
-import { CurrencySelect } from '@/components/currency-select'
+import { CurrencyPicker } from '@/components/currency-picker'
 import { PaidBySelect } from '@/components/paid-by-select'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
@@ -202,7 +202,7 @@ export default function EditExpenseScreen() {
         )}
       />
 
-      <CurrencySelect
+      <CurrencyPicker
         label={t('expenseForm.currency')}
         value={currency}
         currencies={currencies}
