@@ -6,6 +6,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { TextField } from '@/components/text-field'
 import { BottomSheet } from '@/components/ui'
+import { memberLabel } from '@/features/group'
 
 import type { PayersEditor as PayersEditorState } from '../hooks/use-payers-editor'
 import { MemberRow } from './member-row'
@@ -39,7 +40,7 @@ export function PayersEditor({
   const [sheetOpen, setSheetOpen] = useState(false)
 
   const nameOf = (member: Member) =>
-    member.user_id === currentUserId ? t('common.you') : (member.display_name ?? t('common.member'))
+    memberLabel(member, currentUserId, { you: t('common.you'), fallback: t('common.member') })
 
   const selectedPayer = members.find((m) => m.id === editor.payerId)
   const selectedPayerName = selectedPayer ? nameOf(selectedPayer) : t('common.member')

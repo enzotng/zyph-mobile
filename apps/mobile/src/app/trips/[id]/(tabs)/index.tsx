@@ -24,13 +24,19 @@ import {
 } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
+  CATEGORY_ICON,
   type ExpenseCategory,
   formatAmount,
   settleBalances,
   useExpenses,
   useTripBalances,
 } from '@/features/expenses'
-import { useLeaveTrip, useRegenerateInviteCode, useTripMembers } from '@/features/group'
+import {
+  memberLabel,
+  useLeaveTrip,
+  useRegenerateInviteCode,
+  useTripMembers,
+} from '@/features/group'
 import { eventStatus, eventTypeIcon, formatCountdown, useEvents } from '@/features/timeline'
 import { formatTripDates, useDeleteTrip, useTrip } from '@/features/trips'
 import { useTripWeather, WeatherCard } from '@/features/weather'
@@ -42,15 +48,6 @@ import { paramString } from '@/lib/routing'
 // last block never lags; the cover hero stays static (its corner-radius logic is untouched).
 const ENTER_STEP = 50
 const enter = (index: number) => FadeInDown.duration(320).delay(index * ENTER_STEP)
-
-const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
-  food: 'restaurant',
-  transport: 'car',
-  lodging: 'bed',
-  activity: 'ticket',
-  shopping: 'bag-handle',
-  other: 'pricetag',
-}
 
 // A light top veil (the nav buttons are opaque circles, so it stays subtle to keep the
 // status bar legible) and a strong bottom fade for the title, clear in the middle.
@@ -151,16 +148,15 @@ export default function TripDashboardScreen() {
     [balances],
   )
 
-  // memberId -> display name, for payer lookups without a per-row members.find.
+  // memberId -> label ("you" for the current user), for payer lookups without a per-row find.
   const nameById = useMemo(() => {
+    const labels = { you: t('common.you'), fallback: t('common.member') }
     const map = new Map<string, string>()
     for (const member of members ?? []) {
-      if (member.display_name) {
-        map.set(member.id, member.display_name)
-      }
+      map.set(member.id, memberLabel(member, userId, labels))
     }
     return map
-  }, [members])
+  }, [members, userId, t])
 
   const debtorNames = useMemo(
     () =>
