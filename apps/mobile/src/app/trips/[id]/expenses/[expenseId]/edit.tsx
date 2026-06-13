@@ -10,6 +10,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { CategoryPicker } from '@/components/category-picker'
 import { CurrencySelect } from '@/components/currency-select'
+import { PaidBySelect } from '@/components/paid-by-select'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { Spinner, Surface } from '@/components/ui'
@@ -64,6 +65,11 @@ export default function EditExpenseScreen() {
     ? (expense?.category as ExpenseCategory)
     : null
   const category = pickedCategory === undefined ? expenseCategory : pickedCategory
+
+  // Payer: lazy override of the loaded paid_by, falling back to the current user's membership.
+  const [pickedPayer, setPickedPayer] = useState<string | null>(null)
+  const ownMemberId = members?.find((m) => m.user_id === userId)?.id ?? null
+  const paidBy = pickedPayer ?? expense?.paid_by ?? ownMemberId
 
   const {
     control,
@@ -148,6 +154,7 @@ export default function EditExpenseScreen() {
         fxRate,
         splits: splitInputs,
         category,
+        paidBy,
       })
       router.back()
     } catch (error) {
@@ -206,6 +213,14 @@ export default function EditExpenseScreen() {
         label={t('expenseForm.category')}
         value={category}
         onChange={setPickedCategory}
+      />
+
+      <PaidBySelect
+        label={t('expenseForm.paidBy')}
+        value={paidBy}
+        members={members}
+        currentUserId={userId}
+        onChange={setPickedPayer}
       />
 
       <Controller

@@ -816,7 +816,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      assign_packing_item: { Args: { _item_id: string; _member_id?: string }; Returns: undefined }
+      assign_packing_item: {
+        Args: { _item_id: string; _member_id?: string }
+        Returns: undefined
+      }
+      check_rate_limit: {
+        Args: { _bucket: string; _limit: number; _window_seconds: number }
+        Returns: boolean
+      }
       claim_packing_item: { Args: { _item_id: string }; Returns: undefined }
       clear_member_location: { Args: { _trip_id: string }; Returns: undefined }
       create_expense_with_splits: {
@@ -827,6 +834,7 @@ export type Database = {
           _currency: string
           _description: string
           _fx_rate: number
+          _paid_by?: string
           _splits: Json
           _trip_id: string
         }
@@ -853,12 +861,9 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      delete_my_account: { Args: { _user_id: string }; Returns: boolean }
       expense_packing_item: {
-        Args: {
-          _amount_cents: number
-          _item_id: string
-          _member_ids: string[]
-        }
+        Args: { _amount_cents: number; _item_id: string; _member_ids: string[] }
         Returns: {
           amount_cents: number
           base_amount_cents: number
@@ -932,7 +937,7 @@ export type Database = {
       }
       regenerate_invite_code: { Args: { _trip_id: string }; Returns: string }
       register_push_token: {
-        Args: { _token: string; _platform: string; _locale?: string }
+        Args: { _locale?: string; _platform: string; _token: string }
         Returns: undefined
       }
       remove_trip_member: { Args: { _member_id: string }; Returns: undefined }
@@ -958,74 +963,41 @@ export type Database = {
         }
       }
       soft_delete_expense: { Args: { _expense_id: string }; Returns: undefined }
-      update_expense_with_splits:
-        | {
-            Args: {
-              _amount_cents: number
-              _base_amount_cents: number
-              _currency: string
-              _description: string
-              _expense_id: string
-              _fx_rate: number
-              _splits: Json
-            }
-            Returns: {
-              amount_cents: number
-              base_amount_cents: number
-              category: string | null
-              created_at: string
-              created_by: string | null
-              currency: string
-              deleted_at: string | null
-              description: string
-              fx_rate: number
-              id: string
-              paid_by: string | null
-              trip_id: string
-              updated_at: string
-              version: number
-            }
-            SetofOptions: {
-              from: '*'
-              to: 'expenses'
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
-        | {
-            Args: {
-              _amount_cents: number
-              _base_amount_cents: number
-              _category?: string
-              _currency: string
-              _description: string
-              _expense_id: string
-              _fx_rate: number
-              _splits: Json
-            }
-            Returns: {
-              amount_cents: number
-              base_amount_cents: number
-              category: string | null
-              created_at: string
-              created_by: string | null
-              currency: string
-              deleted_at: string | null
-              description: string
-              fx_rate: number
-              id: string
-              paid_by: string | null
-              trip_id: string
-              updated_at: string
-              version: number
-            }
-            SetofOptions: {
-              from: '*'
-              to: 'expenses'
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
+      update_expense_with_splits: {
+        Args: {
+          _amount_cents: number
+          _base_amount_cents: number
+          _category?: string
+          _currency: string
+          _description: string
+          _expense_id: string
+          _fx_rate: number
+          _paid_by?: string
+          _splits: Json
+        }
+        Returns: {
+          amount_cents: number
+          base_amount_cents: number
+          category: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          description: string
+          fx_rate: number
+          id: string
+          paid_by: string | null
+          trip_id: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'expenses'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       upsert_expense_with_items: {
         Args: {
           _amount_cents: number

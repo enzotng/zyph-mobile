@@ -51,6 +51,8 @@ export type CreateExpenseInput = {
   // validates membership + the sum.
   splits: ExpenseSplit[]
   category?: ExpenseCategory | null
+  // Trip-member id of the payer; defaults to the caller server-side when omitted.
+  paidBy?: string | null
 }
 
 export async function createExpense({
@@ -62,6 +64,7 @@ export async function createExpense({
   fxRate,
   splits,
   category,
+  paidBy,
 }: CreateExpenseInput): Promise<Expense> {
   // Atomic server-side: inserts the expense + the provided splits, enforces membership,
   // resolves the payer from auth.uid(). One round trip, one transaction.
@@ -77,6 +80,7 @@ export async function createExpense({
     _fx_rate: fxRate,
     _splits: splits.map((s) => ({ member_id: s.memberId, share_cents: s.shareCents })),
     _category: category ?? undefined,
+    _paid_by: paidBy ?? undefined,
   })
   if (error) {
     throw error
@@ -119,6 +123,8 @@ export type UpdateExpenseInput = {
   fxRate: number
   splits: ExpenseSplit[]
   category?: ExpenseCategory | null
+  // Trip-member id of the payer; keeps the existing payer server-side when omitted.
+  paidBy?: string | null
 }
 
 export async function updateExpense({
@@ -130,6 +136,7 @@ export async function updateExpense({
   fxRate,
   splits,
   category,
+  paidBy,
 }: UpdateExpenseInput): Promise<Expense> {
   const { data, error } = await supabase.rpc('update_expense_with_splits', {
     _expense_id: expenseId,
@@ -140,6 +147,7 @@ export async function updateExpense({
     _fx_rate: fxRate,
     _splits: splits.map((s) => ({ member_id: s.memberId, share_cents: s.shareCents })),
     _category: category ?? undefined,
+    _paid_by: paidBy ?? undefined,
   })
   if (error) {
     throw error
