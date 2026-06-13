@@ -9,7 +9,7 @@ import { ActivityIndicator, Alert, Pressable, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
-import { CurrencySelect } from '@/components/currency-select'
+import { CurrencyPicker } from '@/components/currency-picker'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { Avatar, Spinner } from '@/components/ui'
@@ -204,7 +204,7 @@ export default function EditProfileScreen() {
         control={control}
         name="preferredCurrency"
         render={({ field }) => (
-          <CurrencySelect
+          <CurrencyPicker
             label={t('profile.defaultCurrency')}
             value={field.value}
             currencies={currencies}

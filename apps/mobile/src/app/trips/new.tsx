@@ -1,25 +1,22 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'expo-router'
+import { useMemo } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Alert, ScrollView, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { CurrencyPicker } from '@/components/currency-picker'
 import { DestinationField } from '@/components/destination-field'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { TripDatesField } from '@/components/trip-dates-field'
-import { Segmented, Surface } from '@/components/ui'
+import { Surface } from '@/components/ui'
+import { useFxRates } from '@/features/fx'
 import { type CreateTripValues, createTripSchema, useCreateTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
-
-const CURRENCY_OPTIONS = [
-  { value: 'EUR', label: 'EUR €' },
-  { value: 'USD', label: 'USD $' },
-  { value: 'GBP', label: 'GBP £' },
-]
 
 function FieldIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
   const { theme } = useUnistyles()
@@ -41,6 +38,16 @@ export default function NewTripScreen() {
   const { t } = useTranslation()
   const router = useRouter()
   const createTrip = useCreateTrip()
+  const { data: fx } = useFxRates()
+  // Offer every currency the ECB feed provides (all are guaranteed convertible), anchored on EUR.
+  const currencies = useMemo(() => {
+    const rest = fx
+      ? Object.keys(fx.rates)
+          .filter((c) => c !== 'EUR')
+          .sort()
+      : []
+    return ['EUR', ...rest]
+  }, [fx])
   const {
     control,
     handleSubmit,
@@ -141,10 +148,10 @@ export default function NewTripScreen() {
             name="currency"
             render={({ field }) => (
               <View>
-                <Text style={styles.label}>{t('tripForm.currency')}</Text>
-                <Segmented
-                  options={CURRENCY_OPTIONS}
+                <CurrencyPicker
+                  label={t('tripForm.currency')}
                   value={field.value}
+                  currencies={currencies}
                   onChange={field.onChange}
                 />
                 {errors.currency?.message ? (
@@ -192,13 +199,6 @@ const styles = StyleSheet.create((theme) => ({
   },
   fieldInput: {
     flex: 1,
-  },
-  label: {
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.foreground,
-    marginBottom: theme.gap(2),
   },
   error: {
     fontFamily: theme.fonts.sans.regular,
