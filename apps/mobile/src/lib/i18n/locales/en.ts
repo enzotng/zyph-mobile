@@ -77,6 +77,7 @@ export const en = {
     noResults: 'No results for this filter.',
     all: 'All',
     newExpense: 'New expense',
+    yourShare: 'Your share {{amount}}',
   },
   categories: {
     food: 'Food',

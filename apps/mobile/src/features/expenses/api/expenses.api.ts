@@ -100,6 +100,25 @@ export async function createExpense({
 export type ExpenseSplitRow = Database['public']['Tables']['expense_splits']['Row']
 export type ExpensePayerRow = Database['public']['Tables']['expense_payers']['Row']
 
+export type MyExpenseShare = Pick<ExpenseSplitRow, 'expense_id' | 'share_cents'>
+
+// The current member's share of every expense in the trip, in one query, so the feed can show
+// "your share" per row without N per-expense lookups. member_id is a trip_members id (unique to
+// this trip), so this returns only this trip's splits for the caller; RLS gates it to their trips.
+export async function listMyExpenseShares(memberId: string): Promise<MyExpenseShare[]> {
+  // Inner-join the parent expense and keep only live ones, so a soft-deleted expense's split does
+  // not linger in the feed's share map.
+  const { data, error } = await supabase
+    .from('expense_splits')
+    .select('expense_id, share_cents, expenses!inner(deleted_at)')
+    .eq('member_id', memberId)
+    .is('expenses.deleted_at', null)
+  if (error) {
+    throw error
+  }
+  return data.map((row) => ({ expense_id: row.expense_id, share_cents: row.share_cents }))
+}
+
 export async function listExpensePayers(expenseId: string): Promise<ExpensePayerRow[]> {
   const { data, error } = await supabase
     .from('expense_payers')
