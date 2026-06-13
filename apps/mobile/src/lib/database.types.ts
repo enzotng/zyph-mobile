@@ -963,6 +963,14 @@ export type Database = {
         }
       }
       soft_delete_expense: { Args: { _expense_id: string }; Returns: undefined }
+      trip_member_names: {
+        Args: { _trip_id: string }
+        Returns: {
+          display_name: string
+          id: string
+          user_id: string
+        }[]
+      }
       update_expense_with_splits: {
         Args: {
           _amount_cents: number

@@ -27,7 +27,7 @@ import {
   toCents,
   useTripBalances,
 } from '@/features/expenses'
-import { useTripMembers } from '@/features/group'
+import { useTripMemberNames } from '@/features/group'
 import {
   type TripSettlement,
   useRecordSettlement,
@@ -56,7 +56,7 @@ export default function TripBalancesScreen() {
     isError: balancesError,
     refetch: refetchBalances,
   } = useTripBalances(tripId)
-  const { data: members } = useTripMembers(tripId)
+  const { data: members } = useTripMemberNames(tripId)
   const { data: paymentHistory, isLoading: historyLoading } = useSettlements(tripId)
   const recordSettlement = useRecordSettlement(tripId)
   const reverseSettlementMutation = useReverseSettlement(tripId)
