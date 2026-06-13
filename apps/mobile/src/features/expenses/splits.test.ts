@@ -1,4 +1,4 @@
-import { computeSplits } from './splits'
+import { computeSplits, rescaleSplits } from './splits'
 
 const sum = (splits: { shareCents: number }[]) => splits.reduce((s, x) => s + x.shareCents, 0)
 
@@ -52,6 +52,46 @@ describe('computeSplits', () => {
   it('handles a single participant taking the whole amount', () => {
     expect(computeSplits(4250, [{ memberId: 'solo', weight: 1 }])).toEqual([
       { memberId: 'solo', shareCents: 4250 },
+    ])
+  })
+})
+
+describe('rescaleSplits', () => {
+  const custom = [
+    { memberId: 'a', shareCents: 50 },
+    { memberId: 'b', shareCents: 30 },
+    { memberId: 'c', shareCents: 40 },
+  ]
+
+  it('is the identity when the base equals the sum of the shares (untouched edit)', () => {
+    // This is the fix for the re-equalise bug: re-saving a custom split without changing the
+    // amount must return the exact same shares, not an equal split.
+    expect(rescaleSplits(custom, 120)).toEqual(custom)
+  })
+
+  it('preserves the ratio when the amount changes', () => {
+    // 120 -> 240 doubles every share.
+    expect(rescaleSplits(custom, 240)).toEqual([
+      { memberId: 'a', shareCents: 100 },
+      { memberId: 'b', shareCents: 60 },
+      { memberId: 'c', shareCents: 80 },
+    ])
+  })
+
+  it('keeps an equal split equal after rescaling and always sums to the new base', () => {
+    const equal = [
+      { memberId: 'a', shareCents: 40 },
+      { memberId: 'b', shareCents: 40 },
+      { memberId: 'c', shareCents: 40 },
+    ]
+    const result = rescaleSplits(equal, 100)
+    expect(sum(result)).toBe(100)
+    expect(result.map((r) => r.shareCents).sort((x, y) => y - x)).toEqual([34, 33, 33])
+  })
+
+  it('returns zero shares when the original split was all zeros', () => {
+    expect(rescaleSplits([{ memberId: 'a', shareCents: 0 }], 500)).toEqual([
+      { memberId: 'a', shareCents: 0 },
     ])
   })
 })

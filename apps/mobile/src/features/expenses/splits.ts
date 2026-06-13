@@ -33,3 +33,15 @@ export function computeSplits(baseCents: number, participants: SplitParticipant[
 
   return rows.map((r) => ({ memberId: r.memberId, shareCents: r.shareCents }))
 }
+
+// Reproject an existing set of splits onto a (possibly different) base amount, preserving each
+// member's proportion. When `toBaseCents` equals the sum of the original shares this is the
+// identity (the shares reproduce exactly), so editing an expense without touching the split keeps
+// a custom split intact instead of silently re-equalising it; when the amount changed, the ratio
+// is preserved and re-rounded with the same largest-remainder method.
+export function rescaleSplits(initial: ExpenseSplit[], toBaseCents: number): ExpenseSplit[] {
+  return computeSplits(
+    toBaseCents,
+    initial.map((s) => ({ memberId: s.memberId, weight: s.shareCents })),
+  )
+}

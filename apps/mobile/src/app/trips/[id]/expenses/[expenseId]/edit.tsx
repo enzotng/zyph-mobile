@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, View } from 'react-native'
@@ -16,7 +16,6 @@ import { Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
-  computeSplits,
   createExpenseSchema,
   EXPENSE_CATEGORIES,
   type ExpenseCategory,
@@ -24,6 +23,7 @@ import {
   toCents,
   useExpense,
   useExpenseSplits,
+  useSplitEditor,
   useUpdateExpense,
 } from '@/features/expenses'
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
@@ -32,8 +32,6 @@ import { useTrip } from '@/features/trips'
 import { paramString } from '@/lib/routing'
 
 const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
-
-type ShareState = Record<string, { included: boolean; weight: number }>
 
 export default function EditExpenseScreen() {
   const params = useLocalSearchParams<{ id: string; expenseId: string }>()
@@ -66,26 +64,6 @@ export default function EditExpenseScreen() {
     ? (expense?.category as ExpenseCategory)
     : null
   const category = pickedCategory === undefined ? expenseCategory : pickedCategory
-
-  // Only stores user changes; the effective state is derived by merging with the
-  // loaded splits, so no async-to-state effect is needed.
-  const [overrides, setOverrides] = useState<ShareState>({})
-
-  const originallyIncluded = useMemo(
-    () => new Set((splits ?? []).map((s) => s.member_id)),
-    [splits],
-  )
-
-  const stateFor = useCallback(
-    (memberId: string) => {
-      const override = overrides[memberId]
-      if (override) {
-        return override
-      }
-      return { included: originallyIncluded.has(memberId), weight: 1 }
-    },
-    [overrides, originallyIncluded],
-  )
 
   const {
     control,
@@ -128,37 +106,9 @@ export default function EditExpenseScreen() {
     return convertCents(cents, currency, tripCurrency, fx.rates)
   }, [amount, canConvert, currency, fx, isForeign, tripCurrency])
 
-  const participants = useMemo(() => {
-    if (!members) {
-      return []
-    }
-    return members
-      .filter((m) => stateFor(m.id).included)
-      .map((m) => ({ memberId: m.id, weight: stateFor(m.id).weight }))
-  }, [members, stateFor])
+  const split = useSplitEditor({ members, baseCents, initialSplits: splits })
 
-  const shareByMember = useMemo(() => {
-    if (baseCents === null) {
-      return new Map<string, number>()
-    }
-    return new Map(computeSplits(baseCents, participants).map((s) => [s.memberId, s.shareCents]))
-  }, [baseCents, participants])
-
-  const blocked = (isForeign && !canConvert) || participants.length === 0
-
-  function toggle(memberId: string) {
-    setOverrides((s) => {
-      const cur = s[memberId] ?? { included: true, weight: 1 }
-      return { ...s, [memberId]: { ...cur, included: !cur.included } }
-    })
-  }
-
-  function setWeight(memberId: string, weight: number) {
-    setOverrides((s) => {
-      const cur = s[memberId] ?? { included: true, weight: 1 }
-      return { ...s, [memberId]: { ...cur, weight: Math.max(1, weight) } }
-    })
-  }
+  const blocked = (isForeign && !canConvert) || split.includedCount === 0
 
   async function onSubmit(values: CreateExpenseValues) {
     const amountCents = toCents(values.amount)
@@ -182,7 +132,7 @@ export default function EditExpenseScreen() {
       }
     }
 
-    const splitInputs = computeSplits(baseAmountCents, participants)
+    const splitInputs = split.splitsFor(baseAmountCents)
     if (splitInputs.length === 0) {
       Alert.alert(t('expenseForm.selectSomeoneTitle'), t('expenseForm.selectSomeoneBody'))
       return
@@ -280,16 +230,16 @@ export default function EditExpenseScreen() {
 
       <Text style={styles.sectionTitle}>{t('expenseForm.splitBetween')}</Text>
       {members.map((member) => {
-        const state = stateFor(member.id)
-        const included = state.included
+        const included = split.isIncluded(member.id)
+        const weight = split.weightFor(member.id)
         const name =
           member.user_id === userId ? t('common.you') : (member.display_name ?? t('common.member'))
-        const share = shareByMember.get(member.id)
+        const share = split.shareByMember.get(member.id)
         return (
           <View key={member.id} style={styles.memberRow}>
             <Pressable
               style={styles.memberLeft}
-              onPress={() => toggle(member.id)}
+              onPress={() => split.toggle(member.id)}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: included }}
             >
@@ -311,16 +261,16 @@ export default function EditExpenseScreen() {
                   style={styles.stepper}
                 >
                   <Pressable
-                    onPress={() => setWeight(member.id, state.weight - 1)}
+                    onPress={() => split.setWeight(member.id, weight - 1)}
                     accessibilityRole="button"
                     accessibilityLabel={t('expenseForm.decreaseShares')}
                     hitSlop={6}
                   >
                     <Ionicons name="remove" size={18} color={theme.colors.foreground} />
                   </Pressable>
-                  <Text style={styles.weight}>{state.weight}</Text>
+                  <Text style={styles.weight}>{weight}</Text>
                   <Pressable
-                    onPress={() => setWeight(member.id, state.weight + 1)}
+                    onPress={() => split.setWeight(member.id, weight + 1)}
                     accessibilityRole="button"
                     accessibilityLabel={t('expenseForm.increaseShares')}
                     hitSlop={6}
