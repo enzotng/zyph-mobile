@@ -16,7 +16,6 @@ import {
   buildEqualAssignments,
   computeMemberTotalsCents,
   type DraftItem,
-  deleteExpense,
   draftFromItems,
   draftsToItems,
   draftTotalCents,
@@ -26,7 +25,7 @@ import {
   type ParsedItem,
   reindexAssignmentsAfterRemoval,
   type SmartSplitItem,
-  useCreateExpense,
+  useCreateExpenseWithItems,
   useExpense,
   useExpenseItemAssignments,
   useExpenseItems,
@@ -164,7 +163,7 @@ function AttributionEditor({
   const { data: trip } = useTrip(tripId)
   const { data: members } = useTripMembers(tripId)
   const { data: fx } = useFxRates()
-  const createExpense = useCreateExpense(tripId)
+  const createWithItems = useCreateExpenseWithItems(tripId)
   const upsertWithItems = useUpsertExpenseWithItems(tripId)
 
   // assignmentsByPosition[i] = set of member ids assigned to item i. Seeded from
@@ -355,23 +354,11 @@ function AttributionEditor({
       return
     }
 
-    // Create mode - two-step save: create the expense (bootstrap split) then
-    // replace it with the item-driven split. If step 2 fails, soft-delete the
-    // orphan expense so we don't leave a corrupt placeholder in the trip.
-    let createdId: string | null = null
+    // Create mode: one atomic RPC inserts the expense + items + assignments + derived splits in a
+    // single transaction, so a failure leaves nothing behind - no bootstrap, no orphan to clean up.
     try {
-      const created = await createExpense.mutateAsync({
+      await createWithItems.mutateAsync({
         tripId,
-        description,
-        amountCents: itemsTotal,
-        currency: expenseCurrency,
-        baseAmountCents,
-        fxRate,
-        splits: [{ memberId: currentUserMember.id, shareCents: baseAmountCents }],
-      })
-      createdId = created.id
-      await upsertWithItems.mutateAsync({
-        expenseId: created.id,
         description,
         amountCents: itemsTotal,
         currency: expenseCurrency,
@@ -382,10 +369,6 @@ function AttributionEditor({
       })
       router.replace({ pathname: '/trips/[id]/expenses', params: { id: tripId } })
     } catch (error) {
-      if (createdId) {
-        // Compensate the orphan expense from step 1.
-        await deleteExpense(createdId).catch(() => {})
-      }
       Alert.alert(
         t('smartSplit.saveError'),
         error instanceof Error ? error.message : t('common.tryAgain'),
@@ -393,7 +376,7 @@ function AttributionEditor({
     }
   }
 
-  const isPending = createExpense.isPending || upsertWithItems.isPending
+  const isPending = createWithItems.isPending || upsertWithItems.isPending
   const totalLabel = mode === 'edit' ? t('smartSplit.total') : t('smartSplit.ocrTotal')
   const showAddMissing = mode === 'create' && delta < 0
 
