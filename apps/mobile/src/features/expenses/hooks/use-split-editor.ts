@@ -30,6 +30,9 @@ export type SplitEditor = {
   weightFor: (memberId: string) => number
   toggle: (memberId: string) => void
   setWeight: (memberId: string, weight: number) => void
+  // Bulk inclusion for the split section header ("Tout" / "Aucun"); weights are preserved.
+  selectAll: () => void
+  clearAll: () => void
   includedCount: number
   // Live per-member share for the preview (memberId -> cents); empty while baseCents is null.
   shareByMember: Map<string, number>
@@ -112,6 +115,22 @@ export function useSplitEditor({
     },
     [defaultIncluded],
   )
+
+  const setAllIncluded = useCallback(
+    (included: boolean) => {
+      setOverrides((prev) => {
+        const next = { ...prev }
+        for (const m of members ?? []) {
+          next[m.id] = { included, weight: prev[m.id]?.weight ?? 1 }
+        }
+        return next
+      })
+    },
+    [members],
+  )
+
+  const selectAll = useCallback(() => setAllIncluded(true), [setAllIncluded])
+  const clearAll = useCallback(() => setAllIncluded(false), [setAllIncluded])
 
   // "Touched" only when an override actually diverges from the default (included + weight 1), so a
   // no-op stepper round-trip (+1 then -1) does not abandon a preserved split in edit mode.
@@ -254,6 +273,8 @@ export function useSplitEditor({
     weightFor,
     toggle,
     setWeight,
+    selectAll,
+    clearAll,
     includedCount,
     shareByMember,
     splitsFor,
