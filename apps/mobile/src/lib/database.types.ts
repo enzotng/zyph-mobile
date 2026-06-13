@@ -79,6 +79,45 @@ export type Database = {
           },
         ]
       }
+      expense_payers: {
+        Row: {
+          created_at: string
+          expense_id: string
+          id: string
+          member_id: string
+          paid_cents: number
+        }
+        Insert: {
+          created_at?: string
+          expense_id: string
+          id?: string
+          member_id: string
+          paid_cents: number
+        }
+        Update: {
+          created_at?: string
+          expense_id?: string
+          id?: string
+          member_id?: string
+          paid_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'expense_payers_expense_id_fkey'
+            columns: ['expense_id']
+            isOneToOne: false
+            referencedRelation: 'expenses'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'expense_payers_member_id_fkey'
+            columns: ['member_id']
+            isOneToOne: false
+            referencedRelation: 'trip_members'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       expense_splits: {
         Row: {
           created_at: string
@@ -869,6 +908,7 @@ export type Database = {
           _description: string
           _fx_rate: number
           _paid_by?: string
+          _payers?: Json
           _splits: Json
           _trip_id: string
         }
@@ -1015,6 +1055,7 @@ export type Database = {
           _expense_id: string
           _fx_rate: number
           _paid_by?: string
+          _payers?: Json
           _splits: Json
         }
         Returns: {
