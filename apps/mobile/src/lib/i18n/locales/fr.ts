@@ -610,6 +610,15 @@ export const fr: Translations = {
     owed: 'Part',
     pays: 'Paie {{amount}} à {{name}}',
     receives: 'Reçoit {{amount}} de {{name}}',
+    share: 'Partager',
+    shareTitle: '{{trip}} · Qui paie qui',
+    settleAllMine: 'Régler toutes mes dettes ({{amount}})',
+    settleAllTitle: 'Régler toutes mes dettes',
+    settleAllBody: 'Cela enregistre tous tes paiements suggérés, soit {{amount}} au total.',
+    settleAllConfirm: 'Tout régler',
+    settlingAll: 'Règlement…',
+    settleAllPartial:
+      '{{done}} paiement(s) sur {{total}} enregistré(s), les autres ont échoué. Réessaie les restants.',
   },
   currencyPicker: {
     title: 'Devise',
