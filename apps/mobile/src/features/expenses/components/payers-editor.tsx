@@ -1,11 +1,14 @@
+import { Ionicons } from '@expo/vector-icons'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { Pressable, ScrollView, Text, View } from 'react-native'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { PaidBySelect } from '@/components/paid-by-select'
 import { TextField } from '@/components/text-field'
+import { BottomSheet } from '@/components/ui'
 
 import type { PayersEditor as PayersEditorState } from '../hooks/use-payers-editor'
+import { MemberRow } from './member-row'
 import { RemainderBanner } from './remainder-banner'
 
 type Member = { id: string; user_id: string | null; display_name: string | null }
@@ -20,8 +23,9 @@ type PayersEditorProps = {
   baseCents: number | null
 }
 
-// "Paid by" control: a single payer (chip row) or, toggled to multiple, a per-member amount entry
-// validated against the trip-currency total via the shared remainder banner.
+// "Paid by" control. Single payer = a summary row (avatar + name) opening a bottom-sheet picker so
+// every member is visible at once, with a discoverable link to switch to multiple payers; multiple
+// payers = one amount row per member validated against the total by the shared remainder banner.
 export function PayersEditor({
   label,
   editor,
@@ -31,55 +35,80 @@ export function PayersEditor({
   baseCents,
 }: PayersEditorProps) {
   const { t } = useTranslation()
+  const { theme } = useUnistyles()
+  const [sheetOpen, setSheetOpen] = useState(false)
+
+  const nameOf = (member: Member) =>
+    member.user_id === currentUserId ? t('common.you') : (member.display_name ?? t('common.member'))
+
+  const selectedPayer = members.find((m) => m.id === editor.payerId)
+  const selectedPayerName = selectedPayer ? nameOf(selectedPayer) : t('common.member')
 
   return (
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
 
-      <View style={styles.toggle} accessibilityRole="tablist">
-        <ToggleButton
-          label={t('payers.single')}
-          active={editor.mode === 'single'}
-          onPress={() => editor.setMode('single')}
-        />
-        <ToggleButton
-          label={t('payers.multiple')}
-          active={editor.mode === 'multiple'}
-          onPress={() => editor.setMode('multiple')}
-        />
-      </View>
-
       {editor.mode === 'single' ? (
-        <PaidBySelect
-          value={editor.payerId}
-          members={members}
-          currentUserId={currentUserId}
-          onChange={editor.setPayerId}
-        />
+        <>
+          <MemberRow
+            name={selectedPayerName}
+            imageUrl={null}
+            indicator="none"
+            onPress={() => setSheetOpen(true)}
+            accessibilityLabel={t('trip.paidBy', { name: selectedPayerName })}
+            right={<Ionicons name="chevron-forward" size={16} color={theme.colors.muted} />}
+          />
+          <Pressable
+            onPress={() => editor.setMode('multiple')}
+            accessibilityRole="button"
+            hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Text style={styles.link}>{t('payers.multipleLink')}</Text>
+          </Pressable>
+
+          <BottomSheet
+            open={sheetOpen}
+            onClose={() => setSheetOpen(false)}
+            title={t('payers.choosePayer')}
+          >
+            <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetList}>
+              {members.map((member) => (
+                <MemberRow
+                  key={member.id}
+                  name={nameOf(member)}
+                  imageUrl={null}
+                  indicator="radio"
+                  selected={member.id === editor.payerId}
+                  onPress={() => {
+                    editor.setPayerId(member.id)
+                    setSheetOpen(false)
+                  }}
+                />
+              ))}
+            </ScrollView>
+          </BottomSheet>
+        </>
       ) : (
         <View style={styles.rows}>
           <Text style={styles.hint}>{t('payers.amountsIn', { currency: tripCurrency })}</Text>
-          {members.map((member) => {
-            const name =
-              member.user_id === currentUserId
-                ? t('common.you')
-                : (member.display_name ?? t('common.member'))
-            return (
-              <View key={member.id} style={styles.row}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {name}
-                </Text>
-                <View style={styles.field}>
-                  <TextField
-                    value={editor.amountValueFor(member.id)}
-                    onChangeText={(value) => editor.setAmountValue(member.id, value)}
-                    keyboardType="decimal-pad"
-                    placeholder="0.00"
-                  />
-                </View>
-              </View>
-            )
-          })}
+          {members.map((member) => (
+            <MemberRow
+              key={member.id}
+              name={nameOf(member)}
+              imageUrl={null}
+              indicator="none"
+              right={
+                <TextField
+                  value={editor.amountValueFor(member.id)}
+                  onChangeText={(value) => editor.setAmountValue(member.id, value)}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                  style={styles.field}
+                />
+              }
+            />
+          ))}
           <RemainderBanner
             mode="exact"
             allocatedCents={editor.allocatedCents}
@@ -88,88 +117,55 @@ export function PayersEditor({
             baseCents={baseCents}
             tripCurrency={tripCurrency}
           />
+          <Pressable
+            onPress={() => editor.setMode('single')}
+            accessibilityRole="button"
+            hitSlop={6}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Text style={styles.link}>{t('payers.singleLink')}</Text>
+          </Pressable>
         </View>
       )}
     </View>
   )
 }
 
-function ToggleButton({
-  label,
-  active,
-  onPress,
-}: {
-  label: string
-  active: boolean
-  onPress: () => void
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-      style={[styles.toggleBtn, active ? styles.toggleBtnActive : null]}
-    >
-      <Text style={[styles.toggleText, active ? styles.toggleTextActive : null]}>{label}</Text>
-    </Pressable>
-  )
-}
-
 const styles = StyleSheet.create((theme) => ({
   container: {
-    gap: theme.gap(2),
+    gap: theme.gap(1),
   },
   label: {
     fontSize: theme.fontSize.sm,
     fontWeight: '600',
     color: theme.colors.muted,
   },
-  toggle: {
-    flexDirection: 'row',
-    gap: theme.gap(2),
-  },
-  toggleBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: theme.gap(2),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
-  },
-  toggleBtnActive: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary,
-  },
-  toggleText: {
+  link: {
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
-    color: theme.colors.foreground,
+    color: theme.colors.primary,
+    paddingVertical: theme.gap(1),
   },
-  toggleTextActive: {
-    color: theme.colors.primaryForeground,
+  pressed: {
+    opacity: 0.7,
   },
   rows: {
-    gap: theme.gap(2),
+    gap: theme.gap(1),
   },
   hint: {
     fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.sans.regular,
     color: theme.colors.muted,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(3),
-  },
-  name: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: theme.fonts.sans.medium,
-    fontWeight: '500',
-    fontSize: theme.fontSize.md,
-    color: theme.colors.foreground,
-  },
   field: {
-    width: theme.gap(28),
+    width: theme.gap(24),
+    textAlign: 'right',
+  },
+  sheetScroll: {
+    flexShrink: 1,
+  },
+  sheetList: {
+    paddingBottom: theme.gap(2),
   },
 }))

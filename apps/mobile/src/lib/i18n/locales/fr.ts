@@ -622,8 +622,9 @@ export const fr: Translations = {
       '{{done}} paiement(s) sur {{total}} enregistré(s), les autres ont échoué. Réessaie les restants.',
   },
   payers: {
-    single: 'Un payeur',
-    multiple: 'Plusieurs',
+    choosePayer: 'Qui a payé ?',
+    multipleLink: 'Plusieurs personnes ont payé ?',
+    singleLink: 'Une seule personne a payé ?',
     amountsIn: 'Montants en {{currency}}',
   },
   currencyPicker: {

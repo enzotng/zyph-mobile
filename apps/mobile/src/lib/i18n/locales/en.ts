@@ -615,8 +615,9 @@ export const en = {
       '{{done}} of {{total}} payments recorded, the rest failed. Try the remaining ones again.',
   },
   payers: {
-    single: 'One payer',
-    multiple: 'Several',
+    choosePayer: 'Who paid?',
+    multipleLink: 'Several people paid?',
+    singleLink: 'Only one person paid?',
     amountsIn: 'Amounts in {{currency}}',
   },
   currencyPicker: {
