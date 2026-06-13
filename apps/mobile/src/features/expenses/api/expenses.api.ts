@@ -53,7 +53,12 @@ export type CreateExpenseInput = {
   category?: ExpenseCategory | null
   // Trip-member id of the payer; defaults to the caller server-side when omitted.
   paidBy?: string | null
+  // Multi-payer breakdown (trip-currency cents, must sum to baseAmountCents). When omitted the
+  // expense has a single payer (paidBy / caller). When set, paidBy is ignored server-side.
+  payers?: ExpensePayer[] | null
 }
+
+export type ExpensePayer = { memberId: string; paidCents: number }
 
 export async function createExpense({
   tripId,
@@ -65,6 +70,7 @@ export async function createExpense({
   splits,
   category,
   paidBy,
+  payers,
 }: CreateExpenseInput): Promise<Expense> {
   // Atomic server-side: inserts the expense + the provided splits, enforces membership,
   // resolves the payer from auth.uid(). One round trip, one transaction.
@@ -81,6 +87,9 @@ export async function createExpense({
     _splits: splits.map((s) => ({ member_id: s.memberId, share_cents: s.shareCents })),
     _category: category ?? undefined,
     _paid_by: paidBy ?? undefined,
+    _payers: payers
+      ? payers.map((p) => ({ member_id: p.memberId, paid_cents: p.paidCents }))
+      : undefined,
   })
   if (error) {
     throw error
@@ -89,6 +98,18 @@ export async function createExpense({
 }
 
 export type ExpenseSplitRow = Database['public']['Tables']['expense_splits']['Row']
+export type ExpensePayerRow = Database['public']['Tables']['expense_payers']['Row']
+
+export async function listExpensePayers(expenseId: string): Promise<ExpensePayerRow[]> {
+  const { data, error } = await supabase
+    .from('expense_payers')
+    .select('*')
+    .eq('expense_id', expenseId)
+  if (error) {
+    throw error
+  }
+  return data
+}
 
 export async function getExpense(expenseId: string): Promise<Expense | null> {
   const { data, error } = await supabase
@@ -125,6 +146,9 @@ export type UpdateExpenseInput = {
   category?: ExpenseCategory | null
   // Trip-member id of the payer; keeps the existing payer server-side when omitted.
   paidBy?: string | null
+  // Multi-payer breakdown (trip-currency cents, must sum to baseAmountCents). When omitted the
+  // expense falls back to a single payer (paidBy / existing). When set, paidBy is ignored.
+  payers?: ExpensePayer[] | null
 }
 
 export async function updateExpense({
@@ -137,6 +161,7 @@ export async function updateExpense({
   splits,
   category,
   paidBy,
+  payers,
 }: UpdateExpenseInput): Promise<Expense> {
   const { data, error } = await supabase.rpc('update_expense_with_splits', {
     _expense_id: expenseId,
@@ -148,6 +173,9 @@ export async function updateExpense({
     _splits: splits.map((s) => ({ member_id: s.memberId, share_cents: s.shareCents })),
     _category: category ?? undefined,
     _paid_by: paidBy ?? undefined,
+    _payers: payers
+      ? payers.map((p) => ({ member_id: p.memberId, paid_cents: p.paidCents }))
+      : undefined,
   })
   if (error) {
     throw error
