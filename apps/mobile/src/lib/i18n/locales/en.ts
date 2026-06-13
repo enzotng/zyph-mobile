@@ -613,6 +613,7 @@ export const en = {
     deleteTitle: 'Delete expense',
     deleteBody: 'This permanently removes the expense from the trip.',
     deleteError: 'Could not delete',
+    rateLocked: 'Locked rate',
   },
   smartSplit: {
     title: 'Smart Split',

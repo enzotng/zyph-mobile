@@ -22,6 +22,7 @@ import {
 import { useTripMemberNames } from '@/features/group'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
+import { formatRate } from '@/lib/money'
 import { paramString } from '@/lib/routing'
 
 const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
@@ -182,6 +183,16 @@ export default function ExpenseDetailScreen() {
           </View>
         </View>
 
+        {isForeign ? (
+          <View style={styles.fxRow}>
+            <Ionicons name="lock-closed-outline" size={13} color={theme.colors.muted} />
+            <Text style={styles.fxText}>
+              {t('expenseDetail.rateLocked')} ·{' '}
+              {formatRate(expense.fx_rate, expense.currency, trip.currency)}
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.cardButton}>
           {hasItems ? (
             <Button
@@ -328,6 +339,17 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
     marginTop: 2,
+  },
+  fxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(1.5),
+    marginTop: theme.gap(2.5),
+  },
+  fxText: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
   },
   cardButton: {
     marginTop: theme.gap(3),
