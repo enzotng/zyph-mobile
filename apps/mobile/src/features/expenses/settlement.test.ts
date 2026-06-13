@@ -1,4 +1,9 @@
-import { type MemberBalance, pairwiseBalances, settleBalances } from './settlement'
+import {
+  formatSettleUpSummary,
+  type MemberBalance,
+  pairwiseBalances,
+  settleBalances,
+} from './settlement'
 
 const sum = (s: { amountCents: number }[]) => s.reduce((acc, x) => acc + x.amountCents, 0)
 
@@ -80,5 +85,32 @@ describe('pairwiseBalances', () => {
 
   it('returns an empty map when there are no settlements', () => {
     expect(pairwiseBalances([]).size).toBe(0)
+  })
+})
+
+describe('formatSettleUpSummary', () => {
+  it('lists each transfer with resolved names and amounts', () => {
+    const summary = formatSettleUpSummary({
+      title: 'Lisbon · Settle up',
+      currency: 'EUR',
+      settledLabel: 'Everyone is settled up.',
+      lines: [
+        { from: 'Alice', to: 'Bob', amountCents: 1200 },
+        { from: 'Charlie', to: 'Bob', amountCents: 850 },
+      ],
+    })
+    expect(summary).toBe(
+      'Lisbon · Settle up\n\n- Alice → Bob: 12.00 EUR\n- Charlie → Bob: 8.50 EUR',
+    )
+  })
+
+  it('falls back to the settled label when there is nothing to settle', () => {
+    const summary = formatSettleUpSummary({
+      title: 'Lisbon · Settle up',
+      currency: 'EUR',
+      settledLabel: 'Everyone is settled up.',
+      lines: [],
+    })
+    expect(summary).toBe('Lisbon · Settle up\n\nEveryone is settled up.')
   })
 })

@@ -603,6 +603,15 @@ export const en = {
     owed: 'Share',
     pays: 'Pays {{amount}} to {{name}}',
     receives: 'Receives {{amount}} from {{name}}',
+    share: 'Share',
+    shareTitle: '{{trip}} · Settle up',
+    settleAllMine: 'Settle all my debts ({{amount}})',
+    settleAllTitle: 'Settle all my debts',
+    settleAllBody: 'This records all your suggested payments, {{amount}} in total.',
+    settleAllConfirm: 'Settle all',
+    settlingAll: 'Settling…',
+    settleAllPartial:
+      '{{done}} of {{total}} payments recorded, the rest failed. Try the remaining ones again.',
   },
   currencyPicker: {
     title: 'Currency',

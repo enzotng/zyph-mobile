@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useGlobalSearchParams } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, Pressable, Text, View } from 'react-native'
+import { Alert, Pressable, Share, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -21,6 +21,7 @@ import {
 } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
+  formatSettleUpSummary,
   pairwiseBalances,
   type Settlement,
   settleBalances,
@@ -64,6 +65,7 @@ export default function TripBalancesScreen() {
   const [pendingSettlement, setPendingSettlement] = useState<Settlement | null>(null)
   const [settleAmount, setSettleAmount] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [settlingAll, setSettlingAll] = useState(false)
 
   const nameById = useMemo(
     () => new Map((members ?? []).map((member) => [member.id, member.display_name])),
@@ -98,6 +100,86 @@ export default function TripBalancesScreen() {
     [balances],
   )
   const pairwise = useMemo(() => pairwiseBalances(settlements), [settlements])
+
+  // A shared summary must use real names, never "You" - the recipient would not know who that is.
+  const shareNameFor = useCallback(
+    (memberId: string): string => nameById.get(memberId) ?? t('common.member'),
+    [nameById, t],
+  )
+  const myMemberId = useMemo(
+    () => (balances ?? []).find((b) => b.user_id === userId)?.member_id ?? null,
+    [balances, userId],
+  )
+  const myDebts = useMemo(
+    () => settlements.filter((s) => s.fromMemberId === myMemberId),
+    [settlements, myMemberId],
+  )
+  const myDebtsTotal = useMemo(() => myDebts.reduce((acc, s) => acc + s.amountCents, 0), [myDebts])
+
+  async function onShare() {
+    if (!trip) {
+      return
+    }
+    const lines = settlements.map((s) => ({
+      from: shareNameFor(s.fromMemberId),
+      to: shareNameFor(s.toMemberId),
+      amountCents: s.amountCents,
+    }))
+    await Share.share({
+      message: formatSettleUpSummary({
+        title: t('balances.shareTitle', { trip: trip.title }),
+        lines,
+        currency: trip.currency,
+        settledLabel: t('group.allUpToDate'),
+      }),
+    })
+  }
+
+  function confirmSettleAll() {
+    if (!trip || myDebts.length === 0) {
+      return
+    }
+    Alert.alert(
+      t('balances.settleAllTitle'),
+      t('balances.settleAllBody', { amount: formatAmount(myDebtsTotal, trip.currency) }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('balances.settleAllConfirm'), onPress: () => void settleAllMyDebts() },
+      ],
+    )
+  }
+
+  async function settleAllMyDebts() {
+    if (myDebts.length === 0) {
+      return
+    }
+    setSettlingAll(true)
+    // record_settlement is one transfer per call and each commits independently, so on a mid-loop
+    // failure we report how many already went through (every one is reversible from the history).
+    let done = 0
+    try {
+      for (const debt of myDebts) {
+        await recordSettlement.mutateAsync({
+          tripId,
+          fromMemberId: debt.fromMemberId,
+          toMemberId: debt.toMemberId,
+          amountCents: debt.amountCents,
+        })
+        done += 1
+      }
+    } catch (error) {
+      Alert.alert(
+        t('group.paymentFailedTitle'),
+        done > 0
+          ? t('balances.settleAllPartial', { done, total: myDebts.length })
+          : error instanceof Error
+            ? error.message
+            : t('common.tryAgain'),
+      )
+    } finally {
+      setSettlingAll(false)
+    }
+  }
 
   function openSettle(settlement: Settlement) {
     setPendingSettlement(settlement)
@@ -195,7 +277,21 @@ export default function TripBalancesScreen() {
   const hasSettlements = settlements.length > 0
 
   return (
-    <Screen title={t('balances.title')} showBack scroll>
+    <Screen
+      title={t('balances.title')}
+      showBack
+      scroll
+      right={
+        <Pressable
+          onPress={() => void onShare()}
+          accessibilityRole="button"
+          accessibilityLabel={t('balances.share')}
+          hitSlop={8}
+        >
+          <Ionicons name="share-outline" size={22} color={theme.colors.foreground} />
+        </Pressable>
+      }
+    >
       {/* Suggested settlements */}
       <View>
         <SectionTitle>{t('group.suggestedSettlements')}</SectionTitle>
@@ -237,6 +333,20 @@ export default function TripBalancesScreen() {
                   </View>
                 </Card>
               ))}
+              {myDebts.length > 0 ? (
+                <Button
+                  label={
+                    settlingAll
+                      ? t('balances.settlingAll')
+                      : t('balances.settleAllMine', {
+                          amount: formatAmount(myDebtsTotal, trip.currency),
+                        })
+                  }
+                  icon="checkmark-done-outline"
+                  onPress={confirmSettleAll}
+                  disabled={settlingAll || recordSettlement.isPending}
+                />
+              ) : null}
             </View>
           ) : (
             <Surface

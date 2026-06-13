@@ -1,3 +1,5 @@
+import { formatAmount } from '@/lib/money'
+
 export type MemberBalance = {
   memberId: string
   // Net balance in integer cents: positive = owed to them, negative = they owe.
@@ -71,4 +73,26 @@ export function pairwiseBalances(settlements: Settlement[]): Map<string, Pairwis
     entryFor(s.toMemberId).owedBy.push({ memberId: s.fromMemberId, amountCents: s.amountCents })
   }
   return byMember
+}
+
+// One "who pays whom" row of a shareable settle-up plan, with names pre-resolved by the caller.
+export type SettleUpLine = { from: string; to: string; amountCents: number }
+
+// Build the plain-text settle-up summary shared through the native share sheet. The caller
+// resolves real display names (never "You", since the recipient would not know who that is) and
+// the currency, so this stays a pure, testable string builder.
+export function formatSettleUpSummary(input: {
+  title: string
+  lines: SettleUpLine[]
+  currency: string
+  settledLabel: string
+}): string {
+  const { title, lines, currency, settledLabel } = input
+  if (lines.length === 0) {
+    return `${title}\n\n${settledLabel}`
+  }
+  const body = lines
+    .map((line) => `- ${line.from} → ${line.to}: ${formatAmount(line.amountCents, currency)}`)
+    .join('\n')
+  return `${title}\n\n${body}`
 }
