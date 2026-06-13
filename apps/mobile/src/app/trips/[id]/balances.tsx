@@ -22,7 +22,6 @@ import {
 import { useAuth } from '@/features/auth'
 import {
   formatSettleUpSummary,
-  pairwiseBalances,
   type Settlement,
   settleBalances,
   toCents,
@@ -99,8 +98,6 @@ export default function TripBalancesScreen() {
       ),
     [balances],
   )
-  const pairwise = useMemo(() => pairwiseBalances(settlements), [settlements])
-
   // A shared summary must use real names, never "You" - the recipient would not know who that is.
   const shareNameFor = useCallback(
     (memberId: string): string => nameById.get(memberId) ?? t('common.member'),
@@ -115,6 +112,10 @@ export default function TripBalancesScreen() {
     [settlements, myMemberId],
   )
   const myDebtsTotal = useMemo(() => myDebts.reduce((acc, s) => acc + s.amountCents, 0), [myDebts])
+  const myNet = useMemo(
+    () => (balances ?? []).find((b) => b.user_id === userId)?.balance_cents ?? 0,
+    [balances, userId],
+  )
 
   async function onShare() {
     if (!trip) {
@@ -292,6 +293,30 @@ export default function TripBalancesScreen() {
         </Pressable>
       }
     >
+      {/* Your position: the first thing to know - do I owe, am I owed, net how much */}
+      <Card>
+        <View style={styles.hero}>
+          <Text style={styles.heroLabel}>
+            {myNet === 0 ? t('trip.settled') : myNet > 0 ? t('trip.owed') : t('trip.owe')}
+          </Text>
+          <Amount cents={myNet} currency={trip.currency} size={30} signed />
+          {myDebts.length > 0 ? (
+            <Button
+              label={
+                settlingAll
+                  ? t('balances.settlingAll')
+                  : t('balances.settleAllMine', {
+                      amount: formatAmount(myDebtsTotal, trip.currency),
+                    })
+              }
+              icon="checkmark-done-outline"
+              onPress={confirmSettleAll}
+              disabled={settlingAll || recordSettlement.isPending}
+            />
+          ) : null}
+        </View>
+      </Card>
+
       {/* Suggested settlements */}
       <View>
         <SectionTitle>{t('group.suggestedSettlements')}</SectionTitle>
@@ -333,20 +358,6 @@ export default function TripBalancesScreen() {
                   </View>
                 </Card>
               ))}
-              {myDebts.length > 0 ? (
-                <Button
-                  label={
-                    settlingAll
-                      ? t('balances.settlingAll')
-                      : t('balances.settleAllMine', {
-                          amount: formatAmount(myDebtsTotal, trip.currency),
-                        })
-                  }
-                  icon="checkmark-done-outline"
-                  onPress={confirmSettleAll}
-                  disabled={settlingAll || recordSettlement.isPending}
-                />
-              ) : null}
             </View>
           ) : (
             <Surface
@@ -370,7 +381,6 @@ export default function TripBalancesScreen() {
         <View style={styles.listBody}>
           {(balances ?? []).map((balance, index) => {
             const isOpen = expanded === balance.member_id
-            const detail = pairwise.get(balance.member_id)
             return (
               <View
                 key={balance.member_id}
@@ -425,26 +435,6 @@ export default function TripBalancesScreen() {
                         neutral
                       />
                     </View>
-                    {detail?.owes.map((entry) => (
-                      <Text key={`owe-${entry.memberId}`} style={styles.pairLine} numberOfLines={1}>
-                        {t('balances.pays', {
-                          name: labelForMember(entry.memberId),
-                          amount: formatAmount(entry.amountCents, trip.currency),
-                        })}
-                      </Text>
-                    ))}
-                    {detail?.owedBy.map((entry) => (
-                      <Text
-                        key={`owed-${entry.memberId}`}
-                        style={styles.pairLine}
-                        numberOfLines={1}
-                      >
-                        {t('balances.receives', {
-                          name: labelForMember(entry.memberId),
-                          amount: formatAmount(entry.amountCents, trip.currency),
-                        })}
-                      </Text>
-                    ))}
                   </View>
                 ) : null}
               </View>
@@ -550,6 +540,15 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  hero: {
+    gap: theme.gap(2),
+  },
+  heroLabel: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+  },
   blockBody: {
     marginTop: theme.gap(2.5),
   },
@@ -637,11 +636,6 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: 'space-between',
   },
   breakdownLabel: {
-    fontFamily: theme.fonts.sans.regular,
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.muted,
-  },
-  pairLine: {
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
