@@ -28,6 +28,26 @@ export async function listTripMembers(tripId: string): Promise<TripMember[]> {
   }))
 }
 
+export type TripMemberName = { id: string; user_id: string | null; display_name: string | null }
+
+// All members of a trip INCLUDING removed ones, for resolving names in historical splits/balances
+// where a soft-removed member would otherwise show as "Member". Goes through a SECURITY DEFINER RPC
+// because the profiles RLS only exposes profiles of mutually-active members, so a direct join reads
+// a removed member's name back as null.
+export async function listTripMemberNames(tripId: string): Promise<TripMemberName[]> {
+  const { data, error } = await supabase.rpc('trip_member_names', { _trip_id: tripId })
+  if (error) {
+    throw error
+  }
+  return (data ?? []).map((member) => ({
+    id: member.id,
+    user_id: member.user_id,
+    // The generated RPC type says non-null, but the profiles left-join / RGPD anonymisation can
+    // yield null; normalise so consumers' "?? member" fallback is reached.
+    display_name: member.display_name ?? null,
+  }))
+}
+
 export async function joinTripByCode(code: string): Promise<string> {
   const { data, error } = await supabase.rpc('join_trip_by_code', { _code: code })
   if (error) {

@@ -19,7 +19,7 @@ import {
   useExpenseItems,
   useExpenseSplits,
 } from '@/features/expenses'
-import { useTripMembers } from '@/features/group'
+import { useTripMemberNames } from '@/features/group'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { paramString } from '@/lib/routing'
@@ -48,7 +48,7 @@ export default function ExpenseDetailScreen() {
   const { data: items } = useExpenseItems(expenseId)
   const { data: itemAssignments } = useExpenseItemAssignments(expenseId)
   const { data: trip } = useTrip(tripId)
-  const { data: members } = useTripMembers(tripId)
+  const { data: members } = useTripMemberNames(tripId)
   const deleteExpense = useDeleteExpense(tripId)
 
   const hasItems = Boolean(items && items.length > 0)

@@ -4,6 +4,7 @@ import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock
 import {
   joinTripByCode,
   leaveTrip,
+  listTripMemberNames,
   listTripMembers,
   regenerateInviteCode,
   removeTripMember,
@@ -65,6 +66,30 @@ describe('listTripMembers', () => {
     from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('list fail') }))
 
     await expect(listTripMembers('t1')).rejects.toThrow('list fail')
+  })
+})
+
+describe('listTripMemberNames', () => {
+  it('calls the trip_member_names RPC and maps the rows (incl. null names for removed/anon)', async () => {
+    rpc.mockResolvedValue({
+      data: [
+        { id: 'm1', user_id: 'u1', display_name: 'Alice' },
+        { id: 'm2', user_id: 'u2', display_name: null },
+      ],
+      error: null,
+    })
+
+    await expect(listTripMemberNames('t1')).resolves.toEqual([
+      { id: 'm1', user_id: 'u1', display_name: 'Alice' },
+      { id: 'm2', user_id: 'u2', display_name: null },
+    ])
+    expect(rpc).toHaveBeenCalledWith('trip_member_names', { _trip_id: 't1' })
+  })
+
+  it('throws when the RPC errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('names fail') })
+
+    await expect(listTripMemberNames('t1')).rejects.toThrow('names fail')
   })
 })
 
