@@ -566,6 +566,7 @@ export const en = {
     addTitle: 'Add expense',
     editTitle: 'Edit expense',
     scanReceipt: 'Scan receipt',
+    splitByItem: 'Split by item',
     description: 'Description',
     descriptionPlaceholder: 'Dinner, taxi, hotel…',
     currency: 'Currency',

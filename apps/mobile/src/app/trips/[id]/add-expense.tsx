@@ -107,6 +107,21 @@ export default function AddExpenseScreen() {
   }
 
   const amount = useWatch({ control, name: 'amount' })
+  const descriptionValue = useWatch({ control, name: 'description' })
+
+  // Itemised (per-item) split without a receipt scan: hand the editor a manual flag plus the
+  // currency and any description already typed, and it opens with one blank line to fill.
+  function openManualSplit() {
+    router.push({
+      pathname: '/trips/[id]/attribute-expense',
+      params: {
+        id: tripId,
+        manual: '1',
+        currency,
+        description: (descriptionValue ?? '').slice(0, MAX_DESCRIPTION_LEN),
+      },
+    })
+  }
 
   const currencies = useMemo(() => {
     const rest = fx
@@ -210,23 +225,42 @@ export default function AddExpenseScreen() {
         />
       }
     >
-      <Pressable
-        onPress={() => setScannerOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel={t('expenseForm.scanReceipt')}
-        style={styles.scanBtn}
-      >
-        <Surface
-          color="transparent"
-          borderColor={theme.colors.border}
-          borderWidth={1}
-          radius={theme.radius.md}
-          style={styles.scanBtnSurface}
+      <View style={styles.quickActions}>
+        <Pressable
+          onPress={() => setScannerOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t('expenseForm.scanReceipt')}
+          style={styles.quickAction}
         >
-          <Ionicons name="scan-outline" size={20} color={theme.colors.primary} />
-          <Text style={styles.scanLabel}>{t('expenseForm.scanReceipt')}</Text>
-        </Surface>
-      </Pressable>
+          <Surface
+            color="transparent"
+            borderColor={theme.colors.border}
+            borderWidth={1}
+            radius={theme.radius.md}
+            style={styles.scanBtnSurface}
+          >
+            <Ionicons name="scan-outline" size={20} color={theme.colors.primary} />
+            <Text style={styles.scanLabel}>{t('expenseForm.scanReceipt')}</Text>
+          </Surface>
+        </Pressable>
+        <Pressable
+          onPress={openManualSplit}
+          accessibilityRole="button"
+          accessibilityLabel={t('expenseForm.splitByItem')}
+          style={styles.quickAction}
+        >
+          <Surface
+            color="transparent"
+            borderColor={theme.colors.border}
+            borderWidth={1}
+            radius={theme.radius.md}
+            style={styles.scanBtnSurface}
+          >
+            <Ionicons name="list-outline" size={20} color={theme.colors.primary} />
+            <Text style={styles.scanLabel}>{t('expenseForm.splitByItem')}</Text>
+          </Surface>
+        </Pressable>
+      </View>
 
       <ReceiptScanner
         visible={scannerOpen}
@@ -319,12 +353,17 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.bold,
     color: theme.colors.muted,
   },
-  scanBtn: {
-    alignSelf: 'flex-start',
+  quickActions: {
+    flexDirection: 'row',
+    gap: theme.gap(2),
+  },
+  quickAction: {
+    flex: 1,
   },
   scanBtnSurface: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: theme.gap(2),
     paddingVertical: theme.gap(2),
     paddingHorizontal: theme.gap(3),

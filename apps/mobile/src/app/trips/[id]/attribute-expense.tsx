@@ -43,6 +43,9 @@ type AttributionMode = 'create' | 'edit'
 type EditorProps = {
   tripId: string
   mode: AttributionMode
+  // Manual entry (no OCR scan): the user builds the line items by hand, so there is no scanned
+  // total to reconcile against - the items sum is the expense total.
+  isManual: boolean
   expenseId: string | null
   items: SmartSplitItem[]
   totalCents: number
@@ -66,10 +69,12 @@ export default function AttributeExpenseScreen() {
     currency?: string
     description?: string
     expenseId?: string
+    manual?: string
   }>()
   const tripId = paramString(params.id)
   const expenseId = paramString(params.expenseId)
   const isEdit = expenseId.length > 0
+  const isManual = paramString(params.manual) === '1'
 
   const parsedItems = useMemo<ParsedItem[]>(() => {
     try {
@@ -112,6 +117,7 @@ export default function AttributeExpenseScreen() {
         key={expenseId}
         tripId={tripId}
         mode="edit"
+        isManual={false}
         expenseId={expenseId}
         items={normalizedRows.map((row) => ({
           label: row.label,
@@ -131,6 +137,7 @@ export default function AttributeExpenseScreen() {
       key="create"
       tripId={tripId}
       mode="create"
+      isManual={isManual}
       expenseId={null}
       items={parsedItems.map((item, position) => ({
         label: item.label,
@@ -148,6 +155,7 @@ export default function AttributeExpenseScreen() {
 function AttributionEditor({
   tripId,
   mode,
+  isManual,
   expenseId,
   items,
   totalCents,
@@ -182,10 +190,16 @@ function AttributionEditor({
   // sum of these lines, so an OCR receipt whose lines do not match the printed total is
   // always saveable once the user has corrected or added lines. `id` is a stable React key
   // (position stays the assignment key); a counter mints ids for added lines.
-  const nextDraftId = useRef(items.length)
-  const [drafts, setDrafts] = useState<(DraftItem & { id: string })[]>(() =>
-    draftFromItems(items).map((draft, index) => ({ ...draft, id: `d${index}` })),
-  )
+  // Manual entry starts with a single blank line so the user has something to fill; the seed uses
+  // id `d0`, so the id counter must start at 1 to avoid colliding with the next added line.
+  const nextDraftId = useRef(items.length === 0 && isManual ? 1 : items.length)
+  const [drafts, setDrafts] = useState<(DraftItem & { id: string })[]>(() => {
+    const seeded = draftFromItems(items).map((draft, index) => ({ ...draft, id: `d${index}` }))
+    if (seeded.length === 0 && isManual) {
+      return [{ id: 'd0', label: '', amount: '' }]
+    }
+    return seeded
+  })
   const [sheetOpenForPosition, setSheetOpenForPosition] = useState<number | null>(null)
 
   const editedItems = useMemo(() => draftsToItems(drafts), [drafts])
@@ -275,7 +289,7 @@ function AttributionEditor({
     )
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 && !isManual) {
     return (
       <Screen title={t('smartSplit.attribution')} showBack>
         <View style={styles.center}>
@@ -378,7 +392,9 @@ function AttributionEditor({
 
   const isPending = createWithItems.isPending || upsertWithItems.isPending
   const totalLabel = mode === 'edit' ? t('smartSplit.total') : t('smartSplit.ocrTotal')
-  const showAddMissing = mode === 'create' && delta < 0
+  // OCR reconciliation (scanned total vs items sum, "add the difference") only makes sense when a
+  // scan provided a target total - a manual split has none.
+  const showAddMissing = mode === 'create' && !isManual && delta < 0
 
   return (
     <Screen title={mode === 'edit' ? t('smartSplit.editTitle') : t('smartSplit.title')} showBack>
@@ -397,17 +413,28 @@ function AttributionEditor({
         radius={theme.radius.lg}
         style={styles.header}
       >
-        <View style={styles.headerRow}>
-          <Text style={styles.headerLabel}>{totalLabel}</Text>
-          <Text style={styles.headerValue}>{formatAmount(totalCents, expenseCurrency)}</Text>
-        </View>
-        <View style={styles.headerRow}>
-          <Text style={styles.headerLabel}>{t('smartSplit.itemsSum')}</Text>
-          <Text style={[styles.headerValue, delta !== 0 ? { color: theme.colors.warning } : null]}>
-            {formatAmount(itemsTotal, expenseCurrency)}
-            {delta !== 0 ? `  (${delta > 0 ? '+' : ''}${(delta / 100).toFixed(2)})` : ''}
-          </Text>
-        </View>
+        {isManual ? (
+          <View style={styles.headerRow}>
+            <Text style={styles.headerLabel}>{t('smartSplit.total')}</Text>
+            <Text style={styles.headerValue}>{formatAmount(itemsTotal, expenseCurrency)}</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>{totalLabel}</Text>
+              <Text style={styles.headerValue}>{formatAmount(totalCents, expenseCurrency)}</Text>
+            </View>
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>{t('smartSplit.itemsSum')}</Text>
+              <Text
+                style={[styles.headerValue, delta !== 0 ? { color: theme.colors.warning } : null]}
+              >
+                {formatAmount(itemsTotal, expenseCurrency)}
+                {delta !== 0 ? `  (${delta > 0 ? '+' : ''}${(delta / 100).toFixed(2)})` : ''}
+              </Text>
+            </View>
+          </>
+        )}
       </Surface>
 
       <ScrollView
