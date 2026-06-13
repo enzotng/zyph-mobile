@@ -79,6 +79,7 @@ export const fr: Translations = {
     noResults: 'Aucun résultat pour ce filtre.',
     all: 'Tout',
     newExpense: 'Nouvelle dépense',
+    yourShare: 'Ta part {{amount}}',
   },
   categories: {
     food: 'Restauration',

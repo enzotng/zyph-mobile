@@ -11,6 +11,7 @@ import {
   balancesQueryKey,
   expensePayersQueryKey,
   expenseQueryKey,
+  expenseSharesQueryKey,
   expenseSplitsQueryKey,
   expensesQueryKey,
 } from './use-expenses'
@@ -47,6 +48,7 @@ export function useCreateExpenseWithItems(tripId: string) {
       // A new itemised expense changes the list and recomputes balances.
       void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: expenseSharesQueryKey(tripId) })
     },
   })
 }
@@ -59,6 +61,7 @@ export function useUpsertExpenseWithItems(tripId: string) {
       // Expense list + balances change because splits are recomputed.
       void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: expenseSharesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: expenseQueryKey(updated.id) })
       void queryClient.invalidateQueries({ queryKey: expenseSplitsQueryKey(updated.id) })
       void queryClient.invalidateQueries({ queryKey: expensePayersQueryKey(updated.id) })

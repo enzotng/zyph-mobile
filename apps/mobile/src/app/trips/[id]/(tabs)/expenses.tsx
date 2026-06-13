@@ -10,7 +10,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Chip, EmptyState, Skeleton, Surface } from '@/components/ui'
+import { Amount, Chip, EmptyState, Skeleton, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   CATEGORY_ICON,
@@ -20,6 +20,7 @@ import {
   filterExpenses,
   formatAmount,
   useExpenses,
+  useMyExpenseShares,
   useTripBalances,
 } from '@/features/expenses'
 import { memberLabel, useTripMembers } from '@/features/group'
@@ -73,6 +74,20 @@ export default function TripExpensesScreen() {
     return map
   }, [members, userId, t])
 
+  const myMemberId = useMemo(
+    () => (members ?? []).find((m) => m.user_id === userId)?.id ?? null,
+    [members, userId],
+  )
+  const { data: myShares } = useMyExpenseShares(tripId, myMemberId)
+  const shareByExpenseId = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const s of myShares ?? []) {
+      map.set(s.expense_id, s.share_cents)
+    }
+    return map
+  }, [myShares])
+  const tripCurrency = trip?.currency ?? 'EUR'
+
   const payerName = useCallback(
     (memberId: string | null): string =>
       (memberId ? labelByMemberId.get(memberId) : undefined) ?? t('common.member'),
@@ -84,47 +99,57 @@ export default function TripExpensesScreen() {
   }
 
   const renderItem = useCallback(
-    ({ item }: { item: Expense }) => (
-      <Animated.View layout={LinearTransition}>
-        <Pressable
-          style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-          onPress={() => {
-            haptics.light()
-            router.push({
-              pathname: '/trips/[id]/expenses/[expenseId]',
-              params: { id: tripId, expenseId: item.id },
-            })
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={`${item.description}, ${formatAmount(item.amount_cents, item.currency)}`}
-        >
-          <Surface
-            width={40}
-            height={40}
-            radius={theme.radius.md}
-            borderWidth={0}
-            color={withAlpha(theme.colors.muted, 0.12)}
-            style={styles.rowTile}
+    ({ item }: { item: Expense }) => {
+      const myShare = shareByExpenseId.get(item.id)
+      return (
+        <Animated.View layout={LinearTransition}>
+          <Pressable
+            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+            onPress={() => {
+              haptics.light()
+              router.push({
+                pathname: '/trips/[id]/expenses/[expenseId]',
+                params: { id: tripId, expenseId: item.id },
+              })
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.description}, ${formatAmount(item.amount_cents, item.currency)}`}
           >
-            <Ionicons
-              name={CATEGORY_ICON[item.category as ExpenseCategory] ?? 'pricetag'}
-              size={19}
-              color={theme.colors.muted}
-            />
-          </Surface>
-          <View style={styles.rowInfo}>
-            <Text style={styles.rowDescription} numberOfLines={1}>
-              {item.description}
-            </Text>
-            <Text style={styles.rowPaidBy}>
-              {t('trip.paidBy', { name: payerName(item.paid_by) })}
-            </Text>
-          </View>
-          <Text style={styles.rowAmount}>{formatAmount(item.amount_cents, item.currency)}</Text>
-        </Pressable>
-      </Animated.View>
-    ),
-    [router, tripId, theme, t, payerName],
+            <Surface
+              width={40}
+              height={40}
+              radius={theme.radius.md}
+              borderWidth={0}
+              color={withAlpha(theme.colors.muted, 0.12)}
+              style={styles.rowTile}
+            >
+              <Ionicons
+                name={CATEGORY_ICON[item.category as ExpenseCategory] ?? 'pricetag'}
+                size={19}
+                color={theme.colors.muted}
+              />
+            </Surface>
+            <View style={styles.rowInfo}>
+              <Text style={styles.rowDescription} numberOfLines={1}>
+                {item.description}
+              </Text>
+              <Text style={styles.rowPaidBy}>
+                {t('trip.paidBy', { name: payerName(item.paid_by) })}
+              </Text>
+            </View>
+            <View style={styles.rowAmountCol}>
+              <Amount cents={item.amount_cents} currency={item.currency} size={16} neutral />
+              {myShare !== undefined ? (
+                <Text style={styles.rowShare}>
+                  {t('trip.yourShare', { amount: formatAmount(myShare, tripCurrency) })}
+                </Text>
+              ) : null}
+            </View>
+          </Pressable>
+        </Animated.View>
+      )
+    },
+    [router, tripId, theme, t, payerName, shareByExpenseId, tripCurrency],
   )
 
   return (
@@ -376,11 +401,14 @@ const styles = StyleSheet.create((theme, rt) => ({
     color: theme.colors.muted,
     marginTop: 3,
   },
-  rowAmount: {
-    fontFamily: theme.fonts.display.bold,
-    fontWeight: '700',
-    fontSize: theme.fontSize.md,
-    color: theme.colors.foreground,
+  rowAmountCol: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  rowShare: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
   },
   skeleton: {
     paddingTop: theme.gap(1),
