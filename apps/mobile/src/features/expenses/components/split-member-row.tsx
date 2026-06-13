@@ -5,6 +5,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { TextField } from '@/components/text-field'
 import { Amount, Surface } from '@/components/ui'
+import { memberLabel } from '@/features/group'
 
 import type { SplitEditor } from '../hooks/use-split-editor'
 import { MemberRow } from './member-row'
@@ -33,8 +34,10 @@ export function SplitMemberRow({
   const included = split.isIncluded(member.id)
   const weight = split.weightFor(member.id)
   const share = split.shareByMember.get(member.id)
-  const name =
-    member.user_id === currentUserId ? t('common.you') : (member.display_name ?? t('common.member'))
+  const name = memberLabel(member, currentUserId, {
+    you: t('common.you'),
+    fallback: t('common.member'),
+  })
 
   const right = included ? (
     <>

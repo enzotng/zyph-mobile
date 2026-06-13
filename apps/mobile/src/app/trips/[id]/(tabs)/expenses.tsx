@@ -13,6 +13,7 @@ import { TextField } from '@/components/text-field'
 import { Chip, EmptyState, Skeleton, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
+  CATEGORY_ICON,
   EXPENSE_CATEGORIES,
   type Expense,
   type ExpenseCategory,
@@ -21,20 +22,11 @@ import {
   useExpenses,
   useTripBalances,
 } from '@/features/expenses'
-import { useTripMembers } from '@/features/group'
+import { memberLabel, useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
-
-const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
-  food: 'restaurant',
-  transport: 'car',
-  lodging: 'bed',
-  activity: 'ticket',
-  shopping: 'bag-handle',
-  other: 'pricetag',
-}
 
 // Placeholder rows shown while the expense list loads, shaped to match the real content.
 const SKELETON_ROWS = [0, 1, 2, 3, 4]
@@ -72,18 +64,19 @@ export default function TripExpensesScreen() {
       ? theme.colors.success
       : theme.colors.destructive
 
-  const memberNameById = useMemo(() => {
+  const labelByMemberId = useMemo(() => {
+    const labels = { you: t('common.you'), fallback: t('common.member') }
     const map = new Map<string, string>()
     for (const member of members ?? []) {
-      if (member.display_name) map.set(member.id, member.display_name)
+      map.set(member.id, memberLabel(member, userId, labels))
     }
     return map
-  }, [members])
+  }, [members, userId, t])
 
   const payerName = useCallback(
     (memberId: string | null): string =>
-      (memberId ? memberNameById.get(memberId) : undefined) ?? t('common.member'),
-    [memberNameById, t],
+      (memberId ? labelByMemberId.get(memberId) : undefined) ?? t('common.member'),
+    [labelByMemberId, t],
   )
 
   function goAdd() {

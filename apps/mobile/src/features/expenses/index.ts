@@ -1,5 +1,6 @@
 export * from './api/expense-items.api'
 export * from './api/expenses.api'
+export * from './categories'
 export * from './filter'
 export * from './hooks/use-expense-items'
 export * from './hooks/use-expenses'

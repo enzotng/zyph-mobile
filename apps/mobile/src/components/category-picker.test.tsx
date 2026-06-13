@@ -31,20 +31,20 @@ describe('CategoryPicker', () => {
   it('marks the "none" chip as selected when value is null', () => {
     render(<CategoryPicker value={null} onChange={jest.fn()} />)
 
-    expect(screen.getByRole('radio', { name: 'None', selected: true })).toBeOnTheScreen()
+    expect(screen.getByRole('button', { name: 'None', selected: true })).toBeOnTheScreen()
   })
 
   it('does not mark category chips as selected when value is null', () => {
     render(<CategoryPicker value={null} onChange={jest.fn()} />)
 
-    expect(screen.queryByRole('radio', { name: 'Food', selected: true })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Food', selected: true })).toBeNull()
   })
 
   it('marks the matching category chip as selected and "none" as unselected', () => {
     render(<CategoryPicker value="food" onChange={jest.fn()} />)
 
-    expect(screen.getByRole('radio', { name: 'Food', selected: true })).toBeOnTheScreen()
-    expect(screen.queryByRole('radio', { name: 'None', selected: true })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Food', selected: true })).toBeOnTheScreen()
+    expect(screen.queryByRole('button', { name: 'None', selected: true })).toBeNull()
   })
 
   it('calls onChange with null when the "none" chip is pressed', () => {

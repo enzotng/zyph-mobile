@@ -10,6 +10,7 @@ import { Screen } from '@/components/screen'
 import { Avatar, Badge, Card, SectionTitle, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
+  CATEGORY_ICON,
   type ExpenseCategory,
   formatAmount,
   groupMembersByItemId,
@@ -20,20 +21,11 @@ import {
   useExpensePayers,
   useExpenseSplits,
 } from '@/features/expenses'
-import { useTripMemberNames } from '@/features/group'
+import { memberLabel, useTripMemberNames } from '@/features/group'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { formatRate } from '@/lib/money'
 import { paramString } from '@/lib/routing'
-
-const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
-  food: 'restaurant',
-  transport: 'car',
-  lodging: 'bed',
-  activity: 'ticket',
-  shopping: 'bag-handle',
-  other: 'pricetag',
-}
 
 export default function ExpenseDetailScreen() {
   const params = useGlobalSearchParams<{ id: string; expenseId: string }>()
@@ -61,13 +53,10 @@ export default function ExpenseDetailScreen() {
   )
 
   const memberLabelById = useMemo(() => {
+    const labels = { you: t('common.you'), fallback: t('common.member') }
     const map = new Map<string, string>()
     for (const member of members ?? []) {
-      const label =
-        member.user_id && member.user_id === userId
-          ? t('common.you')
-          : (member.display_name ?? t('common.member'))
-      map.set(member.id, label)
+      map.set(member.id, memberLabel(member, userId, labels))
     }
     return map
   }, [members, userId, t])
