@@ -267,20 +267,21 @@ export default function EditExpenseScreen() {
           ) : null}
         </View>
 
-        <View style={styles.group}>
-          <Text style={styles.fieldLabel}>{t('expenseForm.paidBy')}</Text>
-          <PayersEditor
-            editor={payersEditor}
-            members={members}
-            currentUserId={userId}
-            tripCurrency={tripCurrency}
-            baseCents={baseCents}
-          />
-        </View>
-
-        <View style={styles.group}>
-          <Text style={styles.fieldLabel}>{t('expenseForm.category')}</Text>
-          <CategoryPicker value={category} onChange={setPickedCategory} />
+        <View style={styles.twoCol}>
+          <View style={styles.col}>
+            <Text style={styles.fieldLabel}>{t('expenseForm.paidBy')}</Text>
+            <PayersEditor
+              editor={payersEditor}
+              members={members}
+              currentUserId={userId}
+              tripCurrency={tripCurrency}
+              baseCents={baseCents}
+            />
+          </View>
+          <View style={styles.col}>
+            <Text style={styles.fieldLabel}>{t('expenseForm.category')}</Text>
+            <CategoryPicker value={category} onChange={setPickedCategory} />
+          </View>
         </View>
 
         <View style={styles.group}>
@@ -341,6 +342,14 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(4),
   },
   group: {
+    gap: theme.gap(1.5),
+  },
+  twoCol: {
+    flexDirection: 'row',
+    gap: theme.gap(3),
+  },
+  col: {
+    flex: 1,
     gap: theme.gap(1.5),
   },
   fieldLabel: {

@@ -624,8 +624,8 @@ export const en = {
   },
   payers: {
     choosePayer: 'Who paid?',
-    multipleLink: 'Several people paid?',
-    singleLink: 'Only one person paid?',
+    onePerson: 'One person',
+    severalPeople: 'Several',
     amountsIn: 'Amounts in {{currency}}',
   },
   currencyPicker: {
