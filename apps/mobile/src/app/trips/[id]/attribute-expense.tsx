@@ -8,7 +8,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { BottomSheet, Spinner, Surface } from '@/components/ui'
+import { Avatar, BottomSheet, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   amountToCents,
@@ -32,8 +32,9 @@ import {
   useUpsertExpenseWithItems,
 } from '@/features/expenses'
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
-import { useTripMembers } from '@/features/group'
+import { memberLabel, useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
+import { withAlpha } from '@/lib/color'
 import { paramString } from '@/lib/routing'
 
 const MAX_INLINE_CHIPS = 4
@@ -243,6 +244,28 @@ function AttributionEditor({
     })
   }, [])
 
+  const nameFor = useCallback(
+    (member: { user_id: string | null; display_name: string | null }) =>
+      memberLabel(member, userId, { you: t('common.you'), fallback: t('common.member') }),
+    [userId, t],
+  )
+
+  // Bulk shortcut for the common "everyone shared everything" receipt: assign all active members to
+  // every line in one tap, leaving per-line edits as the exception instead of ~N x members taps.
+  const assignEveryoneToAll = useCallback(() => {
+    const allIds = (members ?? []).map((m) => m.id)
+    if (allIds.length === 0) {
+      return
+    }
+    setAssignmentsByPosition(() => {
+      const next: Record<number, Set<string>> = {}
+      for (let i = 0; i < drafts.length; i++) {
+        next[i] = new Set(allIds)
+      }
+      return next
+    })
+  }, [members, drafts.length])
+
   function setLabel(index: number, label: string) {
     setDrafts((prev) => prev.map((draft, i) => (i === index ? { ...draft, label } : draft)))
   }
@@ -437,6 +460,17 @@ function AttributionEditor({
         )}
       </Surface>
 
+      <View style={styles.bulkRow}>
+        <Button
+          label={t('smartSplit.assignEveryone')}
+          icon="people-outline"
+          variant="secondary"
+          size="sm"
+          block={false}
+          onPress={assignEveryoneToAll}
+        />
+      </View>
+
       <ScrollView
         style={styles.list}
         contentContainerStyle={styles.listContent}
@@ -447,6 +481,8 @@ function AttributionEditor({
           const set = assignmentsByPosition[index] ?? new Set<string>()
           const isUnassigned = set.size === 0
           const lineCents = amountToCents(draft.amount)
+          // Surface when a hidden (+N) member is assigned to this line, so the count is not silent.
+          const extraSelected = members.slice(MAX_INLINE_CHIPS).some((m) => set.has(m.id))
           return (
             <Surface
               key={draft.id}
@@ -483,31 +519,25 @@ function AttributionEditor({
                 </Pressable>
               </View>
               <View style={styles.chipsRow}>
-                {inlineMembers.map((member) => {
-                  const selected = set.has(member.id)
-                  const name =
-                    member.user_id === userId
-                      ? t('common.you')
-                      : (member.display_name ?? t('common.member'))
-                  const initial = name.charAt(0).toUpperCase()
-                  return (
-                    <MemberChip
-                      key={member.id}
-                      initial={initial}
-                      label={name}
-                      selected={selected}
-                      onPress={() => toggleAssignment(index, member.id)}
-                    />
-                  )
-                })}
+                {inlineMembers.map((member) => (
+                  <MemberChip
+                    key={member.id}
+                    name={nameFor(member)}
+                    selected={set.has(member.id)}
+                    onPress={() => toggleAssignment(index, member.id)}
+                  />
+                ))}
                 {remainder > 0 ? (
                   <Pressable
                     onPress={() => setSheetOpenForPosition(index)}
                     accessibilityRole="button"
+                    accessibilityState={{ selected: extraSelected }}
                     accessibilityLabel={t('smartSplit.moreMembers', { count: remainder })}
-                    style={styles.moreChip}
+                    style={[styles.moreChip, extraSelected && styles.moreChipActive]}
                   >
-                    <Text style={styles.moreChipText}>+{remainder}</Text>
+                    <Text style={[styles.moreChipText, extraSelected && styles.moreChipTextActive]}>
+                      +{remainder}
+                    </Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -563,10 +593,6 @@ function AttributionEditor({
               isForeign && fx
                 ? convertCents(expenseCentsForMember, expenseCurrency, tripCurrency, fx.rates)
                 : expenseCentsForMember
-            const name =
-              member.user_id === userId
-                ? t('common.you')
-                : (member.display_name ?? t('common.member'))
             return (
               <Surface
                 key={member.id}
@@ -576,7 +602,7 @@ function AttributionEditor({
                 radius={theme.radius.md}
                 style={styles.summaryPill}
               >
-                <Text style={styles.summaryName}>{name}</Text>
+                <Text style={styles.summaryName}>{nameFor(member)}</Text>
                 <Text style={styles.summaryValue}>{formatAmount(cents, tripCurrency)}</Text>
               </Surface>
             )
@@ -612,10 +638,6 @@ function AttributionEditor({
             if (sheetOpenForPosition === null) return null
             const set = assignmentsByPosition[sheetOpenForPosition] ?? new Set<string>()
             const selected = set.has(member.id)
-            const name =
-              member.user_id === userId
-                ? t('common.you')
-                : (member.display_name ?? t('common.member'))
             return (
               <Pressable
                 key={member.id}
@@ -629,7 +651,8 @@ function AttributionEditor({
                   size={22}
                   color={selected ? theme.colors.primary : theme.colors.muted}
                 />
-                <Text style={styles.sheetRowText}>{name}</Text>
+                <Avatar name={nameFor(member)} size={28} />
+                <Text style={styles.sheetRowText}>{nameFor(member)}</Text>
               </Pressable>
             )
           })}
@@ -640,26 +663,32 @@ function AttributionEditor({
   )
 }
 
+// A selectable member as a tinted Avatar (the deterministic tint disambiguates same-initial names
+// like Alice/Anna, unlike a bare initial). Unselected is dimmed; selected gets a ring + check badge.
 function MemberChip({
-  initial,
-  label,
+  name,
   selected,
   onPress,
 }: {
-  initial: string
-  label: string
+  name: string
   selected: boolean
   onPress: () => void
 }) {
+  const { theme } = useUnistyles()
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={name}
       accessibilityState={{ selected }}
-      style={[styles.chip, selected ? styles.chipActive : null]}
+      style={[styles.chip, !selected && styles.chipDim]}
     >
-      <Text style={[styles.chipText, selected ? styles.chipTextActive : null]}>{initial}</Text>
+      <Avatar name={name} size={44} ring={selected} />
+      {selected ? (
+        <View style={styles.chipCheck}>
+          <Ionicons name="checkmark-circle" size={18} color={theme.colors.primary} />
+        </View>
+      ) : null}
     </Pressable>
   )
 }
@@ -749,26 +778,20 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(2),
   },
   chip: {
-    width: theme.gap(9),
-    height: theme.gap(9),
-    borderRadius: theme.gap(5),
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
   },
-  chipActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+  chipDim: {
+    opacity: 0.4,
   },
-  chipText: {
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '700',
-    color: theme.colors.foreground,
-  },
-  chipTextActive: {
-    color: theme.colors.primaryForeground,
+  chipCheck: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    borderRadius: 9,
+    backgroundColor: theme.colors.background,
   },
   moreChip: {
     paddingHorizontal: theme.gap(3),
@@ -780,10 +803,21 @@ const styles = StyleSheet.create((theme) => ({
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.card,
   },
+  moreChipActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: withAlpha(theme.colors.primary, 0.12),
+  },
   moreChipText: {
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '700',
     color: theme.colors.foreground,
+  },
+  moreChipTextActive: {
+    color: theme.colors.primary,
+  },
+  bulkRow: {
+    alignItems: 'flex-start',
+    paddingBottom: theme.gap(2),
   },
   addActions: {
     gap: theme.gap(2),
