@@ -584,6 +584,7 @@ export const fr: Translations = {
     sectionDetails: 'Détails',
     sectionAmount: 'Montant',
     splitBetween: 'Partager entre',
+    splitMode: 'Mode de répartition',
     selectAll: 'Tout',
     selectNone: 'Aucun',
     remainderLeft: 'Reste {{amount}}',

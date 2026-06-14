@@ -3,7 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Alert, Text, View } from 'react-native'
+import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -11,7 +11,7 @@ import { CategoryPicker } from '@/components/category-picker'
 import { CurrencyPicker } from '@/components/currency-picker'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Card, SectionTitle, Spinner } from '@/components/ui'
+import { Spinner } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
@@ -223,68 +223,52 @@ export default function EditExpenseScreen() {
         </View>
       }
     >
-      <View style={styles.section}>
-        <SectionTitle>{t('expenseForm.sectionDetails')}</SectionTitle>
-        <Card>
-          <View style={styles.cardStack}>
-            <Controller
-              control={control}
-              name="description"
-              render={({ field }) => (
-                <TextField
-                  label={t('expenseForm.description')}
-                  placeholder={t('expenseForm.descriptionPlaceholder')}
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  error={errors.description?.message}
-                />
-              )}
-            />
-            <CategoryPicker
-              label={t('expenseForm.category')}
-              value={category}
-              onChange={setPickedCategory}
-            />
-          </View>
-        </Card>
-      </View>
+      <View style={styles.form}>
+        <View style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.description')}</Text>
+          <Controller
+            control={control}
+            name="description"
+            render={({ field }) => (
+              <TextField
+                placeholder={t('expenseForm.descriptionPlaceholder')}
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                error={errors.description?.message}
+              />
+            )}
+          />
+        </View>
 
-      <View style={styles.section}>
-        <SectionTitle>{t('expenseForm.sectionAmount')}</SectionTitle>
-        <Card>
-          <View style={styles.cardStack}>
-            <Controller
-              control={control}
-              name="amount"
-              render={({ field }) => (
-                <TextField
-                  label={t('expenseForm.amount', { currency })}
-                  placeholder="45.00"
-                  keyboardType="decimal-pad"
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  error={errors.amount?.message}
-                />
-              )}
-            />
-            <CurrencyPicker
-              label={t('expenseForm.currency')}
-              value={currency}
-              currencies={currencies}
-              onChange={setPicked}
-            />
-            {isForeign && !canConvert ? (
-              <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
-            ) : null}
+        <View style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.sectionAmount')}</Text>
+          <View style={styles.amountRow}>
+            <CurrencyPicker compact value={currency} currencies={currencies} onChange={setPicked} />
+            <View style={styles.flex}>
+              <Controller
+                control={control}
+                name="amount"
+                render={({ field }) => (
+                  <TextField
+                    placeholder="45.00"
+                    keyboardType="decimal-pad"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.amount?.message}
+                  />
+                )}
+              />
+            </View>
           </View>
-        </Card>
-      </View>
+          {isForeign && !canConvert ? (
+            <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
+          ) : null}
+        </View>
 
-      <View style={styles.section}>
-        <SectionTitle>{t('expenseForm.paidBy')}</SectionTitle>
-        <Card>
+        <View style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.paidBy')}</Text>
           <PayersEditor
             editor={payersEditor}
             members={members}
@@ -292,42 +276,51 @@ export default function EditExpenseScreen() {
             tripCurrency={tripCurrency}
             baseCents={baseCents}
           />
-        </Card>
-      </View>
+        </View>
 
-      <View style={styles.section}>
-        <SectionTitle
-          action={
-            split.includedCount === members.length
-              ? t('expenseForm.selectNone')
-              : t('expenseForm.selectAll')
-          }
-          onAction={split.includedCount === members.length ? split.clearAll : split.selectAll}
-        >
-          {`${t('expenseForm.splitBetween')} · ${split.includedCount}/${members.length}`}
-        </SectionTitle>
-        <Card>
-          <View style={styles.cardStack}>
-            <SplitModeSelector mode={split.mode} onChange={split.setMode} />
-            {members.map((member) => (
-              <SplitMemberRow
-                key={member.id}
-                member={member}
-                split={split}
-                tripCurrency={tripCurrency}
-                currentUserId={userId}
-              />
-            ))}
-            <RemainderBanner
-              mode={split.mode}
-              allocatedCents={split.allocatedCents}
-              remainderCents={split.remainderCents}
-              isBalanced={split.isBalanced}
-              baseCents={baseCents}
-              tripCurrency={tripCurrency}
-            />
+        <View style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.category')}</Text>
+          <CategoryPicker value={category} onChange={setPickedCategory} />
+        </View>
+
+        <View style={styles.group}>
+          <View style={styles.splitHeader}>
+            <Text style={[styles.fieldLabel, styles.splitHeaderLabel]} numberOfLines={1}>
+              {`${t('expenseForm.splitBetween')} · ${split.includedCount}/${members.length}`}
+            </Text>
+            <View style={styles.splitHeaderRight}>
+              <Pressable
+                onPress={split.includedCount === members.length ? split.clearAll : split.selectAll}
+                accessibilityRole="button"
+                hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+              >
+                <Text style={styles.smallAction}>
+                  {split.includedCount === members.length
+                    ? t('expenseForm.selectNone')
+                    : t('expenseForm.selectAll')}
+                </Text>
+              </Pressable>
+              <SplitModeSelector mode={split.mode} onChange={split.setMode} />
+            </View>
           </View>
-        </Card>
+          {members.map((member) => (
+            <SplitMemberRow
+              key={member.id}
+              member={member}
+              split={split}
+              tripCurrency={tripCurrency}
+              currentUserId={userId}
+            />
+          ))}
+          <RemainderBanner
+            mode={split.mode}
+            allocatedCents={split.allocatedCents}
+            remainderCents={split.remainderCents}
+            isBalanced={split.isBalanced}
+            baseCents={baseCents}
+            tripCurrency={tripCurrency}
+          />
+        </View>
       </View>
     </Screen>
   )
@@ -344,11 +337,45 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.regular,
     color: theme.colors.warning,
   },
-  section: {
+  form: {
+    gap: theme.gap(4),
+  },
+  group: {
+    gap: theme.gap(1.5),
+  },
+  fieldLabel: {
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    color: theme.colors.muted,
+  },
+  flex: {
+    flex: 1,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: theme.gap(2),
   },
-  cardStack: {
+  splitHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.gap(2),
+  },
+  splitHeaderLabel: {
+    flexShrink: 1,
+  },
+  splitHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.gap(3),
+  },
+  smallAction: {
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   footerBar: {
     gap: theme.gap(2),

@@ -577,6 +577,7 @@ export const en = {
     sectionDetails: 'Details',
     sectionAmount: 'Amount',
     splitBetween: 'Split between',
+    splitMode: 'Split mode',
     selectAll: 'All',
     selectNone: 'None',
     remainderLeft: '{{amount}} left',
