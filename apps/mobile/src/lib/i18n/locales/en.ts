@@ -652,6 +652,7 @@ export const en = {
     itemsSum: 'Items sum',
     sharedBetween: 'Shared between {{count}} · {{amount}} each',
     tip: 'Tip: tap several members on a single item to split it equally.',
+    assignEveryone: 'Everyone shares everything',
     perPerson: 'Per person ({{currency}})',
     unassignedCount: '{{count}} item(s) still unassigned.',
     assignTo: 'Assign to…',

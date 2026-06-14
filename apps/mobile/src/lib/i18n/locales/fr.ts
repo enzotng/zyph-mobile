@@ -659,6 +659,7 @@ export const fr: Translations = {
     itemsSum: 'Somme des articles',
     sharedBetween: 'Partagé entre {{count}} · {{amount}} chacun',
     tip: 'Astuce : touche plusieurs membres sur un même article pour le partager à parts égales.',
+    assignEveryone: 'Tout le monde partage tout',
     perPerson: 'Par personne ({{currency}})',
     unassignedCount: '{{count}} article(s) encore sans personne assignée.',
     assignTo: 'Attribuer à…',
