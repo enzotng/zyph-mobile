@@ -13,12 +13,21 @@ type CurrencyPickerProps = {
   value: string
   currencies: string[]
   onChange: (currency: string) => void
+  // Compact: a small flag + code pill (for sitting inline next to the amount field) instead of the
+  // full-width flag + name field. Same sheet.
+  compact?: boolean
 }
 
 // Tappable field showing "<flag> <name>" + the ISO code; opens a searchable bottom sheet of
 // currencies (flag + localized name + code, checkmark on the selection). Same {label, value,
 // currencies, onChange} contract as the old chip-row select it replaces.
-export function CurrencyPicker({ label, value, currencies, onChange }: CurrencyPickerProps) {
+export function CurrencyPicker({
+  label,
+  value,
+  currencies,
+  onChange,
+  compact = false,
+}: CurrencyPickerProps) {
   const { theme } = useUnistyles()
   const { t, i18n } = useTranslation()
   const locale = i18n.language
@@ -54,19 +63,32 @@ export function CurrencyPicker({ label, value, currencies, onChange }: CurrencyP
         accessibilityRole="button"
         accessibilityLabel={label ?? t('currencyPicker.title')}
       >
-        <Surface
-          color={theme.colors.card}
-          borderColor={theme.colors.border}
-          borderWidth={1}
-          radius={theme.radius.md}
-          style={styles.field}
-        >
-          <Text style={styles.fieldText} numberOfLines={1}>
-            {`${currencyFlag(value)}  ${currencyName(value, locale)}`}
-          </Text>
-          <Text style={styles.fieldCode}>{value}</Text>
-          <Ionicons name="chevron-down" size={18} color={theme.colors.muted} />
-        </Surface>
+        {compact ? (
+          <Surface
+            color={theme.colors.card}
+            borderColor={theme.colors.border}
+            borderWidth={1}
+            radius={theme.radius.md}
+            style={styles.compactField}
+          >
+            <Text style={styles.compactText}>{`${currencyFlag(value)}  ${value}`}</Text>
+            <Ionicons name="chevron-down" size={16} color={theme.colors.muted} />
+          </Surface>
+        ) : (
+          <Surface
+            color={theme.colors.card}
+            borderColor={theme.colors.border}
+            borderWidth={1}
+            radius={theme.radius.md}
+            style={styles.field}
+          >
+            <Text style={styles.fieldText} numberOfLines={1}>
+              {`${currencyFlag(value)}  ${currencyName(value, locale)}`}
+            </Text>
+            <Text style={styles.fieldCode}>{value}</Text>
+            <Ionicons name="chevron-down" size={18} color={theme.colors.muted} />
+          </Surface>
+        )}
       </Pressable>
 
       <BottomSheet open={open} onClose={close} title={t('currencyPicker.title')}>
@@ -136,6 +158,19 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
+  },
+  compactField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(1.5),
+    minHeight: 48,
+    paddingHorizontal: theme.gap(3),
+  },
+  compactText: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.foreground,
   },
   sheet: {
     gap: theme.gap(3),

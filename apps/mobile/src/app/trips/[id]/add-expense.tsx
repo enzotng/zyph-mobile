@@ -13,7 +13,7 @@ import { CurrencyPicker } from '@/components/currency-picker'
 import { ReceiptScanner } from '@/components/receipt-scanner'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Card, SectionTitle, Spinner, Surface } from '@/components/ui'
+import { Spinner } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
@@ -250,111 +250,78 @@ export default function AddExpenseScreen() {
         </View>
       }
     >
-      <View style={styles.quickActions}>
-        <Pressable
-          onPress={() => setScannerOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel={t('expenseForm.scanReceipt')}
-          style={styles.quickAction}
-        >
-          <Surface
-            color="transparent"
-            borderColor={theme.colors.border}
-            borderWidth={1}
-            radius={theme.radius.md}
-            style={styles.scanBtnSurface}
-          >
-            <Ionicons name="scan-outline" size={20} color={theme.colors.primary} />
-            <Text style={styles.scanLabel}>{t('expenseForm.scanReceipt')}</Text>
-          </Surface>
-        </Pressable>
-        <Pressable
-          onPress={openManualSplit}
-          accessibilityRole="button"
-          accessibilityLabel={t('expenseForm.splitByItem')}
-          style={styles.quickAction}
-        >
-          <Surface
-            color="transparent"
-            borderColor={theme.colors.border}
-            borderWidth={1}
-            radius={theme.radius.md}
-            style={styles.scanBtnSurface}
-          >
-            <Ionicons name="list-outline" size={20} color={theme.colors.primary} />
-            <Text style={styles.scanLabel}>{t('expenseForm.splitByItem')}</Text>
-          </Surface>
-        </Pressable>
-      </View>
-
       <ReceiptScanner
         visible={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onResult={applyScan}
       />
 
-      <View style={styles.section}>
-        <SectionTitle>{t('expenseForm.sectionDetails')}</SectionTitle>
-        <Card>
-          <View style={styles.cardStack}>
-            <Controller
-              control={control}
-              name="description"
-              render={({ field }) => (
-                <TextField
-                  label={t('expenseForm.description')}
-                  placeholder={t('expenseForm.descriptionPlaceholder')}
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  error={errors.description?.message}
-                />
-              )}
-            />
-            <CategoryPicker
-              label={t('expenseForm.category')}
-              value={category}
-              onChange={setCategory}
-            />
+      <View style={styles.form}>
+        <View style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.description')}</Text>
+          <View style={styles.titleRow}>
+            <View style={styles.flex}>
+              <Controller
+                control={control}
+                name="description"
+                render={({ field }) => (
+                  <TextField
+                    placeholder={t('expenseForm.descriptionPlaceholder')}
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.description?.message}
+                  />
+                )}
+              />
+            </View>
+            <Pressable
+              onPress={() => setScannerOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('expenseForm.scanReceipt')}
+              style={styles.iconBtn}
+            >
+              <Ionicons name="scan-outline" size={22} color={theme.colors.primary} />
+            </Pressable>
+            <Pressable
+              onPress={openManualSplit}
+              accessibilityRole="button"
+              accessibilityLabel={t('expenseForm.splitByItem')}
+              style={styles.iconBtn}
+            >
+              <Ionicons name="list-outline" size={22} color={theme.colors.primary} />
+            </Pressable>
           </View>
-        </Card>
-      </View>
+        </View>
 
-      <View style={styles.section}>
-        <SectionTitle>{t('expenseForm.sectionAmount')}</SectionTitle>
-        <Card>
-          <View style={styles.cardStack}>
-            <Controller
-              control={control}
-              name="amount"
-              render={({ field }) => (
-                <TextField
-                  label={t('expenseForm.amount', { currency })}
-                  placeholder="45.00"
-                  keyboardType="decimal-pad"
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  error={errors.amount?.message}
-                />
-              )}
-            />
-            <CurrencyPicker
-              label={t('expenseForm.currency')}
-              value={currency}
-              currencies={currencies}
-              onChange={setPicked}
-            />
-            {isForeign && !canConvert ? (
-              <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
-            ) : null}
+        <View style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.sectionAmount')}</Text>
+          <View style={styles.amountRow}>
+            <CurrencyPicker compact value={currency} currencies={currencies} onChange={setPicked} />
+            <View style={styles.flex}>
+              <Controller
+                control={control}
+                name="amount"
+                render={({ field }) => (
+                  <TextField
+                    placeholder="45.00"
+                    keyboardType="decimal-pad"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.amount?.message}
+                  />
+                )}
+              />
+            </View>
           </View>
-        </Card>
-      </View>
+          {isForeign && !canConvert ? (
+            <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
+          ) : null}
+        </View>
 
-      <View style={styles.section}>
-        <SectionTitle>{t('expenseForm.paidBy')}</SectionTitle>
-        <Card>
+        <View style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.paidBy')}</Text>
           <PayersEditor
             editor={payersEditor}
             members={members}
@@ -362,42 +329,51 @@ export default function AddExpenseScreen() {
             tripCurrency={tripCurrency}
             baseCents={baseCents}
           />
-        </Card>
-      </View>
+        </View>
 
-      <View style={styles.section}>
-        <SectionTitle
-          action={
-            split.includedCount === members.length
-              ? t('expenseForm.selectNone')
-              : t('expenseForm.selectAll')
-          }
-          onAction={split.includedCount === members.length ? split.clearAll : split.selectAll}
-        >
-          {`${t('expenseForm.splitBetween')} · ${split.includedCount}/${members.length}`}
-        </SectionTitle>
-        <Card>
-          <View style={styles.cardStack}>
-            <SplitModeSelector mode={split.mode} onChange={split.setMode} />
-            {members.map((member) => (
-              <SplitMemberRow
-                key={member.id}
-                member={member}
-                split={split}
-                tripCurrency={tripCurrency}
-                currentUserId={userId}
-              />
-            ))}
-            <RemainderBanner
-              mode={split.mode}
-              allocatedCents={split.allocatedCents}
-              remainderCents={split.remainderCents}
-              isBalanced={split.isBalanced}
-              baseCents={baseCents}
-              tripCurrency={tripCurrency}
-            />
+        <View style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.category')}</Text>
+          <CategoryPicker value={category} onChange={setCategory} />
+        </View>
+
+        <View style={styles.group}>
+          <View style={styles.splitHeader}>
+            <Text style={[styles.fieldLabel, styles.splitHeaderLabel]} numberOfLines={1}>
+              {`${t('expenseForm.splitBetween')} · ${split.includedCount}/${members.length}`}
+            </Text>
+            <View style={styles.splitHeaderRight}>
+              <Pressable
+                onPress={split.includedCount === members.length ? split.clearAll : split.selectAll}
+                accessibilityRole="button"
+                hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+              >
+                <Text style={styles.smallAction}>
+                  {split.includedCount === members.length
+                    ? t('expenseForm.selectNone')
+                    : t('expenseForm.selectAll')}
+                </Text>
+              </Pressable>
+              <SplitModeSelector mode={split.mode} onChange={split.setMode} />
+            </View>
           </View>
-        </Card>
+          {members.map((member) => (
+            <SplitMemberRow
+              key={member.id}
+              member={member}
+              split={split}
+              tripCurrency={tripCurrency}
+              currentUserId={userId}
+            />
+          ))}
+          <RemainderBanner
+            mode={split.mode}
+            allocatedCents={split.allocatedCents}
+            remainderCents={split.remainderCents}
+            isBalanced={split.isBalanced}
+            baseCents={baseCents}
+            tripCurrency={tripCurrency}
+          />
+        </View>
       </View>
     </Screen>
   )
@@ -409,11 +385,59 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.regular,
     color: theme.colors.warning,
   },
-  section: {
+  form: {
+    gap: theme.gap(4),
+  },
+  group: {
+    gap: theme.gap(1.5),
+  },
+  fieldLabel: {
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    color: theme.colors.muted,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.gap(2),
   },
-  cardStack: {
+  flex: {
+    flex: 1,
+  },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.gap(2),
+  },
+  splitHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.gap(2),
+  },
+  splitHeaderLabel: {
+    flexShrink: 1,
+  },
+  splitHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.gap(3),
+  },
+  smallAction: {
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   footerBar: {
     gap: theme.gap(2),
@@ -424,24 +448,5 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '500',
     color: theme.colors.muted,
     textAlign: 'center',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    gap: theme.gap(2),
-  },
-  quickAction: {
-    flex: 1,
-  },
-  scanBtnSurface: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.gap(2),
-    paddingVertical: theme.gap(2),
-    paddingHorizontal: theme.gap(3),
-  },
-  scanLabel: {
-    color: theme.colors.primary,
-    fontFamily: theme.fonts.sans.semibold,
   },
 }))
