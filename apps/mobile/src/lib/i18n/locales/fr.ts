@@ -631,8 +631,8 @@ export const fr: Translations = {
   },
   payers: {
     choosePayer: 'Qui a payé ?',
-    multipleLink: 'Plusieurs personnes ont payé ?',
-    singleLink: 'Une seule personne a payé ?',
+    onePerson: 'Une personne',
+    severalPeople: 'Plusieurs',
     amountsIn: 'Montants en {{currency}}',
   },
   currencyPicker: {

@@ -162,7 +162,7 @@ const styles = StyleSheet.create((theme) => ({
   compactField: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.gap(1.5),
+    gap: theme.gap(2),
     minHeight: 48,
     paddingHorizontal: theme.gap(3),
   },
