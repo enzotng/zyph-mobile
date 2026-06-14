@@ -1,8 +1,8 @@
-import type { Ionicons } from '@expo/vector-icons'
+import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Screen } from '@/components/screen'
@@ -52,9 +52,15 @@ export default function NotificationsScreen() {
     )
   }
 
+  // A single icon in the header (the long "Mark all read" label wrapped to several lines).
   const markAllAction = hasUnread ? (
-    <Pressable onPress={() => markAll.mutate()} hitSlop={8} accessibilityRole="button">
-      <Text style={styles.headerAction}>{t('notifications.markAllRead')}</Text>
+    <Pressable
+      onPress={() => markAll.mutate()}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={t('notifications.markAllRead')}
+    >
+      <Ionicons name="checkmark-done-outline" size={22} color={theme.colors.primary} />
     </Pressable>
   ) : undefined
 
@@ -147,11 +153,5 @@ const styles = StyleSheet.create((theme) => ({
   },
   groupCard: {
     paddingHorizontal: theme.gap(4),
-  },
-  headerAction: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '600',
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.primary,
   },
 }))
