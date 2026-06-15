@@ -447,6 +447,15 @@ verify_jwt = true
 import_map = "./functions/upload-avatar/deno.json"
 entrypoint = "./functions/upload-avatar/index.ts"
 
+[functions.upload-trip-cover]
+enabled = true
+# Authenticated-only: resolves the caller from their JWT, checks they OWN the trip, and writes the
+# trip cover with the service role (Storage rejects ES256 user tokens under RLS). Requires a
+# redeploy to take effect on cloud.
+verify_jwt = true
+import_map = "./functions/upload-trip-cover/deno.json"
+entrypoint = "./functions/upload-trip-cover/index.ts"
+
 [functions.delete-account]
 enabled = true
 # Authenticated-only: resolves the caller from their JWT and runs the account-deletion teardown
