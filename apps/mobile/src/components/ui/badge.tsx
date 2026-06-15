@@ -43,7 +43,9 @@ export function Badge({ label, tone = 'primary', icon, solid = false }: BadgePro
   return (
     <View style={[styles.container, { backgroundColor }]}>
       {icon ? <Ionicons name={icon} size={13} color={contentColor} /> : null}
-      <Text style={[styles.label, { color: contentColor }]}>{label}</Text>
+      <Text style={[styles.label, { color: contentColor }]} numberOfLines={1}>
+        {label}
+      </Text>
     </View>
   )
 }

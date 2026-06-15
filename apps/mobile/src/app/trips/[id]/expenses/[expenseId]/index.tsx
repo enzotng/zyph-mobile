@@ -154,7 +154,9 @@ export default function ExpenseDetailScreen() {
 
         <View style={styles.amountRow}>
           <View style={styles.amountLeft}>
-            <Text style={styles.paidBy}>{t('trip.paidBy', { name: paidByName })}</Text>
+            <Text style={styles.paidBy} numberOfLines={2}>
+              {t('trip.paidBy', { name: paidByName })}
+            </Text>
             {category ? (
               <View style={styles.badgeWrap}>
                 <Badge
@@ -228,12 +230,14 @@ export default function ExpenseDetailScreen() {
                   style={[styles.itemRow, index === (items ?? []).length - 1 && styles.lastRow]}
                 >
                   <View style={styles.itemTop}>
-                    <Text style={styles.itemLabel}>{item.label}</Text>
+                    <Text style={styles.itemLabel} numberOfLines={1}>
+                      {item.label}
+                    </Text>
                     <Text style={styles.itemAmount}>
                       {formatAmount(item.amount_cents, expense.currency)}
                     </Text>
                   </View>
-                  <Text style={styles.itemWho}>
+                  <Text style={styles.itemWho} numberOfLines={2}>
                     {names.length > 0 ? names : t('trip.unassigned')}
                   </Text>
                 </View>
@@ -253,7 +257,9 @@ export default function ExpenseDetailScreen() {
             >
               <View style={styles.splitLeft}>
                 <Avatar name={labelFor(split.member_id)} size={28} />
-                <Text style={styles.splitName}>{labelFor(split.member_id)}</Text>
+                <Text style={styles.splitName} numberOfLines={1}>
+                  {labelFor(split.member_id)}
+                </Text>
               </View>
               <Text style={styles.splitAmount}>
                 {formatAmount(split.share_cents, trip.currency)}
@@ -383,16 +389,19 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: theme.gap(2.5),
     paddingVertical: theme.gap(2.5),
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   splitLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(2.5),
   },
   splitName: {
+    flexShrink: 1,
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,

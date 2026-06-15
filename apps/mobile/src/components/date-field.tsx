@@ -104,7 +104,7 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 40,
+    minHeight: 48,
   },
   label: {
     fontSize: theme.fontSize.sm,
