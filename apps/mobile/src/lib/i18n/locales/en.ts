@@ -34,8 +34,8 @@ export const en = {
     create: 'Create a trip',
     join: 'Join by code',
     empty: {
-      title: 'No trips yet',
-      body: 'Create your first trip to get started.',
+      title: 'Ready for your first adventure?',
+      body: 'Create a trip to split expenses, or join a friend’s with a code.',
     },
     error: 'Could not load your trips.',
     errorTitle: 'Connection lost',
@@ -123,7 +123,7 @@ export const en = {
     useMyLocation: 'Use my location',
   },
   tabs: {
-    trips: 'Trips',
+    home: 'Home',
     profile: 'Profile',
     overview: 'Overview',
     timeline: 'Timeline',

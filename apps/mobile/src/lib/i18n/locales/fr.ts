@@ -36,8 +36,8 @@ export const fr: Translations = {
     create: 'Créer un voyage',
     join: 'Rejoindre par code',
     empty: {
-      title: 'Aucun voyage pour le moment',
-      body: 'Crée ton premier voyage pour commencer.',
+      title: 'Prêt pour ta première aventure ?',
+      body: 'Crée un voyage pour partager les dépenses, ou rejoins celui d’un ami avec un code.',
     },
     error: 'Impossible de charger tes voyages.',
     errorTitle: 'Connexion perdue',
@@ -126,7 +126,7 @@ export const fr: Translations = {
     useMyLocation: 'Utiliser ma position',
   },
   tabs: {
-    trips: 'Voyages',
+    home: 'Accueil',
     profile: 'Profil',
     overview: 'Aperçu',
     timeline: 'Timeline',
