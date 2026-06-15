@@ -20,6 +20,7 @@ import {
   tripTimeline,
   useTrips,
 } from '@/features/trips'
+import { AddTripSheet } from '@/features/trips/components/add-trip-sheet'
 import { HomeHeader } from '@/features/trips/components/home-header'
 import { NextDepartureCard } from '@/features/trips/components/next-departure-card'
 import { UpcomingTripCard } from '@/features/trips/components/upcoming-trip-card'
@@ -43,6 +44,7 @@ export default function HomeScreen() {
   const { data: profile } = useProfile()
   const { data: unreadCount, refetch: refetchUnread } = useUnreadNotificationCount()
   const [nowMs] = useState(() => Date.now())
+  const [addOpen, setAddOpen] = useState(false)
 
   // The app has no realtime, so the unread badge stays current by refetching on focus.
   useFocusEffect(
@@ -66,6 +68,31 @@ export default function HomeScreen() {
   const next = home.next
   const upcoming = home.upcoming.slice(0, MAX_UPCOMING)
 
+  // Two-up card grid, shared by the upcoming section and the past-only fallback section.
+  const tripGrid = (items: TripCard[]) => (
+    <View style={styles.grid}>
+      {chunkPairs(items).map((pair, i) => (
+        <Animated.View
+          key={pair.map((trip) => trip.id).join('-')}
+          entering={FadeInDown.delay(Math.min(i, 8) * 50 + 120)
+            .duration(360)
+            .springify()}
+          style={styles.row}
+        >
+          {pair.map((trip) => (
+            <UpcomingTripCard
+              key={trip.id}
+              trip={trip}
+              tone={statusTone(trip, now)}
+              onPress={() => router.push({ pathname: '/trips/[id]', params: { id: trip.id } })}
+            />
+          ))}
+          {pair.length === 1 ? <View style={styles.spacer} /> : null}
+        </Animated.View>
+      ))}
+    </View>
+  )
+
   return (
     <View style={styles.container}>
       <HomeHeader
@@ -77,6 +104,8 @@ export default function HomeScreen() {
         unreadCount={unreadCount ?? 0}
         onNotificationsPress={() => router.push('/notifications')}
         notificationsLabel={t('notifications.title')}
+        onAddPress={() => setAddOpen(true)}
+        addLabel={t('trips.addTitle')}
       />
 
       {isLoading ? (
@@ -137,39 +166,20 @@ export default function HomeScreen() {
               <SectionTitle action={t('home.seeAll')} onAction={() => router.push('/trips')}>
                 {t('home.sectionUpcoming')}
               </SectionTitle>
-              <View style={styles.grid}>
-                {chunkPairs(upcoming).map((pair, i) => (
-                  <Animated.View
-                    key={pair.map((trip) => trip.id).join('-')}
-                    entering={FadeInDown.delay(Math.min(i, 8) * 50 + 120)
-                      .duration(360)
-                      .springify()}
-                    style={styles.row}
-                  >
-                    {pair.map((trip) => (
-                      <UpcomingTripCard
-                        key={trip.id}
-                        trip={trip}
-                        tone={statusTone(trip, now)}
-                        onPress={() =>
-                          router.push({ pathname: '/trips/[id]', params: { id: trip.id } })
-                        }
-                      />
-                    ))}
-                    {pair.length === 1 ? <View style={styles.spacer} /> : null}
-                  </Animated.View>
-                ))}
-              </View>
+              {tripGrid(upcoming)}
             </Animated.View>
           ) : home.past.length > 0 ? (
-            <Animated.View entering={FadeInDown.delay(60).duration(360)}>
+            <Animated.View entering={FadeInDown.delay(60).duration(360)} style={styles.section}>
               <SectionTitle action={t('home.seeAll')} onAction={() => router.push('/trips')}>
                 {t('trips.title')}
               </SectionTitle>
+              {tripGrid(home.past.slice(0, MAX_UPCOMING))}
             </Animated.View>
           ) : null}
         </ScrollView>
       )}
+
+      <AddTripSheet open={addOpen} onClose={() => setAddOpen(false)} />
     </View>
   )
 }

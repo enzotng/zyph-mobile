@@ -32,6 +32,7 @@ export const fr: Translations = {
   },
   trips: {
     title: 'Mes voyages',
+    addTitle: 'Ajouter un voyage',
     create: 'Créer un voyage',
     join: 'Rejoindre par code',
     empty: {

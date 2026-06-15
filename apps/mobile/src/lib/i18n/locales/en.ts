@@ -30,6 +30,7 @@ export const en = {
   },
   trips: {
     title: 'My trips',
+    addTitle: 'Add a trip',
     create: 'Create a trip',
     join: 'Join by code',
     empty: {
