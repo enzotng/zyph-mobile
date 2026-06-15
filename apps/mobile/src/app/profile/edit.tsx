@@ -45,7 +45,9 @@ export default function EditProfileScreen() {
     formState: { errors },
   } = useForm<UpdateProfileValues>({
     resolver: zodResolver(makeUpdateProfileSchema(t)),
-    // RHF syncs from the loaded profile when it arrives; no useEffect needed.
+    // RHF syncs from the loaded profile when it arrives; keepDirtyValues so a refetch mid-edit does
+    // not wipe unsaved changes. No useEffect needed.
+    resetOptions: { keepDirtyValues: true },
     values: profile
       ? {
           displayName: profile.display_name ?? '',

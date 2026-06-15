@@ -28,6 +28,9 @@ export default function EditTripScreen() {
     formState: { errors },
   } = useForm<CreateTripValues>({
     resolver: zodResolver(createTripSchema),
+    // Keep the user's in-progress edits if the trip query refetches mid-edit - otherwise RHF would
+    // overwrite the form from the new `values` and silently drop unsaved changes.
+    resetOptions: { keepDirtyValues: true },
     values: trip
       ? {
           title: trip.title,

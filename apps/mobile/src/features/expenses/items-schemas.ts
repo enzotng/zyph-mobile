@@ -101,9 +101,27 @@ export function computeMemberTotalsCents(
     const existing = totals.get(assignment.memberId) ?? 0
     totals.set(assignment.memberId, existing + contribution)
   }
-  // Round at the boundary for display; the RPC does its own rounding for splits.
+  // Largest-remainder rounding so the per-member integers sum to the rounded grand total. A naive
+  // per-member Math.round drops or adds a cent on fractional splits (e.g. 1000 / 3 would display
+  // 333 + 333 + 333 = 999). Display only; the RPC does its own rounding for the persisted splits.
+  let target = 0
+  for (const value of totals.values()) {
+    target += value
+  }
+  const remainders: { memberId: string; frac: number }[] = []
+  let flooredSum = 0
   for (const [memberId, value] of totals.entries()) {
-    totals.set(memberId, Math.round(value))
+    const floored = Math.floor(value)
+    totals.set(memberId, floored)
+    flooredSum += floored
+    remainders.push({ memberId, frac: value - floored })
+  }
+  let leftover = Math.round(target) - flooredSum
+  remainders.sort((a, b) => b.frac - a.frac)
+  for (let i = 0; i < remainders.length && leftover > 0; i++) {
+    const { memberId } = remainders[i]
+    totals.set(memberId, (totals.get(memberId) ?? 0) + 1)
+    leftover--
   }
   return totals
 }
