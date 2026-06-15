@@ -91,10 +91,12 @@ export function useCreateExpense(tripId: string) {
   return useMutation({
     mutationFn: createExpense,
     onSuccess: () => {
-      // Refresh only what an expense affects: the expense list and the balances.
+      // Refresh what an expense affects: the expense list, balances, and per-row shares.
       void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: expenseSharesQueryKey(tripId) })
+      // And the trips-list card balance (get_my_trip_balances), keyed exactly ['trips'].
+      void queryClient.invalidateQueries({ queryKey: ['trips'], exact: true })
     },
   })
 }
@@ -107,6 +109,7 @@ export function useUpdateExpense(tripId: string) {
       void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: expenseSharesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: ['trips'], exact: true })
       void queryClient.invalidateQueries({ queryKey: expenseQueryKey(updated.id) })
       void queryClient.invalidateQueries({ queryKey: expenseSplitsQueryKey(updated.id) })
       void queryClient.invalidateQueries({ queryKey: expensePayersQueryKey(updated.id) })
@@ -122,6 +125,7 @@ export function useDeleteExpense(tripId: string) {
       void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: expenseSharesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: ['trips'], exact: true })
       queryClient.removeQueries({ queryKey: expenseQueryKey(expenseId) })
       queryClient.removeQueries({ queryKey: expenseSplitsQueryKey(expenseId) })
       queryClient.removeQueries({ queryKey: expensePayersQueryKey(expenseId) })

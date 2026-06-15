@@ -107,7 +107,7 @@ describe('LocationPicker - iOS', () => {
       zoom: 13,
     })
     expect(mapsState().props?.markers).toEqual([
-      { coordinates: { latitude: COORDS.lat, longitude: COORDS.lng }, title: 'Event' },
+      { coordinates: { latitude: COORDS.lat, longitude: COORDS.lng }, title: 'Location' },
     ])
   })
 

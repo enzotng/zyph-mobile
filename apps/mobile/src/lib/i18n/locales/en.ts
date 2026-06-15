@@ -111,6 +111,16 @@ export const en = {
     placeholder: 'Gate 24B, Terminal 2C…',
     location: 'Gate location',
   },
+  locationPicker: {
+    permissionTitle: 'Location off',
+    permissionBody: 'Allow location access to use your current position.',
+    errorTitle: 'Location error',
+    errorBody: 'Could not get your current position.',
+    pinTitle: 'Location',
+    adjustHint: 'Tap the map to adjust the pin.',
+    dropHint: 'Tap the map to drop a pin.',
+    useMyLocation: 'Use my location',
+  },
   tabs: {
     trips: 'Trips',
     profile: 'Profile',
