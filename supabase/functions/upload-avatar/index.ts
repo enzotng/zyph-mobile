@@ -10,6 +10,8 @@
 
 import { createClient } from "@supabase/supabase-js"
 
+import { isWithinRateLimit } from "../_shared/rate-limit.ts"
+
 const BUCKET = "avatars"
 const MAX_BYTES = 5 * 1024 * 1024
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
@@ -52,6 +54,15 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Unauthorized" }, 401)
   }
   const userId = userData.user.id
+
+  // Per-user rate limit so a signed-in caller cannot spam 5 MB uploads (DoS / Storage quota burn).
+  const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+    global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
+    auth: { persistSession: false },
+  })
+  if (!(await isWithinRateLimit(userClient, "upload-avatar", 10, 60))) {
+    return json({ error: "Too many uploads, please slow down." }, 429)
+  }
 
   let body: { imageBase64?: unknown; contentType?: unknown }
   try {
