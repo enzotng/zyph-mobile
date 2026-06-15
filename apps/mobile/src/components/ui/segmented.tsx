@@ -1,6 +1,8 @@
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { haptics } from '@/lib/haptics'
+
 import { Surface } from './surface'
 
 type SegmentedOption = {
@@ -32,7 +34,10 @@ export function Segmented({ options, value, onChange }: SegmentedProps) {
             key={option.value}
             style={({ pressed }) => [styles.pressable, pressed && !selected && styles.pressed]}
             onPress={() => {
-              if (!selected) onChange(option.value)
+              if (!selected) {
+                haptics.selection()
+                onChange(option.value)
+              }
             }}
             accessibilityRole="button"
             accessibilityState={{ selected }}
