@@ -21,6 +21,12 @@ function exchangeCodeFromUrl(url: string | null) {
   if (!url) {
     return
   }
+  // Only the auth callback (zyph://auth/callback?code=...) carries a PKCE code. Other deep links
+  // such as an invite (zyph://trips/join?code=ZYPH-XXXX) carry an unrelated code that must never
+  // be exchanged for a session.
+  if (!url.includes('auth/callback')) {
+    return
+  }
   const { queryParams } = Linking.parse(url)
   const code = queryParams?.code
   if (typeof code === 'string') {
