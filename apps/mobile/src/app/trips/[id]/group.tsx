@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as Clipboard from 'expo-clipboard'
+import * as Linking from 'expo-linking'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -80,8 +81,13 @@ export default function TripGroupScreen() {
     if (!trip) {
       return
     }
+    // Deep link expo-router resolves automatically (scheme "zyph"): tapping it opens the join
+    // screen, which auto-joins from the ?code param. The code stays in the message as a fallback
+    // for anyone without the app installed.
+    const url = Linking.createURL('/trips/join', { queryParams: { code: trip.invite_code } })
     await Share.share({
-      message: t('group.shareInvite', { title: trip.title, code: trip.invite_code }),
+      message: t('group.shareInvite', { title: trip.title, code: trip.invite_code, url }),
+      url,
     })
   }
 
