@@ -195,6 +195,17 @@ export const en = {
   },
   expenses: {
     settleUp: 'Settle up',
+    export: 'Export expenses',
+    exportError: 'Could not export',
+    csv: {
+      date: 'Date',
+      description: 'Description',
+      category: 'Category',
+      amount: 'Amount',
+      currency: 'Currency',
+      tripAmount: 'Amount ({{currency}})',
+      paidBy: 'Paid by',
+    },
   },
   smartImport: {
     title: 'Smart Import',

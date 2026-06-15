@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
+import { File, Paths } from 'expo-file-system'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, ScrollView, Text, View } from 'react-native'
+import { Alert, Platform, Pressable, ScrollView, Share, Text, View } from 'react-native'
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -17,6 +18,7 @@ import {
   EXPENSE_CATEGORIES,
   type Expense,
   type ExpenseCategory,
+  expensesToCsv,
   filterExpenses,
   formatAmount,
   useExpenses,
@@ -98,6 +100,46 @@ export default function TripExpensesScreen() {
     router.push({ pathname: '/trips/[id]/add-expense', params: { id: tripId } })
   }
 
+  // Write the expense list to a CSV in the cache dir and hand it to the native share sheet
+  // (save to Files, email, AirDrop on iOS). Android shares the CSV text as a fallback.
+  const onExport = useCallback(async () => {
+    if (!expenses?.length) {
+      return
+    }
+    try {
+      const csv = expensesToCsv(expenses, {
+        labels: {
+          date: t('expenses.csv.date'),
+          description: t('expenses.csv.description'),
+          category: t('expenses.csv.category'),
+          amount: t('expenses.csv.amount'),
+          currency: t('expenses.csv.currency'),
+          tripAmount: t('expenses.csv.tripAmount', { currency: tripCurrency }),
+          paidBy: t('expenses.csv.paidBy'),
+        },
+        categoryLabel: (c) => (c ? t(`categories.${c as ExpenseCategory}`) : ''),
+        payerName,
+      })
+      if (Platform.OS === 'ios') {
+        // Write to a cache file and share it (Files / email / AirDrop). The leading BOM makes
+        // Excel on Windows read it as UTF-8 so accented headers and descriptions are not mangled.
+        const date = new Date().toISOString().slice(0, 10)
+        const file = new File(Paths.cache, `zyph-expenses-${date}.csv`)
+        file.create({ overwrite: true })
+        file.write(`\uFEFF${csv}`)
+        await Share.share({ url: file.uri })
+      } else {
+        // Android's RN share takes text, not a file URL, so share the CSV inline.
+        await Share.share({ message: csv })
+      }
+    } catch (error) {
+      Alert.alert(
+        t('expenses.exportError'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
+    }
+  }, [expenses, t, tripCurrency, payerName])
+
   const renderItem = useCallback(
     ({ item }: { item: Expense }) => {
       const myShare = shareByExpenseId.get(item.id)
@@ -157,18 +199,34 @@ export default function TripExpensesScreen() {
       title={t('tabs.expenses')}
       showBack
       right={
-        <Pressable
-          onPress={() => {
-            haptics.light()
-            goAdd()
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={t('trip.newExpense')}
-          hitSlop={8}
-          style={({ pressed }) => [pressed && styles.pressed]}
-        >
-          <Ionicons name="add" size={26} color={theme.colors.primary} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          {hasExpenses ? (
+            <Pressable
+              onPress={() => {
+                haptics.light()
+                void onExport()
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={t('expenses.export')}
+              hitSlop={8}
+              style={({ pressed }) => [pressed && styles.pressed]}
+            >
+              <Ionicons name="share-outline" size={22} color={theme.colors.foreground} />
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={() => {
+              haptics.light()
+              goAdd()
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t('trip.newExpense')}
+            hitSlop={8}
+            style={({ pressed }) => [pressed && styles.pressed]}
+          >
+            <Ionicons name="add" size={26} color={theme.colors.primary} />
+          </Pressable>
+        </View>
       }
     >
       {isLoading ? (
@@ -316,6 +374,11 @@ const styles = StyleSheet.create((theme, rt) => ({
   pressed: {
     opacity: 0.92,
     transform: [{ scale: 0.98 }],
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
   },
   strip: {
     flexDirection: 'row',
