@@ -39,7 +39,13 @@ export async function signOut() {
   await unregisterForPushNotifications()
   const { error } = await supabase.auth.signOut()
   if (error) {
-    throw error
+    // The default 'global' scope revokes server-side first; offline that network call fails and
+    // leaves the local session intact. Fall back to a local-only sign-out so this device is
+    // always signed out (it clears local storage without a network revoke).
+    const { error: localError } = await supabase.auth.signOut({ scope: 'local' })
+    if (localError) {
+      throw localError
+    }
   }
 }
 

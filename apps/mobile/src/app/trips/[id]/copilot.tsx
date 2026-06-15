@@ -126,6 +126,17 @@ export default function CopilotScreen() {
   const dataReady = Boolean(
     trip.data && events.data && expenses.data && balances.data && members.data,
   )
+  // If any core query fails the chat can never become usable, so surface a retry instead of
+  // leaving the suggestions silently disabled forever.
+  const coreError =
+    trip.isError || events.isError || expenses.isError || balances.isError || members.isError
+  function retryCore() {
+    void trip.refetch()
+    void events.refetch()
+    void expenses.refetch()
+    void balances.refetch()
+    void members.refetch()
+  }
 
   // Sends a conversation whose last turn is the user's question to the copilot. Used by both a
   // fresh send and a retry (which re-sends the failed question without duplicating the bubble).
@@ -338,31 +349,50 @@ export default function CopilotScreen() {
             {messages.length === 0 ? (
               <View style={styles.empty}>
                 <ZoAvatar size={64} />
-                <Text style={styles.emptyText}>{t('copilot.empty')}</Text>
-                <View style={styles.suggestions}>
-                  {SUGGESTIONS.map((key) => {
-                    const label = t(`copilot.suggestions.${key}`)
-                    return (
-                      <Pressable
-                        key={key}
-                        onPress={() => send(label)}
-                        disabled={!dataReady}
-                        accessibilityRole="button"
-                        style={({ pressed }) => (pressed ? styles.pressed : undefined)}
-                      >
-                        <Surface
-                          radius={theme.radius.full}
-                          color={theme.colors.card}
-                          borderColor={theme.colors.border}
-                          borderWidth={1}
-                          style={styles.suggestion}
-                        >
-                          <Text style={styles.suggestionText}>{label}</Text>
-                        </Surface>
-                      </Pressable>
-                    )
-                  })}
-                </View>
+                {coreError && !dataReady ? (
+                  <>
+                    <Text style={styles.emptyText}>{t('errors.body')}</Text>
+                    <Button
+                      label={t('common.retry')}
+                      icon="refresh"
+                      variant="secondary"
+                      block={false}
+                      onPress={retryCore}
+                    />
+                  </>
+                ) : !dataReady ? (
+                  <>
+                    <Spinner />
+                    <Text style={styles.emptyText}>{t('common.loading')}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.emptyText}>{t('copilot.empty')}</Text>
+                    <View style={styles.suggestions}>
+                      {SUGGESTIONS.map((key) => {
+                        const label = t(`copilot.suggestions.${key}`)
+                        return (
+                          <Pressable
+                            key={key}
+                            onPress={() => send(label)}
+                            accessibilityRole="button"
+                            style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+                          >
+                            <Surface
+                              radius={theme.radius.full}
+                              color={theme.colors.card}
+                              borderColor={theme.colors.border}
+                              borderWidth={1}
+                              style={styles.suggestion}
+                            >
+                              <Text style={styles.suggestionText}>{label}</Text>
+                            </Surface>
+                          </Pressable>
+                        )
+                      })}
+                    </View>
+                  </>
+                )}
               </View>
             ) : (
               messages.map((message) => {
