@@ -6,9 +6,8 @@ import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { EmptyState, Spinner, Surface } from '@/components/ui'
+import { EmptyState, ErrorState, Spinner, Surface } from '@/components/ui'
 import {
   formatFileSize,
   getDocumentUrl,
@@ -124,9 +123,12 @@ export default function TripDocumentsScreen() {
           <Spinner />
         </View>
       ) : isError ? (
-        <View style={styles.center}>
-          <Button label={t('common.tryAgain')} variant="secondary" onPress={() => void refetch()} />
-        </View>
+        <ErrorState
+          title={t('errors.title')}
+          body={t('errors.body')}
+          retryLabel={t('common.retry')}
+          onRetry={() => void refetch()}
+        />
       ) : !documents || documents.length === 0 ? (
         <EmptyState
           icon="document-text-outline"

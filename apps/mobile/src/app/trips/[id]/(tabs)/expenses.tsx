@@ -11,7 +11,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Amount, Chip, EmptyState, Skeleton, Surface } from '@/components/ui'
+import { Amount, Chip, EmptyState, ErrorState, Skeleton, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   CATEGORY_ICON,
@@ -44,7 +44,7 @@ export default function TripExpensesScreen() {
   const userId = session?.user.id
 
   const { data: trip } = useTrip(tripId)
-  const { data: expenses, isLoading } = useExpenses(tripId)
+  const { data: expenses, isLoading, isError, refetch, isRefetching } = useExpenses(tripId)
   const { data: balances } = useTripBalances(tripId)
   const { data: members } = useTripMembers(tripId)
 
@@ -231,6 +231,13 @@ export default function TripExpensesScreen() {
     >
       {isLoading ? (
         <ExpensesSkeleton />
+      ) : isError ? (
+        <ErrorState
+          title={t('errors.title')}
+          body={t('errors.body')}
+          retryLabel={t('common.retry')}
+          onRetry={() => void refetch()}
+        />
       ) : !hasExpenses ? (
         <EmptyState
           icon="card-outline"
@@ -244,6 +251,8 @@ export default function TripExpensesScreen() {
           data={filtered}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          refreshing={isRefetching}
+          onRefresh={() => void refetch()}
           ListHeaderComponent={
             <View style={styles.header}>
               <Animated.View entering={FadeInDown.duration(320).springify()}>
