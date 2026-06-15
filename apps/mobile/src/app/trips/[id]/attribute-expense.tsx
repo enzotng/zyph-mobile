@@ -35,6 +35,7 @@ import { convertCents, crossRate, useFxRates } from '@/features/fx'
 import { memberLabel, useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
 const MAX_INLINE_CHIPS = 4
@@ -233,6 +234,7 @@ function AttributionEditor({
   }, [drafts.length, assignmentsByPosition])
 
   const toggleAssignment = useCallback((position: number, memberId: string) => {
+    haptics.selection()
     setAssignmentsByPosition((prev) => {
       const set = new Set(prev[position] ?? new Set<string>())
       if (set.has(memberId)) {
@@ -381,6 +383,7 @@ function AttributionEditor({
           items: editedItems,
           assignments,
         })
+        haptics.success()
         router.back()
       } catch (error) {
         Alert.alert(
@@ -404,6 +407,7 @@ function AttributionEditor({
         items: editedItems,
         assignments,
       })
+      haptics.success()
       router.replace({ pathname: '/trips/[id]/expenses', params: { id: tripId } })
     } catch (error) {
       Alert.alert(
