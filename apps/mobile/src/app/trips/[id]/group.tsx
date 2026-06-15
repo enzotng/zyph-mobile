@@ -9,7 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { Avatar, Badge, Card, SectionTitle, Spinner, Surface } from '@/components/ui'
+import { Avatar, Badge, Card, ErrorState, SectionTitle, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   useLeaveTrip,
@@ -26,7 +26,7 @@ import { paramString } from '@/lib/routing'
 export default function TripGroupScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
-  const { data: trip, isLoading, isError } = useTrip(tripId)
+  const { data: trip, isLoading, isError, refetch } = useTrip(tripId)
   const { data: members } = useTripMembers(tripId)
   const { session } = useAuth()
   const userId = session?.user.id
@@ -67,7 +67,20 @@ export default function TripGroupScreen() {
     )
   }
 
-  if (isError || !trip) {
+  if (isError) {
+    return (
+      <Screen title={t('group.title')} showBack>
+        <ErrorState
+          title={t('errors.title')}
+          body={t('errors.body')}
+          retryLabel={t('common.retry')}
+          onRetry={() => void refetch()}
+        />
+      </Screen>
+    )
+  }
+
+  if (!trip) {
     return (
       <Screen title={t('group.title')} showBack>
         <View style={styles.center}>
