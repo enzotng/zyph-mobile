@@ -197,6 +197,17 @@ export const fr: Translations = {
   },
   expenses: {
     settleUp: 'Régler',
+    export: 'Exporter les dépenses',
+    exportError: 'Export impossible',
+    csv: {
+      date: 'Date',
+      description: 'Description',
+      category: 'Catégorie',
+      amount: 'Montant',
+      currency: 'Devise',
+      tripAmount: 'Montant ({{currency}})',
+      paidBy: 'Payé par',
+    },
   },
   smartImport: {
     title: 'Smart Import',
