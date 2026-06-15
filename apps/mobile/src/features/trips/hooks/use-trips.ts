@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { createTrip, deleteTrip, getTrip, listTrips, updateTrip } from '../api/trips.api'
+import {
+  createTrip,
+  deleteTrip,
+  getTrip,
+  listTrips,
+  resetTripCover,
+  updateTrip,
+  uploadTripCover,
+} from '../api/trips.api'
 
 export const tripsQueryKey = ['trips'] as const
 
@@ -43,6 +51,36 @@ export function useDeleteTrip() {
     mutationFn: deleteTrip,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: tripsQueryKey })
+    },
+  })
+}
+
+export function useUploadTripCover() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      tripId,
+      imageBase64,
+      contentType,
+    }: {
+      tripId: string
+      imageBase64: string
+      contentType: string
+    }) => uploadTripCover(tripId, imageBase64, contentType),
+    onSuccess: (trip) => {
+      void queryClient.invalidateQueries({ queryKey: tripsQueryKey, exact: true })
+      void queryClient.invalidateQueries({ queryKey: [...tripsQueryKey, trip.id], exact: true })
+    },
+  })
+}
+
+export function useResetTripCover() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (tripId: string) => resetTripCover(tripId),
+    onSuccess: (trip) => {
+      void queryClient.invalidateQueries({ queryKey: tripsQueryKey, exact: true })
+      void queryClient.invalidateQueries({ queryKey: [...tripsQueryKey, trip.id], exact: true })
     },
   })
 }

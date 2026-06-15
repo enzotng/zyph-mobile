@@ -1,3 +1,5 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
+
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
 import type { CreateTripValues } from '../schemas'
@@ -60,6 +62,9 @@ async function withCover(trip: Trip): Promise<Trip> {
   if (!cover.url) {
     return trip
   }
+  // Only write if the cover is still empty: a concurrent manual upload (or another auto-fetch)
+  // could have set one between the read above and here - don't clobber it. maybeSingle so a 0-row
+  // update (cover taken meanwhile) returns null and we keep the trip as-is.
   const { data } = await supabase
     .from('trips')
     .update({
@@ -68,9 +73,52 @@ async function withCover(trip: Trip): Promise<Trip> {
       cover_photo_author_url: cover.authorUrl,
     })
     .eq('id', trip.id)
+    .is('cover_photo_url', null)
+    .select()
+    .maybeSingle()
+  return data ?? trip
+}
+
+// Uploads a base64 cover photo for a trip via the upload-trip-cover edge function (service role,
+// owner-checked), which stores it and writes the public URL onto the trip. Goes through an edge
+// function (not a direct Storage upload) for the same ES256 reason as the avatar upload.
+export async function uploadTripCover(
+  tripId: string,
+  imageBase64: string,
+  contentType: string,
+): Promise<Trip> {
+  const { data, error } = await supabase.functions.invoke<{ trip: Trip }>('upload-trip-cover', {
+    body: { tripId, imageBase64, contentType },
+  })
+  if (error) {
+    // Surface the function's own { error } body (bad type, too large, not owner, ...) instead of
+    // invoke's generic FunctionsHttpError message.
+    if (error instanceof FunctionsHttpError) {
+      const body = (await error.context.json().catch(() => null)) as { error?: string } | null
+      throw new Error(body?.error ?? error.message)
+    }
+    throw error
+  }
+  if (!data?.trip) {
+    throw new Error('Cover upload returned no trip.')
+  }
+  return data.trip
+}
+
+// Clears a custom cover and re-fetches the automatic (Google/Unsplash) one for the destination.
+// The trips UPDATE RLS is owner-only, so this only succeeds for the owner (matching the UI gate).
+export async function resetTripCover(tripId: string): Promise<Trip> {
+  const { data, error } = await supabase
+    .from('trips')
+    .update({ cover_photo_url: null, cover_photo_author: null, cover_photo_author_url: null })
+    .eq('id', tripId)
     .select()
     .single()
-  return data ?? trip
+  if (error || !data) {
+    throw error ?? new Error('Could not reset the cover')
+  }
+  // Cover is now empty, so withCover re-fetches the automatic one (when there is a destination).
+  return withCover(data)
 }
 
 export async function listTrips(): Promise<TripCard[]> {
