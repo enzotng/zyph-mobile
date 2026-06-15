@@ -45,7 +45,7 @@ export default function TabsLayout() {
         )
       }}
     >
-      <Tabs.Screen name="index" options={{ title: t('tabs.trips') }} />
+      <Tabs.Screen name="index" options={{ title: t('tabs.home') }} />
       <Tabs.Screen name="profile" options={{ title: t('tabs.profile') }} />
     </Tabs>
   )
