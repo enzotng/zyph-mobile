@@ -57,7 +57,7 @@ export function useUserLocation(
         return
       }
       try {
-        sub = await Location.watchPositionAsync(
+        const watcher = await Location.watchPositionAsync(
           {
             accuracy: watch.accuracy,
             timeInterval: watch.timeInterval,
@@ -76,6 +76,12 @@ export function useUserLocation(
             })
           },
         )
+        // Torn down during the async start window: remove the just-started watcher.
+        if (cancelled) {
+          watcher.remove()
+          return
+        }
+        sub = watcher
       } catch (error) {
         setState({
           location: null,

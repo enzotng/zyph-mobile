@@ -34,7 +34,7 @@ export function useHeading(enabled: boolean): HeadingState {
         return
       }
       try {
-        sub = await Location.watchHeadingAsync((reading) => {
+        const watcher = await Location.watchHeadingAsync((reading) => {
           // Prefer trueHeading when calibrated, fall back to magnetic.
           const raw =
             reading.trueHeading != null && reading.trueHeading >= 0
@@ -48,6 +48,12 @@ export function useHeading(enabled: boolean): HeadingState {
             available: true,
           })
         })
+        // Torn down during the async start window: remove the just-started watcher.
+        if (cancelled) {
+          watcher.remove()
+          return
+        }
+        sub = watcher
       } catch {
         setState(INITIAL)
       }

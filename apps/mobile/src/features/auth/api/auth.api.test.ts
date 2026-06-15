@@ -93,7 +93,17 @@ describe('signOut', () => {
     expect(signOutMock).toHaveBeenCalledTimes(1)
   })
 
-  it('throws on error', async () => {
+  it('falls back to a local sign-out when the global sign-out errors', async () => {
+    signOutMock
+      .mockResolvedValueOnce({ error: new Error('offline') })
+      .mockResolvedValueOnce({ error: null })
+
+    await expect(signOut()).resolves.toBeUndefined()
+    expect(signOutMock).toHaveBeenCalledTimes(2)
+    expect(signOutMock).toHaveBeenLastCalledWith({ scope: 'local' })
+  })
+
+  it('throws when both the global and local sign-out fail', async () => {
     signOutMock.mockResolvedValue({ error: new Error('offline') })
 
     await expect(signOut()).rejects.toThrow('offline')
