@@ -1,12 +1,10 @@
-import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshControl, ScrollView, Text, View } from 'react-native'
+import { RefreshControl, ScrollView, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Button } from '@/components/button'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { EmptyState, SectionTitle, Skeleton, Surface } from '@/components/ui'
 import { useUnreadNotificationCount } from '@/features/notifications'
@@ -206,19 +204,22 @@ function HomeSkeleton() {
   )
 }
 
-// Hero fallback when no trip is upcoming or in progress.
+// Hero fallback when no trip is upcoming or in progress: the shared EmptyState in a card frame,
+// so it matches the 0-trip empty state (same branded icon badge + create/join CTA treatment).
 function NoUpcomingCard({ onCreate, onJoin }: { onCreate: () => void; onJoin: () => void }) {
   const { t } = useTranslation()
   const { theme } = useUnistyles()
   return (
-    <Surface radius={theme.radius.xl} style={styles.cta}>
-      <Ionicons name="airplane-outline" size={34} color={theme.colors.primary} />
-      <Text style={styles.ctaTitle}>{t('home.noUpcomingTitle')}</Text>
-      <Text style={styles.ctaBody}>{t('home.noUpcomingBody')}</Text>
-      <View style={styles.ctaActions}>
-        <Button label={t('trips.create')} icon="add" onPress={onCreate} />
-        <Button label={t('trips.join')} icon="enter-outline" variant="secondary" onPress={onJoin} />
-      </View>
+    <Surface radius={theme.radius.xl} style={styles.hero}>
+      <EmptyState
+        icon="airplane-outline"
+        title={t('home.noUpcomingTitle')}
+        body={t('home.noUpcomingBody')}
+        cta={t('trips.create')}
+        onCta={onCreate}
+        secondaryCta={t('trips.join')}
+        onSecondaryCta={onJoin}
+      />
     </Surface>
   )
 }
@@ -261,27 +262,8 @@ const styles = StyleSheet.create((theme, rt) => ({
   spacer: {
     flex: 1,
   },
-  cta: {
-    alignItems: 'center',
-    gap: theme.gap(2),
-    paddingVertical: theme.gap(7),
-    paddingHorizontal: theme.gap(5),
-  },
-  ctaTitle: {
-    fontFamily: theme.fonts.display.bold,
-    fontWeight: '700',
-    fontSize: theme.fontSize.lg,
-    color: theme.colors.foreground,
-  },
-  ctaBody: {
-    textAlign: 'center',
-    fontFamily: theme.fonts.sans.regular,
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.muted,
-    marginBottom: theme.gap(1),
-  },
-  ctaActions: {
-    alignSelf: 'stretch',
-    gap: theme.gap(2),
+  // Card frame for the no-upcoming hero; EmptyState supplies the horizontal padding + content.
+  hero: {
+    paddingVertical: theme.gap(6),
   },
 }))

@@ -48,14 +48,9 @@ export function EmptyState({
 
       {cta !== undefined && (
         <View style={styles.ctaWrap}>
-          <Button label={cta} onPress={onCta} block={false} />
+          <Button label={cta} onPress={onCta} />
           {secondaryCta !== undefined && (
-            <Button
-              label={secondaryCta}
-              onPress={onSecondaryCta}
-              variant="secondary"
-              block={false}
-            />
+            <Button label={secondaryCta} onPress={onSecondaryCta} variant="secondary" />
           )}
         </View>
       )}
@@ -96,11 +91,10 @@ const styles = StyleSheet.create((theme) => ({
     textAlign: 'center',
     maxWidth: 260,
   },
-  // Hugs the (content-sized) button so the parent's center alignment applies; alignSelf
-  // 'stretch' would make the button's own flex-start left-align it.
+  // Full-width stacked buttons (primary then secondary), the single create/join CTA convention
+  // shared with the AddTripSheet so the layout never shifts between states.
   ctaWrap: {
-    alignSelf: 'center',
-    alignItems: 'center',
+    alignSelf: 'stretch',
     gap: theme.gap(2),
   },
 }))
