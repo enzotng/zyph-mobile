@@ -253,6 +253,9 @@ export default function TripDashboardScreen() {
   // Pick a photo, downscale to a 1200px-wide JPEG, and upload it as the trip cover via the
   // owner-checked edge function (overriding the auto Google/Unsplash cover).
   async function pickCover(source: 'library' | 'camera') {
+    if (uploadCover.isPending) {
+      return
+    }
     try {
       const permission =
         source === 'camera'
@@ -312,6 +315,9 @@ export default function TripDashboardScreen() {
   }
 
   async function revertToAutoCover() {
+    if (resetCover.isPending) {
+      return
+    }
     setActionsOpen(false)
     try {
       await resetCover.mutateAsync(tripId)

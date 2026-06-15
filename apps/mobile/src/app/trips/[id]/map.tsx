@@ -137,6 +137,12 @@ export default function TripMapScreen() {
     }
   }, [targets])
 
+  // Re-arm framing if this screen instance is reused for a different trip (param change without a
+  // remount), so the new trip's targets get framed instead of keeping the previous trip's camera.
+  useEffect(() => {
+    framedRef.current = false
+  }, [tripId])
+
   // Group dated events/gates into local calendar days, each sorted chronologically.
   const dayGroups = useMemo<DayGroup[]>(() => {
     const groups = new Map<string, DayGroup>()

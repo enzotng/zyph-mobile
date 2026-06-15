@@ -84,7 +84,9 @@ export default function EditExpenseScreen() {
     formState: { errors },
   } = useForm<CreateExpenseValues>({
     resolver: zodResolver(createExpenseSchema),
-    // RHF syncs form values from this object whenever it changes; no useEffect needed.
+    // RHF syncs form values from this object whenever it changes; keepDirtyValues so a refetch
+    // mid-edit does not wipe unsaved changes. No useEffect needed.
+    resetOptions: { keepDirtyValues: true },
     values: expense
       ? { description: expense.description, amount: (expense.amount_cents / 100).toFixed(2) }
       : undefined,
