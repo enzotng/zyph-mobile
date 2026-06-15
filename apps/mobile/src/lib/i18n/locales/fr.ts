@@ -837,7 +837,8 @@ export const fr: Translations = {
     shareStatusError: 'Impossible de démarrer le partage. Touche pour réessayer.',
     shareStatusOn: 'Les autres membres te voient en temps réel.',
     shareStatusOff: 'Désactivé - ta position reste privée.',
-    shareInvite: 'Rejoins mon voyage « {{title}} » sur ZYPH avec le code d’invitation : {{code}}',
+    shareInvite:
+      'Rejoins mon voyage « {{title}} » sur ZYPH : {{url}} - ou saisis le code d’invitation {{code}}',
   },
   countdown: {
     inDaysHours: 'dans {{days}} j {{hours}} h',

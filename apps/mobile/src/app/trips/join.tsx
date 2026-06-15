@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useCallback, useEffect, useRef } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Alert, ScrollView, Text, View } from 'react-native'
@@ -12,34 +13,51 @@ import { TextField } from '@/components/text-field'
 import { Surface } from '@/components/ui'
 import { type JoinTripValues, joinTripSchema, useJoinTrip } from '@/features/group'
 import { withAlpha } from '@/lib/color'
+import { paramString } from '@/lib/routing'
 
 export default function JoinTripScreen() {
   const { t } = useTranslation()
   const router = useRouter()
   const { theme } = useUnistyles()
   const joinTrip = useJoinTrip()
+  // Prefilled when opened from an invite deep link (zyph://trips/join?code=...).
+  const linkCode = paramString(useLocalSearchParams<{ code?: string }>().code).toUpperCase()
   const {
     control,
     handleSubmit,
     formState: { errors },
   } = useForm<JoinTripValues>({
     resolver: zodResolver(joinTripSchema),
-    defaultValues: { code: '' },
+    defaultValues: { code: linkCode },
   })
 
   const code = useWatch({ control, name: 'code' })
 
-  async function onSubmit(values: JoinTripValues) {
-    try {
-      const tripId = await joinTrip.mutateAsync(values.code)
-      router.replace({ pathname: '/trips/[id]', params: { id: tripId } })
-    } catch (error) {
-      Alert.alert(
-        t('joinTrip.errorTitle'),
-        error instanceof Error ? error.message : t('joinTrip.errorBody'),
-      )
+  // Stable across renders so the auto-join effect below does not re-run on every render.
+  const onSubmit = useCallback(
+    async (values: JoinTripValues) => {
+      try {
+        const tripId = await joinTrip.mutateAsync(values.code)
+        router.replace({ pathname: '/trips/[id]', params: { id: tripId } })
+      } catch (error) {
+        Alert.alert(
+          t('joinTrip.errorTitle'),
+          error instanceof Error ? error.message : t('joinTrip.errorBody'),
+        )
+      }
+    },
+    [joinTrip, router, t],
+  )
+
+  // Auto-join once when arriving from a deep link: the code is prefilled, so submit immediately.
+  // On failure the form stays with the code filled for a manual retry.
+  const autoJoined = useRef(false)
+  useEffect(() => {
+    if (!autoJoined.current && linkCode.length >= 4) {
+      autoJoined.current = true
+      void handleSubmit(onSubmit)()
     }
-  }
+  }, [linkCode, handleSubmit, onSubmit])
 
   return (
     <Screen

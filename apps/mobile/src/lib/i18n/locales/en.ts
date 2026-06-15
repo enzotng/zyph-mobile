@@ -828,7 +828,7 @@ export const en = {
     shareStatusError: 'Could not start sharing. Tap to retry.',
     shareStatusOn: 'Other members see you in real time.',
     shareStatusOff: 'Off - your location stays private.',
-    shareInvite: 'Join my trip “{{title}}” on ZYPH with the invite code: {{code}}',
+    shareInvite: 'Join my trip “{{title}}” on ZYPH: {{url}} - or enter the invite code {{code}}',
   },
   countdown: {
     inDaysHours: 'in {{days}}d {{hours}}h',
