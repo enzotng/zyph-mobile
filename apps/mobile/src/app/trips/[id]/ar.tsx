@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
@@ -24,6 +24,7 @@ import {
   type WayfinderTarget,
 } from '@/features/wayfinder'
 import { bearing, formatDistance, formatWalkingTime, haversine, relativeHeading } from '@/lib/geo'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 import { useDeviceTilt, useHeading, useUserLocation } from '@/lib/sensors'
 
@@ -63,6 +64,44 @@ export default function ArScreen() {
     const delta = relativeHeading(targetBearing, heading.heading)
     return { distance, targetBearing, delta }
   }, [active, userLocation.location, heading.heading])
+
+  // Haptic wayfinding feedback so the user can keep their eyes on the camera: a light pulse the
+  // moment they swing onto the target heading, and a success buzz when they arrive. Refs gate each
+  // to a state transition (with hysteresis on the heading) so the buzz never chatters, and re-arm
+  // when the active target changes.
+  const alignedRef = useRef(false)
+  const arrivedRef = useRef(false)
+  const activeIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    const id = active?.id ?? null
+    if (id !== activeIdRef.current) {
+      // New target: re-arm the feedback and skip this tick - stats still describes the old target.
+      activeIdRef.current = id
+      alignedRef.current = false
+      arrivedRef.current = false
+      return
+    }
+    if (!stats) {
+      return
+    }
+    if (stats.distance <= ARRIVAL_RADIUS_M) {
+      // One-shot success on arrival; re-arms only when the active target changes, so stepping in
+      // and out of the radius never re-buzzes.
+      if (!arrivedRef.current) {
+        haptics.success()
+        arrivedRef.current = true
+      }
+      return
+    }
+    // Not arrived: a one-shot light pulse the moment the heading swings onto the target, with a
+    // deadband (arm < 5, re-arm only after > 12) so it does not chatter around the threshold.
+    if (Math.abs(stats.delta) < 5 && !alignedRef.current) {
+      haptics.light()
+      alignedRef.current = true
+    } else if (Math.abs(stats.delta) > 12) {
+      alignedRef.current = false
+    }
+  }, [stats, active?.id])
 
   const cameraReady = cameraPermission?.granted ?? false
 
@@ -169,7 +208,10 @@ export default function ArScreen() {
             key={target.id}
             target={target}
             active={active?.id === target.id}
-            onPress={() => setActiveId(target.id)}
+            onPress={() => {
+              haptics.selection()
+              setActiveId(target.id)
+            }}
           />
         ))}
       </ScrollView>
