@@ -421,7 +421,9 @@ export default function TripMapScreen() {
                   key={layer}
                   onPress={() => toggleLayer(layer)}
                   accessibilityRole="button"
+                  accessibilityLabel={t(`map.layers.${layer}s`)}
                   accessibilityState={{ selected: visible[layer] }}
+                  hitSlop={8}
                 >
                   <Surface
                     radius={theme.radius.full}
@@ -498,7 +500,7 @@ function MapButton({
 }) {
   const { theme } = useUnistyles()
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={8}>
       <Surface
         radius={theme.radius.full}
         color={active ? theme.colors.primary : theme.colors.background}
@@ -532,7 +534,9 @@ function DayChip({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ selected: active }}
+      hitSlop={8}
     >
       <Surface
         radius={theme.radius.full}

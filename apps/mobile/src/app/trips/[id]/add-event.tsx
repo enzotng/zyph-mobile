@@ -136,6 +136,7 @@ export default function AddEventScreen() {
         style={styles.toggle}
         onPress={toggleEnd}
         accessibilityRole="checkbox"
+        accessibilityLabel={t('events.form.addEndTime')}
         accessibilityState={{ checked: hasEnd }}
       >
         <Ionicons

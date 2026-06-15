@@ -62,7 +62,12 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       <View style={styles.topBar}>
         <BrandLockup size={22} />
-        <Pressable onPress={finish} accessibilityRole="button" hitSlop={8}>
+        <Pressable
+          onPress={finish}
+          accessibilityRole="button"
+          accessibilityLabel={t('onboarding.skip')}
+          hitSlop={8}
+        >
           <Text style={styles.skip}>{t('onboarding.skip')}</Text>
         </Pressable>
       </View>
