@@ -38,7 +38,7 @@ export const fr: Translations = {
       title: 'Aucun voyage pour le moment',
       body: 'Crée ton premier voyage pour commencer.',
     },
-    error: 'Impossible de charger vos voyages.',
+    error: 'Impossible de charger tes voyages.',
     errorTitle: 'Connexion perdue',
     add: 'Nouveau voyage',
     owed: 'On te doit {{amount}}',
@@ -283,7 +283,7 @@ export const fr: Translations = {
     },
     callback: {
       errorTitle: 'Lien expiré',
-      errorBody: 'Ce lien est invalide ou a expiré. Demandes-en un nouveau pour continuer.',
+      errorBody: 'Ce lien est invalide ou a expiré. Demande un nouveau lien pour continuer.',
       requestNew: 'Renvoyer un lien',
     },
     signUp: {
