@@ -65,6 +65,8 @@ export default function EditEventScreen() {
   } = useForm<CreateEventValues>({
     resolver: zodResolver(createEventSchema),
     values: formValues,
+    // Keep the user's in-progress edits if the source data refetches mid-edit.
+    resetOptions: { keepDirtyValues: true },
     defaultValues: { title: '', type: 'event', startsAt: defaultStart, endsAt: '', notes: '' },
   })
 

@@ -97,6 +97,8 @@ export function useExpensePackingItem(tripId: string) {
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
       // The new split is also one of "my shares" in the feed - refresh it like the expense mutations.
       void queryClient.invalidateQueries({ queryKey: expenseSharesQueryKey(tripId) })
+      // And the trips-list card balance (get_my_trip_balances), keyed exactly ['trips'].
+      void queryClient.invalidateQueries({ queryKey: ['trips'], exact: true })
     },
   })
 }

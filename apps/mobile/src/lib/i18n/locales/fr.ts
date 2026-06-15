@@ -114,6 +114,16 @@ export const fr: Translations = {
     placeholder: 'Porte 24B, Terminal 2C…',
     location: 'Emplacement de la porte',
   },
+  locationPicker: {
+    permissionTitle: 'Localisation désactivée',
+    permissionBody: 'Autorise l’accès à la localisation pour utiliser ta position actuelle.',
+    errorTitle: 'Erreur de localisation',
+    errorBody: 'Impossible d’obtenir ta position actuelle.',
+    pinTitle: 'Lieu',
+    adjustHint: 'Touche la carte pour ajuster le repère.',
+    dropHint: 'Touche la carte pour placer un repère.',
+    useMyLocation: 'Utiliser ma position',
+  },
   tabs: {
     trips: 'Voyages',
     profile: 'Profil',

@@ -49,6 +49,8 @@ export function useCreateExpenseWithItems(tripId: string) {
       void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: expenseSharesQueryKey(tripId) })
+      // And the trips-list card balance (get_my_trip_balances), keyed exactly ['trips'].
+      void queryClient.invalidateQueries({ queryKey: ['trips'], exact: true })
     },
   })
 }
@@ -62,6 +64,7 @@ export function useUpsertExpenseWithItems(tripId: string) {
       void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: expenseSharesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: ['trips'], exact: true })
       void queryClient.invalidateQueries({ queryKey: expenseQueryKey(updated.id) })
       void queryClient.invalidateQueries({ queryKey: expenseSplitsQueryKey(updated.id) })
       void queryClient.invalidateQueries({ queryKey: expensePayersQueryKey(updated.id) })

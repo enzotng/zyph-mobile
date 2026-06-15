@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Clipboard from 'expo-clipboard'
 import * as Linking from 'expo-linking'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Share, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
@@ -40,11 +40,22 @@ export default function TripGroupScreen() {
 
   const [sharing, setSharing] = useState(() => getShareLocation(tripId))
   const [copied, setCopied] = useState(false)
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { status: shareStatus } = useShareLocation({ tripId, enabled: sharing })
 
   useEffect(() => {
     setShareLocation(tripId, sharing)
   }, [sharing, tripId])
+
+  // Clear the "copied" reset timer if the screen unmounts before it fires.
+  useEffect(
+    () => () => {
+      if (copiedTimer.current) {
+        clearTimeout(copiedTimer.current)
+      }
+    },
+    [],
+  )
 
   function toggleSharing() {
     if (sharing) {
@@ -110,7 +121,10 @@ export default function TripGroupScreen() {
     }
     await Clipboard.setStringAsync(trip.invite_code)
     setCopied(true)
-    setTimeout(() => setCopied(false), 1600)
+    if (copiedTimer.current) {
+      clearTimeout(copiedTimer.current)
+    }
+    copiedTimer.current = setTimeout(() => setCopied(false), 1600)
   }
 
   function confirmRegenerate() {
@@ -305,7 +319,9 @@ export default function TripGroupScreen() {
                 >
                   <View style={styles.rowMember}>
                     <Avatar name={name} imageUrl={member.avatar_url} size={34} />
-                    <Text style={styles.memberName}>{name}</Text>
+                    <Text style={styles.memberName} numberOfLines={1}>
+                      {name}
+                    </Text>
                   </View>
                   {member.role === 'owner' ? (
                     <Badge label={t('group.organizer')} tone="primary" />
@@ -465,6 +481,7 @@ const styles = StyleSheet.create((theme) => ({
     flexShrink: 1,
   },
   memberName: {
+    flexShrink: 1,
     fontFamily: theme.fonts.sans.medium,
     fontWeight: '500',
     fontSize: theme.fontSize.md,
