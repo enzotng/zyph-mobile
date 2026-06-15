@@ -14,6 +14,8 @@ type HomeHeaderProps = {
   unreadCount?: number
   onNotificationsPress?: () => void
   notificationsLabel?: string
+  onAddPress?: () => void
+  addLabel?: string
 }
 
 // Left-aligned greeting + trip-count subtitle, with a notifications bell (unread badge) and a
@@ -28,6 +30,8 @@ export function HomeHeader({
   unreadCount = 0,
   onNotificationsPress,
   notificationsLabel,
+  onAddPress,
+  addLabel,
 }: HomeHeaderProps) {
   const { theme } = useUnistyles()
   const { t } = useTranslation()
@@ -43,6 +47,17 @@ export function HomeHeader({
         </Text>
       </View>
       <View style={styles.actions}>
+        {onAddPress ? (
+          <Pressable
+            onPress={onAddPress}
+            accessibilityRole="button"
+            accessibilityLabel={addLabel}
+            hitSlop={8}
+            style={styles.bell}
+          >
+            <Ionicons name="add" size={26} color={theme.colors.foreground} />
+          </Pressable>
+        ) : null}
         {onNotificationsPress ? (
           <Pressable
             onPress={onNotificationsPress}

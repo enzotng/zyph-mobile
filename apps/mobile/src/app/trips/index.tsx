@@ -7,10 +7,10 @@ import { Pressable, RefreshControl, View } from 'react-native'
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { BottomSheet, EmptyState, Skeleton } from '@/components/ui'
+import { EmptyState, Skeleton } from '@/components/ui'
 import { useTrips } from '@/features/trips'
+import { AddTripSheet } from '@/features/trips/components/add-trip-sheet'
 import { TripListCard } from '@/features/trips/components/trip-list-card'
 import { haptics } from '@/lib/haptics'
 
@@ -36,7 +36,7 @@ export default function AllTripsScreen() {
             setAddOpen(true)
           }}
           accessibilityRole="button"
-          accessibilityLabel={t('trips.add')}
+          accessibilityLabel={t('trips.addTitle')}
           hitSlop={8}
           style={({ pressed }) => [pressed && styles.pressed]}
         >
@@ -95,27 +95,7 @@ export default function AllTripsScreen() {
         </Animated.View>
       )}
 
-      <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title={t('trips.add')}>
-        <View style={styles.sheetActions}>
-          <Button
-            label={t('trips.create')}
-            icon="add"
-            onPress={() => {
-              setAddOpen(false)
-              router.push('/trips/new')
-            }}
-          />
-          <Button
-            label={t('trips.join')}
-            variant="secondary"
-            icon="enter-outline"
-            onPress={() => {
-              setAddOpen(false)
-              router.push('/trips/join')
-            }}
-          />
-        </View>
-      </BottomSheet>
+      <AddTripSheet open={addOpen} onClose={() => setAddOpen(false)} />
     </Screen>
   )
 }
@@ -134,8 +114,5 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   skeletonRow: {
     marginBottom: theme.gap(3.5),
-  },
-  sheetActions: {
-    gap: theme.gap(2),
   },
 }))
