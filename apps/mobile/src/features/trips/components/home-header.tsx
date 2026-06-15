@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -29,6 +30,7 @@ export function HomeHeader({
   notificationsLabel,
 }: HomeHeaderProps) {
   const { theme } = useUnistyles()
+  const { t } = useTranslation()
 
   return (
     <View style={styles.header}>
@@ -57,7 +59,12 @@ export function HomeHeader({
             ) : null}
           </Pressable>
         ) : null}
-        <Pressable onPress={onAvatarPress} accessibilityRole="button" hitSlop={8}>
+        <Pressable
+          onPress={onAvatarPress}
+          accessibilityRole="button"
+          accessibilityLabel={t('tabs.profile')}
+          hitSlop={8}
+        >
           <Avatar name={avatarName} imageUrl={avatarUrl} size={44} />
         </Pressable>
       </View>

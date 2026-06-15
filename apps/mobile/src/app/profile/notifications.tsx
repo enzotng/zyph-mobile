@@ -50,6 +50,7 @@ export default function NotificationPreferencesScreen() {
         onValueChange={(value) => toggle(key, value)}
         trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
         disabled={!userId}
+        accessibilityLabel={t(`notifications.preferences.${key}`)}
       />
     )
   }
