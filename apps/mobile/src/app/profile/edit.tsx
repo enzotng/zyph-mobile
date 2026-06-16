@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
+import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Alert, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
-import { CurrencySelect } from '@/components/currency-select'
+import { CurrencyPicker } from '@/components/currency-picker'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { Avatar, Spinner } from '@/components/ui'
@@ -18,6 +20,7 @@ import {
   type UpdateProfileValues,
   useProfile,
   useUpdateProfile,
+  useUploadAvatar,
 } from '@/features/profile'
 
 export default function EditProfileScreen() {
@@ -28,6 +31,7 @@ export default function EditProfileScreen() {
   const { data: profile, isLoading } = useProfile()
   const { data: fx } = useFxRates()
   const update = useUpdateProfile()
+  const uploadAvatar = useUploadAvatar()
 
   // React Compiler memoizes this automatically; a manual useMemo here trips
   // react-hooks/preserve-manual-memoization (it infers `profile`, not the property).
@@ -41,7 +45,9 @@ export default function EditProfileScreen() {
     formState: { errors },
   } = useForm<UpdateProfileValues>({
     resolver: zodResolver(makeUpdateProfileSchema(t)),
-    // RHF syncs from the loaded profile when it arrives; no useEffect needed.
+    // RHF syncs from the loaded profile when it arrives; keepDirtyValues so a refetch mid-edit does
+    // not wipe unsaved changes. No useEffect needed.
+    resetOptions: { keepDirtyValues: true },
     values: profile
       ? {
           displayName: profile.display_name ?? '',
@@ -60,6 +66,62 @@ export default function EditProfileScreen() {
     } catch (error) {
       Alert.alert(
         t('profile.saveErrorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
+    }
+  }
+
+  function changePhoto() {
+    Alert.alert(t('profile.changePhoto'), undefined, [
+      { text: t('profile.photoLibrary'), onPress: () => void pickFrom('library') },
+      { text: t('profile.takePhoto'), onPress: () => void pickFrom('camera') },
+      { text: t('common.cancel'), style: 'cancel' },
+    ])
+  }
+
+  async function pickFrom(source: 'library' | 'camera') {
+    try {
+      const permission =
+        source === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!permission.granted) {
+        Alert.alert(t('profile.photoPermissionTitle'), t('profile.photoPermissionBody'))
+        return
+      }
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync({
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.6,
+            })
+          : await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ['images'],
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.6,
+            })
+      if (result.canceled) {
+        return
+      }
+      // Downscale to a 512px JPEG before upload so we never store/serve a multi-MB full-resolution
+      // photo to every co-member; the base64 is sent to the upload-avatar edge function.
+      const rendered = await ImageManipulator.manipulate(result.assets[0].uri)
+        .resize({ width: 512 })
+        .renderAsync()
+      const image = await rendered.saveAsync({
+        compress: 0.7,
+        format: SaveFormat.JPEG,
+        base64: true,
+      })
+      if (!image.base64) {
+        throw new Error('Could not read the selected image.')
+      }
+      await uploadAvatar.mutateAsync({ imageBase64: image.base64, contentType: 'image/jpeg' })
+    } catch (error) {
+      Alert.alert(
+        t('profile.photoErrorTitle'),
         error instanceof Error ? error.message : t('common.tryAgain'),
       )
     }
@@ -94,12 +156,27 @@ export default function EditProfileScreen() {
     >
       {/* Avatar hero */}
       <View style={styles.avatarWrap}>
-        <View style={styles.avatarStack}>
-          <Avatar name={displayName} size={84} tint={theme.colors.primary} />
+        <Pressable
+          onPress={changePhoto}
+          disabled={uploadAvatar.isPending}
+          accessibilityRole="button"
+          accessibilityLabel={t('profile.changePhoto')}
+          style={styles.avatarStack}
+        >
+          <Avatar
+            name={displayName}
+            imageUrl={profile.avatar_url}
+            size={84}
+            tint={theme.colors.primary}
+          />
           <View style={styles.cameraBadge}>
-            <Ionicons name="camera" size={15} color="#FFFFFF" />
+            {uploadAvatar.isPending ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="camera" size={15} color="#FFFFFF" />
+            )}
           </View>
-        </View>
+        </Pressable>
       </View>
 
       <Controller
@@ -129,7 +206,7 @@ export default function EditProfileScreen() {
         control={control}
         name="preferredCurrency"
         render={({ field }) => (
-          <CurrencySelect
+          <CurrencyPicker
             label={t('profile.defaultCurrency')}
             value={field.value}
             currencies={currencies}

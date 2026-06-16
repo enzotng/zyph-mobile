@@ -1,4 +1,9 @@
-import { type MemberBalance, settleBalances } from './settlement'
+import {
+  formatSettleUpSummary,
+  type MemberBalance,
+  pairwiseBalances,
+  settleBalances,
+} from './settlement'
 
 const sum = (s: { amountCents: number }[]) => s.reduce((acc, x) => acc + x.amountCents, 0)
 
@@ -58,5 +63,54 @@ describe('settleBalances', () => {
   it('returns no transfers when there are only debtors (nothing to pay to)', () => {
     const balances: MemberBalance[] = [{ memberId: 'a', balanceCents: -500 }]
     expect(settleBalances(balances)).toEqual([])
+  })
+})
+
+describe('pairwiseBalances', () => {
+  it('groups suggested transfers per member in both directions', () => {
+    const map = pairwiseBalances([
+      { fromMemberId: 'a', toMemberId: 'b', amountCents: 1200 },
+      { fromMemberId: 'a', toMemberId: 'c', amountCents: 800 },
+    ])
+    expect(map.get('a')).toEqual({
+      owes: [
+        { memberId: 'b', amountCents: 1200 },
+        { memberId: 'c', amountCents: 800 },
+      ],
+      owedBy: [],
+    })
+    expect(map.get('b')).toEqual({ owes: [], owedBy: [{ memberId: 'a', amountCents: 1200 }] })
+    expect(map.get('c')).toEqual({ owes: [], owedBy: [{ memberId: 'a', amountCents: 800 }] })
+  })
+
+  it('returns an empty map when there are no settlements', () => {
+    expect(pairwiseBalances([]).size).toBe(0)
+  })
+})
+
+describe('formatSettleUpSummary', () => {
+  it('lists each transfer with resolved names and amounts', () => {
+    const summary = formatSettleUpSummary({
+      title: 'Lisbon · Settle up',
+      currency: 'EUR',
+      settledLabel: 'Everyone is settled up.',
+      lines: [
+        { from: 'Alice', to: 'Bob', amountCents: 1200 },
+        { from: 'Charlie', to: 'Bob', amountCents: 850 },
+      ],
+    })
+    expect(summary).toBe(
+      'Lisbon · Settle up\n\n- Alice → Bob: 12.00 EUR\n- Charlie → Bob: 8.50 EUR',
+    )
+  })
+
+  it('falls back to the settled label when there is nothing to settle', () => {
+    const summary = formatSettleUpSummary({
+      title: 'Lisbon · Settle up',
+      currency: 'EUR',
+      settledLabel: 'Everyone is settled up.',
+      lines: [],
+    })
+    expect(summary).toBe('Lisbon · Settle up\n\nEveryone is settled up.')
   })
 })

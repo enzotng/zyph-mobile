@@ -10,6 +10,7 @@ export type LanguagePreference = 'system' | 'en' | 'fr'
 const THEME_KEY = 'theme'
 const LANGUAGE_KEY = 'language'
 const ONBOARDING_KEY = 'onboardingSeen'
+const PENDING_INVITE_KEY = 'pendingInvite'
 
 function shareLocationKey(tripId: string): string {
   return `shareLocation:${tripId}`
@@ -29,6 +30,21 @@ export function hasSeenOnboarding(): boolean {
 
 export function setOnboardingSeen(): void {
   storage.set(ONBOARDING_KEY, true)
+}
+
+// A trip invite code captured from a deep link while signed out, so the invitee can be sent to
+// the join screen once they finish authenticating (the auth/onboarding redirect would otherwise
+// discard the link's ?code= param).
+export function getPendingInvite(): string | null {
+  return storage.getString(PENDING_INVITE_KEY) ?? null
+}
+
+export function setPendingInvite(code: string): void {
+  storage.set(PENDING_INVITE_KEY, code)
+}
+
+export function clearPendingInvite(): void {
+  storage.remove(PENDING_INVITE_KEY)
 }
 
 export function getThemePreference(): ThemePreference {

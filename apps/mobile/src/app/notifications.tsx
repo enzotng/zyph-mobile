@@ -1,19 +1,19 @@
-import type { Ionicons } from '@expo/vector-icons'
+import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Screen } from '@/components/screen'
 import { EmptyState, ListRow, SectionTitle, Spinner, Surface } from '@/components/ui'
 import {
-  categoryForType,
   groupNotificationsByDay,
   type Notification,
   notificationContext,
   notificationIcon,
   notificationMessageKey,
+  routeToNotification,
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
@@ -44,37 +44,23 @@ export default function NotificationsScreen() {
     if (n.read_at === null) {
       markRead.mutate(n.id)
     }
-    // A removed member can no longer read the trip (RLS gates on active membership), so this
-    // notification is informational only - do not route into an inaccessible trip.
-    if (n.type === 'member.removed') {
-      return
-    }
-    const tripId = n.trip_id
-    if (!tripId) {
-      return
-    }
-    const payload = (n.payload ?? {}) as { expenseId?: string; eventId?: string }
-    const category = categoryForType(n.type)
-    if (category === 'expenses' && payload.expenseId) {
-      router.push({
-        pathname: '/trips/[id]/expenses/[expenseId]',
-        params: { id: tripId, expenseId: payload.expenseId },
-      })
-    } else if (category === 'timeline' && payload.eventId) {
-      router.push({
-        pathname: '/trips/[id]/events/[eventId]',
-        params: { id: tripId, eventId: payload.eventId },
-      })
-    } else if (category === 'members') {
-      router.push({ pathname: '/trips/[id]/group', params: { id: tripId } })
-    } else {
-      router.push({ pathname: '/trips/[id]', params: { id: tripId } })
-    }
+    routeToNotification(
+      router,
+      n.type,
+      n.trip_id,
+      (n.payload ?? {}) as { expenseId?: string; eventId?: string },
+    )
   }
 
+  // A single icon in the header (the long "Mark all read" label wrapped to several lines).
   const markAllAction = hasUnread ? (
-    <Pressable onPress={() => markAll.mutate()} hitSlop={8} accessibilityRole="button">
-      <Text style={styles.headerAction}>{t('notifications.markAllRead')}</Text>
+    <Pressable
+      onPress={() => markAll.mutate()}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={t('notifications.markAllRead')}
+    >
+      <Ionicons name="checkmark-done-outline" size={22} color={theme.colors.primary} />
     </Pressable>
   ) : undefined
 
@@ -167,11 +153,5 @@ const styles = StyleSheet.create((theme) => ({
   },
   groupCard: {
     paddingHorizontal: theme.gap(4),
-  },
-  headerAction: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '600',
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.primary,
   },
 }))

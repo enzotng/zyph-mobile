@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, View } from 'react-native'
@@ -9,31 +9,34 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { CategoryPicker } from '@/components/category-picker'
-import { CurrencySelect } from '@/components/currency-select'
+import { CurrencyPicker } from '@/components/currency-picker'
 import { ReceiptScanner } from '@/components/receipt-scanner'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Spinner, Surface } from '@/components/ui'
+import { Spinner } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
-  computeSplits,
   createExpenseSchema,
   type ExpenseCategory,
-  formatAmount,
   type ParsedReceiptItems,
   toCents,
   useCreateExpense,
+  usePayersEditor,
+  useSplitEditor,
 } from '@/features/expenses'
+import { PayersEditor } from '@/features/expenses/components/payers-editor'
+import { RemainderBanner } from '@/features/expenses/components/remainder-banner'
+import { SplitMemberRow } from '@/features/expenses/components/split-member-row'
+import { SplitModeSelector } from '@/features/expenses/components/split-mode-selector'
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
 import { useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
+import { formatAmount } from '@/lib/money'
 import { paramString } from '@/lib/routing'
 
 const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
 const MAX_DESCRIPTION_LEN = 120
-
-type ShareState = Record<string, { included: boolean; weight: number }>
 
 export default function AddExpenseScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
@@ -52,14 +55,8 @@ export default function AddExpenseScreen() {
   const [picked, setPicked] = useState<string | null>(null)
   const currency = picked ?? tripCurrency
 
-  // Only user-touched members are stored; everyone else defaults to included, weight 1.
-  // Deriving the default (instead of seeding state) avoids a setState-in-effect and
-  // means members who join while the form is open are included by default.
-  const [overrides, setOverrides] = useState<ShareState>({})
-  const stateFor = useCallback(
-    (memberId: string) => overrides[memberId] ?? { included: true, weight: 1 },
-    [overrides],
-  )
+  // Payer defaults to the current user's membership; the editor allows one or several payers.
+  const ownMemberId = members?.find((m) => m.user_id === userId)?.id ?? null
 
   const [scannerOpen, setScannerOpen] = useState(false)
   const [category, setCategory] = useState<ExpenseCategory | null>(null)
@@ -110,6 +107,21 @@ export default function AddExpenseScreen() {
   }
 
   const amount = useWatch({ control, name: 'amount' })
+  const descriptionValue = useWatch({ control, name: 'description' })
+
+  // Itemised (per-item) split without a receipt scan: hand the editor a manual flag plus the
+  // currency and any description already typed, and it opens with one blank line to fill.
+  function openManualSplit() {
+    router.push({
+      pathname: '/trips/[id]/attribute-expense',
+      params: {
+        id: tripId,
+        manual: '1',
+        currency,
+        description: (descriptionValue ?? '').slice(0, MAX_DESCRIPTION_LEN),
+      },
+    })
+  }
 
   const currencies = useMemo(() => {
     const rest = fx
@@ -138,38 +150,28 @@ export default function AddExpenseScreen() {
     return convertCents(cents, currency, tripCurrency, fx.rates)
   }, [amount, canConvert, currency, fx, isForeign, tripCurrency])
 
-  const participants = useMemo(() => {
-    if (!members) {
-      return []
-    }
-    return members
-      .filter((m) => stateFor(m.id).included)
-      .map((m) => ({ memberId: m.id, weight: stateFor(m.id).weight }))
-  }, [members, stateFor])
+  const split = useSplitEditor({ members, baseCents })
+  const payersEditor = usePayersEditor({ members, baseCents, defaultPayerId: ownMemberId })
 
-  // Live per-member shares for the preview (memberId -> cents).
-  const shareByMember = useMemo(() => {
-    if (baseCents === null) {
-      return new Map<string, number>()
-    }
-    return new Map(computeSplits(baseCents, participants).map((s) => [s.memberId, s.shareCents]))
-  }, [baseCents, participants])
+  const blocked = (isForeign && !canConvert) || !split.canSubmit || !payersEditor.canSubmit
 
-  const blocked = (isForeign && !canConvert) || participants.length === 0
-
-  function toggle(memberId: string) {
-    setOverrides((s) => {
-      const cur = s[memberId] ?? { included: true, weight: 1 }
-      return { ...s, [memberId]: { ...cur, included: !cur.included } }
-    })
-  }
-
-  function setWeight(memberId: string, weight: number) {
-    setOverrides((s) => {
-      const cur = s[memberId] ?? { included: true, weight: 1 }
-      return { ...s, [memberId]: { ...cur, weight: Math.max(1, weight) } }
-    })
-  }
+  // Concise reason shown next to a disabled submit, so the user is not hunting for the off-screen
+  // banner that is blocking them.
+  const blockReason = !blocked
+    ? null
+    : isForeign && !canConvert
+      ? t('expenseForm.rateUnavailable', { currency })
+      : split.includedCount === 0
+        ? t('expenseForm.selectSomeoneTitle')
+        : !split.isBalanced && baseCents !== null
+          ? t('expenseForm.remainderLeft', {
+              amount: formatAmount(Math.abs(split.remainderCents), tripCurrency),
+            })
+          : payersEditor.mode === 'multiple' && !payersEditor.isBalanced && baseCents !== null
+            ? t('expenseForm.remainderLeft', {
+                amount: formatAmount(Math.abs(payersEditor.remainderCents), tripCurrency),
+              })
+            : t('expenseForm.incomplete')
 
   async function onSubmit(values: CreateExpenseValues) {
     const amountCents = toCents(values.amount)
@@ -193,11 +195,13 @@ export default function AddExpenseScreen() {
       }
     }
 
-    const splits = computeSplits(baseAmountCents, participants)
+    const splits = split.splitsFor(baseAmountCents)
     if (splits.length === 0) {
       Alert.alert(t('expenseForm.selectSomeoneTitle'), t('expenseForm.selectSomeoneBody'))
       return
     }
+
+    const { paidBy, payers } = payersEditor.resolve()
 
     try {
       await createExpense.mutateAsync({
@@ -209,6 +213,8 @@ export default function AddExpenseScreen() {
         fxRate,
         splits,
         category,
+        paidBy,
+        payers,
       })
       router.back()
     } catch (error) {
@@ -234,139 +240,142 @@ export default function AddExpenseScreen() {
       title={t('expenseForm.addTitle')}
       scroll
       footer={
-        <Button
-          label={createExpense.isPending ? t('expenseForm.submitting') : t('expenseForm.submit')}
-          onPress={handleSubmit(onSubmit)}
-          disabled={createExpense.isPending || blocked}
-        />
+        <View style={styles.footerBar}>
+          {blockReason ? <Text style={styles.footerReason}>{blockReason}</Text> : null}
+          <Button
+            label={createExpense.isPending ? t('expenseForm.submitting') : t('expenseForm.submit')}
+            onPress={handleSubmit(onSubmit)}
+            disabled={createExpense.isPending || blocked}
+          />
+        </View>
       }
     >
-      <Pressable
-        onPress={() => setScannerOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel={t('expenseForm.scanReceipt')}
-        style={styles.scanBtn}
-      >
-        <Surface
-          color="transparent"
-          borderColor={theme.colors.border}
-          borderWidth={1}
-          radius={theme.radius.md}
-          style={styles.scanBtnSurface}
-        >
-          <Ionicons name="scan-outline" size={20} color={theme.colors.primary} />
-          <Text style={styles.scanLabel}>{t('expenseForm.scanReceipt')}</Text>
-        </Surface>
-      </Pressable>
-
       <ReceiptScanner
         visible={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onResult={applyScan}
       />
 
-      <Controller
-        control={control}
-        name="description"
-        render={({ field }) => (
-          <TextField
-            label={t('expenseForm.description')}
-            placeholder={t('expenseForm.descriptionPlaceholder')}
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            error={errors.description?.message}
-          />
-        )}
-      />
-
-      <CurrencySelect
-        label={t('expenseForm.currency')}
-        value={currency}
-        currencies={currencies}
-        onChange={setPicked}
-      />
-
-      <CategoryPicker label={t('expenseForm.category')} value={category} onChange={setCategory} />
-
-      <Controller
-        control={control}
-        name="amount"
-        render={({ field }) => (
-          <TextField
-            label={t('expenseForm.amount', { currency })}
-            placeholder="45.00"
-            keyboardType="decimal-pad"
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            error={errors.amount?.message}
-          />
-        )}
-      />
-
-      {isForeign && !canConvert ? (
-        <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
-      ) : null}
-
-      <Text style={styles.sectionTitle}>{t('expenseForm.splitBetween')}</Text>
-      {members.map((member) => {
-        const state = stateFor(member.id)
-        const included = state.included
-        const name =
-          member.user_id === userId ? t('common.you') : (member.display_name ?? t('common.member'))
-        const share = shareByMember.get(member.id)
-        return (
-          <View key={member.id} style={styles.memberRow}>
-            <Pressable
-              style={styles.memberLeft}
-              onPress={() => toggle(member.id)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: included }}
-            >
-              <Ionicons
-                name={included ? 'checkbox' : 'square-outline'}
-                size={22}
-                color={included ? theme.colors.primary : theme.colors.muted}
+      <View style={styles.form}>
+        <View style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.description')}</Text>
+          <View style={styles.titleRow}>
+            <View style={styles.flex}>
+              <Controller
+                control={control}
+                name="description"
+                render={({ field }) => (
+                  <TextField
+                    placeholder={t('expenseForm.descriptionPlaceholder')}
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.description?.message}
+                  />
+                )}
               />
-              <Text style={styles.memberName}>{name}</Text>
+            </View>
+            <Pressable
+              onPress={() => setScannerOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('expenseForm.scanReceipt')}
+              style={styles.iconBtn}
+            >
+              <Ionicons name="scan-outline" size={22} color={theme.colors.primary} />
             </Pressable>
-
-            {included ? (
-              <View style={styles.memberRight}>
-                <Surface
-                  color="transparent"
-                  borderColor={theme.colors.border}
-                  borderWidth={1}
-                  radius={theme.radius.md}
-                  style={styles.stepper}
-                >
-                  <Pressable
-                    onPress={() => setWeight(member.id, state.weight - 1)}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('expenseForm.decreaseShares')}
-                    hitSlop={6}
-                  >
-                    <Ionicons name="remove" size={18} color={theme.colors.foreground} />
-                  </Pressable>
-                  <Text style={styles.weight}>{state.weight}</Text>
-                  <Pressable
-                    onPress={() => setWeight(member.id, state.weight + 1)}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('expenseForm.increaseShares')}
-                    hitSlop={6}
-                  >
-                    <Ionicons name="add" size={18} color={theme.colors.foreground} />
-                  </Pressable>
-                </Surface>
-                <Text style={styles.share}>
-                  {share === undefined ? '-' : formatAmount(share, tripCurrency)}
-                </Text>
-              </View>
-            ) : null}
+            <Pressable
+              onPress={openManualSplit}
+              accessibilityRole="button"
+              accessibilityLabel={t('expenseForm.splitByItem')}
+              style={styles.iconBtn}
+            >
+              <Ionicons name="list-outline" size={22} color={theme.colors.primary} />
+            </Pressable>
           </View>
-        )
-      })}
+        </View>
+
+        <View style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.sectionAmount')}</Text>
+          <View style={styles.amountRow}>
+            <CurrencyPicker compact value={currency} currencies={currencies} onChange={setPicked} />
+            <View style={styles.flex}>
+              <Controller
+                control={control}
+                name="amount"
+                render={({ field }) => (
+                  <TextField
+                    placeholder="45.00"
+                    keyboardType="decimal-pad"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.amount?.message}
+                  />
+                )}
+              />
+            </View>
+          </View>
+          {isForeign && !canConvert ? (
+            <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
+          ) : null}
+        </View>
+
+        <View style={styles.twoCol}>
+          <View style={styles.col}>
+            <Text style={styles.fieldLabel}>{t('expenseForm.paidBy')}</Text>
+            <PayersEditor
+              editor={payersEditor}
+              members={members}
+              currentUserId={userId}
+              tripCurrency={tripCurrency}
+              baseCents={baseCents}
+            />
+          </View>
+          <View style={styles.col}>
+            <Text style={styles.fieldLabel}>{t('expenseForm.category')}</Text>
+            <CategoryPicker value={category} onChange={setCategory} />
+          </View>
+        </View>
+
+        <View style={styles.group}>
+          <View style={styles.splitHeader}>
+            <Text style={[styles.fieldLabel, styles.splitHeaderLabel]} numberOfLines={1}>
+              {`${t('expenseForm.splitBetween')} · ${split.includedCount}/${members.length}`}
+            </Text>
+            <View style={styles.splitHeaderRight}>
+              <Pressable
+                onPress={split.includedCount === members.length ? split.clearAll : split.selectAll}
+                accessibilityRole="button"
+                hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+              >
+                <Text style={styles.smallAction}>
+                  {split.includedCount === members.length
+                    ? t('expenseForm.selectNone')
+                    : t('expenseForm.selectAll')}
+                </Text>
+              </Pressable>
+              <SplitModeSelector mode={split.mode} onChange={split.setMode} />
+            </View>
+          </View>
+          {members.map((member) => (
+            <SplitMemberRow
+              key={member.id}
+              member={member}
+              split={split}
+              tripCurrency={tripCurrency}
+              currentUserId={userId}
+            />
+          ))}
+          <RemainderBanner
+            mode={split.mode}
+            allocatedCents={split.allocatedCents}
+            remainderCents={split.remainderCents}
+            isBalanced={split.isBalanced}
+            baseCents={baseCents}
+            tripCurrency={tripCurrency}
+          />
+        </View>
+      </View>
     </Screen>
   )
 }
@@ -374,66 +383,79 @@ export default function AddExpenseScreen() {
 const styles = StyleSheet.create((theme) => ({
   warn: {
     fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.regular,
     color: theme.colors.warning,
   },
-  sectionTitle: {
+  form: {
+    gap: theme.gap(4),
+  },
+  group: {
+    gap: theme.gap(1.5),
+  },
+  twoCol: {
+    flexDirection: 'row',
+    gap: theme.gap(3),
+  },
+  col: {
+    flex: 1,
+    gap: theme.gap(1.5),
+  },
+  fieldLabel: {
     fontSize: theme.fontSize.sm,
-    fontFamily: theme.fonts.sans.bold,
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
     color: theme.colors.muted,
   },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.gap(2),
-  },
-  memberLeft: {
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(2),
+  },
+  flex: {
     flex: 1,
   },
-  memberName: {
-    fontSize: theme.fontSize.md,
-    fontFamily: theme.fonts.sans.semibold,
-    color: theme.colors.foreground,
+  iconBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
-  memberRight: {
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.gap(2),
+  },
+  splitHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.gap(2),
+  },
+  splitHeaderLabel: {
+    flexShrink: 1,
+  },
+  splitHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(3),
   },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(2),
-    paddingHorizontal: theme.gap(2),
-    paddingVertical: theme.gap(1),
-  },
-  weight: {
-    minWidth: theme.gap(4),
-    textAlign: 'center',
+  smallAction: {
+    fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.sans.semibold,
-    color: theme.colors.foreground,
-  },
-  share: {
-    minWidth: theme.gap(16),
-    textAlign: 'right',
-    fontFamily: theme.fonts.sans.semibold,
-    color: theme.colors.foreground,
-  },
-  scanBtn: {
-    alignSelf: 'flex-start',
-  },
-  scanBtnSurface: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(2),
-    paddingVertical: theme.gap(2),
-    paddingHorizontal: theme.gap(3),
-  },
-  scanLabel: {
+    fontWeight: '600',
     color: theme.colors.primary,
-    fontFamily: theme.fonts.sans.semibold,
+  },
+  footerBar: {
+    gap: theme.gap(2),
+  },
+  footerReason: {
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    color: theme.colors.muted,
+    textAlign: 'center',
   },
 }))

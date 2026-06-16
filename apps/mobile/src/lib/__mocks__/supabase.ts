@@ -11,6 +11,7 @@ export const supabase = {
     getUser: jest.fn(),
     signInWithPassword: jest.fn(),
     signInWithOAuth: jest.fn(),
+    signInWithIdToken: jest.fn(),
     exchangeCodeForSession: jest.fn(),
     signUp: jest.fn(),
     signOut: jest.fn(),

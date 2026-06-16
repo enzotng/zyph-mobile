@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -13,6 +14,8 @@ type HomeHeaderProps = {
   unreadCount?: number
   onNotificationsPress?: () => void
   notificationsLabel?: string
+  onAddPress?: () => void
+  addLabel?: string
 }
 
 // Left-aligned greeting + trip-count subtitle, with a notifications bell (unread badge) and a
@@ -27,8 +30,11 @@ export function HomeHeader({
   unreadCount = 0,
   onNotificationsPress,
   notificationsLabel,
+  onAddPress,
+  addLabel,
 }: HomeHeaderProps) {
   const { theme } = useUnistyles()
+  const { t } = useTranslation()
 
   return (
     <View style={styles.header}>
@@ -41,6 +47,17 @@ export function HomeHeader({
         </Text>
       </View>
       <View style={styles.actions}>
+        {onAddPress ? (
+          <Pressable
+            onPress={onAddPress}
+            accessibilityRole="button"
+            accessibilityLabel={addLabel}
+            hitSlop={8}
+            style={styles.bell}
+          >
+            <Ionicons name="add" size={26} color={theme.colors.foreground} />
+          </Pressable>
+        ) : null}
         {onNotificationsPress ? (
           <Pressable
             onPress={onNotificationsPress}
@@ -57,7 +74,12 @@ export function HomeHeader({
             ) : null}
           </Pressable>
         ) : null}
-        <Pressable onPress={onAvatarPress} accessibilityRole="button" hitSlop={8}>
+        <Pressable
+          onPress={onAvatarPress}
+          accessibilityRole="button"
+          accessibilityLabel={t('tabs.profile')}
+          hitSlop={8}
+        >
           <Avatar name={avatarName} imageUrl={avatarUrl} size={44} />
         </Pressable>
       </View>

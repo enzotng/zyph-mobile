@@ -51,7 +51,14 @@ export type CreateExpenseInput = {
   // validates membership + the sum.
   splits: ExpenseSplit[]
   category?: ExpenseCategory | null
+  // Trip-member id of the payer; defaults to the caller server-side when omitted.
+  paidBy?: string | null
+  // Multi-payer breakdown (trip-currency cents, must sum to baseAmountCents). When omitted the
+  // expense has a single payer (paidBy / caller). When set, paidBy is ignored server-side.
+  payers?: ExpensePayer[] | null
 }
+
+export type ExpensePayer = { memberId: string; paidCents: number }
 
 export async function createExpense({
   tripId,
@@ -62,6 +69,8 @@ export async function createExpense({
   fxRate,
   splits,
   category,
+  paidBy,
+  payers,
 }: CreateExpenseInput): Promise<Expense> {
   // Atomic server-side: inserts the expense + the provided splits, enforces membership,
   // resolves the payer from auth.uid(). One round trip, one transaction.
@@ -77,6 +86,10 @@ export async function createExpense({
     _fx_rate: fxRate,
     _splits: splits.map((s) => ({ member_id: s.memberId, share_cents: s.shareCents })),
     _category: category ?? undefined,
+    _paid_by: paidBy ?? undefined,
+    _payers: payers
+      ? payers.map((p) => ({ member_id: p.memberId, paid_cents: p.paidCents }))
+      : undefined,
   })
   if (error) {
     throw error
@@ -85,6 +98,37 @@ export async function createExpense({
 }
 
 export type ExpenseSplitRow = Database['public']['Tables']['expense_splits']['Row']
+export type ExpensePayerRow = Database['public']['Tables']['expense_payers']['Row']
+
+export type MyExpenseShare = Pick<ExpenseSplitRow, 'expense_id' | 'share_cents'>
+
+// The current member's share of every expense in the trip, in one query, so the feed can show
+// "your share" per row without N per-expense lookups. member_id is a trip_members id (unique to
+// this trip), so this returns only this trip's splits for the caller; RLS gates it to their trips.
+export async function listMyExpenseShares(memberId: string): Promise<MyExpenseShare[]> {
+  // Inner-join the parent expense and keep only live ones, so a soft-deleted expense's split does
+  // not linger in the feed's share map.
+  const { data, error } = await supabase
+    .from('expense_splits')
+    .select('expense_id, share_cents, expenses!inner(deleted_at)')
+    .eq('member_id', memberId)
+    .is('expenses.deleted_at', null)
+  if (error) {
+    throw error
+  }
+  return data.map((row) => ({ expense_id: row.expense_id, share_cents: row.share_cents }))
+}
+
+export async function listExpensePayers(expenseId: string): Promise<ExpensePayerRow[]> {
+  const { data, error } = await supabase
+    .from('expense_payers')
+    .select('*')
+    .eq('expense_id', expenseId)
+  if (error) {
+    throw error
+  }
+  return data
+}
 
 export async function getExpense(expenseId: string): Promise<Expense | null> {
   const { data, error } = await supabase
@@ -119,6 +163,11 @@ export type UpdateExpenseInput = {
   fxRate: number
   splits: ExpenseSplit[]
   category?: ExpenseCategory | null
+  // Trip-member id of the payer; keeps the existing payer server-side when omitted.
+  paidBy?: string | null
+  // Multi-payer breakdown (trip-currency cents, must sum to baseAmountCents). When omitted the
+  // expense falls back to a single payer (paidBy / existing). When set, paidBy is ignored.
+  payers?: ExpensePayer[] | null
 }
 
 export async function updateExpense({
@@ -130,6 +179,8 @@ export async function updateExpense({
   fxRate,
   splits,
   category,
+  paidBy,
+  payers,
 }: UpdateExpenseInput): Promise<Expense> {
   const { data, error } = await supabase.rpc('update_expense_with_splits', {
     _expense_id: expenseId,
@@ -140,6 +191,10 @@ export async function updateExpense({
     _fx_rate: fxRate,
     _splits: splits.map((s) => ({ member_id: s.memberId, share_cents: s.shareCents })),
     _category: category ?? undefined,
+    _paid_by: paidBy ?? undefined,
+    _payers: payers
+      ? payers.map((p) => ({ member_id: p.memberId, paid_cents: p.paidCents }))
+      : undefined,
   })
   if (error) {
     throw error

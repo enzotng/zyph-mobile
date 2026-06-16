@@ -41,6 +41,8 @@ export default function EditPoiScreen() {
     resolver: zodResolver(poiSchema),
     defaultValues: { label: '', icon: 'pin', lat: 0, lng: 0 },
     values: formValues,
+    // Keep the user's in-progress edits if the source data refetches mid-edit.
+    resetOptions: { keepDirtyValues: true },
   })
 
   const lat = useWatch({ control, name: 'lat' })

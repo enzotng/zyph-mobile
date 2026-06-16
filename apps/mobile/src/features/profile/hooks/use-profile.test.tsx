@@ -4,7 +4,7 @@ import { useAuth } from '@/features/auth'
 import { createQueryWrapper } from '@/test-utils/query-wrapper'
 
 import * as api from '../api/profile.api'
-import { profileQueryKey, useProfile, useUpdateProfile } from './use-profile'
+import { profileQueryKey, useProfile, useUpdateProfile, useUploadAvatar } from './use-profile'
 
 jest.mock('@/lib/supabase')
 jest.mock('../api/profile.api')
@@ -70,5 +70,22 @@ describe('useUpdateProfile', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(setQueryData).toHaveBeenCalledWith(profileQueryKey, updated)
+  })
+})
+
+describe('useUploadAvatar', () => {
+  it('seeds the profile cache and refreshes trip-backed views on success', async () => {
+    const updated = { ...profile, avatar_url: 'https://cdn.example.com/avatars/u1/avatar?v=1' }
+    jest.mocked(api.uploadAvatar).mockResolvedValue(updated)
+    const { wrapper, queryClient } = createQueryWrapper()
+    const setQueryData = jest.spyOn(queryClient, 'setQueryData')
+    const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useUploadAvatar(), { wrapper })
+    result.current.mutate({ imageBase64: 'YmFzZTY0', contentType: 'image/jpeg' })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(setQueryData).toHaveBeenCalledWith(profileQueryKey, updated)
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['trips'] })
   })
 })

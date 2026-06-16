@@ -4,6 +4,7 @@ import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock
 import {
   joinTripByCode,
   leaveTrip,
+  listTripMemberNames,
   listTripMembers,
   regenerateInviteCode,
   removeTripMember,
@@ -20,7 +21,7 @@ const rawMember = {
   user_id: 'u1',
   role: 'member' as const,
   status: 'active' as const,
-  profiles: { display_name: 'Alice' },
+  profiles: { display_name: 'Alice', avatar_url: 'https://cdn.example.com/avatars/u1/avatar?v=1' },
 }
 
 const mappedMember = {
@@ -29,6 +30,7 @@ const mappedMember = {
   role: 'member' as const,
   status: 'active' as const,
   display_name: 'Alice',
+  avatar_url: 'https://cdn.example.com/avatars/u1/avatar?v=1',
 }
 
 beforeEach(() => {
@@ -47,19 +49,47 @@ describe('listTripMembers', () => {
     expect(builder.order).toHaveBeenCalledWith('joined_at', { ascending: true })
   })
 
-  it('maps null profiles.display_name to null', async () => {
-    const memberWithNullProfile = { ...rawMember, profiles: { display_name: null } }
+  it('maps null profiles fields to null', async () => {
+    const memberWithNullProfile = {
+      ...rawMember,
+      profiles: { display_name: null, avatar_url: null },
+    }
     const builder = makeQueryBuilder({ data: [memberWithNullProfile], error: null })
     from.mockReturnValue(builder)
 
     const result = await listTripMembers('t1')
     expect(result[0].display_name).toBeNull()
+    expect(result[0].avatar_url).toBeNull()
   })
 
   it('throws when the query errors', async () => {
     from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('list fail') }))
 
     await expect(listTripMembers('t1')).rejects.toThrow('list fail')
+  })
+})
+
+describe('listTripMemberNames', () => {
+  it('calls the trip_member_names RPC and maps the rows (incl. null names for removed/anon)', async () => {
+    rpc.mockResolvedValue({
+      data: [
+        { id: 'm1', user_id: 'u1', display_name: 'Alice' },
+        { id: 'm2', user_id: 'u2', display_name: null },
+      ],
+      error: null,
+    })
+
+    await expect(listTripMemberNames('t1')).resolves.toEqual([
+      { id: 'm1', user_id: 'u1', display_name: 'Alice' },
+      { id: 'm2', user_id: 'u2', display_name: null },
+    ])
+    expect(rpc).toHaveBeenCalledWith('trip_member_names', { _trip_id: 't1' })
+  })
+
+  it('throws when the RPC errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('names fail') })
+
+    await expect(listTripMemberNames('t1')).rejects.toThrow('names fail')
   })
 })
 

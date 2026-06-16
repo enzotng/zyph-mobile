@@ -1,6 +1,15 @@
 import { supabase } from '@/lib/supabase'
 import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
-import { createTrip, deleteTrip, fetchTripCover, getTrip, listTrips, updateTrip } from './trips.api'
+import {
+  createTrip,
+  deleteTrip,
+  fetchTripCover,
+  getTrip,
+  listTrips,
+  resetTripCover,
+  updateTrip,
+  uploadTripCover,
+} from './trips.api'
 
 jest.mock('@/lib/supabase')
 
@@ -353,6 +362,66 @@ describe('updateTrip', () => {
         longitude: null,
       }),
     ).rejects.toThrow('update fail')
+  })
+})
+
+describe('uploadTripCover', () => {
+  it('uploads via the edge function and returns the updated trip', async () => {
+    const updated = { ...trip, cover_photo_url: 'https://covers/t1.jpg' }
+    invoke.mockResolvedValue({ data: { trip: updated }, error: null })
+
+    await expect(uploadTripCover('t1', 'YmFzZTY0', 'image/jpeg')).resolves.toEqual(updated)
+    expect(invoke).toHaveBeenCalledWith('upload-trip-cover', {
+      body: { tripId: 't1', imageBase64: 'YmFzZTY0', contentType: 'image/jpeg' },
+    })
+  })
+
+  it('throws when the function errors', async () => {
+    invoke.mockResolvedValue({ data: null, error: new Error('fn down') })
+
+    await expect(uploadTripCover('t1', 'YmFzZTY0', 'image/jpeg')).rejects.toThrow('fn down')
+  })
+
+  it('throws when the function returns no trip', async () => {
+    invoke.mockResolvedValue({ data: {}, error: null })
+
+    await expect(uploadTripCover('t1', 'YmFzZTY0', 'image/jpeg')).rejects.toThrow('no trip')
+  })
+})
+
+describe('resetTripCover', () => {
+  it('clears the cover then re-fetches the automatic one', async () => {
+    const cleared = { ...trip, destination: 'PT', cover_photo_url: null }
+    const recovered = { ...cleared, cover_photo_url: 'https://img/auto.jpg' }
+    const clearBuilder = makeQueryBuilder({ data: cleared, error: null })
+    const updateBuilder = makeQueryBuilder({ data: recovered, error: null })
+    from.mockReturnValueOnce(clearBuilder).mockReturnValueOnce(updateBuilder)
+    invoke.mockResolvedValue({
+      data: { url: 'https://img/auto.jpg', author: null, authorUrl: null },
+      error: null,
+    })
+
+    await expect(resetTripCover('t1')).resolves.toEqual(recovered)
+    expect(clearBuilder.update).toHaveBeenCalledWith({
+      cover_photo_url: null,
+      cover_photo_author: null,
+      cover_photo_author_url: null,
+    })
+  })
+
+  it('keeps the cover cleared when the trip has no destination', async () => {
+    const cleared = { ...trip, destination: null, cover_photo_url: null }
+    from.mockReturnValue(makeQueryBuilder({ data: cleared, error: null }))
+
+    await expect(resetTripCover('t1')).resolves.toEqual(cleared)
+    // No destination -> withCover skips the auto-fetch, so the cover function is never called.
+    expect(invoke).not.toHaveBeenCalled()
+  })
+
+  it('throws when clearing the cover errors', async () => {
+    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('reset fail') }))
+
+    await expect(resetTripCover('t1')).rejects.toThrow('reset fail')
   })
 })
 

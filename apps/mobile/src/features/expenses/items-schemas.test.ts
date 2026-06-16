@@ -187,6 +187,21 @@ describe('computeMemberTotalsCents', () => {
     expect(totals.get(m1)! + totals.get(m2)!).toBe(1000)
   })
 
+  it('keeps a 3-way equal split summing to the item total (largest remainder)', () => {
+    const m3 = '00000000-0000-0000-0000-000000000003'
+    const items = [{ amountCents: 1000 }]
+    const assignments: SmartSplitAssignment[] = [
+      { position: 0, memberId: m1, share: 1 / 3 },
+      { position: 0, memberId: m2, share: 1 / 3 },
+      { position: 0, memberId: m3, share: 1 / 3 },
+    ]
+    const totals = computeMemberTotalsCents(items, assignments)
+    expect((totals.get(m1) ?? 0) + (totals.get(m2) ?? 0) + (totals.get(m3) ?? 0)).toBe(1000)
+    for (const value of totals.values()) {
+      expect([333, 334]).toContain(value)
+    }
+  })
+
   it('skips assignments whose position has no matching item', () => {
     const items = [{ amountCents: 1000 }]
     const assignments: SmartSplitAssignment[] = [

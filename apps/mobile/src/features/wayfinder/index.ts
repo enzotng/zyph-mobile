@@ -16,8 +16,9 @@ export {
   updatePoi,
   upsertMemberLocation,
 } from './api/wayfinder.api'
-export { ArArrow } from './components/ar-arrow'
+export { ARRIVAL_RADIUS_M, ArArrow } from './components/ar-arrow'
 export { ArOverlay } from './components/ar-overlay'
+export { ArPath } from './components/ar-path'
 export type { ShareLocationStatus } from './hooks/use-share-location'
 export { useShareLocation } from './hooks/use-share-location'
 export {

@@ -1,12 +1,15 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
+
 import { supabase } from '@/lib/supabase'
 import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
 
-import { getProfile, updateProfile } from './profile.api'
+import { getProfile, updateProfile, uploadAvatar } from './profile.api'
 
 jest.mock('@/lib/supabase')
 
 const from = supabase.from as jest.Mock
 const getSession = supabase.auth.getSession as jest.Mock
+const invoke = supabase.functions.invoke as jest.Mock
 
 const profile = {
   id: 'u1',
@@ -78,5 +81,38 @@ describe('updateProfile', () => {
     from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('rls denied') }))
 
     await expect(updateProfile(input)).rejects.toThrow('rls denied')
+  })
+})
+
+describe('uploadAvatar', () => {
+  it('invokes the upload-avatar function and returns the updated profile', async () => {
+    const updated = { ...profile, avatar_url: 'https://cdn.example.com/avatars/u1/avatar?v=1' }
+    invoke.mockResolvedValue({ data: { profile: updated }, error: null })
+
+    await expect(uploadAvatar('YmFzZTY0', 'image/jpeg')).resolves.toEqual(updated)
+    expect(invoke).toHaveBeenCalledWith('upload-avatar', {
+      body: { imageBase64: 'YmFzZTY0', contentType: 'image/jpeg' },
+    })
+  })
+
+  it('surfaces the function error body on a non-2xx response', async () => {
+    const httpError = new FunctionsHttpError({
+      json: async () => ({ error: 'Unsupported image type' }),
+    } as unknown as Response)
+    invoke.mockResolvedValue({ data: null, error: httpError })
+
+    await expect(uploadAvatar('YmFzZTY0', 'image/jpeg')).rejects.toThrow('Unsupported image type')
+  })
+
+  it('passes through a non-HTTP error', async () => {
+    invoke.mockResolvedValue({ data: null, error: new Error('network down') })
+
+    await expect(uploadAvatar('YmFzZTY0', 'image/jpeg')).rejects.toThrow('network down')
+  })
+
+  it('throws when the function returns no profile', async () => {
+    invoke.mockResolvedValue({ data: null, error: null })
+
+    await expect(uploadAvatar('YmFzZTY0', 'image/jpeg')).rejects.toThrow('no profile')
   })
 })

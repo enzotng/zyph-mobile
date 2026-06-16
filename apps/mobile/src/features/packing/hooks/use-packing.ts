@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { balancesQueryKey, expensesQueryKey } from '@/features/expenses/hooks/use-expenses'
+import {
+  balancesQueryKey,
+  expenseSharesQueryKey,
+  expensesQueryKey,
+} from '@/features/expenses/hooks/use-expenses'
 
 import {
   addPackingItem,
@@ -91,6 +95,10 @@ export function useExpensePackingItem(tripId: string) {
       void queryClient.invalidateQueries({ queryKey: packingQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
+      // The new split is also one of "my shares" in the feed - refresh it like the expense mutations.
+      void queryClient.invalidateQueries({ queryKey: expenseSharesQueryKey(tripId) })
+      // And the trips-list card balance (get_my_trip_balances), keyed exactly ['trips'].
+      void queryClient.invalidateQueries({ queryKey: ['trips'], exact: true })
     },
   })
 }

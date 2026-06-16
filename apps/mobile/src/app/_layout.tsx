@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { useFonts } from 'expo-font'
-import { Stack, useRouter, useSegments } from 'expo-router'
+import { Stack, useGlobalSearchParams, useRouter, useSegments } from 'expo-router'
 import { useEffect } from 'react'
 import { View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
@@ -10,21 +10,51 @@ import { ErrorBoundary } from '@/components/error-boundary'
 import { OfflineBanner } from '@/components/offline-banner'
 import { Spinner } from '@/components/ui'
 import { AuthProvider, useAuth } from '@/features/auth'
+import { usePushNotificationResponder } from '@/features/notifications'
 import '@/lib/i18n'
 import '@/lib/online-manager'
-import { hasSeenOnboarding } from '@/lib/preferences'
+import {
+  clearPendingInvite,
+  getPendingInvite,
+  hasSeenOnboarding,
+  setPendingInvite,
+} from '@/lib/preferences'
 import { queryClient } from '@/lib/query-client'
 import { mmkvQueryPersister } from '@/lib/query-persister'
+import { paramString } from '@/lib/routing'
 
 function useProtectedRoute(session: Session | null, isLoading: boolean, recovering: boolean) {
   const segments = useSegments()
   const router = useRouter()
+  const params = useGlobalSearchParams<{ code?: string }>()
 
   useEffect(() => {
     if (isLoading) {
       return
     }
-    const inOnboarding = segments[0] === 'onboarding'
+    const seg0 = segments[0] as string
+    // An invite arrives as a deep link (zyph://trips/join?code=...). A signed-out or first-time
+    // invitee is about to be bounced to onboarding/sign-in, which discards the link's ?code= -
+    // so stash it now and route to the join screen once they are authenticated.
+    const onJoin = seg0 === 'trips' && (segments as string[])[1] === 'join'
+    const inviteCode = paramString(params.code)
+    if (onJoin && !session && inviteCode) {
+      setPendingInvite(inviteCode)
+    }
+
+    // Where a freshly-authenticated user should land: a pending invite -> the join screen (which
+    // auto-joins from the code), otherwise home.
+    const redirectAuthed = () => {
+      const pending = getPendingInvite()
+      if (pending) {
+        clearPendingInvite()
+        router.replace({ pathname: '/trips/join', params: { code: pending } })
+      } else {
+        router.replace('/')
+      }
+    }
+
+    const inOnboarding = seg0 === 'onboarding'
     if (!hasSeenOnboarding()) {
       if (!inOnboarding) {
         router.replace('/onboarding')
@@ -44,17 +74,19 @@ function useProtectedRoute(session: Session | null, isLoading: boolean, recoveri
     }
     // `auth` is the deep-link callback route (zyph://auth/callback); treat it like the auth
     // group so an unauthenticated error-callback isn't bounced before it can show its message.
-    // Cast keeps the comparison robust whatever the generated typed-routes union looks like.
-    const seg0 = segments[0] as string
     const inAuthGroup = seg0 === '(auth)' || seg0 === 'auth'
     if (inOnboarding) {
-      router.replace(session ? '/' : '/(auth)/sign-in')
+      if (session) {
+        redirectAuthed()
+      } else {
+        router.replace('/(auth)/sign-in')
+      }
     } else if (!session && !inAuthGroup) {
       router.replace('/(auth)/sign-in')
     } else if (session && inAuthGroup) {
-      router.replace('/')
+      redirectAuthed()
     }
-  }, [session, isLoading, recovering, segments, router])
+  }, [session, isLoading, recovering, segments, router, params.code])
 }
 
 // Vendored brand fonts (.ttf in assets/fonts). Keys must match theme.fonts.* in unistyles.ts.
@@ -73,6 +105,8 @@ function RootNavigator() {
   const { session, isLoading, recovering } = useAuth()
   const [fontsLoaded] = useFonts(BRAND_FONTS)
   useProtectedRoute(session, isLoading, recovering)
+  // Deep-link a tapped lock-screen push once the user is signed in.
+  usePushNotificationResponder(Boolean(session))
 
   if (isLoading || !fontsLoaded) {
     return (

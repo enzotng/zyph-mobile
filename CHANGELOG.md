@@ -2,6 +2,73 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.3.1](https://github.com/enzotng/zyph-mobile/compare/v1.3.0...v1.3.1) (2026-06-16)
+
+
+### Features
+
+* **api:** rate-limit the paid-API edge functions ([#152](https://github.com/enzotng/zyph-mobile/issues/152)) ([8f3cec1](https://github.com/enzotng/zyph-mobile/commit/8f3cec129e2aebec9b5729e2b1c65062097f5661))
+* **api:** trip cover from Google Places with Unsplash fallback ([#191](https://github.com/enzotng/zyph-mobile/issues/191)) ([8c74c10](https://github.com/enzotng/zyph-mobile/commit/8c74c1059f2a7636aee748357b7a1833778fd422))
+* **auth:** add in-app change password ([#153](https://github.com/enzotng/zyph-mobile/issues/153)) ([685dc25](https://github.com/enzotng/zyph-mobile/commit/685dc2545c221f79398cc121509cf17ec9dbdabd))
+* **auth:** add native Sign in with Apple ([#157](https://github.com/enzotng/zyph-mobile/issues/157)) ([a4abb04](https://github.com/enzotng/zyph-mobile/commit/a4abb0404fa8b47b76e55df58a69773daff147fa))
+* **copilot:** richer context, persistent history, inline widgets ([#156](https://github.com/enzotng/zyph-mobile/issues/156)) ([520d5a5](https://github.com/enzotng/zyph-mobile/commit/520d5a590e2933ad672788d96a730d57245debd7))
+* **expenses:** add "Paid by" selector for shared expenses ([#166](https://github.com/enzotng/zyph-mobile/issues/166)) ([63b14e4](https://github.com/enzotng/zyph-mobile/commit/63b14e453a8f6dae0afbd0e79b37d29822d50e14))
+* **expenses:** add manual per-item split entry ([#174](https://github.com/enzotng/zyph-mobile/issues/174)) ([6e6ee17](https://github.com/enzotng/zyph-mobile/commit/6e6ee1726d8073addf4e548fbc1d6253ecfb6910))
+* **expenses:** add split modes (equal/shares/exact/percent) + remainder banner ([#167](https://github.com/enzotng/zyph-mobile/issues/167)) ([1a198b5](https://github.com/enzotng/zyph-mobile/commit/1a198b54070edf17945436d8d425137630126629))
+* **expenses:** atomic Smart Split create via single RPC ([#171](https://github.com/enzotng/zyph-mobile/issues/171)) ([367e57c](https://github.com/enzotng/zyph-mobile/commit/367e57cda56700932922f901848a2266479eb4b0))
+* **expenses:** export trip expenses to CSV ([#188](https://github.com/enzotng/zyph-mobile/issues/188)) ([ee66a95](https://github.com/enzotng/zyph-mobile/commit/ee66a952635df7df1f5294d4b049608db33e936b))
+* **expenses:** flatten add/edit expense to a dense Tricount-style form ([#185](https://github.com/enzotng/zyph-mobile/issues/185)) ([36ba31d](https://github.com/enzotng/zyph-mobile/commit/36ba31d6eb1592d99a100dffd86f506d1dc9e163))
+* **expenses:** multi-payer backend (expense_payers + balances) ([#175](https://github.com/enzotng/zyph-mobile/issues/175)) ([77d4394](https://github.com/enzotng/zyph-mobile/commit/77d43941e09a9a21818ac202e81b16fa3c85afaa))
+* **expenses:** multi-payer UI (paid by one or several) ([#176](https://github.com/enzotng/zyph-mobile/issues/176)) ([9572aee](https://github.com/enzotng/zyph-mobile/commit/9572aee857162079fe6b18e3d2e281431dae32e8))
+* **expenses:** paid-by and category as compact 2-column selects ([#186](https://github.com/enzotng/zyph-mobile/issues/186)) ([8c7a689](https://github.com/enzotng/zyph-mobile/commit/8c7a6893f21278835faf52741be7a8cdd9d31cf1))
+* **expenses:** redesign payer & split controls (vertical rows + sheet) ([#177](https://github.com/enzotng/zyph-mobile/issues/177)) ([d1f1ea4](https://github.com/enzotng/zyph-mobile/commit/d1f1ea407d280d91d2047b529aeaa7bf2a10faa2))
+* **expenses:** restructure add/edit expense into sections ([#178](https://github.com/enzotng/zyph-mobile/issues/178)) ([8298441](https://github.com/enzotng/zyph-mobile/commit/8298441105e3fa94ab20ccc9abdef163698a0e96))
+* **expenses:** show frozen fx rate on foreign expense detail ([#172](https://github.com/enzotng/zyph-mobile/issues/172)) ([b82be93](https://github.com/enzotng/zyph-mobile/commit/b82be938e4f393145a16d8e02511d47b0133ac04))
+* **expenses:** Smart Split bulk-assign and tinted member avatars ([#182](https://github.com/enzotng/zyph-mobile/issues/182)) ([bf1b74d](https://github.com/enzotng/zyph-mobile/commit/bf1b74d89128efa198bdb65ee7f3df24725e13cf))
+* **group:** invite deep link with auto-join and enriched share ([#187](https://github.com/enzotng/zyph-mobile/issues/187)) ([1792f55](https://github.com/enzotng/zyph-mobile/commit/1792f55209053322ff6ed1dd6ea6d821f274b46e))
+* **i18n:** localize group dialogs, share-location copy and labels ([#148](https://github.com/enzotng/zyph-mobile/issues/148)) ([2158d81](https://github.com/enzotng/zyph-mobile/commit/2158d81bdd0836b2bf48bafeceb53e036ebe83e6))
+* **map:** redesign trip map with app-bar, layers sheet and action cluster ([#162](https://github.com/enzotng/zyph-mobile/issues/162)) ([34c0638](https://github.com/enzotng/zyph-mobile/commit/34c06388b95bcd7eed8026faffb89075c2a5e458))
+* **notifications:** add real push notifications via Expo and pg_net ([#144](https://github.com/enzotng/zyph-mobile/issues/144)) ([0aeeda3](https://github.com/enzotng/zyph-mobile/commit/0aeeda3d23bd2e85c4130f00d659ad5368b4b8bf))
+* **notifications:** localize push copy and deep-link on tap ([#146](https://github.com/enzotng/zyph-mobile/issues/146)) ([253ccaf](https://github.com/enzotng/zyph-mobile/commit/253ccaf36d23f6b64866aa42c159042858410081))
+* **profile:** add avatar upload and co-member avatars ([#149](https://github.com/enzotng/zyph-mobile/issues/149)) ([b4bf80f](https://github.com/enzotng/zyph-mobile/commit/b4bf80f90400613c8bb5f21e1c050b657e2d2e0c))
+* **profile:** add RGPD account deletion ([#155](https://github.com/enzotng/zyph-mobile/issues/155)) ([5444a70](https://github.com/enzotng/zyph-mobile/commit/5444a7076fc85f38c736d6d3afe0ead19105a227))
+* **profile:** in-app legal link + buildNumber bump ([#159](https://github.com/enzotng/zyph-mobile/issues/159)) ([242f518](https://github.com/enzotng/zyph-mobile/commit/242f518eccbfff27bfac3dfab7af496a13ff58a4))
+* **settings:** add language switcher with native per-app locale ([#147](https://github.com/enzotng/zyph-mobile/issues/147)) ([d488841](https://github.com/enzotng/zyph-mobile/commit/d4888418ab36be737806a89e2ab9e721caeec2d1))
+* **smart-import:** confidence meter and editable fields before import ([#189](https://github.com/enzotng/zyph-mobile/issues/189)) ([276eed5](https://github.com/enzotng/zyph-mobile/commit/276eed55ff4d9bd3a8bd92debcad40f844f62662))
+* **timeline:** open event documents in an in-app browser sheet ([#151](https://github.com/enzotng/zyph-mobile/issues/151)) ([c695bc5](https://github.com/enzotng/zyph-mobile/commit/c695bc5730fbf38ea46f1d00b0ec90728b4922d2))
+* **trips:** dedicated balances & settle-up screen with pairwise breakdown ([#169](https://github.com/enzotng/zyph-mobile/issues/169)) ([dfc6a32](https://github.com/enzotng/zyph-mobile/commit/dfc6a323de6ccbef2a04e7b697d8dcecad238c8a))
+* **trips:** let the owner upload a custom trip cover ([#192](https://github.com/enzotng/zyph-mobile/issues/192)) ([3daf946](https://github.com/enzotng/zyph-mobile/commit/3daf9462d788cc0b00710eb2776e9eb1bd2b0118))
+* **trips:** resolve removed-member names in balances & splits ([#170](https://github.com/enzotng/zyph-mobile/issues/170)) ([db35106](https://github.com/enzotng/zyph-mobile/commit/db3510686cf9bc0b081934a5f4972134d66ba959))
+* **trips:** share settle-up plan and settle all my debts ([#173](https://github.com/enzotng/zyph-mobile/issues/173)) ([f738709](https://github.com/enzotng/zyph-mobile/commit/f738709d9718fe984d6fdb8f75f9110e241a0cee))
+* **trips:** show your share per expense in the feed ([#180](https://github.com/enzotng/zyph-mobile/issues/180)) ([d9141d3](https://github.com/enzotng/zyph-mobile/commit/d9141d3cae3ed777ed37338183bac05ab26d01ff))
+* **trips:** trip-level documents hub ([#161](https://github.com/enzotng/zyph-mobile/issues/161)) ([e729552](https://github.com/enzotng/zyph-mobile/commit/e72955242e8cf56d2bbe829f535eb546b9e6b200))
+* **trips:** your-position hero on balances + dedup transfers ([#181](https://github.com/enzotng/zyph-mobile/issues/181)) ([a2882ba](https://github.com/enzotng/zyph-mobile/commit/a2882ba6b0ca884d7bf7a91ff462cc42d82954a8))
+* **ui:** add a create/join trip entry point to the dashboard ([#204](https://github.com/enzotng/zyph-mobile/issues/204)) ([9c9f86e](https://github.com/enzotng/zyph-mobile/commit/9c9f86eadd77e6ec500dfc03ea6460f4def72f90))
+* **ui:** add haptic feedback to selection controls ([#199](https://github.com/enzotng/zyph-mobile/issues/199)) ([b145e00](https://github.com/enzotng/zyph-mobile/commit/b145e00c48695fc3ad6b386cd3de06cdb032683d))
+* **ui:** adopt real ZYPH logo and indigo brand assets ([#163](https://github.com/enzotng/zyph-mobile/issues/163)) ([67e9d7c](https://github.com/enzotng/zyph-mobile/commit/67e9d7ce63b39981cede974c60c4c1e99007df93))
+* **ui:** currency picker with flag + localized name ([#168](https://github.com/enzotng/zyph-mobile/issues/168)) ([42ad1f2](https://github.com/enzotng/zyph-mobile/commit/42ad1f22347981c254261baf20f3b9635717fbb3))
+* **wayfinder:** haptic wayfinding feedback in AR ([#190](https://github.com/enzotng/zyph-mobile/issues/190)) ([f8dc34e](https://github.com/enzotng/zyph-mobile/commit/f8dc34e45aed2531f118eb41c7ef5afe76b42cb6))
+* **wayfinder:** premium AR overlay - Skia arrow, POI cards, path ([#160](https://github.com/enzotng/zyph-mobile/issues/160)) ([f16b6f2](https://github.com/enzotng/zyph-mobile/commit/f16b6f202805160ebc1fba052309e9ef73c61a5f))
+
+
+### Bug Fixes
+
+* **a11y:** add missing accessibility labels and hit targets ([#195](https://github.com/enzotng/zyph-mobile/issues/195)) ([6a62f8d](https://github.com/enzotng/zyph-mobile/commit/6a62f8d48ce4bfc058bdb0362a84bf8957997b52))
+* **api:** pin trip_events creator and rate-limit upload functions ([#194](https://github.com/enzotng/zyph-mobile/issues/194)) ([ebdb9a4](https://github.com/enzotng/zyph-mobile/commit/ebdb9a4669b9c1c670a12dadd177f4daebdb0659))
+* **api:** use largest-remainder split on itemised expense edit ([#202](https://github.com/enzotng/zyph-mobile/issues/202)) ([81da0a2](https://github.com/enzotng/zyph-mobile/commit/81da0a29ed674d9c12427982714d60ffa9bd7d51))
+* **app:** resolve confirmed bugs from the adversarial audit ([#193](https://github.com/enzotng/zyph-mobile/issues/193)) ([f2f2410](https://github.com/enzotng/zyph-mobile/commit/f2f24108df4ca1eb49aea6197ddef9868bc996bf))
+* **auth:** normalize display name at signup ([#184](https://github.com/enzotng/zyph-mobile/issues/184)) ([4081291](https://github.com/enzotng/zyph-mobile/commit/4081291c07386e774bca27991031e26445021650))
+* **auth:** preserve invite deep-link across sign-in for new users ([#203](https://github.com/enzotng/zyph-mobile/issues/203)) ([28e148a](https://github.com/enzotng/zyph-mobile/commit/28e148a692a126264fcdd74276a83e8f6b3b595b))
+* **expenses:** collapse duplicate update_expense_with_splits overload ([#164](https://github.com/enzotng/zyph-mobile/issues/164)) ([db4f07e](https://github.com/enzotng/zyph-mobile/commit/db4f07e2ff080c014ac85ac7892f6fab5b2c1261))
+* **expenses:** preserve custom splits on edit, extract useSplitEditor ([#165](https://github.com/enzotng/zyph-mobile/issues/165)) ([fd73d61](https://github.com/enzotng/zyph-mobile/commit/fd73d61cba738206ea0441b07f130e57a39b9c09))
+* **profile:** upload avatar via edge function (ES256 storage RLS) ([#150](https://github.com/enzotng/zyph-mobile/issues/150)) ([43977c9](https://github.com/enzotng/zyph-mobile/commit/43977c929530e989b9af673701c5f6db127b54d8))
+* **ui:** audit quick-wins for cache, forms, i18n and lifecycle ([#200](https://github.com/enzotng/zyph-mobile/issues/200)) ([63ac099](https://github.com/enzotng/zyph-mobile/commit/63ac0995fd6657f7ae918029045f22b776e3f505))
+* **ui:** audit robustness - sensor leaks, offline sign-out, copilot state ([#201](https://github.com/enzotng/zyph-mobile/issues/201)) ([da4c74e](https://github.com/enzotng/zyph-mobile/commit/da4c74e3f357c2b3ab8fc9bdec86a0aab88569ae))
+* **ui:** consistent error states and pull-to-refresh on trip lists ([#198](https://github.com/enzotng/zyph-mobile/issues/198)) ([3e114dc](https://github.com/enzotng/zyph-mobile/commit/3e114dc8fcb712160ce6be5133bb32dd6518929b))
+* **ui:** guard layouts against long names and counts ([#197](https://github.com/enzotng/zyph-mobile/issues/197)) ([893aec2](https://github.com/enzotng/zyph-mobile/commit/893aec2850e263b3ee25698e144aa065c507694a))
+* **ui:** make notifications mark-all-read a single icon button ([#183](https://github.com/enzotng/zyph-mobile/issues/183)) ([b78b463](https://github.com/enzotng/zyph-mobile/commit/b78b463c48955c53315b08c7aca179ef201c3c04))
+* **ui:** unify the create/join CTA treatment across states ([#205](https://github.com/enzotng/zyph-mobile/issues/205)) ([63a5c7d](https://github.com/enzotng/zyph-mobile/commit/63a5c7dced803e7f98bcb780b4e84162a9494921))
+
 ## [1.3.0](https://github.com/enzotng/zyph-mobile/compare/v1.2.1...v1.3.0) (2026-06-09)
 
 

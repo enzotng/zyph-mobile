@@ -21,6 +21,7 @@ const member = {
   role: 'member' as const,
   status: 'active' as const,
   display_name: 'Alice',
+  avatar_url: null,
 }
 
 beforeEach(() => {

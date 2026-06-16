@@ -437,3 +437,48 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/generate-packing/deno.json"
 entrypoint = "./functions/generate-packing/index.ts"
+
+[functions.upload-avatar]
+enabled = true
+# Authenticated-only: resolves the caller from their JWT and writes their avatar with the service
+# role (Storage rejects ES256 user tokens under RLS, so a direct client upload fails). Requires a
+# redeploy to take effect on cloud.
+verify_jwt = true
+import_map = "./functions/upload-avatar/deno.json"
+entrypoint = "./functions/upload-avatar/index.ts"
+
+[functions.upload-trip-cover]
+enabled = true
+# Authenticated-only: resolves the caller from their JWT, checks they OWN the trip, and writes the
+# trip cover with the service role (Storage rejects ES256 user tokens under RLS). Requires a
+# redeploy to take effect on cloud.
+verify_jwt = true
+import_map = "./functions/upload-trip-cover/deno.json"
+entrypoint = "./functions/upload-trip-cover/index.ts"
+
+[functions.delete-account]
+enabled = true
+# Authenticated-only: resolves the caller from their JWT and runs the account-deletion teardown
+# with the service role (block owned shared trips, delete solo trips, soft-remove guest
+# memberships, anonymise the profile, then disable or erase the auth user). Requires a redeploy to
+# take effect on cloud.
+verify_jwt = true
+import_map = "./functions/delete-account/deno.json"
+entrypoint = "./functions/delete-account/index.ts"
+
+[functions.send-push]
+enabled = true
+# Invoked by the notifications AFTER INSERT trigger via pg_net, NOT by the app, so there is no
+# user JWT. Authorisation is the shared secret in the x-push-secret header (checked against the
+# PUSH_HOOK_SECRET function secret). Requires a redeploy to take effect on cloud.
+verify_jwt = false
+import_map = "./functions/send-push/deno.json"
+entrypoint = "./functions/send-push/index.ts"
+
+[functions.trip-cover]
+enabled = true
+# Authenticated-only (verify_jwt on by default). Rate-limited per user so a signed-in caller
+# cannot burn the Unsplash quota. import_map declared so the rate-limit client resolves.
+verify_jwt = true
+import_map = "./functions/trip-cover/deno.json"
+entrypoint = "./functions/trip-cover/index.ts"

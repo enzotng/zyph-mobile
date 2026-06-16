@@ -3,6 +3,7 @@
 import { getLocales } from 'expo-localization'
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
+import { AppState, type AppStateStatus } from 'react-native'
 
 import {
   getLanguagePreference,
@@ -24,7 +25,7 @@ const resources = {
 
 // Resolve the active language: an explicit preference wins, otherwise follow
 // the device locale, falling back to English for any unsupported locale.
-function resolveLanguage(preference: LanguagePreference): AppLanguage {
+export function resolveLanguage(preference: LanguagePreference): AppLanguage {
   if (preference !== 'system') {
     return preference
   }
@@ -48,5 +49,20 @@ export function setAppLanguage(preference: LanguagePreference): void {
   setLanguagePreference(preference)
   void i18n.changeLanguage(resolveLanguage(preference))
 }
+
+// Re-resolves the active language when the app returns to the foreground while on "system", so a
+// per-app language changed in the OS settings (Settings > app > Language) applies without a cold
+// start. Exported for direct unit testing; registered as the AppState handler below.
+export function syncSystemLanguageOnForeground(state: AppStateStatus): void {
+  if (state !== 'active' || getLanguagePreference() !== 'system') {
+    return
+  }
+  const next = resolveLanguage('system')
+  if (i18n.language !== next) {
+    void i18n.changeLanguage(next)
+  }
+}
+
+AppState.addEventListener('change', syncSystemLanguageOnForeground)
 
 export default i18n

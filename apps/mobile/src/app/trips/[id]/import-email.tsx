@@ -3,14 +3,16 @@ import * as Clipboard from 'expo-clipboard'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { Alert, Pressable, Text, TextInput, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { DateField } from '@/components/date-field'
 import { Screen } from '@/components/screen'
 import { Spinner } from '@/components/ui'
-import { type ParsedEmailEvent, useParseEmail } from '@/features/smart-import'
+import { confidenceLevel, type ParsedEmailEvent, useParseEmail } from '@/features/smart-import'
 import { eventTypeIcon, useCreateEvent } from '@/features/timeline'
+import { withAlpha } from '@/lib/color'
 import { paramString } from '@/lib/routing'
 
 export default function ImportEmailScreen() {
@@ -25,6 +27,10 @@ export default function ImportEmailScreen() {
   const [text, setText] = useState('')
   const [parsed, setParsed] = useState<ParsedEmailEvent | null>(null)
   const [editedTitle, setEditedTitle] = useState('')
+  // Editable copies of the parsed fields so the user can correct a low-confidence parse before
+  // adding it to the timeline.
+  const [editedStartsAt, setEditedStartsAt] = useState<Date>(() => new Date())
+  const [editedNotes, setEditedNotes] = useState('')
   const [clipboardHint, setClipboardHint] = useState<string | null>(null)
   // Snapshot the clipboard once on mount so the banner does not re-appear after
   // the user dismisses or uses it.
@@ -67,6 +73,8 @@ export default function ImportEmailScreen() {
       const result = await parseEmail.mutateAsync(text)
       setParsed(result.event)
       setEditedTitle(result.event.title ?? t('smartImport.defaultTitle'))
+      setEditedStartsAt(result.event.startsAt ? new Date(result.event.startsAt) : new Date())
+      setEditedNotes(result.event.notes ?? '')
     } catch (error) {
       Alert.alert(
         t('smartImport.parseErrorTitle'),
@@ -79,9 +87,15 @@ export default function ImportEmailScreen() {
     if (!parsed) {
       return
     }
-    const title = editedTitle.trim() || parsed.title || t('smartImport.defaultTitle')
-    const startsAt = parsed.startsAt ?? new Date().toISOString()
-    const endsAt = parsed.endsAt ?? undefined
+    // Cap to the same limits the manual add-event form enforces (title 120, notes 500).
+    const title = (editedTitle.trim() || parsed.title || t('smartImport.defaultTitle')).slice(
+      0,
+      120,
+    )
+    const startsAt = editedStartsAt.toISOString()
+    // Drop a parsed end date that now precedes the (possibly edited) start.
+    const endsAt =
+      parsed.endsAt && new Date(parsed.endsAt) > editedStartsAt ? parsed.endsAt : undefined
     try {
       await createEvent.mutateAsync({
         tripId,
@@ -89,7 +103,7 @@ export default function ImportEmailScreen() {
         type: parsed.type,
         startsAt,
         endsAt,
-        notes: parsed.notes ?? '',
+        notes: editedNotes.slice(0, 500),
         lat: parsed.location?.lat ?? undefined,
         lng: parsed.location?.lng ?? undefined,
         gateLocation:
@@ -113,6 +127,13 @@ export default function ImportEmailScreen() {
   }
 
   const confidencePct = parsed ? Math.round(parsed.confidence * 100) : 0
+  const level = parsed ? confidenceLevel(parsed.confidence) : 'low'
+  const confidenceColor =
+    level === 'high'
+      ? theme.colors.success
+      : level === 'medium'
+        ? theme.colors.primary
+        : theme.colors.destructive
 
   return (
     <Screen title={t('smartImport.title')} showBack scroll>
@@ -162,12 +183,27 @@ export default function ImportEmailScreen() {
           <View style={styles.previewHead}>
             <Ionicons name={eventTypeIcon(parsed.type)} size={22} color={theme.colors.primary} />
             <Text style={styles.previewType}>{t(`smartImport.types.${parsed.type}`)}</Text>
-            <View style={styles.confidencePill}>
-              <Text style={styles.confidenceText}>
-                {t('smartImport.confidence', { pct: confidencePct })}
-              </Text>
-            </View>
+            <Text style={[styles.confidenceText, { color: confidenceColor }]}>
+              {t('smartImport.confidence', { pct: confidencePct })}
+            </Text>
           </View>
+
+          <View style={styles.meterTrack}>
+            <View
+              style={[
+                styles.meterFill,
+                { flex: parsed.confidence, backgroundColor: confidenceColor },
+              ]}
+            />
+            <View style={{ flex: 1 - parsed.confidence }} />
+          </View>
+
+          {level === 'low' ? (
+            <View style={styles.reviewBanner}>
+              <Ionicons name="alert-circle-outline" size={16} color={theme.colors.destructive} />
+              <Text style={styles.reviewText}>{t('smartImport.reviewHint')}</Text>
+            </View>
+          ) : null}
 
           <TextInput
             style={styles.titleInput}
@@ -177,11 +213,13 @@ export default function ImportEmailScreen() {
             placeholderTextColor={theme.colors.muted}
           />
 
-          {parsed.startsAt ? (
-            <PreviewRow icon="calendar-outline" label={formatDateTime(parsed.startsAt)} />
-          ) : (
-            <PreviewRow icon="calendar-outline" label={t('smartImport.noDate')} muted />
-          )}
+          <View style={styles.dateField}>
+            <DateField
+              label={t('smartImport.dateLabel')}
+              value={editedStartsAt}
+              onChange={setEditedStartsAt}
+            />
+          </View>
           {parsed.endsAt ? (
             <PreviewRow
               icon="time-outline"
@@ -200,11 +238,15 @@ export default function ImportEmailScreen() {
               label={`${(parsed.priceCents / 100).toFixed(2)} ${parsed.currency}`}
             />
           ) : null}
-          {parsed.notes ? (
-            <ScrollView style={styles.notesWrap}>
-              <Text style={styles.notes}>{parsed.notes}</Text>
-            </ScrollView>
-          ) : null}
+          <TextInput
+            style={styles.notesInput}
+            value={editedNotes}
+            onChangeText={setEditedNotes}
+            placeholder={t('smartImport.notesPlaceholder')}
+            placeholderTextColor={theme.colors.muted}
+            multiline
+            textAlignVertical="top"
+          />
 
           <Button
             label={createEvent.isPending ? t('smartImport.adding') : t('smartImport.addToTrip')}
@@ -368,19 +410,38 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     letterSpacing: 0.5,
   },
-  confidencePill: {
-    paddingHorizontal: theme.gap(2),
-    paddingVertical: theme.gap(1),
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.colors.background,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
   confidenceText: {
     fontFamily: theme.fonts.sans.semibold,
     fontSize: theme.fontSize.sm,
-    color: theme.colors.muted,
     fontWeight: '600',
+  },
+  meterTrack: {
+    flexDirection: 'row',
+    height: 6,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.border,
+    overflow: 'hidden',
+  },
+  meterFill: {
+    height: 6,
+  },
+  reviewBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(1.5),
+    paddingHorizontal: theme.gap(2.5),
+    paddingVertical: theme.gap(2),
+    borderRadius: theme.radius.md,
+    backgroundColor: withAlpha(theme.colors.destructive, 0.1),
+  },
+  reviewText: {
+    flex: 1,
+    fontFamily: theme.fonts.sans.medium,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.destructive,
+  },
+  dateField: {
+    marginTop: theme.gap(1),
   },
   titleInput: {
     fontFamily: theme.fonts.display.bold,
@@ -404,14 +465,17 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.foreground,
     fontSize: theme.fontSize.md,
   },
-  notesWrap: {
-    maxHeight: theme.gap(30),
+  notesInput: {
+    minHeight: theme.gap(16),
     marginTop: theme.gap(2),
-  },
-  notes: {
+    padding: theme.gap(3),
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
     fontFamily: theme.fonts.sans.regular,
-    color: theme.colors.muted,
-    fontSize: theme.fontSize.sm,
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.md,
   },
   discardBtn: {
     alignSelf: 'center',

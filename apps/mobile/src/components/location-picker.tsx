@@ -1,6 +1,7 @@
 import * as Location from 'expo-location'
 import { AppleMaps } from 'expo-maps'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Alert, Platform, Pressable, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
@@ -16,6 +17,7 @@ type LocationPickerProps = {
 
 // Apple Maps is iOS-only here; an Android map needs a Google Maps key (later).
 export function LocationPicker({ label, value, onChange }: LocationPickerProps) {
+  const { t } = useTranslation()
   const [locating, setLocating] = useState(false)
 
   async function requestCurrentLocation() {
@@ -23,13 +25,13 @@ export function LocationPicker({ label, value, onChange }: LocationPickerProps) 
     try {
       const { status } = await Location.requestForegroundPermissionsAsync()
       if (status !== 'granted') {
-        Alert.alert('Location off', 'Allow location access to use your current position.')
+        Alert.alert(t('locationPicker.permissionTitle'), t('locationPicker.permissionBody'))
         return
       }
       const position = await Location.getCurrentPositionAsync({})
       onChange({ lat: position.coords.latitude, lng: position.coords.longitude })
     } catch {
-      Alert.alert('Location error', 'Could not get your current position.')
+      Alert.alert(t('locationPicker.errorTitle'), t('locationPicker.errorBody'))
     } finally {
       setLocating(false)
     }
@@ -53,7 +55,12 @@ export function LocationPicker({ label, value, onChange }: LocationPickerProps) 
           }
           markers={
             value
-              ? [{ coordinates: { latitude: value.lat, longitude: value.lng }, title: 'Event' }]
+              ? [
+                  {
+                    coordinates: { latitude: value.lat, longitude: value.lng },
+                    title: t('locationPicker.pinTitle'),
+                  },
+                ]
               : []
           }
           onMapClick={(event) => {
@@ -66,14 +73,18 @@ export function LocationPicker({ label, value, onChange }: LocationPickerProps) 
       </View>
       <View style={styles.row}>
         <Text style={styles.hint}>
-          {value ? 'Tap the map to adjust the pin.' : 'Tap the map to drop a pin.'}
+          {value ? t('locationPicker.adjustHint') : t('locationPicker.dropHint')}
         </Text>
         <Pressable
           onPress={() => void requestCurrentLocation()}
           disabled={locating}
           accessibilityRole="button"
         >
-          {locating ? <ActivityIndicator /> : <Text style={styles.link}>Use my location</Text>}
+          {locating ? (
+            <ActivityIndicator />
+          ) : (
+            <Text style={styles.link}>{t('locationPicker.useMyLocation')}</Text>
+          )}
         </Pressable>
       </View>
     </View>

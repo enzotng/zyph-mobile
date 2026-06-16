@@ -3,6 +3,7 @@ import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -25,15 +26,23 @@ import { Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   buildTripContext,
-  type CopilotAction,
+  type ChatMessage,
   type CopilotMessage,
+  CopilotWidget,
+  classifyCopilotError,
+  clearCopilotHistory,
+  loadCopilotHistory,
+  saveCopilotHistory,
   useAskCopilot,
   useExecuteCopilotAction,
 } from '@/features/copilot'
 import { useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
+import { usePackingItems } from '@/features/packing'
+import { useSettlements } from '@/features/settlements'
 import { useEvents } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
+import { useTripWeather } from '@/features/weather'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
@@ -44,14 +53,15 @@ const SUGGESTIONS = ['owe', 'next', 'topPayer', 'airport'] as const
 // Header height below the safe-area top inset, for the keyboard avoiding offset.
 const HEADER_HEIGHT = 54
 
-type ChatMessage = {
-  id: string
-  role: 'user' | 'assistant'
-  text: string
-  error?: boolean
-  // When present, this assistant turn is a proposed action awaiting confirmation.
-  action?: CopilotAction
-  actionState?: 'pending' | 'executing' | 'done' | 'cancelled'
+// The edge function rejects a payload with more turns than this, so the sent history is trimmed
+// to the most recent ones (the last turn is always the new user question).
+const MAX_SENT_MESSAGES = 30
+
+// Next collision-free id derived from the current list (ids are `m<n>`). Computed from the list
+// rather than a seeded ref counter, so a restored conversation can never produce a duplicate id.
+function nextMessageId(list: ChatMessage[]): string {
+  const max = list.reduce((acc, message) => Math.max(acc, Number(message.id.slice(1)) || 0), 0)
+  return `m${max + 1}`
 }
 
 // Zo's mark: a sparkles glyph in a primary circle.
@@ -90,41 +100,61 @@ export default function CopilotScreen() {
   const expenses = useExpenses(tripId)
   const balances = useTripBalances(tripId)
   const members = useTripMembers(tripId)
+  // Enrichment data: included in the context when ready, but never gates sending (weather can be
+  // slow or absent), so Zo stays answerable as soon as the core trip data resolves.
+  const packing = usePackingItems(tripId)
+  const settlements = useSettlements(tripId)
+  const weather = useTripWeather(trip.data)
   const ask = useAskCopilot()
   const execute = useExecuteCopilotAction(tripId)
   const { session } = useAuth()
   const myUserId = session?.user.id ?? ''
 
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  // Restore the persisted conversation once (lazy initialiser, runs on mount only).
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadCopilotHistory(tripId))
   const [draft, setDraft] = useState('')
-  const idCounter = useRef(0)
   const scrollRef = useRef<ScrollView>(null)
   // Ids whose action is being executed, tracked synchronously so a double-tap cannot fire the
   // mutation twice before the 'executing' state has re-rendered (a stale-closure double-write).
   const inFlight = useRef<Set<string>>(new Set())
 
+  // Persist the conversation per trip so it survives leaving the screen or restarting the app.
+  useEffect(() => {
+    saveCopilotHistory(tripId, messages)
+  }, [tripId, messages])
+
   const dataReady = Boolean(
     trip.data && events.data && expenses.data && balances.data && members.data,
   )
+  // If any core query fails the chat can never become usable, so surface a retry instead of
+  // leaving the suggestions silently disabled forever.
+  const coreError =
+    trip.isError || events.isError || expenses.isError || balances.isError || members.isError
+  function retryCore() {
+    void trip.refetch()
+    void events.refetch()
+    void expenses.refetch()
+    void balances.refetch()
+    void members.refetch()
+  }
 
-  function send(question: string) {
-    const q = question.trim()
-    if (!q || ask.isPending) {
-      return
-    }
+  // Sends a conversation whose last turn is the user's question to the copilot. Used by both a
+  // fresh send and a retry (which re-sends the failed question without duplicating the bubble).
+  function runAsk(convo: ChatMessage[]) {
     if (!trip.data || !events.data || !expenses.data || !balances.data || !members.data) {
       return
     }
-
     // History drops error bubbles and any action card that is not yet done (pending, executing,
     // cancelled), so the model never echoes a proposal as a turn but stays aware of what it did.
-    const history: CopilotMessage[] = messages
+    const history: CopilotMessage[] = convo
       .filter((message) => !message.error && !(message.action && message.actionState !== 'done'))
       .map((message) => ({ role: message.role, content: message.text }))
-
-    idCounter.current += 1
-    setMessages((prev) => [...prev, { id: `m${idCounter.current}`, role: 'user', text: q }])
-    setDraft('')
+    if (history.length === 0) {
+      return
+    }
+    // Trim to the edge function's cap, keeping the most recent turns (the last is the question).
+    const sendable = history.slice(-MAX_SENT_MESSAGES)
+    const retryText = sendable[sendable.length - 1].content
 
     const context = buildTripContext({
       trip: trip.data,
@@ -132,42 +162,96 @@ export default function CopilotScreen() {
       events: events.data,
       expenses: expenses.data,
       balances: balances.data,
+      packing: packing.data ?? [],
+      settlements: settlements.data ?? [],
+      weather: weather.data ?? null,
     })
     const language = i18n.language === 'fr' ? 'fr' : 'en'
 
     ask.mutate(
-      { context, language, messages: [...history, { role: 'user', content: q }] },
+      { context, language, messages: sendable },
       {
         onSuccess: (res) => {
-          idCounter.current += 1
-          const id = `m${idCounter.current}`
-          setMessages((prev) => [
-            ...prev,
-            res.action
-              ? {
-                  id,
-                  role: 'assistant',
-                  text: res.action.text,
-                  action: res.action,
-                  actionState: 'pending',
-                }
-              : { id, role: 'assistant', text: res.answer ?? '' },
-          ])
+          setMessages((prev) => {
+            const id = nextMessageId(prev)
+            return [
+              ...prev,
+              res.action
+                ? {
+                    id,
+                    role: 'assistant',
+                    text: res.action.text,
+                    action: res.action,
+                    actionState: 'pending',
+                  }
+                : { id, role: 'assistant', text: res.answer ?? '', widget: res.widget },
+            ]
+          })
         },
-        onError: () => {
-          idCounter.current += 1
+        onError: (error) => {
+          const kind = classifyCopilotError(error)
+          const text =
+            kind === 'rateLimited'
+              ? t('copilot.rateLimited')
+              : kind === 'offline'
+                ? t('copilot.offline')
+                : t('copilot.error')
           setMessages((prev) => [
             ...prev,
-            {
-              id: `m${idCounter.current}`,
-              role: 'assistant',
-              text: t('copilot.error'),
-              error: true,
-            },
+            { id: nextMessageId(prev), role: 'assistant', text, error: true, retryText },
           ])
         },
       },
     )
+  }
+
+  function send(question: string) {
+    const q = question.trim()
+    if (!q || ask.isPending || !dataReady) {
+      return
+    }
+    const convo: ChatMessage[] = [
+      ...messages,
+      { id: nextMessageId(messages), role: 'user', text: q },
+    ]
+    setMessages(convo)
+    setDraft('')
+    runAsk(convo)
+  }
+
+  // Re-sends the question behind an error bubble: drop the bubble (and anything after it) and ask
+  // again, so a transient rate-limit/offline blip is one tap to recover from.
+  function retry(message: ChatMessage) {
+    if (ask.isPending || !dataReady) {
+      return
+    }
+    const index = messages.findIndex((m) => m.id === message.id)
+    if (index < 0) {
+      return
+    }
+    const convo = messages.slice(0, index)
+    if (convo.length === 0 || convo[convo.length - 1].role !== 'user') {
+      return
+    }
+    setMessages(convo)
+    runAsk(convo)
+  }
+
+  function clearChat() {
+    if (messages.length === 0) {
+      return
+    }
+    Alert.alert(t('copilot.clearTitle'), t('copilot.clearBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: () => {
+          setMessages([])
+          clearCopilotHistory(tripId)
+        },
+      },
+    ])
   }
 
   function setActionState(id: string, actionState: ChatMessage['actionState']) {
@@ -202,11 +286,10 @@ export default function CopilotScreen() {
         onError: () => {
           inFlight.current.delete(message.id)
           setActionState(message.id, 'pending')
-          idCounter.current += 1
           setMessages((prev) => [
             ...prev,
             {
-              id: `m${idCounter.current}`,
+              id: nextMessageId(prev),
               role: 'assistant',
               text: t('copilot.actionError'),
               error: true,
@@ -237,6 +320,17 @@ export default function CopilotScreen() {
             <Text style={styles.headerTitle}>{t('copilot.title')}</Text>
             <Text style={styles.headerSubtitle}>{t('copilot.subtitle')}</Text>
           </View>
+          {messages.length > 0 ? (
+            <Pressable
+              onPress={clearChat}
+              accessibilityRole="button"
+              accessibilityLabel={t('copilot.clear')}
+              hitSlop={8}
+              style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
+            >
+              <Ionicons name="trash-outline" size={20} color={theme.colors.muted} />
+            </Pressable>
+          ) : null}
         </View>
 
         <KeyboardAvoidingView
@@ -255,85 +349,121 @@ export default function CopilotScreen() {
             {messages.length === 0 ? (
               <View style={styles.empty}>
                 <ZoAvatar size={64} />
-                <Text style={styles.emptyText}>{t('copilot.empty')}</Text>
-                <View style={styles.suggestions}>
-                  {SUGGESTIONS.map((key) => {
-                    const label = t(`copilot.suggestions.${key}`)
-                    return (
-                      <Pressable
-                        key={key}
-                        onPress={() => send(label)}
-                        disabled={!dataReady}
-                        accessibilityRole="button"
-                        style={({ pressed }) => (pressed ? styles.pressed : undefined)}
-                      >
-                        <Surface
-                          radius={theme.radius.full}
-                          color={theme.colors.card}
-                          borderColor={theme.colors.border}
-                          borderWidth={1}
-                          style={styles.suggestion}
-                        >
-                          <Text style={styles.suggestionText}>{label}</Text>
-                        </Surface>
-                      </Pressable>
-                    )
-                  })}
-                </View>
+                {coreError && !dataReady ? (
+                  <>
+                    <Text style={styles.emptyText}>{t('errors.body')}</Text>
+                    <Button
+                      label={t('common.retry')}
+                      icon="refresh"
+                      variant="secondary"
+                      block={false}
+                      onPress={retryCore}
+                    />
+                  </>
+                ) : !dataReady ? (
+                  <>
+                    <Spinner />
+                    <Text style={styles.emptyText}>{t('common.loading')}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.emptyText}>{t('copilot.empty')}</Text>
+                    <View style={styles.suggestions}>
+                      {SUGGESTIONS.map((key) => {
+                        const label = t(`copilot.suggestions.${key}`)
+                        return (
+                          <Pressable
+                            key={key}
+                            onPress={() => send(label)}
+                            accessibilityRole="button"
+                            style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+                          >
+                            <Surface
+                              radius={theme.radius.full}
+                              color={theme.colors.card}
+                              borderColor={theme.colors.border}
+                              borderWidth={1}
+                              style={styles.suggestion}
+                            >
+                              <Text style={styles.suggestionText}>{label}</Text>
+                            </Surface>
+                          </Pressable>
+                        )
+                      })}
+                    </View>
+                  </>
+                )}
               </View>
             ) : (
               messages.map((message) => {
                 const isUser = message.role === 'user'
                 return (
-                  <View
-                    key={message.id}
-                    style={[
-                      styles.bubbleRow,
-                      isUser ? styles.bubbleRowUser : styles.bubbleRowAssistant,
-                    ]}
-                  >
-                    {isUser ? null : <ZoAvatar size={26} />}
-                    <Surface
-                      radius={theme.radius.lg}
-                      color={isUser ? theme.colors.primary : theme.colors.card}
-                      borderColor={isUser ? theme.colors.primary : theme.colors.border}
-                      borderWidth={1}
-                      style={styles.bubble}
+                  <View key={message.id}>
+                    <View
+                      style={[
+                        styles.bubbleRow,
+                        isUser ? styles.bubbleRowUser : styles.bubbleRowAssistant,
+                      ]}
                     >
-                      <Text style={isUser ? styles.bubbleTextUser : styles.bubbleText}>
-                        {message.text}
-                      </Text>
-                      {message.action ? (
-                        message.actionState === 'pending' ? (
-                          <View style={styles.actionButtons}>
-                            <Button
-                              label={t('copilot.confirm')}
-                              size="sm"
-                              block={false}
-                              disabled={execute.isPending}
-                              onPress={() => confirmAction(message)}
-                            />
-                            <Button
-                              label={t('common.cancel')}
-                              variant="ghost"
-                              size="sm"
-                              block={false}
-                              onPress={() => setActionState(message.id, 'cancelled')}
-                            />
-                          </View>
-                        ) : message.actionState === 'executing' ? (
-                          <View style={styles.actionStatusRow}>
-                            <Spinner label={t('copilot.actionRunning')} />
-                          </View>
-                        ) : (
-                          <Text style={styles.actionStatus}>
-                            {message.actionState === 'done'
-                              ? `✓ ${t('copilot.actionDone')}`
-                              : t('copilot.actionCancelled')}
-                          </Text>
-                        )
-                      ) : null}
-                    </Surface>
+                      {isUser ? null : <ZoAvatar size={26} />}
+                      <Surface
+                        radius={theme.radius.lg}
+                        color={isUser ? theme.colors.primary : theme.colors.card}
+                        borderColor={isUser ? theme.colors.primary : theme.colors.border}
+                        borderWidth={1}
+                        style={styles.bubble}
+                      >
+                        <Text style={isUser ? styles.bubbleTextUser : styles.bubbleText}>
+                          {message.text}
+                        </Text>
+                        {message.action ? (
+                          message.actionState === 'pending' ? (
+                            <View style={styles.actionButtons}>
+                              <Button
+                                label={t('copilot.confirm')}
+                                size="sm"
+                                block={false}
+                                disabled={execute.isPending}
+                                onPress={() => confirmAction(message)}
+                              />
+                              <Button
+                                label={t('common.cancel')}
+                                variant="ghost"
+                                size="sm"
+                                block={false}
+                                onPress={() => setActionState(message.id, 'cancelled')}
+                              />
+                            </View>
+                          ) : message.actionState === 'executing' ? (
+                            <View style={styles.actionStatusRow}>
+                              <Spinner label={t('copilot.actionRunning')} />
+                            </View>
+                          ) : (
+                            <Text style={styles.actionStatus}>
+                              {message.actionState === 'done'
+                                ? `✓ ${t('copilot.actionDone')}`
+                                : t('copilot.actionCancelled')}
+                            </Text>
+                          )
+                        ) : null}
+                        {message.error && message.retryText ? (
+                          <Pressable
+                            onPress={() => retry(message)}
+                            disabled={ask.isPending}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('copilot.retry')}
+                            style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+                          >
+                            <Text style={styles.retryText}>{t('copilot.retry')}</Text>
+                          </Pressable>
+                        ) : null}
+                      </Surface>
+                    </View>
+                    {message.widget ? (
+                      <View style={styles.widgetRow}>
+                        <CopilotWidget type={message.widget} tripId={tripId} />
+                      </View>
+                    ) : null}
                   </View>
                 )
               })
@@ -419,6 +549,10 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   headerText: {
     flexShrink: 1,
+  },
+  headerAction: {
+    marginLeft: 'auto',
+    padding: theme.gap(1),
   },
   headerTitle: {
     fontFamily: theme.fonts.display.bold,
@@ -509,6 +643,18 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   actionStatusRow: {
     marginTop: theme.gap(2),
+  },
+  retryText: {
+    marginTop: theme.gap(2),
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
+  },
+  // Aligns the widget card under the assistant bubble (clears the 26px avatar + its row gap).
+  widgetRow: {
+    marginTop: theme.gap(2),
+    marginLeft: 26 + theme.gap(2),
   },
   composer: {
     paddingHorizontal: theme.gap(4),

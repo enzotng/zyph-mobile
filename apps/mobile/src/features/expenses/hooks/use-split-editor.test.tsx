@@ -1,0 +1,200 @@
+import { act, renderHook } from '@testing-library/react-native'
+
+import { useSplitEditor } from './use-split-editor'
+
+const members = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
+
+describe('useSplitEditor - add mode', () => {
+  it('includes everyone equally by default', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 1200 }))
+    expect(result.current.includedCount).toBe(3)
+    expect(result.current.splitsFor(1200)).toEqual([
+      { memberId: 'a', shareCents: 400 },
+      { memberId: 'b', shareCents: 400 },
+      { memberId: 'c', shareCents: 400 },
+    ])
+  })
+
+  it('excludes a member on toggle and re-splits among the rest', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 1200 }))
+    act(() => result.current.toggle('c'))
+    expect(result.current.isIncluded('c')).toBe(false)
+    expect(result.current.includedCount).toBe(2)
+    expect(result.current.splitsFor(1200)).toEqual([
+      { memberId: 'a', shareCents: 600 },
+      { memberId: 'b', shareCents: 600 },
+    ])
+  })
+
+  it('weights an included member in shares mode', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 900 }))
+    act(() => result.current.setMode('shares'))
+    act(() => result.current.toggle('c'))
+    act(() => result.current.setWeight('a', 2))
+    expect(result.current.weightFor('a')).toBe(2)
+    expect(result.current.splitsFor(900)).toEqual([
+      { memberId: 'a', shareCents: 600 },
+      { memberId: 'b', shareCents: 300 },
+    ])
+  })
+
+  it('clamps weight to a minimum of 1', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 900 }))
+    act(() => result.current.setWeight('a', 0))
+    expect(result.current.weightFor('a')).toBe(1)
+  })
+
+  it('returns an empty preview until the base amount resolves', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: null }))
+    expect(result.current.shareByMember.size).toBe(0)
+  })
+
+  it('clears then selects all members', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 1200 }))
+    act(() => result.current.clearAll())
+    expect(result.current.includedCount).toBe(0)
+    act(() => result.current.toggle('a'))
+    expect(result.current.includedCount).toBe(1)
+    act(() => result.current.selectAll())
+    expect(result.current.includedCount).toBe(3)
+  })
+
+  it('preserves weights through a clear/select-all round trip in shares mode', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 1200 }))
+    act(() => result.current.setMode('shares'))
+    act(() => result.current.setWeight('a', 3))
+    act(() => result.current.clearAll())
+    act(() => result.current.selectAll())
+    expect(result.current.weightFor('a')).toBe(3)
+  })
+})
+
+describe('useSplitEditor - edit mode', () => {
+  const initialSplits = [
+    { member_id: 'a', share_cents: 500 },
+    { member_id: 'b', share_cents: 300 },
+    { member_id: 'c', share_cents: 400 },
+  ]
+
+  it('preserves an untouched custom split verbatim when the amount is unchanged', () => {
+    // The re-equalise bug: re-saving without touching the split must keep 500/300/400.
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 1200, initialSplits }))
+    expect(result.current.splitsFor(1200)).toEqual([
+      { memberId: 'a', shareCents: 500 },
+      { memberId: 'b', shareCents: 300 },
+      { memberId: 'c', shareCents: 400 },
+    ])
+  })
+
+  it('rescales an untouched split by ratio when the amount changes', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 2400, initialSplits }))
+    expect(result.current.splitsFor(2400)).toEqual([
+      { memberId: 'a', shareCents: 1000 },
+      { memberId: 'b', shareCents: 600 },
+      { memberId: 'c', shareCents: 800 },
+    ])
+  })
+
+  it('switches to an equal weight split once the structure is touched', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 1200, initialSplits }))
+    act(() => result.current.toggle('c'))
+    expect(result.current.splitsFor(1200)).toEqual([
+      { memberId: 'a', shareCents: 600 },
+      { memberId: 'b', shareCents: 600 },
+    ])
+  })
+
+  it('excludes members that were not in the original split by default', () => {
+    const withNewcomer = [...members, { id: 'd' }]
+    const { result } = renderHook(() =>
+      useSplitEditor({ members: withNewcomer, baseCents: 1200, initialSplits }),
+    )
+    expect(result.current.isIncluded('d')).toBe(false)
+    expect(result.current.includedCount).toBe(3)
+  })
+
+  it('drops a removed member from a preserved split and rescales among the active ones', () => {
+    // `c` was in the original split but is no longer an active trip member; the update RPC would
+    // reject it, so it must not be submitted - the share is reprojected onto the active members.
+    const activeMembers = [{ id: 'a' }, { id: 'b' }]
+    const { result } = renderHook(() =>
+      useSplitEditor({ members: activeMembers, baseCents: 1200, initialSplits }),
+    )
+    const out = result.current.splitsFor(1200)
+    expect(out.find((s) => s.memberId === 'c')).toBeUndefined()
+    expect(out.reduce((n, s) => n + s.shareCents, 0)).toBe(1200)
+  })
+
+  it('keeps the preserved split after a no-op weight round-trip', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 1200, initialSplits }))
+    act(() => result.current.setWeight('a', 2))
+    act(() => result.current.setWeight('a', 1))
+    expect(result.current.splitsFor(1200)).toEqual([
+      { memberId: 'a', shareCents: 500 },
+      { memberId: 'b', shareCents: 300 },
+      { memberId: 'c', shareCents: 400 },
+    ])
+  })
+
+  it('falls through to an equal split when the original shares were all zero', () => {
+    const zeroSplits = [
+      { member_id: 'a', share_cents: 0 },
+      { member_id: 'b', share_cents: 0 },
+    ]
+    const { result } = renderHook(() =>
+      useSplitEditor({
+        members: [{ id: 'a' }, { id: 'b' }],
+        baseCents: 1000,
+        initialSplits: zeroSplits,
+      }),
+    )
+    expect(result.current.splitsFor(1000)).toEqual([
+      { memberId: 'a', shareCents: 500 },
+      { memberId: 'b', shareCents: 500 },
+    ])
+  })
+})
+
+describe('useSplitEditor - split modes', () => {
+  it('equal mode ignores any stored weight', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 900 }))
+    act(() => result.current.setWeight('a', 5))
+    expect(result.current.mode).toBe('equal')
+    expect(result.current.splitsFor(900)).toEqual([
+      { memberId: 'a', shareCents: 300 },
+      { memberId: 'b', shareCents: 300 },
+      { memberId: 'c', shareCents: 300 },
+    ])
+    expect(result.current.canSubmit).toBe(true)
+  })
+
+  it('exact mode uses entered amounts and gates submit until balanced', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 4500 }))
+    act(() => result.current.setMode('exact'))
+    act(() => result.current.setExactValue('a', '15'))
+    act(() => result.current.setExactValue('b', '15'))
+    act(() => result.current.setExactValue('c', '10'))
+    expect(result.current.remainderCents).toBe(500)
+    expect(result.current.canSubmit).toBe(false)
+    act(() => result.current.setExactValue('c', '15'))
+    expect(result.current.isBalanced).toBe(true)
+    expect(result.current.canSubmit).toBe(true)
+    expect(result.current.splitsFor(4500)).toEqual([
+      { memberId: 'a', shareCents: 1500 },
+      { memberId: 'b', shareCents: 1500 },
+      { memberId: 'c', shareCents: 1500 },
+    ])
+  })
+
+  it('percent mode always sums to the base and balances only at 100%', () => {
+    const { result } = renderHook(() => useSplitEditor({ members, baseCents: 10000 }))
+    act(() => result.current.setMode('percent'))
+    act(() => result.current.setPercentValue('a', '50'))
+    act(() => result.current.setPercentValue('b', '25'))
+    act(() => result.current.setPercentValue('c', '20'))
+    expect(result.current.isBalanced).toBe(false)
+    act(() => result.current.setPercentValue('c', '25'))
+    expect(result.current.isBalanced).toBe(true)
+    expect(result.current.splitsFor(10000).reduce((s, x) => s + x.shareCents, 0)).toBe(10000)
+  })
+})

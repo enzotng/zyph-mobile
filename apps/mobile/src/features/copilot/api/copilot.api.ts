@@ -24,3 +24,20 @@ export async function askCopilot(input: AskCopilotInput): Promise<CopilotRespons
   // Validate at the boundary: the function returns an answer OR a proposed action.
   return copilotResponseSchema.parse(data)
 }
+
+export type CopilotErrorKind = 'rateLimited' | 'offline' | 'generic'
+
+// Maps a thrown askCopilot error to a user-facing category so the chat shows a specific message
+// (and Retry) instead of one catch-all. Duck-typed on the supabase-js error shape so it stays
+// testable without constructing a Response: FunctionsHttpError carries the HTTP status on
+// `context`; FunctionsFetchError means the request never reached the server (offline).
+export function classifyCopilotError(error: unknown): CopilotErrorKind {
+  const candidate = error as { name?: unknown; context?: { status?: unknown } } | null
+  if (candidate?.name === 'FunctionsHttpError') {
+    return candidate.context?.status === 429 ? 'rateLimited' : 'generic'
+  }
+  if (candidate?.name === 'FunctionsFetchError') {
+    return 'offline'
+  }
+  return 'generic'
+}

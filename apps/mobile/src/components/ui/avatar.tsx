@@ -121,7 +121,7 @@ export function AvatarStack({ members, size = 30, max = 4 }: AvatarStackProps) {
           ]}
         >
           <Text style={[styles.overflowText, { fontSize: Math.round(size * 0.38) }]}>
-            {`+${overflow}`}
+            {overflow > 99 ? '+99' : `+${overflow}`}
           </Text>
         </View>
       ) : null}

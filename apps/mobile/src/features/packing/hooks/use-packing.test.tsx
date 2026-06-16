@@ -233,5 +233,6 @@ describe('useExpensePackingItem', () => {
     expect(api.expensePackingItem).toHaveBeenCalledWith('p1', 4500, ['m1', 'm2'])
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips', 't1', 'expenses'] })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips', 't1', 'balances'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips', 't1', 'expense-shares'] })
   })
 })

@@ -10,7 +10,8 @@ const SIGNED_URL_TTL = 3600
 
 export type UploadDocumentInput = {
   tripId: string
-  eventId: string
+  // null = a trip-level document not attached to any event (the documents hub).
+  eventId: string | null
   uri: string
   name: string
   mimeType: string
@@ -68,6 +69,20 @@ export async function listEventDocuments(eventId: string): Promise<TripDocument[
     .from('media')
     .select('*')
     .eq('event_id', eventId)
+    .order('created_at', { ascending: false })
+  if (error) {
+    throw error
+  }
+  return data
+}
+
+// Every document of a trip (event-attached and trip-level), newest first - powers the hub.
+export async function listTripDocuments(tripId: string): Promise<TripDocument[]> {
+  const { data, error } = await supabase
+    .from('media')
+    .select('*')
+    .eq('trip_id', tripId)
+    .eq('kind', 'document')
     .order('created_at', { ascending: false })
   if (error) {
     throw error

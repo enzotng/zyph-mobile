@@ -60,6 +60,11 @@ export function MemberChip({
   const resolvedSize = Math.max(44, size)
   const displayInitial = initial ? initial.toUpperCase() : initialOf(name)
 
+  const handlePress = () => {
+    haptics.selection()
+    onPress?.()
+  }
+
   return (
     <Pressable
       style={({ pressed }) => [
@@ -68,7 +73,7 @@ export function MemberChip({
         selected ? styles.memberChipSelected : styles.memberChipUnselected,
         pressed && styles.pressed,
       ]}
-      onPress={onPress}
+      onPress={handlePress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={name}

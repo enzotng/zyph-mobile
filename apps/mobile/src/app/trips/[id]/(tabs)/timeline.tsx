@@ -10,7 +10,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { Screen } from '@/components/screen'
-import { Badge, Card, EmptyState, Skeleton } from '@/components/ui'
+import { Badge, Card, EmptyState, ErrorState, Skeleton } from '@/components/ui'
 import {
   type EventStatus,
   eventStatus,
@@ -49,7 +49,7 @@ export default function TimelineScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const { data: trip } = useTrip(tripId)
-  const { data: events, isLoading, isError } = useEvents(tripId)
+  const { data: events, isLoading, isError, refetch, isRefetching } = useEvents(tripId)
   const { theme } = useUnistyles()
   const router = useRouter()
   const items = useMemo(() => groupEventsByDay(events ?? []), [events])
@@ -173,10 +173,12 @@ export default function TimelineScreen() {
       {isLoading ? (
         <TimelineSkeleton />
       ) : isError ? (
-        <EmptyState
+        <ErrorState
           icon="cloud-offline-outline"
           title={t('timeline.errorTitle')}
           body={t('timeline.errorBody')}
+          retryLabel={t('common.retry')}
+          onRetry={() => void refetch()}
         />
       ) : items.length === 0 ? (
         <EmptyState
@@ -195,6 +197,8 @@ export default function TimelineScreen() {
             contentContainerStyle={styles.list}
             renderItem={renderItem}
             showsVerticalScrollIndicator={false}
+            refreshing={isRefetching}
+            onRefresh={() => void refetch()}
           />
         </Animated.View>
       )}

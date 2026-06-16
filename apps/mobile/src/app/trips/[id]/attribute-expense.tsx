@@ -8,7 +8,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { BottomSheet, Spinner, Surface } from '@/components/ui'
+import { Avatar, BottomSheet, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   amountToCents,
@@ -16,7 +16,6 @@ import {
   buildEqualAssignments,
   computeMemberTotalsCents,
   type DraftItem,
-  deleteExpense,
   draftFromItems,
   draftsToItems,
   draftTotalCents,
@@ -26,15 +25,17 @@ import {
   type ParsedItem,
   reindexAssignmentsAfterRemoval,
   type SmartSplitItem,
-  useCreateExpense,
+  useCreateExpenseWithItems,
   useExpense,
   useExpenseItemAssignments,
   useExpenseItems,
   useUpsertExpenseWithItems,
 } from '@/features/expenses'
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
-import { useTripMembers } from '@/features/group'
+import { memberLabel, useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
+import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
 const MAX_INLINE_CHIPS = 4
@@ -44,6 +45,9 @@ type AttributionMode = 'create' | 'edit'
 type EditorProps = {
   tripId: string
   mode: AttributionMode
+  // Manual entry (no OCR scan): the user builds the line items by hand, so there is no scanned
+  // total to reconcile against - the items sum is the expense total.
+  isManual: boolean
   expenseId: string | null
   items: SmartSplitItem[]
   totalCents: number
@@ -67,10 +71,12 @@ export default function AttributeExpenseScreen() {
     currency?: string
     description?: string
     expenseId?: string
+    manual?: string
   }>()
   const tripId = paramString(params.id)
   const expenseId = paramString(params.expenseId)
   const isEdit = expenseId.length > 0
+  const isManual = paramString(params.manual) === '1'
 
   const parsedItems = useMemo<ParsedItem[]>(() => {
     try {
@@ -113,6 +119,7 @@ export default function AttributeExpenseScreen() {
         key={expenseId}
         tripId={tripId}
         mode="edit"
+        isManual={false}
         expenseId={expenseId}
         items={normalizedRows.map((row) => ({
           label: row.label,
@@ -132,6 +139,7 @@ export default function AttributeExpenseScreen() {
       key="create"
       tripId={tripId}
       mode="create"
+      isManual={isManual}
       expenseId={null}
       items={parsedItems.map((item, position) => ({
         label: item.label,
@@ -149,6 +157,7 @@ export default function AttributeExpenseScreen() {
 function AttributionEditor({
   tripId,
   mode,
+  isManual,
   expenseId,
   items,
   totalCents,
@@ -164,7 +173,7 @@ function AttributionEditor({
   const { data: trip } = useTrip(tripId)
   const { data: members } = useTripMembers(tripId)
   const { data: fx } = useFxRates()
-  const createExpense = useCreateExpense(tripId)
+  const createWithItems = useCreateExpenseWithItems(tripId)
   const upsertWithItems = useUpsertExpenseWithItems(tripId)
 
   // assignmentsByPosition[i] = set of member ids assigned to item i. Seeded from
@@ -183,10 +192,16 @@ function AttributionEditor({
   // sum of these lines, so an OCR receipt whose lines do not match the printed total is
   // always saveable once the user has corrected or added lines. `id` is a stable React key
   // (position stays the assignment key); a counter mints ids for added lines.
-  const nextDraftId = useRef(items.length)
-  const [drafts, setDrafts] = useState<(DraftItem & { id: string })[]>(() =>
-    draftFromItems(items).map((draft, index) => ({ ...draft, id: `d${index}` })),
-  )
+  // Manual entry starts with a single blank line so the user has something to fill; the seed uses
+  // id `d0`, so the id counter must start at 1 to avoid colliding with the next added line.
+  const nextDraftId = useRef(items.length === 0 && isManual ? 1 : items.length)
+  const [drafts, setDrafts] = useState<(DraftItem & { id: string })[]>(() => {
+    const seeded = draftFromItems(items).map((draft, index) => ({ ...draft, id: `d${index}` }))
+    if (seeded.length === 0 && isManual) {
+      return [{ id: 'd0', label: '', amount: '' }]
+    }
+    return seeded
+  })
   const [sheetOpenForPosition, setSheetOpenForPosition] = useState<number | null>(null)
 
   const editedItems = useMemo(() => draftsToItems(drafts), [drafts])
@@ -219,6 +234,7 @@ function AttributionEditor({
   }, [drafts.length, assignmentsByPosition])
 
   const toggleAssignment = useCallback((position: number, memberId: string) => {
+    haptics.selection()
     setAssignmentsByPosition((prev) => {
       const set = new Set(prev[position] ?? new Set<string>())
       if (set.has(memberId)) {
@@ -229,6 +245,28 @@ function AttributionEditor({
       return { ...prev, [position]: set }
     })
   }, [])
+
+  const nameFor = useCallback(
+    (member: { user_id: string | null; display_name: string | null }) =>
+      memberLabel(member, userId, { you: t('common.you'), fallback: t('common.member') }),
+    [userId, t],
+  )
+
+  // Bulk shortcut for the common "everyone shared everything" receipt: assign all active members to
+  // every line in one tap, leaving per-line edits as the exception instead of ~N x members taps.
+  const assignEveryoneToAll = useCallback(() => {
+    const allIds = (members ?? []).map((m) => m.id)
+    if (allIds.length === 0) {
+      return
+    }
+    setAssignmentsByPosition(() => {
+      const next: Record<number, Set<string>> = {}
+      for (let i = 0; i < drafts.length; i++) {
+        next[i] = new Set(allIds)
+      }
+      return next
+    })
+  }, [members, drafts.length])
 
   function setLabel(index: number, label: string) {
     setDrafts((prev) => prev.map((draft, i) => (i === index ? { ...draft, label } : draft)))
@@ -276,7 +314,7 @@ function AttributionEditor({
     )
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 && !isManual) {
     return (
       <Screen title={t('smartSplit.attribution')} showBack>
         <View style={styles.center}>
@@ -345,6 +383,7 @@ function AttributionEditor({
           items: editedItems,
           assignments,
         })
+        haptics.success()
         router.back()
       } catch (error) {
         Alert.alert(
@@ -355,23 +394,11 @@ function AttributionEditor({
       return
     }
 
-    // Create mode - two-step save: create the expense (bootstrap split) then
-    // replace it with the item-driven split. If step 2 fails, soft-delete the
-    // orphan expense so we don't leave a corrupt placeholder in the trip.
-    let createdId: string | null = null
+    // Create mode: one atomic RPC inserts the expense + items + assignments + derived splits in a
+    // single transaction, so a failure leaves nothing behind - no bootstrap, no orphan to clean up.
     try {
-      const created = await createExpense.mutateAsync({
+      await createWithItems.mutateAsync({
         tripId,
-        description,
-        amountCents: itemsTotal,
-        currency: expenseCurrency,
-        baseAmountCents,
-        fxRate,
-        splits: [{ memberId: currentUserMember.id, shareCents: baseAmountCents }],
-      })
-      createdId = created.id
-      await upsertWithItems.mutateAsync({
-        expenseId: created.id,
         description,
         amountCents: itemsTotal,
         currency: expenseCurrency,
@@ -380,12 +407,9 @@ function AttributionEditor({
         items: editedItems,
         assignments,
       })
+      haptics.success()
       router.replace({ pathname: '/trips/[id]/expenses', params: { id: tripId } })
     } catch (error) {
-      if (createdId) {
-        // Compensate the orphan expense from step 1.
-        await deleteExpense(createdId).catch(() => {})
-      }
       Alert.alert(
         t('smartSplit.saveError'),
         error instanceof Error ? error.message : t('common.tryAgain'),
@@ -393,9 +417,11 @@ function AttributionEditor({
     }
   }
 
-  const isPending = createExpense.isPending || upsertWithItems.isPending
+  const isPending = createWithItems.isPending || upsertWithItems.isPending
   const totalLabel = mode === 'edit' ? t('smartSplit.total') : t('smartSplit.ocrTotal')
-  const showAddMissing = mode === 'create' && delta < 0
+  // OCR reconciliation (scanned total vs items sum, "add the difference") only makes sense when a
+  // scan provided a target total - a manual split has none.
+  const showAddMissing = mode === 'create' && !isManual && delta < 0
 
   return (
     <Screen title={mode === 'edit' ? t('smartSplit.editTitle') : t('smartSplit.title')} showBack>
@@ -414,18 +440,40 @@ function AttributionEditor({
         radius={theme.radius.lg}
         style={styles.header}
       >
-        <View style={styles.headerRow}>
-          <Text style={styles.headerLabel}>{totalLabel}</Text>
-          <Text style={styles.headerValue}>{formatAmount(totalCents, expenseCurrency)}</Text>
-        </View>
-        <View style={styles.headerRow}>
-          <Text style={styles.headerLabel}>{t('smartSplit.itemsSum')}</Text>
-          <Text style={[styles.headerValue, delta !== 0 ? { color: theme.colors.warning } : null]}>
-            {formatAmount(itemsTotal, expenseCurrency)}
-            {delta !== 0 ? `  (${delta > 0 ? '+' : ''}${(delta / 100).toFixed(2)})` : ''}
-          </Text>
-        </View>
+        {isManual ? (
+          <View style={styles.headerRow}>
+            <Text style={styles.headerLabel}>{t('smartSplit.total')}</Text>
+            <Text style={styles.headerValue}>{formatAmount(itemsTotal, expenseCurrency)}</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>{totalLabel}</Text>
+              <Text style={styles.headerValue}>{formatAmount(totalCents, expenseCurrency)}</Text>
+            </View>
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>{t('smartSplit.itemsSum')}</Text>
+              <Text
+                style={[styles.headerValue, delta !== 0 ? { color: theme.colors.warning } : null]}
+              >
+                {formatAmount(itemsTotal, expenseCurrency)}
+                {delta !== 0 ? `  (${delta > 0 ? '+' : ''}${(delta / 100).toFixed(2)})` : ''}
+              </Text>
+            </View>
+          </>
+        )}
       </Surface>
+
+      <View style={styles.bulkRow}>
+        <Button
+          label={t('smartSplit.assignEveryone')}
+          icon="people-outline"
+          variant="secondary"
+          size="sm"
+          block={false}
+          onPress={assignEveryoneToAll}
+        />
+      </View>
 
       <ScrollView
         style={styles.list}
@@ -437,6 +485,8 @@ function AttributionEditor({
           const set = assignmentsByPosition[index] ?? new Set<string>()
           const isUnassigned = set.size === 0
           const lineCents = amountToCents(draft.amount)
+          // Surface when a hidden (+N) member is assigned to this line, so the count is not silent.
+          const extraSelected = members.slice(MAX_INLINE_CHIPS).some((m) => set.has(m.id))
           return (
             <Surface
               key={draft.id}
@@ -473,31 +523,25 @@ function AttributionEditor({
                 </Pressable>
               </View>
               <View style={styles.chipsRow}>
-                {inlineMembers.map((member) => {
-                  const selected = set.has(member.id)
-                  const name =
-                    member.user_id === userId
-                      ? t('common.you')
-                      : (member.display_name ?? t('common.member'))
-                  const initial = name.charAt(0).toUpperCase()
-                  return (
-                    <MemberChip
-                      key={member.id}
-                      initial={initial}
-                      label={name}
-                      selected={selected}
-                      onPress={() => toggleAssignment(index, member.id)}
-                    />
-                  )
-                })}
+                {inlineMembers.map((member) => (
+                  <MemberChip
+                    key={member.id}
+                    name={nameFor(member)}
+                    selected={set.has(member.id)}
+                    onPress={() => toggleAssignment(index, member.id)}
+                  />
+                ))}
                 {remainder > 0 ? (
                   <Pressable
                     onPress={() => setSheetOpenForPosition(index)}
                     accessibilityRole="button"
+                    accessibilityState={{ selected: extraSelected }}
                     accessibilityLabel={t('smartSplit.moreMembers', { count: remainder })}
-                    style={styles.moreChip}
+                    style={[styles.moreChip, extraSelected && styles.moreChipActive]}
                   >
-                    <Text style={styles.moreChipText}>+{remainder}</Text>
+                    <Text style={[styles.moreChipText, extraSelected && styles.moreChipTextActive]}>
+                      +{remainder}
+                    </Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -553,10 +597,6 @@ function AttributionEditor({
               isForeign && fx
                 ? convertCents(expenseCentsForMember, expenseCurrency, tripCurrency, fx.rates)
                 : expenseCentsForMember
-            const name =
-              member.user_id === userId
-                ? t('common.you')
-                : (member.display_name ?? t('common.member'))
             return (
               <Surface
                 key={member.id}
@@ -566,7 +606,7 @@ function AttributionEditor({
                 radius={theme.radius.md}
                 style={styles.summaryPill}
               >
-                <Text style={styles.summaryName}>{name}</Text>
+                <Text style={styles.summaryName}>{nameFor(member)}</Text>
                 <Text style={styles.summaryValue}>{formatAmount(cents, tripCurrency)}</Text>
               </Surface>
             )
@@ -602,10 +642,6 @@ function AttributionEditor({
             if (sheetOpenForPosition === null) return null
             const set = assignmentsByPosition[sheetOpenForPosition] ?? new Set<string>()
             const selected = set.has(member.id)
-            const name =
-              member.user_id === userId
-                ? t('common.you')
-                : (member.display_name ?? t('common.member'))
             return (
               <Pressable
                 key={member.id}
@@ -619,7 +655,8 @@ function AttributionEditor({
                   size={22}
                   color={selected ? theme.colors.primary : theme.colors.muted}
                 />
-                <Text style={styles.sheetRowText}>{name}</Text>
+                <Avatar name={nameFor(member)} size={28} />
+                <Text style={styles.sheetRowText}>{nameFor(member)}</Text>
               </Pressable>
             )
           })}
@@ -630,26 +667,32 @@ function AttributionEditor({
   )
 }
 
+// A selectable member as a tinted Avatar (the deterministic tint disambiguates same-initial names
+// like Alice/Anna, unlike a bare initial). Unselected is dimmed; selected gets a ring + check badge.
 function MemberChip({
-  initial,
-  label,
+  name,
   selected,
   onPress,
 }: {
-  initial: string
-  label: string
+  name: string
   selected: boolean
   onPress: () => void
 }) {
+  const { theme } = useUnistyles()
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={name}
       accessibilityState={{ selected }}
-      style={[styles.chip, selected ? styles.chipActive : null]}
+      style={[styles.chip, !selected && styles.chipDim]}
     >
-      <Text style={[styles.chipText, selected ? styles.chipTextActive : null]}>{initial}</Text>
+      <Avatar name={name} size={44} ring={selected} />
+      {selected ? (
+        <View style={styles.chipCheck}>
+          <Ionicons name="checkmark-circle" size={18} color={theme.colors.primary} />
+        </View>
+      ) : null}
     </Pressable>
   )
 }
@@ -739,26 +782,20 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(2),
   },
   chip: {
-    width: theme.gap(9),
-    height: theme.gap(9),
-    borderRadius: theme.gap(5),
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
   },
-  chipActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+  chipDim: {
+    opacity: 0.4,
   },
-  chipText: {
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '700',
-    color: theme.colors.foreground,
-  },
-  chipTextActive: {
-    color: theme.colors.primaryForeground,
+  chipCheck: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    borderRadius: 9,
+    backgroundColor: theme.colors.background,
   },
   moreChip: {
     paddingHorizontal: theme.gap(3),
@@ -770,10 +807,21 @@ const styles = StyleSheet.create((theme) => ({
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.card,
   },
+  moreChipActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: withAlpha(theme.colors.primary, 0.12),
+  },
   moreChipText: {
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '700',
     color: theme.colors.foreground,
+  },
+  moreChipTextActive: {
+    color: theme.colors.primary,
+  },
+  bulkRow: {
+    alignItems: 'flex-start',
+    paddingBottom: theme.gap(2),
   },
   addActions: {
     gap: theme.gap(2),

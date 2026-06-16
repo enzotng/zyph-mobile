@@ -1,12 +1,10 @@
-import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshControl, ScrollView, Text, View } from 'react-native'
+import { RefreshControl, ScrollView, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Button } from '@/components/button'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { EmptyState, SectionTitle, Skeleton, Surface } from '@/components/ui'
 import { useUnreadNotificationCount } from '@/features/notifications'
@@ -20,6 +18,7 @@ import {
   tripTimeline,
   useTrips,
 } from '@/features/trips'
+import { AddTripSheet } from '@/features/trips/components/add-trip-sheet'
 import { HomeHeader } from '@/features/trips/components/home-header'
 import { NextDepartureCard } from '@/features/trips/components/next-departure-card'
 import { UpcomingTripCard } from '@/features/trips/components/upcoming-trip-card'
@@ -43,6 +42,7 @@ export default function HomeScreen() {
   const { data: profile } = useProfile()
   const { data: unreadCount, refetch: refetchUnread } = useUnreadNotificationCount()
   const [nowMs] = useState(() => Date.now())
+  const [addOpen, setAddOpen] = useState(false)
 
   // The app has no realtime, so the unread badge stays current by refetching on focus.
   useFocusEffect(
@@ -66,6 +66,31 @@ export default function HomeScreen() {
   const next = home.next
   const upcoming = home.upcoming.slice(0, MAX_UPCOMING)
 
+  // Two-up card grid, shared by the upcoming section and the past-only fallback section.
+  const tripGrid = (items: TripCard[]) => (
+    <View style={styles.grid}>
+      {chunkPairs(items).map((pair, i) => (
+        <Animated.View
+          key={pair.map((trip) => trip.id).join('-')}
+          entering={FadeInDown.delay(Math.min(i, 8) * 50 + 120)
+            .duration(360)
+            .springify()}
+          style={styles.row}
+        >
+          {pair.map((trip) => (
+            <UpcomingTripCard
+              key={trip.id}
+              trip={trip}
+              tone={statusTone(trip, now)}
+              onPress={() => router.push({ pathname: '/trips/[id]', params: { id: trip.id } })}
+            />
+          ))}
+          {pair.length === 1 ? <View style={styles.spacer} /> : null}
+        </Animated.View>
+      ))}
+    </View>
+  )
+
   return (
     <View style={styles.container}>
       <HomeHeader
@@ -77,6 +102,8 @@ export default function HomeScreen() {
         unreadCount={unreadCount ?? 0}
         onNotificationsPress={() => router.push('/notifications')}
         notificationsLabel={t('notifications.title')}
+        onAddPress={() => setAddOpen(true)}
+        addLabel={t('trips.addTitle')}
       />
 
       {isLoading ? (
@@ -137,39 +164,20 @@ export default function HomeScreen() {
               <SectionTitle action={t('home.seeAll')} onAction={() => router.push('/trips')}>
                 {t('home.sectionUpcoming')}
               </SectionTitle>
-              <View style={styles.grid}>
-                {chunkPairs(upcoming).map((pair, i) => (
-                  <Animated.View
-                    key={pair.map((trip) => trip.id).join('-')}
-                    entering={FadeInDown.delay(Math.min(i, 8) * 50 + 120)
-                      .duration(360)
-                      .springify()}
-                    style={styles.row}
-                  >
-                    {pair.map((trip) => (
-                      <UpcomingTripCard
-                        key={trip.id}
-                        trip={trip}
-                        tone={statusTone(trip, now)}
-                        onPress={() =>
-                          router.push({ pathname: '/trips/[id]', params: { id: trip.id } })
-                        }
-                      />
-                    ))}
-                    {pair.length === 1 ? <View style={styles.spacer} /> : null}
-                  </Animated.View>
-                ))}
-              </View>
+              {tripGrid(upcoming)}
             </Animated.View>
           ) : home.past.length > 0 ? (
-            <Animated.View entering={FadeInDown.delay(60).duration(360)}>
+            <Animated.View entering={FadeInDown.delay(60).duration(360)} style={styles.section}>
               <SectionTitle action={t('home.seeAll')} onAction={() => router.push('/trips')}>
                 {t('trips.title')}
               </SectionTitle>
+              {tripGrid(home.past.slice(0, MAX_UPCOMING))}
             </Animated.View>
           ) : null}
         </ScrollView>
       )}
+
+      <AddTripSheet open={addOpen} onClose={() => setAddOpen(false)} />
     </View>
   )
 }
@@ -196,19 +204,22 @@ function HomeSkeleton() {
   )
 }
 
-// Hero fallback when no trip is upcoming or in progress.
+// Hero fallback when no trip is upcoming or in progress: the shared EmptyState in a card frame,
+// so it matches the 0-trip empty state (same branded icon badge + create/join CTA treatment).
 function NoUpcomingCard({ onCreate, onJoin }: { onCreate: () => void; onJoin: () => void }) {
   const { t } = useTranslation()
   const { theme } = useUnistyles()
   return (
-    <Surface radius={theme.radius.xl} style={styles.cta}>
-      <Ionicons name="airplane-outline" size={34} color={theme.colors.primary} />
-      <Text style={styles.ctaTitle}>{t('home.noUpcomingTitle')}</Text>
-      <Text style={styles.ctaBody}>{t('home.noUpcomingBody')}</Text>
-      <View style={styles.ctaActions}>
-        <Button label={t('trips.create')} icon="add" onPress={onCreate} />
-        <Button label={t('trips.join')} icon="enter-outline" variant="secondary" onPress={onJoin} />
-      </View>
+    <Surface radius={theme.radius.xl} style={styles.hero}>
+      <EmptyState
+        icon="airplane-outline"
+        title={t('home.noUpcomingTitle')}
+        body={t('home.noUpcomingBody')}
+        cta={t('trips.create')}
+        onCta={onCreate}
+        secondaryCta={t('trips.join')}
+        onSecondaryCta={onJoin}
+      />
     </Surface>
   )
 }
@@ -251,27 +262,8 @@ const styles = StyleSheet.create((theme, rt) => ({
   spacer: {
     flex: 1,
   },
-  cta: {
-    alignItems: 'center',
-    gap: theme.gap(2),
-    paddingVertical: theme.gap(7),
-    paddingHorizontal: theme.gap(5),
-  },
-  ctaTitle: {
-    fontFamily: theme.fonts.display.bold,
-    fontWeight: '700',
-    fontSize: theme.fontSize.lg,
-    color: theme.colors.foreground,
-  },
-  ctaBody: {
-    textAlign: 'center',
-    fontFamily: theme.fonts.sans.regular,
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.muted,
-    marginBottom: theme.gap(1),
-  },
-  ctaActions: {
-    alignSelf: 'stretch',
-    gap: theme.gap(2),
+  // Card frame for the no-upcoming hero; EmptyState supplies the horizontal padding + content.
+  hero: {
+    paddingVertical: theme.gap(6),
   },
 }))

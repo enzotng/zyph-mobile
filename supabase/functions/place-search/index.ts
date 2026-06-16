@@ -7,6 +7,8 @@
 import "@supabase/functions-js/edge-runtime.d.ts"
 import { withSupabase } from "@supabase/server"
 
+import { isWithinRateLimit } from "../_shared/rate-limit.ts"
+
 const PHOTON_URL = "https://photon.komoot.io/api"
 const LIMIT = 6
 
@@ -28,9 +30,12 @@ function toLabel(props: Record<string, unknown>): string {
 }
 
 export default {
-  fetch: withSupabase({ auth: ["publishable"] }, async (req) => {
+  fetch: withSupabase({ auth: ["publishable"] }, async (req, ctx) => {
     if (req.method !== "POST") {
       return new Response("Method not allowed", { status: 405 })
+    }
+    if (!(await isWithinRateLimit(ctx.supabase, "place-search", 40, 60))) {
+      return Response.json({ error: "Too many requests, please slow down." }, { status: 429 })
     }
 
     let body: { query?: unknown; language?: unknown }

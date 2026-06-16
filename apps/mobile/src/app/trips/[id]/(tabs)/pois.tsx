@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
+import { Button } from '@/components/button'
 import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
 import { poiIconName } from '@/components/poi-icon-picker'
 import { Screen } from '@/components/screen'
@@ -23,7 +24,7 @@ export default function PoisScreen() {
   const { t } = useTranslation()
   const { theme } = useUnistyles()
   const { data: trip } = useTrip(tripId)
-  const { data: pois, isLoading, isError } = usePois(tripId)
+  const { data: pois, isLoading, isError, refetch } = usePois(tripId)
   const deletePoi = useDeletePoi(tripId)
 
   function confirmDelete(poiId: string, label: string) {
@@ -138,6 +139,13 @@ export default function PoisScreen() {
         <View style={styles.heroSpacing}>{arHero}</View>
         <View style={styles.center}>
           <Text style={styles.muted}>{t('pois.loadError')}</Text>
+          <Button
+            label={t('common.retry')}
+            variant="secondary"
+            icon="refresh"
+            block={false}
+            onPress={() => void refetch()}
+          />
         </View>
       </Screen>
     )
@@ -211,6 +219,7 @@ const styles = StyleSheet.create((theme) => ({
   center: {
     alignItems: 'center',
     justifyContent: 'center',
+    gap: theme.gap(3),
     paddingVertical: theme.gap(8),
   },
   pressed: {

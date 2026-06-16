@@ -44,6 +44,40 @@ jest.mock('expo-haptics', () => ({
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }))
 
+// expo-notifications: importing the real module runs its device-push auto-registration side
+// effect (and warns about Expo Go) in tests. Stub the handful of methods push.ts uses; permission
+// defaults to 'denied' so registerForPushNotifications() no-ops deterministically.
+jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  getPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'denied' })),
+  requestPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'denied' })),
+  getExpoPushTokenAsync: jest.fn(() => Promise.resolve({ data: 'ExpoPushToken[test]' })),
+  getLastNotificationResponseAsync: jest.fn(() => Promise.resolve(null)),
+  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+}))
+
+// @shopify/react-native-skia: the CanvasKit runtime is absent in unit tests. Stub the drawing
+// components to render nothing and make Skia.Path.Make() / processTransform3d() return chainable
+// no-ops, so Skia-backed components (the AR arrow) render in tests without the native module.
+jest.mock('@shopify/react-native-skia', () => {
+  const chain = (): unknown =>
+    new Proxy(() => undefined, {
+      get: () => chain(),
+      apply: () => chain(),
+    })
+  const target: Record<PropertyKey, unknown> = {
+    __esModule: true,
+    Skia: { Path: { Make: () => chain() } },
+    processTransform3d: () => [],
+    vec: (x: number, y: number) => ({ x, y }),
+    useClock: () => ({ value: 0 }),
+  }
+  return new Proxy(target, {
+    get: (obj, prop) => (prop in obj ? obj[prop] : () => null),
+  })
+})
+
 // react-native-reanimated: the native worklets runtime is absent in unit tests, so its
 // real entry crashes on import. Provide a lightweight mock - Animated.View/Text are plain
 // RN views, layout-animation builders and hooks are chainable no-ops, and any other export

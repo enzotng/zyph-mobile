@@ -1,39 +1,42 @@
-import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, View } from 'react-native'
-import { StyleSheet, useUnistyles } from 'react-native-unistyles'
+import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { CategoryPicker } from '@/components/category-picker'
-import { CurrencySelect } from '@/components/currency-select'
+import { CurrencyPicker } from '@/components/currency-picker'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Spinner, Surface } from '@/components/ui'
+import { Spinner } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
-  computeSplits,
   createExpenseSchema,
   EXPENSE_CATEGORIES,
   type ExpenseCategory,
-  formatAmount,
   toCents,
   useExpense,
+  useExpensePayers,
   useExpenseSplits,
+  usePayersEditor,
+  useSplitEditor,
   useUpdateExpense,
 } from '@/features/expenses'
+import { PayersEditor } from '@/features/expenses/components/payers-editor'
+import { RemainderBanner } from '@/features/expenses/components/remainder-banner'
+import { SplitMemberRow } from '@/features/expenses/components/split-member-row'
+import { SplitModeSelector } from '@/features/expenses/components/split-mode-selector'
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
 import { useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
+import { formatAmount } from '@/lib/money'
 import { paramString } from '@/lib/routing'
 
 const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
-
-type ShareState = Record<string, { included: boolean; weight: number }>
 
 export default function EditExpenseScreen() {
   const params = useLocalSearchParams<{ id: string; expenseId: string }>()
@@ -41,12 +44,12 @@ export default function EditExpenseScreen() {
   const expenseId = paramString(params.expenseId)
   const router = useRouter()
   const { t } = useTranslation()
-  const { theme } = useUnistyles()
   const { session } = useAuth()
   const userId = session?.user.id
 
   const { data: expense, isLoading: expLoading } = useExpense(expenseId)
   const { data: splits, isLoading: splitsLoading } = useExpenseSplits(expenseId)
+  const { data: payers, isLoading: payersLoading } = useExpensePayers(expenseId)
   const { data: trip } = useTrip(tripId)
   const { data: members } = useTripMembers(tripId)
   const { data: fx } = useFxRates()
@@ -67,24 +70,12 @@ export default function EditExpenseScreen() {
     : null
   const category = pickedCategory === undefined ? expenseCategory : pickedCategory
 
-  // Only stores user changes; the effective state is derived by merging with the
-  // loaded splits, so no async-to-state effect is needed.
-  const [overrides, setOverrides] = useState<ShareState>({})
-
-  const originallyIncluded = useMemo(
-    () => new Set((splits ?? []).map((s) => s.member_id)),
-    [splits],
-  )
-
-  const stateFor = useCallback(
-    (memberId: string) => {
-      const override = overrides[memberId]
-      if (override) {
-        return override
-      }
-      return { included: originallyIncluded.has(memberId), weight: 1 }
-    },
-    [overrides, originallyIncluded],
+  // Payer falls back to the loaded paid_by then the current user; the editor seeds from the stored
+  // payer rows (more than one opens it in multiple mode).
+  const ownMemberId = members?.find((m) => m.user_id === userId)?.id ?? null
+  const initialPayers = useMemo(
+    () => payers?.map((p) => ({ memberId: p.member_id, paidCents: p.paid_cents })),
+    [payers],
   )
 
   const {
@@ -93,7 +84,9 @@ export default function EditExpenseScreen() {
     formState: { errors },
   } = useForm<CreateExpenseValues>({
     resolver: zodResolver(createExpenseSchema),
-    // RHF syncs form values from this object whenever it changes; no useEffect needed.
+    // RHF syncs form values from this object whenever it changes; keepDirtyValues so a refetch
+    // mid-edit does not wipe unsaved changes. No useEffect needed.
+    resetOptions: { keepDirtyValues: true },
     values: expense
       ? { description: expense.description, amount: (expense.amount_cents / 100).toFixed(2) }
       : undefined,
@@ -128,37 +121,32 @@ export default function EditExpenseScreen() {
     return convertCents(cents, currency, tripCurrency, fx.rates)
   }, [amount, canConvert, currency, fx, isForeign, tripCurrency])
 
-  const participants = useMemo(() => {
-    if (!members) {
-      return []
-    }
-    return members
-      .filter((m) => stateFor(m.id).included)
-      .map((m) => ({ memberId: m.id, weight: stateFor(m.id).weight }))
-  }, [members, stateFor])
+  const split = useSplitEditor({ members, baseCents, initialSplits: splits, initialMode: 'shares' })
+  const payersEditor = usePayersEditor({
+    members,
+    baseCents,
+    defaultPayerId: expense?.paid_by ?? ownMemberId,
+    initialPayers,
+  })
 
-  const shareByMember = useMemo(() => {
-    if (baseCents === null) {
-      return new Map<string, number>()
-    }
-    return new Map(computeSplits(baseCents, participants).map((s) => [s.memberId, s.shareCents]))
-  }, [baseCents, participants])
+  const blocked = (isForeign && !canConvert) || !split.canSubmit || !payersEditor.canSubmit
 
-  const blocked = (isForeign && !canConvert) || participants.length === 0
-
-  function toggle(memberId: string) {
-    setOverrides((s) => {
-      const cur = s[memberId] ?? { included: true, weight: 1 }
-      return { ...s, [memberId]: { ...cur, included: !cur.included } }
-    })
-  }
-
-  function setWeight(memberId: string, weight: number) {
-    setOverrides((s) => {
-      const cur = s[memberId] ?? { included: true, weight: 1 }
-      return { ...s, [memberId]: { ...cur, weight: Math.max(1, weight) } }
-    })
-  }
+  // Concise reason shown next to a disabled save, so the blocking banner is never off-screen.
+  const blockReason = !blocked
+    ? null
+    : isForeign && !canConvert
+      ? t('expenseForm.rateUnavailable', { currency })
+      : split.includedCount === 0
+        ? t('expenseForm.selectSomeoneTitle')
+        : !split.isBalanced && baseCents !== null
+          ? t('expenseForm.remainderLeft', {
+              amount: formatAmount(Math.abs(split.remainderCents), tripCurrency),
+            })
+          : payersEditor.mode === 'multiple' && !payersEditor.isBalanced && baseCents !== null
+            ? t('expenseForm.remainderLeft', {
+                amount: formatAmount(Math.abs(payersEditor.remainderCents), tripCurrency),
+              })
+            : t('expenseForm.incomplete')
 
   async function onSubmit(values: CreateExpenseValues) {
     const amountCents = toCents(values.amount)
@@ -182,11 +170,13 @@ export default function EditExpenseScreen() {
       }
     }
 
-    const splitInputs = computeSplits(baseAmountCents, participants)
+    const splitInputs = split.splitsFor(baseAmountCents)
     if (splitInputs.length === 0) {
       Alert.alert(t('expenseForm.selectSomeoneTitle'), t('expenseForm.selectSomeoneBody'))
       return
     }
+
+    const { paidBy, payers: resolvedPayers } = payersEditor.resolve()
 
     try {
       await updateExpense.mutateAsync({
@@ -198,6 +188,8 @@ export default function EditExpenseScreen() {
         fxRate,
         splits: splitInputs,
         category,
+        paidBy,
+        payers: resolvedPayers,
       })
       router.back()
     } catch (error) {
@@ -208,7 +200,7 @@ export default function EditExpenseScreen() {
     }
   }
 
-  if (expLoading || splitsLoading || !expense || !trip || !members) {
+  if (expLoading || splitsLoading || payersLoading || !expense || !trip || !members) {
     return (
       <Screen title={t('expenseForm.editTitle')} showBack>
         <View style={styles.center}>
@@ -223,119 +215,116 @@ export default function EditExpenseScreen() {
       title={t('expenseForm.editTitle')}
       scroll
       footer={
-        <Button
-          label={updateExpense.isPending ? t('common.saving') : t('common.save')}
-          onPress={handleSubmit(onSubmit)}
-          disabled={updateExpense.isPending || blocked}
-        />
+        <View style={styles.footerBar}>
+          {blockReason ? <Text style={styles.footerReason}>{blockReason}</Text> : null}
+          <Button
+            label={updateExpense.isPending ? t('common.saving') : t('common.save')}
+            onPress={handleSubmit(onSubmit)}
+            disabled={updateExpense.isPending || blocked}
+          />
+        </View>
       }
     >
-      <Controller
-        control={control}
-        name="description"
-        render={({ field }) => (
-          <TextField
-            label={t('expenseForm.description')}
-            placeholder={t('expenseForm.descriptionPlaceholder')}
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            error={errors.description?.message}
-          />
-        )}
-      />
-
-      <CurrencySelect
-        label={t('expenseForm.currency')}
-        value={currency}
-        currencies={currencies}
-        onChange={setPicked}
-      />
-
-      <CategoryPicker
-        label={t('expenseForm.category')}
-        value={category}
-        onChange={setPickedCategory}
-      />
-
-      <Controller
-        control={control}
-        name="amount"
-        render={({ field }) => (
-          <TextField
-            label={t('expenseForm.amount', { currency })}
-            placeholder="45.00"
-            keyboardType="decimal-pad"
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            error={errors.amount?.message}
-          />
-        )}
-      />
-
-      {isForeign && !canConvert ? (
-        <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
-      ) : null}
-
-      <Text style={styles.sectionTitle}>{t('expenseForm.splitBetween')}</Text>
-      {members.map((member) => {
-        const state = stateFor(member.id)
-        const included = state.included
-        const name =
-          member.user_id === userId ? t('common.you') : (member.display_name ?? t('common.member'))
-        const share = shareByMember.get(member.id)
-        return (
-          <View key={member.id} style={styles.memberRow}>
-            <Pressable
-              style={styles.memberLeft}
-              onPress={() => toggle(member.id)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: included }}
-            >
-              <Ionicons
-                name={included ? 'checkbox' : 'square-outline'}
-                size={22}
-                color={included ? theme.colors.primary : theme.colors.muted}
+      <View style={styles.form}>
+        <View style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.description')}</Text>
+          <Controller
+            control={control}
+            name="description"
+            render={({ field }) => (
+              <TextField
+                placeholder={t('expenseForm.descriptionPlaceholder')}
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                error={errors.description?.message}
               />
-              <Text style={styles.memberName}>{name}</Text>
-            </Pressable>
+            )}
+          />
+        </View>
 
-            {included ? (
-              <View style={styles.memberRight}>
-                <Surface
-                  color="transparent"
-                  borderColor={theme.colors.border}
-                  borderWidth={1}
-                  radius={theme.radius.md}
-                  style={styles.stepper}
-                >
-                  <Pressable
-                    onPress={() => setWeight(member.id, state.weight - 1)}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('expenseForm.decreaseShares')}
-                    hitSlop={6}
-                  >
-                    <Ionicons name="remove" size={18} color={theme.colors.foreground} />
-                  </Pressable>
-                  <Text style={styles.weight}>{state.weight}</Text>
-                  <Pressable
-                    onPress={() => setWeight(member.id, state.weight + 1)}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('expenseForm.increaseShares')}
-                    hitSlop={6}
-                  >
-                    <Ionicons name="add" size={18} color={theme.colors.foreground} />
-                  </Pressable>
-                </Surface>
-                <Text style={styles.share}>
-                  {share === undefined ? '-' : formatAmount(share, tripCurrency)}
-                </Text>
-              </View>
-            ) : null}
+        <View style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.sectionAmount')}</Text>
+          <View style={styles.amountRow}>
+            <CurrencyPicker compact value={currency} currencies={currencies} onChange={setPicked} />
+            <View style={styles.flex}>
+              <Controller
+                control={control}
+                name="amount"
+                render={({ field }) => (
+                  <TextField
+                    placeholder="45.00"
+                    keyboardType="decimal-pad"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.amount?.message}
+                  />
+                )}
+              />
+            </View>
           </View>
-        )
-      })}
+          {isForeign && !canConvert ? (
+            <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
+          ) : null}
+        </View>
+
+        <View style={styles.twoCol}>
+          <View style={styles.col}>
+            <Text style={styles.fieldLabel}>{t('expenseForm.paidBy')}</Text>
+            <PayersEditor
+              editor={payersEditor}
+              members={members}
+              currentUserId={userId}
+              tripCurrency={tripCurrency}
+              baseCents={baseCents}
+            />
+          </View>
+          <View style={styles.col}>
+            <Text style={styles.fieldLabel}>{t('expenseForm.category')}</Text>
+            <CategoryPicker value={category} onChange={setPickedCategory} />
+          </View>
+        </View>
+
+        <View style={styles.group}>
+          <View style={styles.splitHeader}>
+            <Text style={[styles.fieldLabel, styles.splitHeaderLabel]} numberOfLines={1}>
+              {`${t('expenseForm.splitBetween')} · ${split.includedCount}/${members.length}`}
+            </Text>
+            <View style={styles.splitHeaderRight}>
+              <Pressable
+                onPress={split.includedCount === members.length ? split.clearAll : split.selectAll}
+                accessibilityRole="button"
+                hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+              >
+                <Text style={styles.smallAction}>
+                  {split.includedCount === members.length
+                    ? t('expenseForm.selectNone')
+                    : t('expenseForm.selectAll')}
+                </Text>
+              </Pressable>
+              <SplitModeSelector mode={split.mode} onChange={split.setMode} />
+            </View>
+          </View>
+          {members.map((member) => (
+            <SplitMemberRow
+              key={member.id}
+              member={member}
+              split={split}
+              tripCurrency={tripCurrency}
+              currentUserId={userId}
+            />
+          ))}
+          <RemainderBanner
+            mode={split.mode}
+            allocatedCents={split.allocatedCents}
+            remainderCents={split.remainderCents}
+            isBalanced={split.isBalanced}
+            baseCents={baseCents}
+            tripCurrency={tripCurrency}
+          />
+        </View>
+      </View>
     </Screen>
   )
 }
@@ -351,50 +340,62 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.regular,
     color: theme.colors.warning,
   },
-  sectionTitle: {
+  form: {
+    gap: theme.gap(4),
+  },
+  group: {
+    gap: theme.gap(1.5),
+  },
+  twoCol: {
+    flexDirection: 'row',
+    gap: theme.gap(3),
+  },
+  col: {
+    flex: 1,
+    gap: theme.gap(1.5),
+  },
+  fieldLabel: {
     fontSize: theme.fontSize.sm,
-    fontFamily: theme.fonts.sans.bold,
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
     color: theme.colors.muted,
   },
-  memberRow: {
+  flex: {
+    flex: 1,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.gap(2),
+  },
+  splitHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: theme.gap(2),
-  },
-  memberLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: theme.gap(2),
-    flex: 1,
   },
-  memberName: {
-    fontSize: theme.fontSize.md,
-    fontFamily: theme.fonts.sans.regular,
-    color: theme.colors.foreground,
+  splitHeaderLabel: {
+    flexShrink: 1,
   },
-  memberRight: {
+  splitHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(3),
   },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(2),
-    paddingHorizontal: theme.gap(2),
-    paddingVertical: theme.gap(1),
-  },
-  weight: {
-    minWidth: theme.gap(4),
-    textAlign: 'center',
+  smallAction: {
+    fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.sans.semibold,
-    color: theme.colors.foreground,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
-  share: {
-    minWidth: theme.gap(16),
-    textAlign: 'right',
-    fontFamily: theme.fonts.display.bold,
-    color: theme.colors.foreground,
+  footerBar: {
+    gap: theme.gap(2),
+  },
+  footerReason: {
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    color: theme.colors.muted,
+    textAlign: 'center',
   },
 }))

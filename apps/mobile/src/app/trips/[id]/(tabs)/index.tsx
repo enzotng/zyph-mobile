@@ -1,4 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
+import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
@@ -24,15 +26,27 @@ import {
 } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
+  CATEGORY_ICON,
   type ExpenseCategory,
   formatAmount,
   settleBalances,
   useExpenses,
   useTripBalances,
 } from '@/features/expenses'
-import { useLeaveTrip, useRegenerateInviteCode, useTripMembers } from '@/features/group'
+import {
+  memberLabel,
+  useLeaveTrip,
+  useRegenerateInviteCode,
+  useTripMembers,
+} from '@/features/group'
 import { eventStatus, eventTypeIcon, formatCountdown, useEvents } from '@/features/timeline'
-import { formatTripDates, useDeleteTrip, useTrip } from '@/features/trips'
+import {
+  formatTripDates,
+  useDeleteTrip,
+  useResetTripCover,
+  useTrip,
+  useUploadTripCover,
+} from '@/features/trips'
 import { useTripWeather, WeatherCard } from '@/features/weather'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
@@ -42,15 +56,6 @@ import { paramString } from '@/lib/routing'
 // last block never lags; the cover hero stays static (its corner-radius logic is untouched).
 const ENTER_STEP = 50
 const enter = (index: number) => FadeInDown.duration(320).delay(index * ENTER_STEP)
-
-const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
-  food: 'restaurant',
-  transport: 'car',
-  lodging: 'bed',
-  activity: 'ticket',
-  shopping: 'bag-handle',
-  other: 'pricetag',
-}
 
 // A light top veil (the nav buttons are opaque circles, so it stays subtle to keep the
 // status bar legible) and a strong bottom fade for the title, clear in the middle.
@@ -133,6 +138,8 @@ export default function TripDashboardScreen() {
   const regenerate = useRegenerateInviteCode(tripId)
   const deleteTripMutation = useDeleteTrip()
   const leaveTripMutation = useLeaveTrip()
+  const uploadCover = useUploadTripCover()
+  const resetCover = useResetTripCover()
 
   const myMember = useMemo(
     () => (members ?? []).find((member) => member.user_id === userId),
@@ -151,16 +158,15 @@ export default function TripDashboardScreen() {
     [balances],
   )
 
-  // memberId -> display name, for payer lookups without a per-row members.find.
+  // memberId -> label ("you" for the current user), for payer lookups without a per-row find.
   const nameById = useMemo(() => {
+    const labels = { you: t('common.you'), fallback: t('common.member') }
     const map = new Map<string, string>()
     for (const member of members ?? []) {
-      if (member.display_name) {
-        map.set(member.id, member.display_name)
-      }
+      map.set(member.id, memberLabel(member, userId, labels))
     }
     return map
-  }, [members])
+  }, [members, userId, t])
 
   const debtorNames = useMemo(
     () =>
@@ -177,6 +183,7 @@ export default function TripDashboardScreen() {
       (members ?? []).map((member) => ({
         id: member.id,
         name: member.display_name ?? undefined,
+        imageUrl: member.avatar_url,
       })),
     [members],
   )
@@ -242,6 +249,85 @@ export default function TripDashboardScreen() {
   }
 
   const isOwner = trip.owner_id === userId
+
+  // Pick a photo, downscale to a 1200px-wide JPEG, and upload it as the trip cover via the
+  // owner-checked edge function (overriding the auto Google/Unsplash cover).
+  async function pickCover(source: 'library' | 'camera') {
+    if (uploadCover.isPending) {
+      return
+    }
+    try {
+      const permission =
+        source === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!permission.granted) {
+        Alert.alert(t('trip.coverPermissionTitle'), t('trip.coverPermissionBody'))
+        return
+      }
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync({
+              allowsEditing: true,
+              aspect: [16, 9],
+              quality: 0.6,
+            })
+          : await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ['images'],
+              allowsEditing: true,
+              aspect: [16, 9],
+              quality: 0.6,
+            })
+      if (result.canceled) {
+        return
+      }
+      const rendered = await ImageManipulator.manipulate(result.assets[0].uri)
+        .resize({ width: 1200 })
+        .renderAsync()
+      const image = await rendered.saveAsync({
+        compress: 0.7,
+        format: SaveFormat.JPEG,
+        base64: true,
+      })
+      if (!image.base64) {
+        throw new Error('Could not read the selected image.')
+      }
+      await uploadCover.mutateAsync({
+        tripId,
+        imageBase64: image.base64,
+        contentType: 'image/jpeg',
+      })
+    } catch (error) {
+      Alert.alert(
+        t('trip.coverError'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
+    }
+  }
+
+  function changeCoverPhoto() {
+    setActionsOpen(false)
+    Alert.alert(t('trip.coverPhoto'), undefined, [
+      { text: t('trip.coverCamera'), onPress: () => void pickCover('camera') },
+      { text: t('trip.coverLibrary'), onPress: () => void pickCover('library') },
+      { text: t('common.cancel'), style: 'cancel' },
+    ])
+  }
+
+  async function revertToAutoCover() {
+    if (resetCover.isPending) {
+      return
+    }
+    setActionsOpen(false)
+    try {
+      await resetCover.mutateAsync(tripId)
+    } catch (error) {
+      Alert.alert(
+        t('trip.coverError'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
+    }
+  }
 
   function confirmRegenerate() {
     Alert.alert(
@@ -445,6 +531,13 @@ export default function TripDashboardScreen() {
               label={t('trip.ar')}
               onPress={() => router.push({ pathname: '/trips/[id]/ar', params: { id: tripId } })}
             />
+            <QuickAction
+              icon="document-text"
+              label={t('trip.documents')}
+              onPress={() =>
+                router.push({ pathname: '/trips/[id]/documents', params: { id: tripId } })
+              }
+            />
           </Animated.View>
 
           {/* Destination weather */}
@@ -571,6 +664,16 @@ export default function TripDashboardScreen() {
                   setActionsOpen(false)
                   router.push({ pathname: '/trips/[id]/edit', params: { id: tripId } })
                 }}
+              />
+              <TripActionRow
+                icon="image-outline"
+                label={t('trip.changeCover')}
+                onPress={changeCoverPhoto}
+              />
+              <TripActionRow
+                icon="sparkles-outline"
+                label={t('trip.autoCoverPhoto')}
+                onPress={() => void revertToAutoCover()}
               />
               <TripActionRow
                 icon="refresh-outline"

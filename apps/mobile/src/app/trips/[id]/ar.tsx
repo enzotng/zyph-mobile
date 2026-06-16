@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
@@ -15,8 +15,16 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { poiIconName } from '@/components/poi-icon-picker'
-import { ArArrow, ArOverlay, useWayfinderTargets, type WayfinderTarget } from '@/features/wayfinder'
+import {
+  ARRIVAL_RADIUS_M,
+  ArArrow,
+  ArOverlay,
+  ArPath,
+  useWayfinderTargets,
+  type WayfinderTarget,
+} from '@/features/wayfinder'
 import { bearing, formatDistance, formatWalkingTime, haversine, relativeHeading } from '@/lib/geo'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 import { useDeviceTilt, useHeading, useUserLocation } from '@/lib/sensors'
 
@@ -56,6 +64,44 @@ export default function ArScreen() {
     const delta = relativeHeading(targetBearing, heading.heading)
     return { distance, targetBearing, delta }
   }, [active, userLocation.location, heading.heading])
+
+  // Haptic wayfinding feedback so the user can keep their eyes on the camera: a light pulse the
+  // moment they swing onto the target heading, and a success buzz when they arrive. Refs gate each
+  // to a state transition (with hysteresis on the heading) so the buzz never chatters, and re-arm
+  // when the active target changes.
+  const alignedRef = useRef(false)
+  const arrivedRef = useRef(false)
+  const activeIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    const id = active?.id ?? null
+    if (id !== activeIdRef.current) {
+      // New target: re-arm the feedback and skip this tick - stats still describes the old target.
+      activeIdRef.current = id
+      alignedRef.current = false
+      arrivedRef.current = false
+      return
+    }
+    if (!stats) {
+      return
+    }
+    if (stats.distance <= ARRIVAL_RADIUS_M) {
+      // One-shot success on arrival; re-arms only when the active target changes, so stepping in
+      // and out of the radius never re-buzzes.
+      if (!arrivedRef.current) {
+        haptics.success()
+        arrivedRef.current = true
+      }
+      return
+    }
+    // Not arrived: a one-shot light pulse the moment the heading swings onto the target, with a
+    // deadband (arm < 5, re-arm only after > 12) so it does not chatter around the threshold.
+    if (Math.abs(stats.delta) < 5 && !alignedRef.current) {
+      haptics.light()
+      alignedRef.current = true
+    } else if (Math.abs(stats.delta) > 12) {
+      alignedRef.current = false
+    }
+  }, [stats, active?.id])
 
   const cameraReady = cameraPermission?.granted ?? false
 
@@ -113,8 +159,18 @@ export default function ArScreen() {
         activeId={active?.id ?? null}
       />
 
+      {stats && stats.distance > ARRIVAL_RADIUS_M ? (
+        <ArPath width={width} height={height} delta={stats.delta} pitch={tilt.pitch} />
+      ) : null}
+
       {stats ? (
-        <ArArrow width={width} height={height} delta={stats.delta} pitch={tilt.pitch} />
+        <ArArrow
+          width={width}
+          height={height}
+          delta={stats.delta}
+          pitch={tilt.pitch}
+          distance={stats.distance}
+        />
       ) : null}
 
       <View style={styles.topBar}>
@@ -152,7 +208,10 @@ export default function ArScreen() {
             key={target.id}
             target={target}
             active={active?.id === target.id}
-            onPress={() => setActiveId(target.id)}
+            onPress={() => {
+              haptics.selection()
+              setActiveId(target.id)
+            }}
           />
         ))}
       </ScrollView>
@@ -172,9 +231,11 @@ export default function ArScreen() {
               <Text style={styles.hudValue}>{formatWalkingTime(stats.distance)}</Text>
               <Text style={styles.hudSep}>·</Text>
               <Text style={styles.hudDelta}>
-                {Math.abs(stats.delta) < 5
-                  ? t('ar.rightAhead')
-                  : `${stats.delta > 0 ? '→' : '←'} ${Math.abs(Math.round(stats.delta))}°`}
+                {stats.distance <= ARRIVAL_RADIUS_M
+                  ? t('ar.arrived')
+                  : Math.abs(stats.delta) < 5
+                    ? t('ar.rightAhead')
+                    : `${stats.delta > 0 ? '→' : '←'} ${Math.abs(Math.round(stats.delta))}°`}
               </Text>
             </View>
           ) : (
@@ -207,7 +268,7 @@ function TargetChip({
       <Ionicons
         name={poiIconName(target.icon)}
         size={14}
-        color={active ? theme.colors.primaryForeground : theme.colors.foreground}
+        color={active ? theme.colors.primaryForeground : 'rgba(255,255,255,0.82)'}
       />
       <Text style={[styles.chipLabel, active ? styles.chipLabelActive : null]} numberOfLines={1}>
         {target.label}
@@ -291,20 +352,30 @@ const styles = StyleSheet.create((theme, rt) => ({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.gap(1),
+    gap: theme.gap(1.5),
     paddingHorizontal: theme.gap(3),
     paddingVertical: theme.gap(2),
     borderRadius: theme.gap(5),
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    // Inactive: dark glass that recedes against the camera (matches the POI cards).
+    backgroundColor: 'rgba(15,23,42,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
   },
   chipActive: {
+    // Active: solid indigo with an indigo halo so it clearly dominates (no white rim).
     backgroundColor: theme.colors.primary,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.75,
+    shadowRadius: 8,
+    elevation: 6,
   },
   chipLabel: {
     fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
-    color: theme.colors.foreground,
+    // Inactive label on the dark-glass chip: light but slightly muted so it recedes.
+    color: 'rgba(255,255,255,0.82)',
     maxWidth: theme.gap(40),
   },
   chipLabelActive: {

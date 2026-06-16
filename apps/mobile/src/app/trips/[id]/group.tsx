@@ -1,108 +1,60 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as Clipboard from 'expo-clipboard'
+import * as Linking from 'expo-linking'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Share, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { TextField } from '@/components/text-field'
-import {
-  Amount,
-  Avatar,
-  Badge,
-  BottomSheet,
-  Card,
-  SectionTitle,
-  Spinner,
-  Surface,
-} from '@/components/ui'
+import { Avatar, Badge, Card, ErrorState, SectionTitle, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
-import { type Settlement, settleBalances, toCents, useTripBalances } from '@/features/expenses'
 import {
   useLeaveTrip,
   useRegenerateInviteCode,
   useRemoveTripMember,
   useTripMembers,
 } from '@/features/group'
-import {
-  type TripSettlement,
-  useRecordSettlement,
-  useReverseSettlement,
-  useSettlements,
-} from '@/features/settlements'
 import { useDeleteTrip, useTrip } from '@/features/trips'
 import { useShareLocation } from '@/features/wayfinder'
 import { withAlpha } from '@/lib/color'
 import { getShareLocation, setShareLocation } from '@/lib/preferences'
 import { paramString } from '@/lib/routing'
 
-const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
-
 export default function TripGroupScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
-  const { data: trip, isLoading, isError } = useTrip(tripId)
-  const { data: balances } = useTripBalances(tripId)
+  const { data: trip, isLoading, isError, refetch } = useTrip(tripId)
   const { data: members } = useTripMembers(tripId)
   const { session } = useAuth()
   const userId = session?.user.id
   const router = useRouter()
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const deleteTrip = useDeleteTrip()
   const regenerate = useRegenerateInviteCode(tripId)
   const leaveTripMutation = useLeaveTrip()
   const removeMember = useRemoveTripMember(tripId)
-  const recordSettlement = useRecordSettlement(tripId)
-  const { data: paymentHistory } = useSettlements(tripId)
-  const reverseSettlementMutation = useReverseSettlement(tripId)
   const { theme } = useUnistyles()
 
   const [sharing, setSharing] = useState(() => getShareLocation(tripId))
   const [copied, setCopied] = useState(false)
-  const [pendingSettlement, setPendingSettlement] = useState<Settlement | null>(null)
-  const [settleAmount, setSettleAmount] = useState('')
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { status: shareStatus } = useShareLocation({ tripId, enabled: sharing })
 
   useEffect(() => {
     setShareLocation(tripId, sharing)
   }, [sharing, tripId])
 
-  const nameById = useMemo(
-    () => new Map((members ?? []).map((member) => [member.id, member.display_name])),
-    [members],
-  )
-  const userIdByMember = useMemo(
-    () => new Map((balances ?? []).map((balance) => [balance.member_id, balance.user_id])),
-    [balances],
-  )
-
-  const labelFor = useCallback(
-    (memberUserId: string | null, memberId: string): string => {
-      if (memberUserId && memberUserId === userId) {
-        return t('common.you')
+  // Clear the "copied" reset timer if the screen unmounts before it fires.
+  useEffect(
+    () => () => {
+      if (copiedTimer.current) {
+        clearTimeout(copiedTimer.current)
       }
-      return nameById.get(memberId) ?? t('common.member')
     },
-    [nameById, userId, t],
-  )
-
-  const labelForMember = useCallback(
-    (memberId: string): string => labelFor(userIdByMember.get(memberId) ?? null, memberId),
-    [labelFor, userIdByMember],
-  )
-
-  const settlements = useMemo(
-    () =>
-      settleBalances(
-        (balances ?? []).map((balance) => ({
-          memberId: balance.member_id,
-          balanceCents: balance.balance_cents ?? 0,
-        })),
-      ),
-    [balances],
+    [],
   )
 
   function toggleSharing() {
@@ -110,14 +62,10 @@ export default function TripGroupScreen() {
       setSharing(false)
       return
     }
-    Alert.alert(
-      'Partager ta position',
-      'Les autres membres de ce voyage verront ta position en direct tant que le partage est actif. Désactive-le à tout moment pour arrêter.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('group.share'), onPress: () => setSharing(true) },
-      ],
-    )
+    Alert.alert(t('group.shareLocationTitle'), t('group.shareLocationBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('group.share'), onPress: () => setSharing(true) },
+    ])
   }
 
   if (isLoading) {
@@ -130,7 +78,20 @@ export default function TripGroupScreen() {
     )
   }
 
-  if (isError || !trip) {
+  if (isError) {
+    return (
+      <Screen title={t('group.title')} showBack>
+        <ErrorState
+          title={t('errors.title')}
+          body={t('errors.body')}
+          retryLabel={t('common.retry')}
+          onRetry={() => void refetch()}
+        />
+      </Screen>
+    )
+  }
+
+  if (!trip) {
     return (
       <Screen title={t('group.title')} showBack>
         <View style={styles.center}>
@@ -144,8 +105,13 @@ export default function TripGroupScreen() {
     if (!trip) {
       return
     }
+    // Deep link expo-router resolves automatically (scheme "zyph"): tapping it opens the join
+    // screen, which auto-joins from the ?code param. The code stays in the message as a fallback
+    // for anyone without the app installed.
+    const url = Linking.createURL('/trips/join', { queryParams: { code: trip.invite_code } })
     await Share.share({
-      message: t('group.shareInvite', { title: trip.title, code: trip.invite_code }),
+      message: t('group.shareInvite', { title: trip.title, code: trip.invite_code, url }),
+      url,
     })
   }
 
@@ -155,150 +121,24 @@ export default function TripGroupScreen() {
     }
     await Clipboard.setStringAsync(trip.invite_code)
     setCopied(true)
-    setTimeout(() => setCopied(false), 1600)
+    if (copiedTimer.current) {
+      clearTimeout(copiedTimer.current)
+    }
+    copiedTimer.current = setTimeout(() => setCopied(false), 1600)
   }
 
   function confirmRegenerate() {
-    Alert.alert(
-      'Régénérer le code d’invitation',
-      'Le code actuel cessera de fonctionner. Les personnes déjà inscrites conservent leur accès.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('group.regenerate'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await regenerate.mutateAsync()
-            } catch (error) {
-              Alert.alert(
-                'Régénération impossible',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
-        },
-      ],
-    )
-  }
-
-  const isOwner = trip.owner_id === userId
-
-  function confirmDelete() {
-    Alert.alert(
-      t('group.deleteTrip'),
-      'Cette action supprime définitivement le voyage et toutes ses données.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteTrip.mutateAsync(tripId)
-              router.replace('/')
-            } catch (error) {
-              Alert.alert(
-                'Suppression impossible',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
-        },
-      ],
-    )
-  }
-
-  function confirmLeave() {
-    Alert.alert(
-      t('group.leaveTrip'),
-      'Tu ne verras plus ce voyage ni ses dépenses. Les dépenses passées que tu as payées ou que tu dois restent comptabilisées.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: 'Quitter',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await leaveTripMutation.mutateAsync(tripId)
-              router.replace('/')
-            } catch (error) {
-              Alert.alert(
-                'Impossible de quitter',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
-        },
-      ],
-    )
-  }
-
-  function confirmRemove(memberId: string, name: string) {
-    Alert.alert(
-      'Retirer le membre',
-      `${name} perdra l’accès à ce voyage. Les dépenses passées payées ou dues restent comptabilisées.`,
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('group.remove'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeMember.mutateAsync(memberId)
-            } catch (error) {
-              Alert.alert(
-                'Retrait impossible',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
-        },
-      ],
-    )
-  }
-
-  function openSettle(settlement: Settlement) {
-    setPendingSettlement(settlement)
-    setSettleAmount((settlement.amountCents / 100).toFixed(2))
-  }
-
-  async function confirmSettle() {
-    if (!pendingSettlement || !trip || !AMOUNT_RE.test(settleAmount.trim())) {
-      return
-    }
-    const amountCents = toCents(settleAmount)
-    if (amountCents <= 0) {
-      return
-    }
-    try {
-      await recordSettlement.mutateAsync({
-        tripId,
-        fromMemberId: pendingSettlement.fromMemberId,
-        toMemberId: pendingSettlement.toMemberId,
-        amountCents,
-      })
-      setPendingSettlement(null)
-    } catch (error) {
-      Alert.alert(
-        t('group.paymentFailedTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
-    }
-  }
-
-  function confirmUndo(settlement: TripSettlement) {
-    Alert.alert(t('group.confirmUndoTitle'), t('group.confirmUndoBody'), [
+    Alert.alert(t('group.confirmRegenerateTitle'), t('group.confirmRegenerateBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
-        text: t('group.undo'),
+        text: t('group.regenerate'),
         style: 'destructive',
         onPress: async () => {
           try {
-            await reverseSettlementMutation.mutateAsync(settlement.id)
+            await regenerate.mutateAsync()
           } catch (error) {
             Alert.alert(
-              t('group.undoFailedTitle'),
+              t('group.regenerateFailedTitle'),
               error instanceof Error ? error.message : t('common.tryAgain'),
             )
           }
@@ -307,10 +147,71 @@ export default function TripGroupScreen() {
     ])
   }
 
-  const hasSettlements = settlements.length > 0
-  const hasBalances = balances != null && balances.length > 0
+  const isOwner = trip.owner_id === userId
+
+  function confirmDelete() {
+    Alert.alert(t('group.deleteTrip'), t('group.confirmDeleteBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteTrip.mutateAsync(tripId)
+            router.replace('/')
+          } catch (error) {
+            Alert.alert(
+              t('group.deleteFailedTitle'),
+              error instanceof Error ? error.message : t('common.tryAgain'),
+            )
+          }
+        },
+      },
+    ])
+  }
+
+  function confirmLeave() {
+    Alert.alert(t('group.leaveTrip'), t('group.confirmLeaveBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('group.leave'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await leaveTripMutation.mutateAsync(tripId)
+            router.replace('/')
+          } catch (error) {
+            Alert.alert(
+              t('group.leaveFailedTitle'),
+              error instanceof Error ? error.message : t('common.tryAgain'),
+            )
+          }
+        },
+      },
+    ])
+  }
+
+  function confirmRemove(memberId: string, name: string) {
+    Alert.alert(t('group.confirmRemoveTitle'), t('group.confirmRemoveBody', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('group.remove'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await removeMember.mutateAsync(memberId)
+          } catch (error) {
+            Alert.alert(
+              t('group.removeFailedTitle'),
+              error instanceof Error ? error.message : t('common.tryAgain'),
+            )
+          }
+        },
+      },
+    ])
+  }
+
   const hasMembers = members != null && members.length > 0
-  const hasHistory = paymentHistory != null && paymentHistory.length > 0
 
   return (
     <Screen
@@ -322,7 +223,7 @@ export default function TripGroupScreen() {
           <Pressable
             onPress={() => router.push({ pathname: '/trips/[id]/edit', params: { id: tripId } })}
             accessibilityRole="button"
-            accessibilityLabel="Modifier le voyage"
+            accessibilityLabel={t('group.editTripLabel')}
             hitSlop={8}
           >
             <Ionicons name="create-outline" size={22} color={theme.colors.foreground} />
@@ -379,136 +280,26 @@ export default function TripGroupScreen() {
         </View>
       </Card>
 
-      {/* Settle up */}
-      <View>
-        <SectionTitle>{t('group.suggestedSettlements')}</SectionTitle>
-        <View style={styles.blockBody}>
-          {hasSettlements ? (
-            <View style={styles.settleList}>
-              {settlements.map((settlement) => (
-                <Card
-                  key={`${settlement.fromMemberId}-${settlement.toMemberId}`}
-                  padding={theme.gap(3)}
-                >
-                  <View style={styles.settleRow}>
-                    <Avatar name={labelForMember(settlement.fromMemberId)} size={32} />
-                    <Ionicons name="arrow-forward" size={16} color={theme.colors.muted} />
-                    <Avatar name={labelForMember(settlement.toMemberId)} size={32} />
-                    <Text style={styles.settleText} numberOfLines={2}>
-                      <Text style={styles.settleName}>
-                        {labelForMember(settlement.fromMemberId)}
-                      </Text>
-                      {` ${t('group.owesTo')} `}
-                      <Text style={styles.settleName}>{labelForMember(settlement.toMemberId)}</Text>
-                    </Text>
-                    <Amount
-                      cents={settlement.amountCents}
-                      currency={trip.currency}
-                      size={15}
-                      neutral
-                    />
-                  </View>
-                  <View style={styles.settleActions}>
-                    <Button
-                      label={t('group.markAsPaid')}
-                      icon="checkmark-circle-outline"
-                      variant="secondary"
-                      size="sm"
-                      block={false}
-                      onPress={() => openSettle(settlement)}
-                    />
-                  </View>
-                </Card>
-              ))}
-            </View>
-          ) : (
-            <Surface
-              borderWidth={0}
-              radius={theme.radius.lg}
-              color={withAlpha(theme.colors.success, 0.1)}
-              style={styles.settledBanner}
-            >
-              <Ionicons name="checkmark-circle" size={22} color={theme.colors.success} />
-              <Text style={styles.settledText} numberOfLines={2}>
-                {t('group.allUpToDate')}
+      {/* Balances & settle up -> dedicated screen */}
+      <Pressable
+        onPress={() => router.push({ pathname: '/trips/[id]/balances', params: { id: tripId } })}
+        accessibilityRole="button"
+        accessibilityLabel={t('balances.title')}
+        style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+      >
+        <Card padding={theme.gap(4)}>
+          <View style={styles.shareRow}>
+            <Ionicons name="scale-outline" size={22} color={theme.colors.primary} />
+            <View style={styles.shareInfo}>
+              <Text style={styles.shareTitle}>{t('balances.title')}</Text>
+              <Text style={styles.shareSub} numberOfLines={1}>
+                {t('group.suggestedSettlements')}
               </Text>
-            </Surface>
-          )}
-        </View>
-      </View>
-
-      {/* Balances */}
-      {hasBalances ? (
-        <View>
-          <SectionTitle>{t('group.balances')}</SectionTitle>
-          <View style={styles.listBody}>
-            {balances.map((balance, index) => (
-              <View
-                key={balance.member_id}
-                style={[styles.listRow, index === balances.length - 1 && styles.listRowLast]}
-              >
-                <View style={styles.rowMember}>
-                  <Avatar name={labelFor(balance.user_id, balance.member_id)} size={30} />
-                  <Text style={styles.memberName}>
-                    {labelFor(balance.user_id, balance.member_id)}
-                  </Text>
-                </View>
-                <Amount
-                  cents={balance.balance_cents ?? 0}
-                  currency={trip.currency}
-                  size={15}
-                  signed
-                />
-              </View>
-            ))}
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.muted} />
           </View>
-        </View>
-      ) : null}
-
-      {/* Payment history */}
-      {hasHistory ? (
-        <View>
-          <SectionTitle>{t('group.paymentHistory')}</SectionTitle>
-          <View style={styles.listBody}>
-            {paymentHistory.map((settlement, index) => (
-              <View
-                key={settlement.id}
-                style={[styles.listRow, index === paymentHistory.length - 1 && styles.listRowLast]}
-              >
-                <View style={styles.historyInfo}>
-                  <Text style={styles.historyParties} numberOfLines={1}>
-                    <Text style={styles.settleName}>{labelForMember(settlement.from_member)}</Text>
-                    {` ${t('group.paysTo')} `}
-                    <Text style={styles.settleName}>{labelForMember(settlement.to_member)}</Text>
-                  </Text>
-                  <Text style={styles.historyDate}>
-                    {new Date(settlement.paid_at).toLocaleDateString(i18n.language, {
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                  </Text>
-                </View>
-                <Amount
-                  cents={settlement.amount_cents}
-                  currency={settlement.currency}
-                  size={15}
-                  neutral
-                />
-                <Pressable
-                  onPress={() => confirmUndo(settlement)}
-                  disabled={reverseSettlementMutation.isPending}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('group.undo')}
-                  hitSlop={6}
-                  style={({ pressed }) => (pressed ? styles.pressed : undefined)}
-                >
-                  <Text style={styles.removeText}>{t('group.undo')}</Text>
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        </View>
-      ) : null}
+        </Card>
+      </Pressable>
 
       {/* Members */}
       {hasMembers ? (
@@ -527,8 +318,10 @@ export default function TripGroupScreen() {
                   style={[styles.listRow, index === members.length - 1 && styles.listRowLast]}
                 >
                   <View style={styles.rowMember}>
-                    <Avatar name={name} size={34} />
-                    <Text style={styles.memberName}>{name}</Text>
+                    <Avatar name={name} imageUrl={member.avatar_url} size={34} />
+                    <Text style={styles.memberName} numberOfLines={1}>
+                      {name}
+                    </Text>
                   </View>
                   {member.role === 'owner' ? (
                     <Badge label={t('group.organizer')} tone="primary" />
@@ -537,7 +330,7 @@ export default function TripGroupScreen() {
                       onPress={() => confirmRemove(member.id, name)}
                       disabled={removeMember.isPending}
                       accessibilityRole="button"
-                      accessibilityLabel={`Retirer ${name}`}
+                      accessibilityLabel={t('group.removeMemberLabel', { name })}
                       hitSlop={6}
                       style={({ pressed }) => (pressed ? styles.pressed : undefined)}
                     >
@@ -568,16 +361,16 @@ export default function TripGroupScreen() {
             />
             <View style={styles.shareInfo}>
               <Text style={styles.shareTitle}>
-                {sharing ? 'Position partagée' : t('group.shareLocationToggle')}
+                {sharing ? t('group.sharingActive') : t('group.shareLocationToggle')}
               </Text>
               <Text style={styles.shareSub} numberOfLines={2}>
                 {shareStatus === 'denied'
-                  ? 'Autorisation refusée. Active la localisation dans les Réglages.'
+                  ? t('group.shareStatusDenied')
                   : shareStatus === 'error'
-                    ? 'Impossible de démarrer le partage. Touche pour réessayer.'
+                    ? t('group.shareStatusError')
                     : sharing
-                      ? 'Les autres membres te voient en temps réel.'
-                      : 'Désactivé - ta position reste privée.'}
+                      ? t('group.shareStatusOn')
+                      : t('group.shareStatusOff')}
               </Text>
             </View>
             <Ionicons
@@ -600,7 +393,7 @@ export default function TripGroupScreen() {
           style={({ pressed }) => [styles.dangerBtn, pressed && styles.pressed]}
         >
           <Text style={styles.dangerText} numberOfLines={1}>
-            {deleteTrip.isPending ? 'Suppression…' : t('group.deleteTrip')}
+            {deleteTrip.isPending ? t('group.deleting') : t('group.deleteTrip')}
           </Text>
         </Pressable>
       ) : (
@@ -613,49 +406,10 @@ export default function TripGroupScreen() {
           style={({ pressed }) => [styles.dangerBtn, pressed && styles.pressed]}
         >
           <Text style={styles.dangerText} numberOfLines={1}>
-            {leaveTripMutation.isPending ? 'En cours…' : t('group.leaveTrip')}
+            {leaveTripMutation.isPending ? t('group.leaving') : t('group.leaveTrip')}
           </Text>
         </Pressable>
       )}
-
-      <BottomSheet
-        open={pendingSettlement != null}
-        onClose={() => setPendingSettlement(null)}
-        title={t('group.confirmPaymentTitle')}
-      >
-        {pendingSettlement ? (
-          <View style={styles.sheetBody}>
-            <View style={styles.sheetParties}>
-              <Avatar name={labelForMember(pendingSettlement.fromMemberId)} size={36} />
-              <Ionicons name="arrow-forward" size={18} color={theme.colors.muted} />
-              <Avatar name={labelForMember(pendingSettlement.toMemberId)} size={36} />
-              <Text style={styles.sheetPartiesText} numberOfLines={2}>
-                <Text style={styles.settleName}>
-                  {labelForMember(pendingSettlement.fromMemberId)}
-                </Text>
-                {` ${t('group.paysTo')} `}
-                <Text style={styles.settleName}>
-                  {labelForMember(pendingSettlement.toMemberId)}
-                </Text>
-              </Text>
-            </View>
-            <TextField
-              label={t('expenseForm.amount', { currency: trip.currency })}
-              placeholder="0.00"
-              keyboardType="decimal-pad"
-              value={settleAmount}
-              onChangeText={setSettleAmount}
-            />
-            <Button
-              label={
-                recordSettlement.isPending ? t('group.recordingPayment') : t('group.confirmPayment')
-              }
-              onPress={() => void confirmSettle()}
-              disabled={recordSettlement.isPending || !AMOUNT_RE.test(settleAmount.trim())}
-            />
-          </View>
-        ) : null}
-      </BottomSheet>
     </Screen>
   )
 }
@@ -705,60 +459,6 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(2.5),
     marginTop: theme.gap(3.5),
   },
-  blockBody: {
-    marginTop: theme.gap(2.5),
-  },
-  settleList: {
-    gap: theme.gap(2.5),
-  },
-  settleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(3),
-  },
-  settleText: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: theme.fonts.sans.regular,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.foreground,
-  },
-  settleName: {
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
-  },
-  settledBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(2.5),
-    paddingVertical: theme.gap(3.5),
-    paddingHorizontal: theme.gap(4),
-  },
-  settledText: {
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
-    fontSize: theme.fontSize.md,
-    color: theme.colors.foreground,
-  },
-  settleActions: {
-    marginTop: theme.gap(2.5),
-    alignItems: 'flex-end',
-  },
-  sheetBody: {
-    gap: theme.gap(4),
-  },
-  sheetParties: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(3),
-  },
-  sheetPartiesText: {
-    flex: 1,
-    minWidth: 0,
-    fontFamily: theme.fonts.sans.regular,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.foreground,
-  },
   listBody: {
     marginTop: theme.gap(1),
   },
@@ -781,25 +481,11 @@ const styles = StyleSheet.create((theme) => ({
     flexShrink: 1,
   },
   memberName: {
+    flexShrink: 1,
     fontFamily: theme.fonts.sans.medium,
     fontWeight: '500',
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
-  },
-  historyInfo: {
-    flex: 1,
-    minWidth: 0,
-    gap: theme.gap(0.5),
-  },
-  historyParties: {
-    fontFamily: theme.fonts.sans.regular,
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.foreground,
-  },
-  historyDate: {
-    fontFamily: theme.fonts.sans.regular,
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.muted,
   },
   removeText: {
     fontFamily: theme.fonts.sans.semibold,

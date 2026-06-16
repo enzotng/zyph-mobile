@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 
-import { askCopilot } from './copilot.api'
+import { askCopilot, classifyCopilotError } from './copilot.api'
 
 jest.mock('@/lib/supabase')
 
@@ -22,6 +22,24 @@ describe('askCopilot', () => {
 
     await expect(askCopilot(input)).resolves.toEqual({ answer: 'You owe 12.00 EUR.' })
     expect(invoke).toHaveBeenCalledWith('copilot', { body: input })
+  })
+
+  it('returns an answer with a widget', async () => {
+    invoke.mockResolvedValue({
+      data: { answer: 'It will be sunny.', widget: 'weather' },
+      error: null,
+    })
+
+    await expect(askCopilot(input)).resolves.toEqual({
+      answer: 'It will be sunny.',
+      widget: 'weather',
+    })
+  })
+
+  it('rejects an unknown widget type at the zod boundary', async () => {
+    invoke.mockResolvedValue({ data: { answer: 'ok', widget: 'bogus' }, error: null })
+
+    await expect(askCopilot(input)).rejects.toThrow()
   })
 
   it('returns a proposed action', async () => {
@@ -51,5 +69,28 @@ describe('askCopilot', () => {
     invoke.mockResolvedValue({ data: { answer: '' }, error: null })
 
     await expect(askCopilot(input)).rejects.toThrow()
+  })
+})
+
+describe('classifyCopilotError', () => {
+  it('flags our 429 rate-limit as rateLimited', () => {
+    expect(classifyCopilotError({ name: 'FunctionsHttpError', context: { status: 429 } })).toBe(
+      'rateLimited',
+    )
+  })
+
+  it('treats other HTTP statuses as generic', () => {
+    expect(classifyCopilotError({ name: 'FunctionsHttpError', context: { status: 503 } })).toBe(
+      'generic',
+    )
+  })
+
+  it('flags a fetch failure as offline', () => {
+    expect(classifyCopilotError({ name: 'FunctionsFetchError' })).toBe('offline')
+  })
+
+  it('falls back to generic for an unknown error', () => {
+    expect(classifyCopilotError(new Error('boom'))).toBe('generic')
+    expect(classifyCopilotError(null)).toBe('generic')
   })
 })

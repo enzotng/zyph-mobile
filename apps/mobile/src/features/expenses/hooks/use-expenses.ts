@@ -5,8 +5,10 @@ import {
   deleteExpense,
   getExpense,
   getTripBalances,
+  listExpensePayers,
   listExpenseSplits,
   listExpenses,
+  listMyExpenseShares,
   updateExpense,
 } from '../api/expenses.api'
 
@@ -18,12 +20,20 @@ export function balancesQueryKey(tripId: string) {
   return ['trips', tripId, 'balances'] as const
 }
 
+export function expenseSharesQueryKey(tripId: string) {
+  return ['trips', tripId, 'expense-shares'] as const
+}
+
 export function expenseQueryKey(expenseId: string) {
   return ['expenses', expenseId] as const
 }
 
 export function expenseSplitsQueryKey(expenseId: string) {
   return ['expenses', expenseId, 'splits'] as const
+}
+
+export function expensePayersQueryKey(expenseId: string) {
+  return ['expenses', expenseId, 'payers'] as const
 }
 
 export function useExpenses(tripId: string) {
@@ -50,6 +60,14 @@ export function useExpenseSplits(expenseId: string) {
   })
 }
 
+export function useExpensePayers(expenseId: string) {
+  return useQuery({
+    queryKey: expensePayersQueryKey(expenseId),
+    queryFn: () => listExpensePayers(expenseId),
+    enabled: Boolean(expenseId),
+  })
+}
+
 export function useTripBalances(tripId: string) {
   return useQuery({
     queryKey: balancesQueryKey(tripId),
@@ -58,14 +76,27 @@ export function useTripBalances(tripId: string) {
   })
 }
 
+// The signed-in member's share of each expense (memberId = their trip membership), for the feed's
+// "your share" per row. Disabled until the membership is resolved.
+export function useMyExpenseShares(tripId: string, memberId: string | null) {
+  return useQuery({
+    queryKey: [...expenseSharesQueryKey(tripId), memberId],
+    queryFn: () => listMyExpenseShares(memberId as string),
+    enabled: Boolean(tripId && memberId),
+  })
+}
+
 export function useCreateExpense(tripId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: createExpense,
     onSuccess: () => {
-      // Refresh only what an expense affects: the expense list and the balances.
+      // Refresh what an expense affects: the expense list, balances, and per-row shares.
       void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: expenseSharesQueryKey(tripId) })
+      // And the trips-list card balance (get_my_trip_balances), keyed exactly ['trips'].
+      void queryClient.invalidateQueries({ queryKey: ['trips'], exact: true })
     },
   })
 }
@@ -77,8 +108,11 @@ export function useUpdateExpense(tripId: string) {
     onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: expenseSharesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: ['trips'], exact: true })
       void queryClient.invalidateQueries({ queryKey: expenseQueryKey(updated.id) })
       void queryClient.invalidateQueries({ queryKey: expenseSplitsQueryKey(updated.id) })
+      void queryClient.invalidateQueries({ queryKey: expensePayersQueryKey(updated.id) })
     },
   })
 }
@@ -90,8 +124,11 @@ export function useDeleteExpense(tripId: string) {
     onSuccess: (_data, expenseId) => {
       void queryClient.invalidateQueries({ queryKey: expensesQueryKey(tripId) })
       void queryClient.invalidateQueries({ queryKey: balancesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: expenseSharesQueryKey(tripId) })
+      void queryClient.invalidateQueries({ queryKey: ['trips'], exact: true })
       queryClient.removeQueries({ queryKey: expenseQueryKey(expenseId) })
       queryClient.removeQueries({ queryKey: expenseSplitsQueryKey(expenseId) })
+      queryClient.removeQueries({ queryKey: expensePayersQueryKey(expenseId) })
     },
   })
 }

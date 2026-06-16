@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react'
 
+import { registerForPushNotifications } from '@/features/notifications/push'
 import { mmkvQueryPersister } from '@/lib/query-persister'
 import { supabase } from '@/lib/supabase'
 
@@ -18,6 +19,12 @@ import { supabase } from '@/lib/supabase'
 // (email confirmation / OAuth callback: zyph://auth/callback?code=...).
 function exchangeCodeFromUrl(url: string | null) {
   if (!url) {
+    return
+  }
+  // Only the auth callback (zyph://auth/callback?code=...) carries a PKCE code. Other deep links
+  // such as an invite (zyph://trips/join?code=ZYPH-XXXX) carry an unrelated code that must never
+  // be exchanged for a session.
+  if (!url.includes('auth/callback')) {
     return
   }
   const { queryParams } = Linking.parse(url)
@@ -76,6 +83,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const sub = Linking.addEventListener('url', ({ url }) => exchangeCodeFromUrl(url))
     return () => sub.remove()
   }, [])
+
+  // Register this device for push once a user is signed in (re-runs only when the user changes).
+  // Best-effort and self-guarding (simulator / denied permission / no push build just no-op).
+  const userId = session?.user.id
+  useEffect(() => {
+    if (userId) {
+      void registerForPushNotifications()
+    }
+  }, [userId])
 
   const clearRecovery = useCallback(() => setRecovering(false), [])
 

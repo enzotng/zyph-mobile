@@ -2,10 +2,12 @@ import { supabase } from '@/lib/supabase'
 import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
 
 import {
+  deletePushToken,
   getNotificationPreferences,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  registerPushToken,
   upsertNotificationPreferences,
 } from './notifications.api'
 
@@ -80,6 +82,40 @@ describe('markAllNotificationsRead', () => {
   it('throws on error', async () => {
     rpc.mockResolvedValue({ data: null, error: makePostgrestError('nope') })
     await expect(markAllNotificationsRead()).rejects.toThrow('nope')
+  })
+})
+
+describe('registerPushToken', () => {
+  it('calls the rpc with the token, platform and locale', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+    await expect(registerPushToken('ExpoTok[abc]', 'ios', 'en-US')).resolves.toBeUndefined()
+    expect(rpc).toHaveBeenCalledWith('register_push_token', {
+      _token: 'ExpoTok[abc]',
+      _platform: 'ios',
+      _locale: 'en-US',
+    })
+  })
+
+  it('throws on error', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('nope') })
+    await expect(registerPushToken('t', 'android')).rejects.toThrow('nope')
+  })
+})
+
+describe('deletePushToken', () => {
+  it('deletes the row by token', async () => {
+    const builder = makeQueryBuilder({ data: null, error: null })
+    from.mockReturnValue(builder)
+
+    await expect(deletePushToken('ExpoTok[abc]')).resolves.toBeUndefined()
+    expect(from).toHaveBeenCalledWith('push_tokens')
+    expect(builder.delete).toHaveBeenCalled()
+    expect(builder.eq).toHaveBeenCalledWith('token', 'ExpoTok[abc]')
+  })
+
+  it('throws on error', async () => {
+    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('del') }))
+    await expect(deletePushToken('t')).rejects.toThrow('del')
   })
 })
 

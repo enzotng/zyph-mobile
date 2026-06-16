@@ -18,6 +18,8 @@ export {
   useNotifications,
   useUnreadNotificationCount,
 } from './hooks/use-notifications'
+export { usePushNotificationResponder } from './hooks/use-push-responder'
+export { routeToNotification } from './route'
 export {
   categoryForType,
   groupNotificationsByDay,

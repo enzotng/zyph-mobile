@@ -9,13 +9,22 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { ZyphMark } from '@/components/brand/zyph-mark'
 import { Button } from '@/components/button'
 import { TextField } from '@/components/text-field'
-import { makeSignInSchema, type SignInValues, signIn, signInWithGoogle } from '@/features/auth'
+import {
+  AppleButton,
+  makeSignInSchema,
+  type SignInValues,
+  signIn,
+  signInWithApple,
+  signInWithGoogle,
+} from '@/features/auth'
 
 export default function SignInScreen() {
   const router = useRouter()
   const { t } = useTranslation()
   const [submitting, setSubmitting] = useState(false)
   const [googleSubmitting, setGoogleSubmitting] = useState(false)
+  const [appleSubmitting, setAppleSubmitting] = useState(false)
+  const busy = submitting || googleSubmitting || appleSubmitting
   const schema = useMemo(() => makeSignInSchema(t), [t])
   const {
     control,
@@ -53,6 +62,21 @@ export default function SignInScreen() {
       )
     } finally {
       setGoogleSubmitting(false)
+    }
+  }
+
+  async function onApple() {
+    setAppleSubmitting(true)
+    try {
+      await signInWithApple()
+      // The auth guard navigates once the session updates.
+    } catch (error) {
+      Alert.alert(
+        t('auth.apple.errorTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
+    } finally {
+      setAppleSubmitting(false)
     }
   }
 
@@ -113,7 +137,7 @@ export default function SignInScreen() {
         <Button
           label={submitting ? t('auth.signIn.submitting') : t('auth.signIn.submit')}
           onPress={handleSubmit(onSubmit)}
-          disabled={submitting || googleSubmitting}
+          disabled={busy}
         />
       </View>
 
@@ -123,13 +147,16 @@ export default function SignInScreen() {
         <View style={styles.dividerLine} />
       </View>
 
-      <Button
-        variant="secondary"
-        icon="logo-google"
-        label={googleSubmitting ? t('auth.google.signingIn') : t('auth.google.continue')}
-        onPress={onGoogle}
-        disabled={submitting || googleSubmitting}
-      />
+      <View style={styles.social}>
+        <Button
+          variant="secondary"
+          icon="logo-google"
+          label={googleSubmitting ? t('auth.google.signingIn') : t('auth.google.continue')}
+          onPress={onGoogle}
+          disabled={busy}
+        />
+        <AppleButton onPress={onApple} disabled={busy} />
+      </View>
 
       <View style={styles.footer}>
         <Text style={styles.muted}>{t('auth.signIn.noAccount')}</Text>
@@ -201,6 +228,9 @@ const styles = StyleSheet.create((theme, rt) => ({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: theme.gap(3),
+  },
+  social: {
     gap: theme.gap(3),
   },
   dividerLine: {

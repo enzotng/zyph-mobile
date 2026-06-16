@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   joinTripByCode,
   leaveTrip,
+  listTripMemberNames,
   listTripMembers,
   regenerateInviteCode,
   removeTripMember,
@@ -16,6 +17,20 @@ export function useTripMembers(tripId: string) {
   return useQuery({
     queryKey: tripMembersQueryKey(tripId),
     queryFn: () => listTripMembers(tripId),
+    enabled: Boolean(tripId),
+  })
+}
+
+export function tripMemberNamesQueryKey(tripId: string) {
+  return ['trips', tripId, 'member-names'] as const
+}
+
+// Names for ALL members incl. removed - for resolving historical splits/balances. The selectable
+// member lists keep using useTripMembers (active only).
+export function useTripMemberNames(tripId: string) {
+  return useQuery({
+    queryKey: tripMemberNamesQueryKey(tripId),
+    queryFn: () => listTripMemberNames(tripId),
     enabled: Boolean(tripId),
   })
 }

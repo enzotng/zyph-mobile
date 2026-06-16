@@ -10,6 +10,7 @@ import { Screen } from '@/components/screen'
 import { Avatar, Badge, Card, SectionTitle, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
+  CATEGORY_ICON,
   type ExpenseCategory,
   formatAmount,
   groupMembersByItemId,
@@ -17,21 +18,14 @@ import {
   useExpense,
   useExpenseItemAssignments,
   useExpenseItems,
+  useExpensePayers,
   useExpenseSplits,
 } from '@/features/expenses'
-import { useTripMembers } from '@/features/group'
+import { memberLabel, useTripMemberNames } from '@/features/group'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
+import { formatRate } from '@/lib/money'
 import { paramString } from '@/lib/routing'
-
-const CATEGORY_ICON: Record<ExpenseCategory, keyof typeof Ionicons.glyphMap> = {
-  food: 'restaurant',
-  transport: 'car',
-  lodging: 'bed',
-  activity: 'ticket',
-  shopping: 'bag-handle',
-  other: 'pricetag',
-}
 
 export default function ExpenseDetailScreen() {
   const params = useGlobalSearchParams<{ id: string; expenseId: string }>()
@@ -45,10 +39,11 @@ export default function ExpenseDetailScreen() {
 
   const { data: expense, isLoading } = useExpense(expenseId)
   const { data: splits } = useExpenseSplits(expenseId)
+  const { data: payers } = useExpensePayers(expenseId)
   const { data: items } = useExpenseItems(expenseId)
   const { data: itemAssignments } = useExpenseItemAssignments(expenseId)
   const { data: trip } = useTrip(tripId)
-  const { data: members } = useTripMembers(tripId)
+  const { data: members } = useTripMemberNames(tripId)
   const deleteExpense = useDeleteExpense(tripId)
 
   const hasItems = Boolean(items && items.length > 0)
@@ -58,13 +53,10 @@ export default function ExpenseDetailScreen() {
   )
 
   const memberLabelById = useMemo(() => {
+    const labels = { you: t('common.you'), fallback: t('common.member') }
     const map = new Map<string, string>()
     for (const member of members ?? []) {
-      const label =
-        member.user_id && member.user_id === userId
-          ? t('common.you')
-          : (member.display_name ?? t('common.member'))
-      map.set(member.id, label)
+      map.set(member.id, memberLabel(member, userId, labels))
     }
     return map
   }, [members, userId, t])
@@ -109,6 +101,11 @@ export default function ExpenseDetailScreen() {
 
   const category = (expense.category as ExpenseCategory | null) ?? null
   const isForeign = expense.currency !== trip.currency
+  // Several payers -> list them; otherwise the single primary payer.
+  const paidByName =
+    payers && payers.length > 1
+      ? payers.map((p) => labelFor(p.member_id)).join(', ')
+      : labelFor(expense.paid_by)
   const dateLabel = new Date(expense.created_at).toLocaleDateString(undefined, {
     day: 'numeric',
     month: 'long',
@@ -157,8 +154,8 @@ export default function ExpenseDetailScreen() {
 
         <View style={styles.amountRow}>
           <View style={styles.amountLeft}>
-            <Text style={styles.paidBy}>
-              {t('trip.paidBy', { name: labelFor(expense.paid_by) })}
+            <Text style={styles.paidBy} numberOfLines={2}>
+              {t('trip.paidBy', { name: paidByName })}
             </Text>
             {category ? (
               <View style={styles.badgeWrap}>
@@ -181,6 +178,16 @@ export default function ExpenseDetailScreen() {
             ) : null}
           </View>
         </View>
+
+        {isForeign ? (
+          <View style={styles.fxRow}>
+            <Ionicons name="lock-closed-outline" size={13} color={theme.colors.muted} />
+            <Text style={styles.fxText}>
+              {t('expenseDetail.rateLocked')} ·{' '}
+              {formatRate(expense.fx_rate, expense.currency, trip.currency)}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.cardButton}>
           {hasItems ? (
@@ -223,12 +230,14 @@ export default function ExpenseDetailScreen() {
                   style={[styles.itemRow, index === (items ?? []).length - 1 && styles.lastRow]}
                 >
                   <View style={styles.itemTop}>
-                    <Text style={styles.itemLabel}>{item.label}</Text>
+                    <Text style={styles.itemLabel} numberOfLines={1}>
+                      {item.label}
+                    </Text>
                     <Text style={styles.itemAmount}>
                       {formatAmount(item.amount_cents, expense.currency)}
                     </Text>
                   </View>
-                  <Text style={styles.itemWho}>
+                  <Text style={styles.itemWho} numberOfLines={2}>
                     {names.length > 0 ? names : t('trip.unassigned')}
                   </Text>
                 </View>
@@ -248,7 +257,9 @@ export default function ExpenseDetailScreen() {
             >
               <View style={styles.splitLeft}>
                 <Avatar name={labelFor(split.member_id)} size={28} />
-                <Text style={styles.splitName}>{labelFor(split.member_id)}</Text>
+                <Text style={styles.splitName} numberOfLines={1}>
+                  {labelFor(split.member_id)}
+                </Text>
               </View>
               <Text style={styles.splitAmount}>
                 {formatAmount(split.share_cents, trip.currency)}
@@ -329,6 +340,17 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.muted,
     marginTop: 2,
   },
+  fxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(1.5),
+    marginTop: theme.gap(2.5),
+  },
+  fxText: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+  },
   cardButton: {
     marginTop: theme.gap(3),
   },
@@ -367,16 +389,19 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: theme.gap(2.5),
     paddingVertical: theme.gap(2.5),
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   splitLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(2.5),
   },
   splitName: {
+    flexShrink: 1,
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
