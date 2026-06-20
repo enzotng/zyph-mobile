@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.4.0](https://github.com/enzotng/zyph-mobile/compare/v1.3.1...v1.4.0) (2026-06-20)
+
+
+### Features
+
+* **smart-import:** add OS share-sheet entry point for bookings ([#208](https://github.com/enzotng/zyph-mobile/issues/208)) ([#209](https://github.com/enzotng/zyph-mobile/issues/209)) ([fa537db](https://github.com/enzotng/zyph-mobile/commit/fa537db66ca77ffb603cd615393825df993b91c0))
+
 ## [1.3.1](https://github.com/enzotng/zyph-mobile/compare/v1.3.0...v1.3.1) (2026-06-16)
 
 
