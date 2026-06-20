@@ -16,15 +16,17 @@ import { withAlpha } from '@/lib/color'
 import { paramString } from '@/lib/routing'
 
 export default function ImportEmailScreen() {
-  const params = useGlobalSearchParams<{ id: string }>()
+  const params = useGlobalSearchParams<{ id: string; prefilledText?: string }>()
   const tripId = paramString(params.id)
+  // Pre-filled when arriving from an OS share (share-handler -> here).
+  const prefilledText = paramString(params.prefilledText)
   const router = useRouter()
   const { theme } = useUnistyles()
   const { t } = useTranslation()
   const parseEmail = useParseEmail()
   const createEvent = useCreateEvent(tripId)
 
-  const [text, setText] = useState('')
+  const [text, setText] = useState(prefilledText)
   const [parsed, setParsed] = useState<ParsedEmailEvent | null>(null)
   const [editedTitle, setEditedTitle] = useState('')
   // Editable copies of the parsed fields so the user can correct a low-confidence parse before
@@ -41,6 +43,10 @@ export default function ImportEmailScreen() {
       return
     }
     checkedClipboardRef.current = true
+    // Arriving from an OS share already fills the editor - don't also surface the clipboard banner.
+    if (prefilledText) {
+      return
+    }
     let cancelled = false
     Clipboard.getStringAsync()
       .then((value) => {
@@ -55,7 +61,7 @@ export default function ImportEmailScreen() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [prefilledText])
 
   function pasteClipboard() {
     if (clipboardHint) {
