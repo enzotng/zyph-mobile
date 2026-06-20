@@ -11,6 +11,7 @@ const THEME_KEY = 'theme'
 const LANGUAGE_KEY = 'language'
 const ONBOARDING_KEY = 'onboardingSeen'
 const PENDING_INVITE_KEY = 'pendingInvite'
+const PENDING_SHARE_KEY = 'pendingShare'
 
 function shareLocationKey(tripId: string): string {
   return `shareLocation:${tripId}`
@@ -45,6 +46,21 @@ export function setPendingInvite(code: string): void {
 
 export function clearPendingInvite(): void {
   storage.remove(PENDING_INVITE_KEY)
+}
+
+// Text shared from another app (OS share sheet) while signed out, so it survives the sign-in
+// redirect and can be replayed into Smart Import once the user authenticates (mirrors the pending
+// invite above).
+export function getPendingShare(): string | null {
+  return storage.getString(PENDING_SHARE_KEY) ?? null
+}
+
+export function setPendingShare(text: string): void {
+  storage.set(PENDING_SHARE_KEY, text)
+}
+
+export function clearPendingShare(): void {
+  storage.remove(PENDING_SHARE_KEY)
 }
 
 export function getThemePreference(): ThemePreference {
