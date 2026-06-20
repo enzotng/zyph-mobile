@@ -260,6 +260,14 @@ export const en = {
       event: 'Event',
     },
   },
+  shareHandler: {
+    title: 'Pick a trip',
+    lede: 'Choose the trip to import this shared booking into.',
+    emptyTitle: 'No trips yet',
+    emptyBody: 'Create a trip first, then share booking confirmations straight into it.',
+    emptyCta: 'Go to my trips',
+    loading: 'Loading your trips…',
+  },
   auth: {
     signIn: {
       title: 'Welcome back',

@@ -263,6 +263,14 @@ export const fr: Translations = {
       event: 'Événement',
     },
   },
+  shareHandler: {
+    title: 'Choisir un voyage',
+    lede: 'Choisis le voyage où importer cette réservation partagée.',
+    emptyTitle: 'Aucun voyage',
+    emptyBody: 'Crée d’abord un voyage, puis partage tes confirmations directement dedans.',
+    emptyCta: 'Voir mes voyages',
+    loading: 'Chargement de tes voyages…',
+  },
   auth: {
     signIn: {
       title: 'Bon retour',

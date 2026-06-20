@@ -2,12 +2,14 @@ import type { Session } from '@supabase/supabase-js'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { useFonts } from 'expo-font'
 import { Stack, useGlobalSearchParams, useRouter, useSegments } from 'expo-router'
+import { ShareIntentProvider } from 'expo-share-intent'
 import { useEffect } from 'react'
-import { View } from 'react-native'
+import { Platform, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { ErrorBoundary } from '@/components/error-boundary'
 import { OfflineBanner } from '@/components/offline-banner'
+import { ShareIntentRouter } from '@/components/share-intent-router'
 import { Spinner } from '@/components/ui'
 import { AuthProvider, useAuth } from '@/features/auth'
 import { usePushNotificationResponder } from '@/features/notifications'
@@ -15,7 +17,9 @@ import '@/lib/i18n'
 import '@/lib/online-manager'
 import {
   clearPendingInvite,
+  clearPendingShare,
   getPendingInvite,
+  getPendingShare,
   hasSeenOnboarding,
   setPendingInvite,
 } from '@/lib/preferences'
@@ -49,9 +53,16 @@ function useProtectedRoute(session: Session | null, isLoading: boolean, recoveri
       if (pending) {
         clearPendingInvite()
         router.replace({ pathname: '/trips/join', params: { code: pending } })
-      } else {
-        router.replace('/')
+        return
       }
+      // A booking shared while signed out (stashed by ShareIntentRouter) -> replay it now.
+      const pendingShare = getPendingShare()
+      if (pendingShare) {
+        clearPendingShare()
+        router.replace({ pathname: '/share-handler', params: { text: pendingShare } })
+        return
+      }
+      router.replace('/')
     }
 
     const inOnboarding = seg0 === 'onboarding'
@@ -116,26 +127,35 @@ function RootNavigator() {
     )
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }} />
+      <ShareIntentRouter />
+    </>
+  )
 }
 
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      <PersistQueryClientProvider
-        client={queryClient}
-        persistOptions={{
-          persister: mmkvQueryPersister,
-          // Drop cached data older than 7 days; bump the buster to invalidate on a shape change.
-          maxAge: 1000 * 60 * 60 * 24 * 7,
-          buster: 'v1',
-        }}
+      <ShareIntentProvider
+        options={{ debug: false, resetOnBackground: true, disabled: Platform.OS === 'web' }}
       >
-        <AuthProvider>
-          <RootNavigator />
-          <OfflineBanner />
-        </AuthProvider>
-      </PersistQueryClientProvider>
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{
+            persister: mmkvQueryPersister,
+            // Drop cached data older than 7 days; bump the buster to invalidate on a shape change.
+            maxAge: 1000 * 60 * 60 * 24 * 7,
+            buster: 'v1',
+          }}
+        >
+          <AuthProvider>
+            <RootNavigator />
+            <OfflineBanner />
+          </AuthProvider>
+        </PersistQueryClientProvider>
+      </ShareIntentProvider>
     </ErrorBoundary>
   )
 }
