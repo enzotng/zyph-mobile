@@ -57,6 +57,26 @@ jest.mock('expo-notifications', () => ({
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
 }))
 
+// expo-maps: the native ExpoMaps module is absent in unit tests, and importing the real package
+// throws at require time. Stub AppleMaps.View as a no-op and the enums/types used by the trip map
+// canvas so any module reaching it through the wayfinder barrel can load. Tests that need to drive
+// map callbacks (e.g. location-picker) override this with their own per-file mock.
+jest.mock('expo-maps', () => {
+  const React = require('react')
+  const { View: RNView } = require('react-native')
+  function View(props: Record<string, unknown>) {
+    return React.createElement(RNView, { testID: 'apple-map', ...props })
+  }
+  return {
+    __esModule: true,
+    AppleMaps: {
+      View,
+      MapType: { STANDARD: 'standard', IMAGERY: 'imagery' },
+      MapColorScheme: { LIGHT: 'light', DARK: 'dark' },
+    },
+  }
+})
+
 // @shopify/react-native-skia: the CanvasKit runtime is absent in unit tests. Stub the drawing
 // components to render nothing and make Skia.Path.Make() / processTransform3d() return chainable
 // no-ops, so Skia-backed components (the AR arrow) render in tests without the native module.
