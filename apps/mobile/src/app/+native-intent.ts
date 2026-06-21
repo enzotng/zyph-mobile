@@ -1,13 +1,7 @@
-import { getShareExtensionKey } from 'expo-share-intent'
+import { redirectShareIntentPath } from '@/lib/share-intent'
 
-// expo-router calls this for every incoming deep link before it routes.
-// expo-share-intent wakes the app with a sentinel link (zyph://dataUrl=...zyphShareKey) when an OS
-// share lands; that link maps to no real route. Redirect only the sentinel to home, where
-// ShareIntentRouter (mounted in _layout) reads the native payload and routes to /share-handler.
-// Every other path passes through untouched, so genuine unknown links still resolve as a 404.
+// expo-router calls this for every incoming deep link before it routes. Thin delegate to the
+// pure helper in @/lib/share-intent (kept out of src/app so its test is never scanned as a route).
 export function redirectSystemPath({ path }: { path: string; initial: boolean }): string {
-  if (path.includes(getShareExtensionKey())) {
-    return '/'
-  }
-  return path
+  return redirectShareIntentPath(path)
 }
