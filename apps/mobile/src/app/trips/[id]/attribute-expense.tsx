@@ -3,12 +3,14 @@ import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { Avatar, BottomSheet, Spinner, Surface } from '@/components/ui'
+import { initialOf } from '@/components/ui/avatar'
 import { useAuth } from '@/features/auth'
 import {
   amountToCents,
@@ -306,7 +308,7 @@ function AttributionEditor({
 
   if (!trip || !members) {
     return (
-      <Screen title={t('smartSplit.attribution')} showBack>
+      <Screen title={t('smartSplit.title')} showBack>
         <View style={styles.center}>
           <Spinner />
         </View>
@@ -316,7 +318,7 @@ function AttributionEditor({
 
   if (items.length === 0 && !isManual) {
     return (
-      <Screen title={t('smartSplit.attribution')} showBack>
+      <Screen title={t('smartSplit.title')} showBack>
         <View style={styles.center}>
           <Text style={styles.muted}>{t('smartSplit.noItems')}</Text>
           <Pressable onPress={() => router.back()} accessibilityRole="button">
@@ -418,218 +420,237 @@ function AttributionEditor({
   }
 
   const isPending = createWithItems.isPending || upsertWithItems.isPending
-  const totalLabel = mode === 'edit' ? t('smartSplit.total') : t('smartSplit.ocrTotal')
+  const reconcileTotal = isManual ? itemsTotal : totalCents
+  const matched = isManual || delta === 0
   // OCR reconciliation (scanned total vs items sum, "add the difference") only makes sense when a
   // scan provided a target total - a manual split has none.
   const showAddMissing = mode === 'create' && !isManual && delta < 0
+  const saveDisabled =
+    isPending || unassignedCount > 0 || itemsTotal <= 0 || (isForeign && !canConvert)
 
   return (
     <Screen title={mode === 'edit' ? t('smartSplit.editTitle') : t('smartSplit.title')} showBack>
-      <View style={styles.descriptionField}>
-        <TextField
-          label={t('smartSplit.description')}
-          value={description}
-          onChangeText={setDescription}
-          placeholder={t('smartSplit.descriptionPlaceholder')}
-        />
-      </View>
-
-      <Surface
-        color={theme.colors.card}
-        borderWidth={0}
-        radius={theme.radius.lg}
-        style={styles.header}
-      >
-        {isManual ? (
-          <View style={styles.headerRow}>
-            <Text style={styles.headerLabel}>{t('smartSplit.total')}</Text>
-            <Text style={styles.headerValue}>{formatAmount(itemsTotal, expenseCurrency)}</Text>
+      <View style={styles.fill}>
+        <ScrollView
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.descriptionField}>
+            <TextField
+              label={t('smartSplit.description')}
+              value={description}
+              onChangeText={setDescription}
+              placeholder={t('smartSplit.descriptionPlaceholder')}
+            />
           </View>
-        ) : (
-          <>
-            <View style={styles.headerRow}>
-              <Text style={styles.headerLabel}>{totalLabel}</Text>
-              <Text style={styles.headerValue}>{formatAmount(totalCents, expenseCurrency)}</Text>
-            </View>
-            <View style={styles.headerRow}>
-              <Text style={styles.headerLabel}>{t('smartSplit.itemsSum')}</Text>
-              <Text
-                style={[styles.headerValue, delta !== 0 ? { color: theme.colors.warning } : null]}
-              >
-                {formatAmount(itemsTotal, expenseCurrency)}
-                {delta !== 0 ? `  (${delta > 0 ? '+' : ''}${(delta / 100).toFixed(2)})` : ''}
-              </Text>
-            </View>
-          </>
-        )}
-      </Surface>
 
-      <View style={styles.bulkRow}>
-        <Button
-          label={t('smartSplit.assignEveryone')}
-          icon="people-outline"
-          variant="secondary"
-          size="sm"
-          block={false}
-          onPress={assignEveryoneToAll}
-        />
-      </View>
-
-      <ScrollView
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {drafts.map((draft, index) => {
-          const set = assignmentsByPosition[index] ?? new Set<string>()
-          const isUnassigned = set.size === 0
-          const lineCents = amountToCents(draft.amount)
-          // Surface when a hidden (+N) member is assigned to this line, so the count is not silent.
-          const extraSelected = members.slice(MAX_INLINE_CHIPS).some((m) => set.has(m.id))
-          return (
+          {/* Reconcile card: scanned/expense total vs what is assigned so far. */}
+          <Animated.View entering={FadeInDown.duration(320)}>
             <Surface
-              key={draft.id}
               color={theme.colors.card}
-              borderColor={isUnassigned ? theme.colors.warning : theme.colors.border}
+              borderColor={theme.colors.border}
               borderWidth={1}
-              radius={theme.radius.md}
-              style={styles.itemCard}
+              radius={theme.radius.lg}
+              style={styles.reconcile}
             >
-              <View style={styles.editRow}>
-                <View style={styles.labelField}>
-                  <TextField
-                    value={draft.label}
-                    onChangeText={(value) => setLabel(index, value)}
-                    placeholder={t('smartSplit.itemLabelPlaceholder')}
-                  />
-                </View>
-                <View style={styles.amountField}>
-                  <TextField
-                    value={draft.amount}
-                    onChangeText={(value) => setAmount(index, value)}
-                    keyboardType="decimal-pad"
-                    placeholder="0.00"
-                  />
-                </View>
-                <Pressable
-                  onPress={() => removeLine(index)}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('smartSplit.removeLine')}
-                  hitSlop={8}
-                  style={styles.removeBtn}
-                >
-                  <Ionicons name="trash-outline" size={20} color={theme.colors.destructive} />
-                </Pressable>
-              </View>
-              <View style={styles.chipsRow}>
-                {inlineMembers.map((member) => (
-                  <MemberChip
-                    key={member.id}
-                    name={nameFor(member)}
-                    selected={set.has(member.id)}
-                    onPress={() => toggleAssignment(index, member.id)}
-                  />
-                ))}
-                {remainder > 0 ? (
-                  <Pressable
-                    onPress={() => setSheetOpenForPosition(index)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: extraSelected }}
-                    accessibilityLabel={t('smartSplit.moreMembers', { count: remainder })}
-                    style={[styles.moreChip, extraSelected && styles.moreChipActive]}
-                  >
-                    <Text style={[styles.moreChipText, extraSelected && styles.moreChipTextActive]}>
-                      +{remainder}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-              {set.size > 1 ? (
-                <Text style={styles.itemShared}>
-                  {t('smartSplit.sharedBetween', {
-                    count: set.size,
-                    amount: formatAmount(lineCents / set.size, expenseCurrency),
-                  })}
+              <View style={styles.reconcileRow}>
+                <Text style={styles.reconcileLabel}>
+                  {isManual ? t('smartSplit.total') : t('smartSplit.receiptTotal')}
                 </Text>
-              ) : null}
+                <Text style={styles.reconcileTotal}>
+                  {formatAmount(reconcileTotal, expenseCurrency)}
+                </Text>
+              </View>
+              <View style={styles.reconcileStatus}>
+                <Ionicons
+                  name={matched ? 'checkmark-circle' : 'alert-circle'}
+                  size={16}
+                  color={matched ? theme.colors.success : theme.colors.warning}
+                />
+                <Text
+                  style={[
+                    styles.reconcileStatusText,
+                    { color: matched ? theme.colors.success : theme.colors.warning },
+                  ]}
+                >
+                  {matched
+                    ? t('smartSplit.itemsMatched', {
+                        amount: formatAmount(itemsTotal, expenseCurrency),
+                      })
+                    : t('smartSplit.itemsMismatch', {
+                        amount: formatAmount(itemsTotal, expenseCurrency),
+                        delta: `${delta > 0 ? '+' : '-'}${formatAmount(Math.abs(delta), expenseCurrency)}`,
+                      })}
+                </Text>
+              </View>
             </Surface>
-          )
-        })}
+          </Animated.View>
 
-        <View style={styles.addActions}>
-          <Pressable
-            onPress={addLine}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.addLine, pressed && styles.pressed]}
-          >
-            <Ionicons name="add" size={20} color={theme.colors.primary} />
-            <Text style={styles.addLineText}>{t('smartSplit.addLine')}</Text>
-          </Pressable>
-          {showAddMissing ? (
+          <View style={styles.bulkRow}>
             <Button
-              label={t('smartSplit.addMissing', { amount: formatAmount(-delta, expenseCurrency) })}
-              icon="git-compare-outline"
+              label={t('smartSplit.assignEveryone')}
+              icon="people-outline"
               variant="secondary"
               size="sm"
               block={false}
-              onPress={addMissingLine}
+              onPress={assignEveryoneToAll}
             />
-          ) : null}
-        </View>
+          </View>
 
-        <Text style={styles.tip}>{t('smartSplit.tip')}</Text>
-      </ScrollView>
-
-      <View style={styles.summary}>
-        <Text style={styles.summaryTitle}>
-          {t('smartSplit.perPerson', { currency: tripCurrency })}
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.summaryRow}
-        >
-          {members.map((member) => {
-            const expenseCentsForMember = memberTotals.get(member.id) ?? 0
-            // Convert from expense currency to trip currency for the live preview.
-            const cents =
-              isForeign && fx
-                ? convertCents(expenseCentsForMember, expenseCurrency, tripCurrency, fx.rates)
-                : expenseCentsForMember
+          {drafts.map((draft, index) => {
+            const set = assignmentsByPosition[index] ?? new Set<string>()
+            const isUnassigned = set.size === 0
+            const lineCents = amountToCents(draft.amount)
+            // Surface when a hidden (+N) member is assigned to this line, so the count is not silent.
+            const extraSelected = members.slice(MAX_INLINE_CHIPS).some((m) => set.has(m.id))
             return (
               <Surface
-                key={member.id}
+                key={draft.id}
                 color={theme.colors.card}
-                borderColor={theme.colors.border}
+                borderColor={isUnassigned ? theme.colors.warning : theme.colors.border}
                 borderWidth={1}
-                radius={theme.radius.md}
-                style={styles.summaryPill}
+                radius={theme.radius.lg}
+                style={styles.itemCard}
               >
-                <Text style={styles.summaryName}>{nameFor(member)}</Text>
-                <Text style={styles.summaryValue}>{formatAmount(cents, tripCurrency)}</Text>
+                <View style={styles.editRow}>
+                  <View style={styles.labelField}>
+                    <TextField
+                      value={draft.label}
+                      onChangeText={(value) => setLabel(index, value)}
+                      placeholder={t('smartSplit.itemLabelPlaceholder')}
+                    />
+                  </View>
+                  <View style={styles.amountField}>
+                    <TextField
+                      value={draft.amount}
+                      onChangeText={(value) => setAmount(index, value)}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                    />
+                  </View>
+                  <Pressable
+                    onPress={() => removeLine(index)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('smartSplit.removeLine')}
+                    hitSlop={8}
+                    style={styles.removeBtn}
+                  >
+                    <Ionicons name="trash-outline" size={20} color={theme.colors.destructive} />
+                  </Pressable>
+                </View>
+                <View style={styles.chipsRow}>
+                  {inlineMembers.map((member) => (
+                    <MemberAvatar
+                      key={member.id}
+                      name={nameFor(member)}
+                      selected={set.has(member.id)}
+                      onPress={() => toggleAssignment(index, member.id)}
+                    />
+                  ))}
+                  {remainder > 0 ? (
+                    <Pressable
+                      onPress={() => setSheetOpenForPosition(index)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: extraSelected }}
+                      accessibilityLabel={t('smartSplit.moreMembers', { count: remainder })}
+                      style={[styles.moreChip, extraSelected && styles.moreChipActive]}
+                    >
+                      <Text
+                        style={[styles.moreChipText, extraSelected && styles.moreChipTextActive]}
+                      >
+                        +{remainder}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                {isUnassigned ? (
+                  <Text style={styles.itemUnassigned}>{t('smartSplit.tapToAssign')}</Text>
+                ) : set.size > 1 ? (
+                  <Text style={styles.itemShared}>
+                    {t('smartSplit.sharedBetween', {
+                      count: set.size,
+                      amount: formatAmount(lineCents / set.size, expenseCurrency),
+                    })}
+                  </Text>
+                ) : null}
               </Surface>
             )
           })}
+
+          <View style={styles.addActions}>
+            <Pressable
+              onPress={addLine}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.addLine, pressed && styles.pressed]}
+            >
+              <Ionicons name="add" size={20} color={theme.colors.primary} />
+              <Text style={styles.addLineText}>{t('smartSplit.addLine')}</Text>
+            </Pressable>
+            {showAddMissing ? (
+              <Button
+                label={t('smartSplit.addMissing', {
+                  amount: formatAmount(-delta, expenseCurrency),
+                })}
+                icon="git-compare-outline"
+                variant="secondary"
+                size="sm"
+                block={false}
+                onPress={addMissingLine}
+              />
+            ) : null}
+          </View>
+
+          <Text style={styles.tip}>{t('smartSplit.tip')}</Text>
         </ScrollView>
-        {unassignedCount > 0 ? (
-          <Text style={styles.warn}>
-            {t('smartSplit.unassignedCount', { count: unassignedCount })}
-          </Text>
-        ) : null}
-        <Button
-          label={
-            isPending
-              ? t('smartSplit.saving')
-              : mode === 'edit'
-                ? t('smartSplit.saveChanges')
-                : t('smartSplit.save')
-          }
-          onPress={onSave}
-          disabled={
-            isPending || unassignedCount > 0 || itemsTotal <= 0 || (isForeign && !canConvert)
-          }
-        />
+
+        {/* Sticky footer: per-person running totals + the gated save action. */}
+        <View style={styles.footer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.summaryRow}
+          >
+            {members.map((member) => {
+              const expenseCentsForMember = memberTotals.get(member.id) ?? 0
+              // Convert from expense currency to trip currency for the live preview.
+              const cents =
+                isForeign && fx
+                  ? convertCents(expenseCentsForMember, expenseCurrency, tripCurrency, fx.rates)
+                  : expenseCentsForMember
+              return (
+                <Surface
+                  key={member.id}
+                  color={theme.colors.card}
+                  borderColor={theme.colors.border}
+                  borderWidth={1}
+                  radius={theme.radius.full}
+                  style={styles.summaryPill}
+                >
+                  <Avatar name={nameFor(member)} size={22} />
+                  <Text style={styles.summaryName} numberOfLines={1}>
+                    {nameFor(member)}
+                  </Text>
+                  <Text style={styles.summaryValue}>{formatAmount(cents, tripCurrency)}</Text>
+                </Surface>
+              )
+            })}
+          </ScrollView>
+          <Button
+            label={
+              isPending
+                ? t('smartSplit.saving')
+                : unassignedCount > 0
+                  ? t('smartSplit.assignAllToSave')
+                  : mode === 'edit'
+                    ? t('smartSplit.saveChanges')
+                    : t('smartSplit.save')
+            }
+            onPress={onSave}
+            disabled={saveDisabled}
+          />
+        </View>
       </View>
 
       <BottomSheet
@@ -667,9 +688,10 @@ function AttributionEditor({
   )
 }
 
-// A selectable member as a tinted Avatar (the deterministic tint disambiguates same-initial names
-// like Alice/Anna, unlike a bare initial). Unselected is dimmed; selected gets a ring + check badge.
-function MemberChip({
+// A selectable member: assigned shows the filled, deterministically-tinted Avatar (the tint
+// disambiguates same-initial names like Alice/Anna); unassigned shows an outlined empty circle
+// with a muted initial, so the assigned set reads at a glance.
+function MemberAvatar({
   name,
   selected,
   onPress,
@@ -678,26 +700,29 @@ function MemberChip({
   selected: boolean
   onPress: () => void
 }) {
-  const { theme } = useUnistyles()
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={name}
       accessibilityState={{ selected }}
-      style={[styles.chip, !selected && styles.chipDim]}
+      style={styles.memberAvatar}
     >
-      <Avatar name={name} size={44} ring={selected} />
       {selected ? (
-        <View style={styles.chipCheck}>
-          <Ionicons name="checkmark-circle" size={18} color={theme.colors.primary} />
+        <Avatar name={name} size={44} ring />
+      ) : (
+        <View style={styles.memberEmpty}>
+          <Text style={styles.memberEmptyInitial}>{initialOf(name)}</Text>
         </View>
-      ) : null}
+      )}
     </Pressable>
   )
 }
 
-const styles = StyleSheet.create((theme) => ({
+const styles = StyleSheet.create((theme, rt) => ({
+  fill: {
+    flex: 1,
+  },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -713,47 +738,59 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
   },
-  warn: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.warning,
-    paddingVertical: theme.gap(1),
-  },
-  descriptionField: {
-    paddingBottom: theme.gap(2),
-  },
-  header: {
-    gap: theme.gap(1),
-    paddingVertical: theme.gap(3),
-    paddingHorizontal: theme.gap(4),
-    marginBottom: theme.gap(2),
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  headerLabel: {
-    color: theme.colors.muted,
-    fontSize: theme.fontSize.sm,
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
-  },
-  headerValue: {
-    color: theme.colors.foreground,
-    fontSize: theme.fontSize.md,
-    fontFamily: theme.fonts.display.bold,
-    fontWeight: '700',
-  },
   list: {
     flex: 1,
   },
   listContent: {
     paddingBottom: theme.gap(4),
   },
-  itemCard: {
+  descriptionField: {
+    paddingBottom: theme.gap(3),
+  },
+  reconcile: {
     gap: theme.gap(2),
+    paddingVertical: theme.gap(3.5),
+    paddingHorizontal: theme.gap(4),
+    marginBottom: theme.gap(3),
+  },
+  reconcileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  reconcileLabel: {
+    color: theme.colors.muted,
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+  },
+  reconcileTotal: {
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.lg,
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  reconcileStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(1.5),
+  },
+  reconcileStatusText: {
+    flex: 1,
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+  },
+  bulkRow: {
+    alignItems: 'flex-start',
+    paddingBottom: theme.gap(3),
+  },
+  itemCard: {
+    gap: theme.gap(2.5),
     paddingVertical: theme.gap(3),
     paddingHorizontal: theme.gap(4),
-    marginBottom: theme.gap(2),
+    marginBottom: theme.gap(2.5),
   },
   editRow: {
     flexDirection: 'row',
@@ -772,38 +809,51 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: 'center',
   },
   itemShared: {
-    color: theme.colors.muted,
+    color: theme.colors.primary,
     fontSize: theme.fontSize.sm,
-    fontFamily: theme.fonts.sans.regular,
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+  },
+  itemUnassigned: {
+    color: theme.colors.warning,
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
   },
   chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.gap(2),
   },
-  chip: {
+  memberAvatar: {
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chipDim: {
-    opacity: 0.4,
+  memberEmpty: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    backgroundColor: 'transparent',
   },
-  chipCheck: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    borderRadius: 9,
-    backgroundColor: theme.colors.background,
+  memberEmptyInitial: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.muted,
   },
   moreChip: {
     paddingHorizontal: theme.gap(3),
-    height: theme.gap(9),
-    borderRadius: theme.gap(5),
+    height: 44,
+    borderRadius: theme.radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.card,
   },
@@ -818,10 +868,6 @@ const styles = StyleSheet.create((theme) => ({
   },
   moreChipTextActive: {
     color: theme.colors.primary,
-  },
-  bulkRow: {
-    alignItems: 'flex-start',
-    paddingBottom: theme.gap(2),
   },
   addActions: {
     gap: theme.gap(2),
@@ -846,25 +892,23 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     paddingVertical: theme.gap(2),
   },
-  summary: {
-    gap: theme.gap(2),
+  footer: {
+    gap: theme.gap(3),
     paddingTop: theme.gap(3),
-    paddingHorizontal: theme.gap(2),
-  },
-  summaryTitle: {
-    color: theme.colors.muted,
-    fontSize: theme.fontSize.sm,
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '700',
+    paddingBottom: rt.insets.bottom + theme.gap(2),
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
   summaryRow: {
     gap: theme.gap(2),
-    paddingBottom: theme.gap(2),
+    paddingVertical: theme.gap(0.5),
   },
   summaryPill: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: theme.gap(2),
     paddingHorizontal: theme.gap(3),
-    paddingVertical: theme.gap(2),
+    paddingVertical: theme.gap(1.5),
   },
   summaryName: {
     fontSize: theme.fontSize.sm,
@@ -873,7 +917,7 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '600',
   },
   summaryValue: {
-    fontSize: theme.fontSize.md,
+    fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
     color: theme.colors.foreground,
