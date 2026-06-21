@@ -3,6 +3,7 @@ import { useGlobalSearchParams } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Share, Text, View } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -12,10 +13,8 @@ import {
   Amount,
   Avatar,
   BottomSheet,
-  Card,
   EmptyState,
   ErrorState,
-  SectionTitle,
   Spinner,
   Surface,
 } from '@/components/ui'
@@ -63,7 +62,6 @@ export default function TripBalancesScreen() {
 
   const [pendingSettlement, setPendingSettlement] = useState<Settlement | null>(null)
   const [settleAmount, setSettleAmount] = useState('')
-  const [expanded, setExpanded] = useState<string | null>(null)
   const [settlingAll, setSettlingAll] = useState(false)
 
   const nameById = useMemo(
@@ -86,6 +84,13 @@ export default function TripBalancesScreen() {
   const labelForMember = useCallback(
     (memberId: string): string => labelFor(userIdByMember.get(memberId) ?? null, memberId),
     [labelFor, userIdByMember],
+  )
+  const isMeMember = useCallback(
+    (memberId: string): boolean => {
+      const memberUserId = userIdByMember.get(memberId) ?? null
+      return memberUserId != null && memberUserId === userId
+    },
+    [userIdByMember, userId],
   )
 
   const settlements = useMemo(
@@ -112,10 +117,6 @@ export default function TripBalancesScreen() {
     [settlements, myMemberId],
   )
   const myDebtsTotal = useMemo(() => myDebts.reduce((acc, s) => acc + s.amountCents, 0), [myDebts])
-  const myNet = useMemo(
-    () => (balances ?? []).find((b) => b.user_id === userId)?.balance_cents ?? 0,
-    [balances, userId],
-  )
 
   async function onShare() {
     if (!trip) {
@@ -231,6 +232,18 @@ export default function TripBalancesScreen() {
     ])
   }
 
+  // A settlement card label: "X pays you" when the current user is the receiver, else "X pays Y".
+  const settleLabel = useCallback(
+    (settlement: Settlement): string => {
+      const from = labelForMember(settlement.fromMemberId)
+      if (isMeMember(settlement.toMemberId)) {
+        return t('balances.paysYou', { from })
+      }
+      return t('balances.paysPerson', { from, to: labelForMember(settlement.toMemberId) })
+    },
+    [labelForMember, isMeMember, t],
+  )
+
   if (tripLoading || balancesLoading || historyLoading) {
     return (
       <Screen title={t('balances.title')} showBack>
@@ -276,6 +289,7 @@ export default function TripBalancesScreen() {
   }
 
   const hasSettlements = settlements.length > 0
+  const canSettleAll = myDebts.length > 0
 
   return (
     <Screen
@@ -293,168 +307,84 @@ export default function TripBalancesScreen() {
         </Pressable>
       }
     >
-      {/* Your position: the first thing to know - do I owe, am I owed, net how much */}
-      <Card>
-        <View style={styles.hero}>
-          <Text style={styles.heroLabel}>
-            {myNet === 0 ? t('trip.settled') : myNet > 0 ? t('trip.owed') : t('trip.owe')}
-          </Text>
-          <Amount cents={myNet} currency={trip.currency} size={30} signed />
-          {myDebts.length > 0 ? (
-            <Button
-              label={
-                settlingAll
-                  ? t('balances.settlingAll')
-                  : t('balances.settleAllMine', {
-                      amount: formatAmount(myDebtsTotal, trip.currency),
-                    })
-              }
-              icon="checkmark-done-outline"
-              onPress={confirmSettleAll}
-              disabled={settlingAll || recordSettlement.isPending}
-            />
-          ) : null}
-        </View>
-      </Card>
-
-      {/* Suggested settlements */}
-      <View>
-        <SectionTitle>{t('group.suggestedSettlements')}</SectionTitle>
-        <View style={styles.blockBody}>
-          {hasSettlements ? (
-            <View style={styles.settleList}>
-              {settlements.map((settlement) => (
-                <Card
-                  key={`${settlement.fromMemberId}-${settlement.toMemberId}`}
-                  padding={theme.gap(3)}
-                >
-                  <View style={styles.settleRow}>
-                    <Avatar name={labelForMember(settlement.fromMemberId)} size={32} />
-                    <Ionicons name="arrow-forward" size={16} color={theme.colors.muted} />
-                    <Avatar name={labelForMember(settlement.toMemberId)} size={32} />
-                    <Text style={styles.settleText} numberOfLines={2}>
-                      <Text style={styles.settleName}>
-                        {labelForMember(settlement.fromMemberId)}
-                      </Text>
-                      {` ${t('group.owesTo')} `}
-                      <Text style={styles.settleName}>{labelForMember(settlement.toMemberId)}</Text>
-                    </Text>
-                    <Amount
-                      cents={settlement.amountCents}
-                      currency={trip.currency}
-                      size={15}
-                      neutral
-                    />
-                  </View>
-                  <View style={styles.settleActions}>
-                    <Button
-                      label={t('group.markAsPaid')}
-                      icon="checkmark-circle-outline"
-                      variant="secondary"
-                      size="sm"
-                      block={false}
-                      onPress={() => openSettle(settlement)}
-                    />
-                  </View>
-                </Card>
-              ))}
-            </View>
-          ) : (
-            <Surface
-              borderWidth={0}
-              radius={theme.radius.lg}
-              color={withAlpha(theme.colors.success, 0.1)}
-              style={styles.settledBanner}
-            >
-              <Ionicons name="checkmark-circle" size={22} color={theme.colors.success} />
-              <Text style={styles.settledText} numberOfLines={2}>
-                {t('group.allUpToDate')}
-              </Text>
-            </Surface>
-          )}
-        </View>
-      </View>
-
-      {/* Per-member balances: paid / owed / net, tap to expand the pairwise breakdown */}
-      <View>
-        <SectionTitle>{t('group.balances')}</SectionTitle>
-        <View style={styles.listBody}>
-          {(balances ?? []).map((balance, index) => {
-            const isOpen = expanded === balance.member_id
-            return (
-              <View
-                key={balance.member_id}
-                style={[
-                  styles.balanceItem,
-                  index === (balances ?? []).length - 1 && styles.balanceItemLast,
-                ]}
+      {/* Who owes whom: the suggested settlement transfers, each tappable to record it */}
+      <Animated.View entering={FadeInDown.duration(320)} style={styles.section}>
+        <Text style={styles.eyebrow}>{t('balances.whoOwesWhom')}</Text>
+        {hasSettlements ? (
+          <View style={styles.cardList}>
+            {settlements.map((settlement) => (
+              <Pressable
+                key={`${settlement.fromMemberId}-${settlement.toMemberId}`}
+                onPress={() => openSettle(settlement)}
+                accessibilityRole="button"
+                accessibilityLabel={settleLabel(settlement)}
+                style={({ pressed }) => (pressed ? styles.pressed : undefined)}
               >
-                <Pressable
-                  style={styles.listRow}
-                  onPress={() => setExpanded(isOpen ? null : balance.member_id)}
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: isOpen }}
-                  accessibilityLabel={labelFor(balance.user_id, balance.member_id)}
-                >
-                  <View style={styles.rowMember}>
-                    <Avatar name={labelFor(balance.user_id, balance.member_id)} size={30} />
-                    <Text style={styles.memberName}>
-                      {labelFor(balance.user_id, balance.member_id)}
-                    </Text>
-                  </View>
-                  <Amount
-                    cents={balance.balance_cents ?? 0}
-                    currency={trip.currency}
-                    size={15}
-                    signed
-                  />
-                  <Ionicons
-                    name={isOpen ? 'chevron-up' : 'chevron-down'}
-                    size={16}
-                    color={theme.colors.muted}
-                  />
-                </Pressable>
+                <Surface radius={theme.radius.lg} style={styles.settleCard}>
+                  <Avatar name={labelForMember(settlement.fromMemberId)} size={36} />
+                  <Ionicons name="arrow-forward" size={16} color={theme.colors.muted} />
+                  <Avatar name={labelForMember(settlement.toMemberId)} size={36} />
+                  <Text style={styles.settleLabel} numberOfLines={2}>
+                    {settleLabel(settlement)}
+                  </Text>
+                  <Amount cents={settlement.amountCents} currency={trip.currency} size={16} />
+                </Surface>
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <Surface
+            radius={theme.radius.lg}
+            borderWidth={0}
+            color={withAlpha(theme.colors.success, 0.12)}
+            style={styles.settledBanner}
+          >
+            <Ionicons name="checkmark-circle" size={22} color={theme.colors.success} />
+            <Text style={styles.settledText} numberOfLines={2}>
+              {t('group.allUpToDate')}
+            </Text>
+          </Surface>
+        )}
+      </Animated.View>
 
-                {isOpen ? (
-                  <View style={styles.breakdown}>
-                    <View style={styles.breakdownLine}>
-                      <Text style={styles.breakdownLabel}>{t('balances.paid')}</Text>
-                      <Amount
-                        cents={balance.paid_cents ?? 0}
-                        currency={trip.currency}
-                        size={13}
-                        neutral
-                      />
-                    </View>
-                    <View style={styles.breakdownLine}>
-                      <Text style={styles.breakdownLabel}>{t('balances.owed')}</Text>
-                      <Amount
-                        cents={balance.owed_cents ?? 0}
-                        currency={trip.currency}
-                        size={13}
-                        neutral
-                      />
-                    </View>
-                  </View>
-                ) : null}
-              </View>
-            )
-          })}
-        </View>
-      </View>
+      {/* Each person: the per-member net balance, signed and money-toned */}
+      <Animated.View entering={FadeInDown.delay(60).duration(320)} style={styles.section}>
+        <Text style={styles.eyebrow}>{t('balances.eachPerson')}</Text>
+        <Surface radius={theme.radius.lg} style={styles.personList}>
+          {(balances ?? []).map((balance, index) => (
+            <View
+              key={balance.member_id}
+              style={[
+                styles.personRow,
+                index === (balances ?? []).length - 1 && styles.personRowLast,
+              ]}
+            >
+              <Avatar name={labelFor(balance.user_id, balance.member_id)} size={36} />
+              <Text style={styles.personName} numberOfLines={1}>
+                {labelFor(balance.user_id, balance.member_id)}
+              </Text>
+              <Amount
+                cents={balance.balance_cents ?? 0}
+                currency={trip.currency}
+                size={16}
+                signed
+              />
+            </View>
+          ))}
+        </Surface>
+      </Animated.View>
 
-      {/* Payment history */}
+      {/* Payment history: recorded settlements, each reversible */}
       {hasHistory ? (
-        <View>
-          <SectionTitle>{t('group.paymentHistory')}</SectionTitle>
-          <View style={styles.listBody}>
+        <Animated.View entering={FadeInDown.delay(120).duration(320)} style={styles.section}>
+          <Text style={styles.eyebrow}>{t('group.paymentHistory')}</Text>
+          <Surface radius={theme.radius.lg} style={styles.personList}>
             {paymentHistory.map((settlement, index) => (
               <View
                 key={settlement.id}
                 style={[
-                  styles.listRow,
                   styles.historyRow,
-                  index === paymentHistory.length - 1 && styles.listRowLast,
+                  index === paymentHistory.length - 1 && styles.personRowLast,
                 ]}
               >
                 <View style={styles.historyInfo}>
@@ -488,8 +418,37 @@ export default function TripBalancesScreen() {
                 </Pressable>
               </View>
             ))}
-          </View>
-        </View>
+          </Surface>
+        </Animated.View>
+      ) : null}
+
+      {/* Mark as settled: records all my suggested payments at once */}
+      {canSettleAll ? (
+        <Animated.View entering={FadeInDown.delay(180).duration(320)}>
+          <Pressable
+            onPress={confirmSettleAll}
+            disabled={settlingAll || recordSettlement.isPending}
+            accessibilityRole="button"
+            accessibilityLabel={
+              settlingAll
+                ? t('balances.settlingAll')
+                : t('balances.settleAllMine', {
+                    amount: formatAmount(myDebtsTotal, trip.currency),
+                  })
+            }
+            accessibilityState={{ disabled: settlingAll || recordSettlement.isPending }}
+            style={({ pressed }) => [
+              styles.settleAll,
+              pressed && styles.pressed,
+              (settlingAll || recordSettlement.isPending) && styles.disabled,
+            ]}
+          >
+            <Ionicons name="checkmark-done" size={18} color={theme.colors.primaryForeground} />
+            <Text style={styles.settleAllLabel}>
+              {settlingAll ? t('balances.settlingAll') : t('balances.markAsSettled')}
+            </Text>
+          </Pressable>
+        </Animated.View>
       ) : null}
 
       <BottomSheet
@@ -504,13 +463,7 @@ export default function TripBalancesScreen() {
               <Ionicons name="arrow-forward" size={18} color={theme.colors.muted} />
               <Avatar name={labelForMember(pendingSettlement.toMemberId)} size={36} />
               <Text style={styles.sheetPartiesText} numberOfLines={2}>
-                <Text style={styles.settleName}>
-                  {labelForMember(pendingSettlement.fromMemberId)}
-                </Text>
-                {` ${t('group.paysTo')} `}
-                <Text style={styles.settleName}>
-                  {labelForMember(pendingSettlement.toMemberId)}
-                </Text>
+                {settleLabel(pendingSettlement)}
               </Text>
             </View>
             <TextField
@@ -540,36 +493,34 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hero: {
-    gap: theme.gap(2),
-  },
-  heroLabel: {
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.muted,
-  },
-  blockBody: {
-    marginTop: theme.gap(2.5),
-  },
-  settleList: {
+  section: {
     gap: theme.gap(2.5),
   },
-  settleRow: {
+  eyebrow: {
+    fontFamily: theme.fonts.sans.bold,
+    fontWeight: '700',
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: theme.colors.muted,
+  },
+  cardList: {
+    gap: theme.gap(2.5),
+  },
+  settleCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(3),
+    paddingVertical: theme.gap(3),
+    paddingHorizontal: theme.gap(3.5),
   },
-  settleText: {
+  settleLabel: {
     flex: 1,
     minWidth: 0,
-    fontFamily: theme.fonts.sans.regular,
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
-  },
-  settleName: {
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
   },
   settledBanner: {
     flexDirection: 'row',
@@ -579,66 +530,42 @@ const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: theme.gap(4),
   },
   settledText: {
+    flex: 1,
+    minWidth: 0,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
   },
-  settleActions: {
-    marginTop: theme.gap(2.5),
-    alignItems: 'flex-end',
+  personList: {
+    paddingHorizontal: theme.gap(3.5),
   },
-  listBody: {
-    marginTop: theme.gap(1),
-  },
-  balanceItem: {
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  balanceItemLast: {
-    borderBottomWidth: 0,
-  },
-  listRow: {
+  personRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: theme.gap(3),
-    paddingVertical: theme.gap(2.5),
-  },
-  listRowLast: {
-    borderBottomWidth: 0,
-  },
-  historyRow: {
+    paddingVertical: theme.gap(3),
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  rowMember: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(2.5),
+  personRowLast: {
+    borderBottomWidth: 0,
+  },
+  personName: {
     flex: 1,
     minWidth: 0,
-  },
-  memberName: {
     fontFamily: theme.fonts.sans.medium,
     fontWeight: '500',
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
   },
-  breakdown: {
-    paddingLeft: theme.gap(10),
-    paddingBottom: theme.gap(3),
-    gap: theme.gap(1),
-  },
-  breakdownLine: {
+  historyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  breakdownLabel: {
-    fontFamily: theme.fonts.sans.regular,
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.muted,
+    gap: theme.gap(3),
+    paddingVertical: theme.gap(3),
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
   historyInfo: {
     flex: 1,
@@ -650,6 +577,10 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     color: theme.colors.foreground,
   },
+  settleName: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+  },
   historyDate: {
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.xs,
@@ -660,6 +591,24 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '600',
     fontSize: theme.fontSize.sm,
     color: theme.colors.destructive,
+  },
+  settleAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.gap(2),
+    minHeight: 48,
+    paddingVertical: theme.gap(3),
+    paddingHorizontal: theme.gap(6),
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    backgroundColor: theme.colors.success,
+  },
+  settleAllLabel: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.primaryForeground,
   },
   sheetBody: {
     gap: theme.gap(4),
@@ -677,6 +626,10 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.foreground,
   },
   pressed: {
-    opacity: 0.85,
+    opacity: 0.92,
+    transform: [{ scale: 0.98 }],
+  },
+  disabled: {
+    opacity: 0.5,
   },
 }))
