@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.4.1](https://github.com/enzotng/zyph-mobile/compare/v1.4.0...v1.4.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* **smart-import:** move native-intent redirect to lib so its test is not scanned as a route ([b7df930](https://github.com/enzotng/zyph-mobile/commit/b7df9306d04c6594a0f112ca8463988a9ae6e744))
+
 ## [1.4.0](https://github.com/enzotng/zyph-mobile/compare/v1.3.1...v1.4.0) (2026-06-20)
 
 
