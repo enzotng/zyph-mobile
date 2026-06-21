@@ -8,7 +8,7 @@ import { Pressable, Text, View } from 'react-native'
 import Animated, { FadeIn } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
+import { TRIP_TAB_BAR_CLEARANCE } from '@/components/layout/trip-tab-bar'
 import { Screen } from '@/components/screen'
 import { Badge, Card, EmptyState, ErrorState, Skeleton } from '@/components/ui'
 import {
@@ -262,7 +262,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   list: {
     paddingTop: theme.gap(1),
-    paddingBottom: rt.insets.bottom + FLOATING_TAB_BAR_CLEARANCE,
+    paddingBottom: rt.insets.bottom + TRIP_TAB_BAR_CLEARANCE,
   },
   dayHeader: {
     fontFamily: theme.fonts.sans.bold,

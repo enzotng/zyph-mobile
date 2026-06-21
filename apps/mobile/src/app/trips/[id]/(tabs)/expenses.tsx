@@ -8,7 +8,7 @@ import { Alert, Platform, Pressable, ScrollView, Share, Text, View } from 'react
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
+import { TRIP_TAB_BAR_CLEARANCE } from '@/components/layout/trip-tab-bar'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { Amount, Chip, EmptyState, ErrorState, Skeleton, Surface } from '@/components/ui'
@@ -371,7 +371,7 @@ function ExpensesSkeleton() {
 
 const styles = StyleSheet.create((theme, rt) => ({
   list: {
-    paddingBottom: rt.insets.bottom + FLOATING_TAB_BAR_CLEARANCE,
+    paddingBottom: rt.insets.bottom + TRIP_TAB_BAR_CLEARANCE,
   },
   header: {
     gap: theme.gap(3),

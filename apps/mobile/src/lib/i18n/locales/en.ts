@@ -46,6 +46,7 @@ export const en = {
   },
   trip: {
     manage: 'Manage',
+    addSheetTitle: 'Add to trip',
     editTrip: 'Edit trip',
     regenerateCode: 'Regenerate code',
     coverPhoto: 'Cover photo',
@@ -130,6 +131,10 @@ export const en = {
     expenses: 'Expenses',
     places: 'Places',
     packing: 'Packing',
+    cockpit: 'Cockpit',
+    plan: 'Plan',
+    spend: 'Spend',
+    map: 'Map',
   },
   packing: {
     shared: 'Shared',

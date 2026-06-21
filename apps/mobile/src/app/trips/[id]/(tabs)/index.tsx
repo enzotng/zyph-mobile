@@ -11,7 +11,7 @@ import { ScreenCornerRadius } from 'react-native-screen-corner-radius'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
-import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
+import { TRIP_TAB_BAR_CLEARANCE } from '@/components/layout/trip-tab-bar'
 import { Screen } from '@/components/screen'
 import {
   AvatarStack,
@@ -512,7 +512,7 @@ export default function TripDashboardScreen() {
             </Card>
           </Animated.View>
 
-          {/* Quick actions (Zo lives in the floating bar now) */}
+          {/* Quick actions (Zo lives in the cockpit FAB now) */}
           <Animated.View style={styles.quickActions} entering={enter(1)}>
             <QuickAction
               icon="add-circle"
@@ -649,6 +649,18 @@ export default function TripDashboardScreen() {
         </View>
       </ScrollView>
 
+      <Pressable
+        onPress={() => {
+          haptics.light()
+          router.push({ pathname: '/trips/[id]/copilot', params: { id: tripId } })
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={t('trip.copilot')}
+        style={({ pressed }) => [styles.zoFab, pressed && styles.zoFabPressed]}
+      >
+        <Ionicons name="sparkles" size={24} color={theme.colors.primaryForeground} />
+      </Pressable>
+
       <BottomSheet
         open={actionsOpen}
         onClose={() => setActionsOpen(false)}
@@ -772,7 +784,28 @@ const styles = StyleSheet.create((theme, rt) => ({
     color: theme.colors.muted,
   },
   scroll: {
-    paddingBottom: rt.insets.bottom + FLOATING_TAB_BAR_CLEARANCE,
+    paddingBottom: rt.insets.bottom + TRIP_TAB_BAR_CLEARANCE,
+  },
+  zoFab: {
+    position: 'absolute',
+    right: theme.gap(6),
+    bottom: rt.insets.bottom + 96,
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    borderCurve: 'continuous',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  zoFabPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.96 }],
   },
   fade: {
     position: 'absolute',

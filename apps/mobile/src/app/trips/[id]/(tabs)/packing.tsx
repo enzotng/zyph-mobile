@@ -16,7 +16,7 @@ import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-n
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
-import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
+import { TRIP_TAB_BAR_CLEARANCE } from '@/components/layout/trip-tab-bar'
 import { PackingReadiness } from '@/components/packing/packing-readiness'
 import { TravelerFilter } from '@/components/packing/traveler-filter'
 import { Screen } from '@/components/screen'
@@ -1382,7 +1382,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     transform: [{ scale: 0.97 }],
   },
   spacer: {
-    height: FLOATING_TAB_BAR_CLEARANCE,
+    height: TRIP_TAB_BAR_CLEARANCE,
   },
   sheet: {
     gap: theme.gap(4),
