@@ -13,10 +13,10 @@ import { BalancePill } from './balance-pill'
 // Dark at the top (for the tag + countdown), clear in the middle, dark at the bottom (for
 // the title, members and balance) - a single vertical fade over the cover photo.
 const HERO_FADE_COLORS = [
-  'rgba(15, 23, 42, 0.5)',
-  'rgba(15, 23, 42, 0)',
-  'rgba(15, 23, 42, 0)',
-  'rgba(15, 23, 42, 0.85)',
+  'rgba(20, 17, 12, 0.5)',
+  'rgba(20, 17, 12, 0)',
+  'rgba(20, 17, 12, 0)',
+  'rgba(20, 17, 12, 0.85)',
 ] as const
 const HERO_FADE_LOCATIONS = [0, 0.28, 0.5, 1] as const
 

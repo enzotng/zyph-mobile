@@ -6,7 +6,7 @@ import { Surface } from '@/components/ui/surface'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 
-type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost'
+type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'destructive' | 'ghost'
 type ButtonSize = 'sm' | 'md'
 
 type ButtonProps = {
@@ -37,7 +37,15 @@ export function Button({
   }
 
   const palette = {
+    // Primary CTA is ink in light / cream in dark (foreground), with inverse text.
     primary: {
+      fill: theme.colors.foreground,
+      border: undefined,
+      borderWidth: 0,
+      text: theme.colors.background,
+    },
+    // Accent (indigo) CTA for brand moments, e.g. onboarding "Get started".
+    accent: {
       fill: theme.colors.primary,
       border: undefined,
       borderWidth: 0,
@@ -76,7 +84,7 @@ export function Button({
       ]}
     >
       <Surface
-        radius={theme.radius.md}
+        radius={16}
         color={palette.fill}
         borderColor={palette.border}
         borderWidth={palette.borderWidth}
@@ -103,8 +111,8 @@ const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: size === 'sm' ? theme.gap(4) : theme.gap(6),
   }),
   label: (size: ButtonSize) => ({
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
     fontSize: size === 'sm' ? theme.fontSize.sm : theme.fontSize.md,
   }),
   pressed: {

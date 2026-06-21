@@ -17,6 +17,7 @@ import {
   signInWithApple,
   signInWithGoogle,
 } from '@/features/auth'
+import { clearOnboardingSeen } from '@/lib/preferences'
 
 export default function SignInScreen() {
   const router = useRouter()
@@ -143,11 +144,12 @@ export default function SignInScreen() {
 
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>{t('auth.orSeparator')}</Text>
+        <Text style={styles.dividerText}>{t('auth.orContinueWith')}</Text>
         <View style={styles.dividerLine} />
       </View>
 
       <View style={styles.social}>
+        <AppleButton onPress={onApple} disabled={busy} />
         <Button
           variant="secondary"
           icon="logo-google"
@@ -155,7 +157,6 @@ export default function SignInScreen() {
           onPress={onGoogle}
           disabled={busy}
         />
-        <AppleButton onPress={onApple} disabled={busy} />
       </View>
 
       <View style={styles.footer}>
@@ -164,6 +165,20 @@ export default function SignInScreen() {
           {t('auth.signIn.createAccount')}
         </Link>
       </View>
+
+      {__DEV__ ? (
+        <Pressable
+          onPress={() => {
+            clearOnboardingSeen()
+            router.replace('/onboarding')
+          }}
+          accessibilityRole="button"
+          hitSlop={8}
+          style={styles.devReplay}
+        >
+          <Text style={styles.devReplayText}>Replay onboarding (dev)</Text>
+        </Pressable>
+      ) : null}
     </View>
   )
 }
@@ -204,7 +219,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   title: {
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
-    fontSize: theme.fontSize.xl,
+    fontSize: 30,
     color: theme.colors.foreground,
     letterSpacing: -0.6,
   },
@@ -258,5 +273,14 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontSize: theme.fontSize.md,
     color: theme.colors.primary,
     fontWeight: '600',
+  },
+  devReplay: {
+    alignSelf: 'center',
+    paddingVertical: theme.gap(2),
+  },
+  devReplayText: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
   },
 }))

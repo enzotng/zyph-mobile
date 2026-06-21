@@ -30,7 +30,7 @@ const styles = StyleSheet.create((theme) => ({
     paddingVertical: theme.gap(1.5),
     paddingHorizontal: theme.gap(2.5),
     borderRadius: theme.radius.full,
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    backgroundColor: 'rgba(26, 23, 18, 0.55)',
   },
   text: {
     color: '#FFFFFF',

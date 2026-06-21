@@ -28,7 +28,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <Surface
         radius={theme.radius.md}
-        color={theme.colors.card}
+        color={focused ? theme.colors.raised : theme.colors.card}
         borderColor={borderColor}
         borderWidth={1.5}
       >
@@ -63,7 +63,7 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.foreground,
   },
   input: {
-    minHeight: 48,
+    minHeight: 52,
     paddingHorizontal: theme.gap(3),
     color: theme.colors.foreground,
     fontSize: theme.fontSize.md,

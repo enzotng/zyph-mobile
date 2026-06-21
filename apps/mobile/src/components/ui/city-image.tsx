@@ -93,6 +93,6 @@ const styles = StyleSheet.create(() => ({
     right: 0,
     bottom: 0,
     top: '35%',
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backgroundColor: 'rgba(20, 17, 12, 0.55)',
   },
 }))

@@ -4,7 +4,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { withAlpha } from '@/lib/color'
 
-type BadgeTone = 'primary' | 'success' | 'warning' | 'destructive' | 'muted' | 'accent'
+type BadgeTone = 'primary' | 'success' | 'warning' | 'destructive' | 'muted' | 'accent' | 'live'
 
 type BadgeProps = {
   label: string
@@ -29,7 +29,9 @@ function resolveToneColor(
     case 'muted':
       return theme.colors.muted
     case 'accent':
-      return theme.colors.accentDeep
+      return theme.colors.primary
+    case 'live':
+      return theme.colors.live
   }
 }
 

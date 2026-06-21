@@ -153,11 +153,12 @@ export default function SignUpScreen() {
 
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>{t('auth.orSeparator')}</Text>
+        <Text style={styles.dividerText}>{t('auth.orSignUpWith')}</Text>
         <View style={styles.dividerLine} />
       </View>
 
       <View style={styles.social}>
+        <AppleButton onPress={onApple} disabled={busy} />
         <Button
           variant="secondary"
           icon="logo-google"
@@ -165,7 +166,6 @@ export default function SignUpScreen() {
           onPress={onGoogle}
           disabled={busy}
         />
-        <AppleButton onPress={onApple} disabled={busy} />
       </View>
 
       <View style={styles.footer}>
@@ -214,7 +214,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   title: {
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
-    fontSize: theme.fontSize.xl,
+    fontSize: 30,
     color: theme.colors.foreground,
     letterSpacing: -0.6,
   },
