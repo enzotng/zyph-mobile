@@ -4,8 +4,8 @@ import type { ReactTestRendererJSON } from 'react-test-renderer'
 
 import { CityImage, coverTint } from './city-image'
 
-// The scrim is the only View carrying this exact translucent slate background.
-const SCRIM_COLOR = 'rgba(15, 23, 42, 0.5)'
+// The scrim is the only View carrying this exact translucent warm-ink background.
+const SCRIM_COLOR = 'rgba(20, 17, 12, 0.55)'
 // expo-image renders to this host component under jest-expo.
 const EXPO_IMAGE_TYPE = 'ViewManagerAdapter_ExpoImage'
 

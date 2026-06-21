@@ -11,9 +11,9 @@ const EXPO_IMAGE_TYPE = 'ViewManagerAdapter_ExpoImage'
 // Per-tone theme colors the inner StatusDot maps to (light/dark variants; adaptiveThemes is
 // on so either may apply). Distinct per tone, so a match proves the right tone branch ran.
 const TONE_COLORS: Record<StatusTone, readonly [string, string]> = {
-  success: ['#10B981', '#34D399'],
-  warning: ['#F59E0B', '#FBBF24'],
-  muted: ['#64748B', '#94A3B8'],
+  success: ['#2F7D57', '#5FB98C'],
+  warning: ['#C98A2B', '#D8A24A'],
+  muted: ['#8C8578', '#9A9384'],
 }
 
 type StyleValue = Record<string, unknown>

@@ -13,9 +13,9 @@ import type { StatusTone } from '../select'
 
 // Smooth dark fade (transparent at the top -> dark at the bottom) the text sits on.
 const FADE_COLORS = [
-  'rgba(15, 23, 42, 0)',
-  'rgba(15, 23, 42, 0.55)',
-  'rgba(15, 23, 42, 0.92)',
+  'rgba(20, 17, 12, 0)',
+  'rgba(20, 17, 12, 0.55)',
+  'rgba(20, 17, 12, 0.92)',
 ] as const
 const FADE_LOCATIONS = [0, 0.5, 1] as const
 

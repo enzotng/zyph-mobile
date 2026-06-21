@@ -6,7 +6,7 @@ import { Surface } from '@/components/ui/surface'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 
-type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost'
+type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'destructive' | 'ghost'
 type ButtonSize = 'sm' | 'md'
 
 type ButtonProps = {
@@ -37,7 +37,15 @@ export function Button({
   }
 
   const palette = {
+    // Primary CTA is ink in light / cream in dark (foreground), with inverse text.
     primary: {
+      fill: theme.colors.foreground,
+      border: undefined,
+      borderWidth: 0,
+      text: theme.colors.background,
+    },
+    // Accent (indigo) CTA for brand moments, e.g. onboarding "Get started".
+    accent: {
       fill: theme.colors.primary,
       border: undefined,
       borderWidth: 0,
