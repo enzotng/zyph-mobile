@@ -56,8 +56,10 @@ export default function PoisScreen() {
 // ----- iOS: place-first map with a peek/expand Nearby sheet -----
 
 function MapTab() {
-  const params = useGlobalSearchParams<{ id: string }>()
+  const params = useGlobalSearchParams<{ id: string; focus?: string }>()
   const tripId = paramString(params.id)
+  // Optional target id (e.g. from the POI detail "Open in map") to centre + open on arrival.
+  const focusId = paramString(params.focus) || null
   const router = useRouter()
   const { t, i18n } = useTranslation()
   const { theme, rt } = useUnistyles()
@@ -73,6 +75,17 @@ function MapTab() {
   // A single coarse watcher feeds every distance readout in the list.
   const user = useUserLocation(true, 'coarse')
   const userLoc = user.location
+
+  // Arriving with a focus param (e.g. from POI detail "Open in map"): centre + open it once the
+  // canvas targets are ready. Guard on the POIs being loaded so the target exists on the canvas.
+  const focusedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!focusId || !pois || focusedRef.current === focusId) {
+      return
+    }
+    focusedRef.current = focusId
+    canvasRef.current?.focusTarget(focusId)
+  }, [focusId, pois])
 
   const liveCount = members?.length ?? 0
 
@@ -104,6 +117,14 @@ function MapTab() {
   function routeToPoi(poi: TripPoi) {
     haptics.selection()
     canvasRef.current?.focusTarget(`poi:${poi.id}`)
+  }
+
+  function openPoi(poi: TripPoi) {
+    haptics.selection()
+    router.push({
+      pathname: '/trips/[id]/pois/[poiId]',
+      params: { id: tripId, poiId: poi.id },
+    })
   }
 
   function focusMember(member: MemberLocationWithMember) {
@@ -319,7 +340,13 @@ function MapTab() {
             showsVerticalScrollIndicator={false}
           >
             {tab === 'places' ? (
-              <PlacesList places={places} userLoc={userLoc} onRoute={routeToPoi} onAdd={goAddPoi} />
+              <PlacesList
+                places={places}
+                userLoc={userLoc}
+                onRoute={routeToPoi}
+                onOpen={openPoi}
+                onAdd={goAddPoi}
+              />
             ) : (
               <PeopleList people={people} userLoc={userLoc} onFocus={focusMember} />
             )}
@@ -392,11 +419,13 @@ function PlacesList({
   places,
   userLoc,
   onRoute,
+  onOpen,
   onAdd,
 }: {
   places: TripPoi[]
   userLoc: { lat: number; lng: number } | null
   onRoute: (poi: TripPoi) => void
+  onOpen: (poi: TripPoi) => void
   onAdd: () => void
 }) {
   const { t } = useTranslation()
@@ -441,6 +470,7 @@ function PlacesList({
               }
               title={poi.label}
               subtitle={subtitle}
+              onPress={() => onOpen(poi)}
               right={
                 <Button
                   label={t('map.route')}
@@ -712,7 +742,7 @@ function PoiListTab() {
                 accessibilityLabel={item.label}
                 onPress={() =>
                   router.push({
-                    pathname: '/trips/[id]/pois/[poiId]/edit',
+                    pathname: '/trips/[id]/pois/[poiId]',
                     params: { id: tripId, poiId: item.id },
                   })
                 }
