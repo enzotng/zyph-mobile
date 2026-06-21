@@ -7,7 +7,7 @@ import { Alert, Linking, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
-import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
+import { APP_TAB_BAR_CLEARANCE } from '@/components/layout/app-tab-bar'
 import { Screen } from '@/components/screen'
 import { Avatar, ListRow, Segmented, Spinner, Surface } from '@/components/ui'
 import { signOut, useAuth } from '@/features/auth'
@@ -338,6 +338,6 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(3),
   },
   spacer: {
-    height: FLOATING_TAB_BAR_CLEARANCE,
+    height: APP_TAB_BAR_CLEARANCE,
   },
 }))
