@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Tabs, useGlobalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Platform } from 'react-native'
 
 import { type TripTab, TripTabBar } from '@/components/layout/trip-tab-bar'
 import { TripAddSheet } from '@/features/trips/components/trip-add-sheet'
@@ -37,6 +38,11 @@ export default function TripTabsLayout() {
           // `packing` has no tab of its own - it lives under the Plan (timeline) segment, so keep
           // Plan highlighted while packing is open.
           const activeName = rawActive === 'packing' ? 'timeline' : rawActive
+          // The Map tab (iOS) is a full-screen map with its own Nearby sheet at the bottom; the
+          // floating tab bar would overlap it, so hide it there (Map's back tile returns to Cockpit).
+          if (rawActive === 'pois' && Platform.OS === 'ios') {
+            return null
+          }
           const routesByName = new Map(props.state.routes.map((route) => [route.name, route]))
           const tabs: TripTab[] = TAB_ORDER.flatMap((name) => {
             const route = routesByName.get(name)
