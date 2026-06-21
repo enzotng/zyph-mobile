@@ -33,7 +33,10 @@ export default function TripTabsLayout() {
       <Tabs
         screenOptions={{ headerShown: false }}
         tabBar={(props) => {
-          const activeName = props.state.routes[props.state.index]?.name ?? ''
+          const rawActive = props.state.routes[props.state.index]?.name ?? ''
+          // `packing` has no tab of its own - it lives under the Plan (timeline) segment, so keep
+          // Plan highlighted while packing is open.
+          const activeName = rawActive === 'packing' ? 'timeline' : rawActive
           const routesByName = new Map(props.state.routes.map((route) => [route.name, route]))
           const tabs: TripTab[] = TAB_ORDER.flatMap((name) => {
             const route = routesByName.get(name)
