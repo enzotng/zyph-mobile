@@ -5,7 +5,7 @@ import { Alert, Pressable, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
-import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
+import { TRIP_TAB_BAR_CLEARANCE } from '@/components/layout/trip-tab-bar'
 import { poiIconName } from '@/components/poi-icon-picker'
 import { Screen } from '@/components/screen'
 import { EmptyState, ListRow, SectionTitle, Skeleton, Surface } from '@/components/ui'
@@ -296,6 +296,6 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.muted,
   },
   spacer: {
-    height: FLOATING_TAB_BAR_CLEARANCE,
+    height: TRIP_TAB_BAR_CLEARANCE,
   },
 }))

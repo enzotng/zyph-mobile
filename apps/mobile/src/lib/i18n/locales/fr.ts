@@ -48,6 +48,7 @@ export const fr: Translations = {
   },
   trip: {
     manage: 'Gérer',
+    addSheetTitle: 'Ajouter au voyage',
     editTrip: 'Modifier le voyage',
     regenerateCode: 'Régénérer le code',
     coverPhoto: 'Photo de couverture',
@@ -133,6 +134,10 @@ export const fr: Translations = {
     expenses: 'Dépenses',
     places: 'Repères',
     packing: 'Bagages',
+    cockpit: 'Cockpit',
+    plan: 'Plan',
+    spend: 'Dépenses',
+    map: 'Carte',
   },
   packing: {
     shared: 'Commun',
