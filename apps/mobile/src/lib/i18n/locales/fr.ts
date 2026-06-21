@@ -49,6 +49,9 @@ export const fr: Translations = {
   trip: {
     manage: 'Gérer',
     addSheetTitle: 'Ajouter au voyage',
+    rightNow: 'En ce moment',
+    minutesLeft: 'reste {{minutes}} min',
+    hoursLeft: 'reste {{hours}} h {{minutes}} min',
     editTrip: 'Modifier le voyage',
     regenerateCode: 'Régénérer le code',
     coverPhoto: 'Photo de couverture',

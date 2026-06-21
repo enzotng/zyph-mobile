@@ -47,6 +47,9 @@ export const en = {
   trip: {
     manage: 'Manage',
     addSheetTitle: 'Add to trip',
+    rightNow: 'Right now',
+    minutesLeft: '{{minutes}}m left',
+    hoursLeft: '{{hours}}h {{minutes}}m left',
     editTrip: 'Edit trip',
     regenerateCode: 'Regenerate code',
     coverPhoto: 'Cover photo',
