@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'expo-router'
+import { Link, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Alert, Text, View } from 'react-native'
+import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { z } from 'zod'
 
@@ -19,6 +19,7 @@ type ForgotPasswordValues = { email: string }
 export default function ForgotPasswordScreen() {
   const { t } = useTranslation()
   const { theme } = useUnistyles()
+  const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [sent, setSent] = useState(false)
   const schema = useMemo(() => z.object({ email: makeEmailSchema(t) }), [t])
@@ -73,6 +74,15 @@ export default function ForgotPasswordScreen() {
 
   return (
     <View style={styles.container}>
+      <Pressable
+        onPress={() => router.back()}
+        accessibilityRole="button"
+        accessibilityLabel={t('common.back')}
+        hitSlop={8}
+        style={styles.backTile}
+      >
+        <Ionicons name="chevron-back" size={20} color={theme.colors.foreground} />
+      </Pressable>
       <BrandLockup />
 
       <View style={styles.heading}>
@@ -134,6 +144,19 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingTop: rt.insets.top,
     backgroundColor: theme.colors.background,
   },
+  backTile: {
+    position: 'absolute',
+    top: rt.insets.top + theme.gap(2),
+    left: theme.gap(6),
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
   lockup: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -158,7 +181,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   title: {
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
-    fontSize: theme.fontSize.xl,
+    fontSize: 30,
     color: theme.colors.foreground,
     letterSpacing: -0.6,
   },

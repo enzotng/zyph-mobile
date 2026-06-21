@@ -33,6 +33,11 @@ export function setOnboardingSeen(): void {
   storage.set(ONBOARDING_KEY, true)
 }
 
+// Dev-only: clears the flag so the onboarding pager can be replayed without reinstalling.
+export function clearOnboardingSeen(): void {
+  storage.remove(ONBOARDING_KEY)
+}
+
 // A trip invite code captured from a deep link while signed out, so the invitee can be sent to
 // the join screen once they finish authenticating (the auth/onboarding redirect would otherwise
 // discard the link's ?code= param).

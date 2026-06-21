@@ -84,7 +84,7 @@ export function Button({
       ]}
     >
       <Surface
-        radius={theme.radius.md}
+        radius={16}
         color={palette.fill}
         borderColor={palette.border}
         borderWidth={palette.borderWidth}
@@ -111,8 +111,8 @@ const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: size === 'sm' ? theme.gap(4) : theme.gap(6),
   }),
   label: (size: ButtonSize) => ({
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
     fontSize: size === 'sm' ? theme.fontSize.sm : theme.fontSize.md,
   }),
   pressed: {
