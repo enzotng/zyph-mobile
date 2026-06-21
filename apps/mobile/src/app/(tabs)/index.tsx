@@ -5,34 +5,17 @@ import { RefreshControl, ScrollView, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
+import { APP_TAB_BAR_CLEARANCE } from '@/components/layout/app-tab-bar'
 import { EmptyState, SectionTitle, Skeleton, Surface } from '@/components/ui'
 import { useUnreadNotificationCount } from '@/features/notifications'
 import { useProfile } from '@/features/profile'
-import {
-  daysUntil,
-  formatDay,
-  selectHomeTrips,
-  statusTone,
-  type TripCard,
-  tripTimeline,
-  useTrips,
-} from '@/features/trips'
-import { AddTripSheet } from '@/features/trips/components/add-trip-sheet'
+import { daysUntil, formatDay, selectHomeTrips, tripTimeline, useTrips } from '@/features/trips'
 import { HomeHeader } from '@/features/trips/components/home-header'
+import { LiveTripCard } from '@/features/trips/components/live-trip-card'
 import { NextDepartureCard } from '@/features/trips/components/next-departure-card'
-import { UpcomingTripCard } from '@/features/trips/components/upcoming-trip-card'
+import { UpcomingTripRow } from '@/features/trips/components/upcoming-trip-row'
 
 const MAX_UPCOMING = 4
-
-// Groups the upcoming trips into rows of two for the grid.
-function chunkPairs(items: TripCard[]): TripCard[][] {
-  const pairs: TripCard[][] = []
-  for (let i = 0; i < items.length; i += 2) {
-    pairs.push(items.slice(i, i + 2))
-  }
-  return pairs
-}
 
 export default function HomeScreen() {
   const router = useRouter()
@@ -42,7 +25,6 @@ export default function HomeScreen() {
   const { data: profile } = useProfile()
   const { data: unreadCount, refetch: refetchUnread } = useUnreadNotificationCount()
   const [nowMs] = useState(() => Date.now())
-  const [addOpen, setAddOpen] = useState(false)
 
   // The app has no realtime, so the unread badge stays current by refetching on focus.
   useFocusEffect(
@@ -61,31 +43,24 @@ export default function HomeScreen() {
     tripCount === 1
       ? t('home.tripCountOne', { count: tripCount })
       : t('home.tripCountOther', { count: tripCount })
-  const subtitle = `${tripCountLabel} · ${t('home.upcomingCount', { count: liveCount })}`
+  const subtitle = `${tripCountLabel}, ${t('home.upcomingCount', { count: liveCount })}`
 
   const next = home.next
   const upcoming = home.upcoming.slice(0, MAX_UPCOMING)
 
-  // Two-up card grid, shared by the upcoming section and the past-only fallback section.
-  const tripGrid = (items: TripCard[]) => (
-    <View style={styles.grid}>
-      {chunkPairs(items).map((pair, i) => (
+  // Single full-width column of rows, shared by the upcoming section and the past-only fallback.
+  const tripRows = (items: typeof upcoming) => (
+    <View style={styles.list}>
+      {items.map((trip, i) => (
         <Animated.View
-          key={pair.map((trip) => trip.id).join('-')}
-          entering={FadeInDown.delay(Math.min(i, 8) * 50 + 120)
-            .duration(360)
-            .springify()}
-          style={styles.row}
+          key={trip.id}
+          entering={FadeInDown.delay(Math.min(i, 8) * 50 + 120).duration(360)}
         >
-          {pair.map((trip) => (
-            <UpcomingTripCard
-              key={trip.id}
-              trip={trip}
-              tone={statusTone(trip, now)}
-              onPress={() => router.push({ pathname: '/trips/[id]', params: { id: trip.id } })}
-            />
-          ))}
-          {pair.length === 1 ? <View style={styles.spacer} /> : null}
+          <UpcomingTripRow
+            trip={trip}
+            now={now}
+            onPress={() => router.push({ pathname: '/trips/[id]', params: { id: trip.id } })}
+          />
         </Animated.View>
       ))}
     </View>
@@ -100,10 +75,8 @@ export default function HomeScreen() {
         avatarUrl={profile?.avatar_url}
         onAvatarPress={() => router.push('/profile')}
         unreadCount={unreadCount ?? 0}
-        onNotificationsPress={() => router.push('/notifications')}
+        onNotificationsPress={tripCount === 0 ? undefined : () => router.push('/notifications')}
         notificationsLabel={t('notifications.title')}
-        onAddPress={() => setAddOpen(true)}
-        addLabel={t('trips.addTitle')}
       />
 
       {isLoading ? (
@@ -142,15 +115,23 @@ export default function HomeScreen() {
             />
           }
         >
-          <Animated.View entering={FadeInDown.duration(360).springify()}>
+          <Animated.View entering={FadeInDown.duration(360)}>
             {next ? (
-              <NextDepartureCard
-                trip={next}
-                days={next.start_date ? daysUntil(next.start_date, now) : 0}
-                inProgress={tripTimeline(next, now) === 'in_progress'}
-                departureLabel={formatDay(next.start_date, i18n.language)}
-                onPress={() => router.push({ pathname: '/trips/[id]', params: { id: next.id } })}
-              />
+              tripTimeline(next, now) === 'in_progress' ? (
+                <LiveTripCard
+                  trip={next}
+                  now={now}
+                  onPress={() => router.push({ pathname: '/trips/[id]', params: { id: next.id } })}
+                />
+              ) : (
+                <NextDepartureCard
+                  trip={next}
+                  days={next.start_date ? daysUntil(next.start_date, now) : 0}
+                  inProgress={false}
+                  departureLabel={formatDay(next.start_date, i18n.language)}
+                  onPress={() => router.push({ pathname: '/trips/[id]', params: { id: next.id } })}
+                />
+              )
             ) : (
               <NoUpcomingCard
                 onCreate={() => router.push('/trips/new')}
@@ -164,42 +145,35 @@ export default function HomeScreen() {
               <SectionTitle action={t('home.seeAll')} onAction={() => router.push('/trips')}>
                 {t('home.sectionUpcoming')}
               </SectionTitle>
-              {tripGrid(upcoming)}
+              {tripRows(upcoming)}
             </Animated.View>
           ) : home.past.length > 0 ? (
             <Animated.View entering={FadeInDown.delay(60).duration(360)} style={styles.section}>
               <SectionTitle action={t('home.seeAll')} onAction={() => router.push('/trips')}>
                 {t('trips.title')}
               </SectionTitle>
-              {tripGrid(home.past.slice(0, MAX_UPCOMING))}
+              {tripRows(home.past.slice(0, MAX_UPCOMING))}
             </Animated.View>
           ) : null}
         </ScrollView>
       )}
-
-      <AddTripSheet open={addOpen} onClose={() => setAddOpen(false)} />
     </View>
   )
 }
 
-// Loading placeholder shaped like the home content: a hero card then a two-up grid of cards.
+// Loading placeholder shaped like the home content: a hero card then a column of row cards.
 function HomeSkeleton() {
   const { theme } = useUnistyles()
   return (
     <View style={styles.skeleton}>
-      <Skeleton width="100%" height={172} radius={theme.radius.xl} />
+      <Skeleton width="100%" height={304} radius={theme.radius.xl} />
       <View style={styles.skeletonHeader}>
         <Skeleton width={140} height={20} radius={theme.radius.sm} />
         <Skeleton width={56} height={16} radius={theme.radius.sm} />
       </View>
-      <View style={styles.row}>
-        <Skeleton width="48%" height={132} radius={theme.radius.lg} />
-        <Skeleton width="48%" height={132} radius={theme.radius.lg} />
-      </View>
-      <View style={styles.row}>
-        <Skeleton width="48%" height={132} radius={theme.radius.lg} />
-        <Skeleton width="48%" height={132} radius={theme.radius.lg} />
-      </View>
+      <Skeleton width="100%" height={70} radius={theme.radius.lg} />
+      <Skeleton width="100%" height={70} radius={theme.radius.lg} />
+      <Skeleton width="100%" height={70} radius={theme.radius.lg} />
     </View>
   )
 }
@@ -246,21 +220,14 @@ const styles = StyleSheet.create((theme, rt) => ({
   scroll: {
     paddingHorizontal: theme.gap(6),
     paddingTop: theme.gap(2),
-    paddingBottom: rt.insets.bottom + FLOATING_TAB_BAR_CLEARANCE,
+    paddingBottom: rt.insets.bottom + APP_TAB_BAR_CLEARANCE,
     gap: theme.gap(4),
   },
   section: {
     gap: theme.gap(3),
   },
-  grid: {
-    gap: theme.gap(3),
-  },
-  row: {
-    flexDirection: 'row',
-    gap: theme.gap(3),
-  },
-  spacer: {
-    flex: 1,
+  list: {
+    gap: theme.gap(2.5),
   },
   // Card frame for the no-upcoming hero; EmptyState supplies the horizontal padding + content.
   hero: {

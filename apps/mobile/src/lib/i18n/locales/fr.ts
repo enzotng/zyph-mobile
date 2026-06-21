@@ -613,6 +613,14 @@ export const fr: Translations = {
     today: 'Aujourd’hui',
     noUpcomingTitle: 'Aucun voyage à venir',
     noUpcomingBody: 'C’est le moment de planifier ta prochaine aventure.',
+    liveNow: 'En cours',
+    dayOf: 'Jour {{day}} sur {{total}}',
+    next: 'À venir',
+    nextIn: 'À venir {{countdown}}',
+    openTrip: 'Ouvrir le voyage',
+    rowInDays_one: '{{destination}}, dans {{count}} jour',
+    rowInDays_other: '{{destination}}, dans {{count}} jours',
+    rowToday: '{{destination}}, aujourd’hui',
   },
   ar: {
     cameraNeeded:

@@ -12,15 +12,14 @@ type HomeHeaderProps = {
   avatarUrl?: string | null
   onAvatarPress: () => void
   unreadCount?: number
+  // Omit to hide the bell entirely (e.g. the empty state has no notifications to show).
   onNotificationsPress?: () => void
   notificationsLabel?: string
-  onAddPress?: () => void
-  addLabel?: string
 }
 
-// Left-aligned greeting + trip-count subtitle, with a notifications bell (unread badge) and a
-// tappable circular avatar on the right. Reproduces the safe-area top padding that AppHeader
-// provides (the home screen drops the shared title bar in favour of this).
+// Greeting + trip-count subtitle on the left, a notifications bell (unread badge) + tappable
+// avatar on the right. Reproduces the safe-area top padding AppHeader provides (the home screen
+// drops the shared title bar for this).
 export function HomeHeader({
   greeting,
   subtitle,
@@ -30,8 +29,6 @@ export function HomeHeader({
   unreadCount = 0,
   onNotificationsPress,
   notificationsLabel,
-  onAddPress,
-  addLabel,
 }: HomeHeaderProps) {
   const { theme } = useUnistyles()
   const { t } = useTranslation()
@@ -47,17 +44,6 @@ export function HomeHeader({
         </Text>
       </View>
       <View style={styles.actions}>
-        {onAddPress ? (
-          <Pressable
-            onPress={onAddPress}
-            accessibilityRole="button"
-            accessibilityLabel={addLabel}
-            hitSlop={8}
-            style={styles.bell}
-          >
-            <Ionicons name="add" size={26} color={theme.colors.foreground} />
-          </Pressable>
-        ) : null}
         {onNotificationsPress ? (
           <Pressable
             onPress={onNotificationsPress}
