@@ -56,7 +56,12 @@ function nextMessageId(list: ChatMessage[]): string {
 function ZoAvatar({ size }: { size: number }) {
   const { theme } = useUnistyles()
   return (
-    <View style={[styles.zoAvatar, { width: size, height: size, borderRadius: size }]}>
+    <View
+      style={[
+        styles.zoAvatar,
+        { width: size, height: size, borderRadius: Math.round(size * 0.34) },
+      ]}
+    >
       <Ionicons
         name="sparkles"
         size={Math.round(size * 0.5)}
@@ -300,7 +305,15 @@ export default function CopilotScreen() {
             hitSlop={8}
             style={({ pressed }) => (pressed ? styles.pressed : undefined)}
           >
-            <Ionicons name="chevron-back" size={26} color={theme.colors.foreground} />
+            <Surface
+              radius={theme.radius.md}
+              color={theme.colors.card}
+              borderColor={theme.colors.border}
+              borderWidth={1}
+              style={styles.backTile}
+            >
+              <Ionicons name="chevron-back" size={20} color={theme.colors.foreground} />
+            </Surface>
           </Pressable>
           <ZoAvatar size={38} />
           <View style={styles.headerText}>
@@ -393,11 +406,11 @@ export default function CopilotScreen() {
                     >
                       {isUser ? null : <ZoAvatar size={26} />}
                       <Surface
-                        radius={theme.radius.lg}
+                        radius={18}
                         color={isUser ? theme.colors.primary : theme.colors.card}
                         borderColor={isUser ? theme.colors.primary : theme.colors.border}
                         borderWidth={1}
-                        style={styles.bubble}
+                        style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}
                       >
                         <Text style={isUser ? styles.bubbleTextUser : styles.bubbleText}>
                           {message.text}
@@ -458,11 +471,11 @@ export default function CopilotScreen() {
               <View style={[styles.bubbleRow, styles.bubbleRowAssistant]}>
                 <ZoAvatar size={26} />
                 <Surface
-                  radius={theme.radius.lg}
+                  radius={18}
                   color={theme.colors.card}
                   borderColor={theme.colors.border}
                   borderWidth={1}
-                  style={styles.bubble}
+                  style={[styles.bubble, styles.bubbleAssistant]}
                 >
                   <Spinner label={t('copilot.thinking')} />
                 </Surface>
@@ -471,9 +484,10 @@ export default function CopilotScreen() {
           </ScrollView>
 
           <View style={styles.composer}>
+            <Text style={styles.disclaimer}>{t('copilot.disclaimer')}</Text>
             <Surface
-              radius={24}
-              color={theme.colors.card}
+              radius={18}
+              color={theme.colors.raised}
               borderColor={theme.colors.border}
               borderWidth={1}
               style={styles.inputPill}
@@ -499,7 +513,7 @@ export default function CopilotScreen() {
                     { backgroundColor: canSend ? theme.colors.primary : theme.colors.muted },
                   ]}
                 >
-                  <Ionicons name="arrow-up" size={18} color={theme.colors.primaryForeground} />
+                  <Ionicons name="arrow-up" size={22} color={theme.colors.primaryForeground} />
                 </View>
               </Pressable>
             </Surface>
@@ -532,6 +546,13 @@ const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.primary,
+    borderCurve: 'continuous',
+  },
+  backTile: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerText: {
     flexShrink: 1,
@@ -604,6 +625,12 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingVertical: theme.gap(2.5),
     paddingHorizontal: theme.gap(3.5),
   },
+  bubbleUser: {
+    borderBottomRightRadius: 4,
+  },
+  bubbleAssistant: {
+    borderTopLeftRadius: 4,
+  },
   bubbleText: {
     color: theme.colors.foreground,
     fontFamily: theme.fonts.sans.regular,
@@ -650,6 +677,13 @@ const styles = StyleSheet.create((theme, rt) => ({
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.background,
   },
+  disclaimer: {
+    textAlign: 'center',
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
+    marginBottom: theme.gap(2),
+  },
   inputPill: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -668,9 +702,10 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontSize: theme.fontSize.md,
   },
   sendButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 32,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },

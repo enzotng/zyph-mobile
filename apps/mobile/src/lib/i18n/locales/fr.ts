@@ -540,7 +540,8 @@ export const fr: Translations = {
   },
   copilot: {
     title: 'Zo',
-    subtitle: 'Ton copain de voyage',
+    subtitle: 'Ton copilote de voyage',
+    disclaimer: 'Zo peut se tromper. Vérifie les dépenses et les réservations.',
     empty:
       'Salut, moi c’est Zo, ton copilote pour ce voyage. Pose-moi tes questions sur ton programme, qui doit quoi, ou la prochaine étape.',
     placeholder: 'Pose ta question à Zo…',
@@ -923,6 +924,11 @@ export const fr: Translations = {
   group: {
     title: 'Groupe et soldes',
     notFound: 'Voyage introuvable.',
+    heading: 'Groupe',
+    inviteCaption: 'Partage-le une fois. Les nouveaux membres rejoignent aussitôt.',
+    membersTitle: 'Membres',
+    memberRole: 'Membre',
+    owner: 'Propriétaire',
     inviteCode: 'Code d’invitation',
     copy: 'Copier',
     copied: 'Copié !',
