@@ -534,7 +534,8 @@ export const en = {
   },
   copilot: {
     title: 'Zo',
-    subtitle: 'Your travel buddy',
+    subtitle: 'Your trip copilot',
+    disclaimer: 'Zo can make mistakes. Check expenses and bookings.',
     empty:
       'Hi, I’m Zo, your copilot for this trip. Ask me about your timeline, who owes what, or where to go next.',
     placeholder: 'Ask Zo about this trip…',
