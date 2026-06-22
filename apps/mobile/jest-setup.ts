@@ -27,6 +27,12 @@ jest.mock('@react-native-community/netinfo', () =>
   require('@react-native-community/netinfo/jest/netinfo-mock.js'),
 )
 
+// react-native-keyboard-controller: native module; use the package's jest mock so screens
+// (and the root layout's KeyboardProvider/KeyboardToolbar) render without the native side.
+jest.mock('react-native-keyboard-controller', () =>
+  require('react-native-keyboard-controller/jest'),
+)
+
 // react-native-screen-corner-radius reads a native module at import; stub it so any screen
 // importing it can render in tests without the native side.
 jest.mock('react-native-screen-corner-radius', () => ({

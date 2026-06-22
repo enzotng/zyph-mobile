@@ -20,14 +20,14 @@ describe('PlanSegmented', () => {
   it('marks the active segment as selected', () => {
     render(<PlanSegmented active="timeline" tripId="t1" />)
 
-    expect(screen.getByRole('tab', { name: 'Timeline', selected: true })).toBeOnTheScreen()
-    expect(screen.queryByRole('tab', { name: 'Packing', selected: true })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Timeline', selected: true })).toBeOnTheScreen()
+    expect(screen.queryByRole('button', { name: 'Packing', selected: true })).toBeNull()
   })
 
   it('navigates to the packing route when the packing segment is pressed', () => {
     render(<PlanSegmented active="timeline" tripId="t1" />)
 
-    fireEvent.press(screen.getByRole('tab', { name: 'Packing' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Packing' }))
 
     expect(mockNavigate).toHaveBeenCalledWith({
       pathname: '/trips/[id]/packing',
@@ -38,7 +38,7 @@ describe('PlanSegmented', () => {
   it('does not navigate when pressing the already-active segment', () => {
     render(<PlanSegmented active="timeline" tripId="t1" />)
 
-    fireEvent.press(screen.getByRole('tab', { name: 'Timeline' }))
+    fireEvent.press(screen.getByRole('button', { name: 'Timeline' }))
 
     expect(mockNavigate).not.toHaveBeenCalled()
   })

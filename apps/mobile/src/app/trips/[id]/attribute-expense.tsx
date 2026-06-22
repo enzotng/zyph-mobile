@@ -3,7 +3,11 @@ import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
-import Animated, { FadeInDown } from 'react-native-reanimated'
+import Animated, {
+  FadeInDown,
+  useAnimatedKeyboard,
+  useAnimatedStyle,
+} from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -169,7 +173,14 @@ function AttributionEditor({
 }: EditorProps) {
   const { t } = useTranslation()
   const router = useRouter()
-  const { theme } = useUnistyles()
+  const { theme, rt } = useUnistyles()
+  const insetsBottom = rt.insets.bottom
+  // Lift the sticky footer (per-person totals + Save) above the keyboard, mirroring Screen's
+  // KeyboardFooter, so the action and live totals stay reachable while editing a line.
+  const keyboard = useAnimatedKeyboard()
+  const footerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -Math.max(0, keyboard.height.value - insetsBottom) }],
+  }))
   const { session } = useAuth()
   const userId = session?.user.id
   const { data: trip } = useTrip(tripId)
@@ -436,6 +447,7 @@ function AttributionEditor({
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets
         >
           <View style={styles.descriptionField}>
             <TextField
@@ -605,8 +617,8 @@ function AttributionEditor({
           <Text style={styles.tip}>{t('smartSplit.tip')}</Text>
         </ScrollView>
 
-        {/* Sticky footer: per-person running totals + the gated save action. */}
-        <View style={styles.footer}>
+        {/* Sticky footer: per-person running totals + the gated save action. Lifts with the keyboard. */}
+        <Animated.View style={[styles.footer, footerStyle]}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -650,7 +662,7 @@ function AttributionEditor({
             onPress={onSave}
             disabled={saveDisabled}
           />
-        </View>
+        </Animated.View>
       </View>
 
       <BottomSheet
@@ -742,7 +754,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     flex: 1,
   },
   listContent: {
-    paddingBottom: theme.gap(4),
+    paddingBottom: theme.gap(8),
   },
   descriptionField: {
     paddingBottom: theme.gap(3),

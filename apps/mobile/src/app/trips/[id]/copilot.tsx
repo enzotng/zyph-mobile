@@ -2,23 +2,14 @@ import { Ionicons } from '@expo/vector-icons'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
+import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller'
 import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -49,9 +40,6 @@ import { paramString } from '@/lib/routing'
 // Suggested starter questions (i18n keys under copilot.suggestions.*). The label is both
 // shown and sent as the question, so the model answers it from the trip context.
 const SUGGESTIONS = ['owe', 'next', 'topPayer', 'airport'] as const
-
-// Header height below the safe-area top inset, for the keyboard avoiding offset.
-const HEADER_HEIGHT = 54
 
 // The edge function rejects a payload with more turns than this, so the sent history is trimmed
 // to the most recent ones (the last turn is always the new user question).
@@ -89,7 +77,6 @@ export default function CopilotScreen() {
   const router = useRouter()
   const { t, i18n } = useTranslation()
   const { theme } = useUnistyles()
-  const insets = useSafeAreaInsets()
 
   // Zoom-in pop on open (the route uses a fade, so no horizontal slide).
   const enter = useSharedValue(0)
@@ -349,7 +336,6 @@ export default function CopilotScreen() {
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={insets.top + HEADER_HEIGHT}
         >
           <ScrollView
             ref={scrollRef}

@@ -5,6 +5,7 @@ import { Stack, useGlobalSearchParams, useRouter, useSegments } from 'expo-route
 import { ShareIntentProvider } from 'expo-share-intent'
 import { useEffect } from 'react'
 import { Platform, View } from 'react-native'
+import { KeyboardProvider, KeyboardToolbar } from 'react-native-keyboard-controller'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -112,6 +113,16 @@ const BRAND_FONTS = {
   PlusJakartaSans_700Bold: require('../../assets/fonts/PlusJakartaSans_700Bold.ttf'),
 }
 
+// The keyboard nav toolbar (prev/next/done) only helps on multi-input forms; hide it on the Zo
+// chat, which has a single composer input so the prev/next arrows have nowhere to go.
+function GlobalKeyboardToolbar() {
+  const segments = useSegments()
+  if ((segments as string[]).includes('copilot')) {
+    return null
+  }
+  return <KeyboardToolbar />
+}
+
 function RootNavigator() {
   const { session, isLoading, recovering } = useAuth()
   const [fontsLoaded] = useFonts(BRAND_FONTS)
@@ -131,6 +142,7 @@ function RootNavigator() {
     <>
       <Stack screenOptions={{ headerShown: false }} />
       <ShareIntentRouter />
+      <GlobalKeyboardToolbar />
     </>
   )
 }
@@ -138,24 +150,26 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      <ShareIntentProvider
-        options={{ debug: false, resetOnBackground: true, disabled: Platform.OS === 'web' }}
-      >
-        <PersistQueryClientProvider
-          client={queryClient}
-          persistOptions={{
-            persister: mmkvQueryPersister,
-            // Drop cached data older than 7 days; bump the buster to invalidate on a shape change.
-            maxAge: 1000 * 60 * 60 * 24 * 7,
-            buster: 'v1',
-          }}
+      <KeyboardProvider>
+        <ShareIntentProvider
+          options={{ debug: false, resetOnBackground: true, disabled: Platform.OS === 'web' }}
         >
-          <AuthProvider>
-            <RootNavigator />
-            <OfflineBanner />
-          </AuthProvider>
-        </PersistQueryClientProvider>
-      </ShareIntentProvider>
+          <PersistQueryClientProvider
+            client={queryClient}
+            persistOptions={{
+              persister: mmkvQueryPersister,
+              // Drop cached data older than 7 days; bump the buster to invalidate on a shape change.
+              maxAge: 1000 * 60 * 60 * 24 * 7,
+              buster: 'v1',
+            }}
+          >
+            <AuthProvider>
+              <RootNavigator />
+              <OfflineBanner />
+            </AuthProvider>
+          </PersistQueryClientProvider>
+        </ShareIntentProvider>
+      </KeyboardProvider>
     </ErrorBoundary>
   )
 }
