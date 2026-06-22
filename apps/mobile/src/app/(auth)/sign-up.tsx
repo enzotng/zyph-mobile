@@ -1,9 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Alert, Text, View } from 'react-native'
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { ZyphMark } from '@/components/brand/zyph-mark'
@@ -33,6 +41,9 @@ export default function SignUpScreen() {
     resolver: zodResolver(makeSignUpSchema(t)),
     defaultValues: { displayName: '', email: '', password: '' },
   })
+
+  const emailRef = useRef<TextInput>(null)
+  const passwordRef = useRef<TextInput>(null)
 
   async function onSubmit(values: SignUpValues) {
     setSubmitting(true)
@@ -84,97 +95,117 @@ export default function SignUpScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <BrandLockup />
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <BrandLockup />
 
-      <View style={styles.heading}>
-        <Text style={styles.title}>{t('auth.signUp.title')}</Text>
-        <Text style={styles.subtitle}>{t('auth.signUp.subtitle')}</Text>
-      </View>
+        <View style={styles.heading}>
+          <Text style={styles.title}>{t('auth.signUp.title')}</Text>
+          <Text style={styles.subtitle}>{t('auth.signUp.subtitle')}</Text>
+        </View>
 
-      <Controller
-        control={control}
-        name="displayName"
-        render={({ field }) => (
-          <TextField
-            label={t('auth.fields.name')}
-            placeholder={t('auth.fields.namePlaceholder')}
-            autoCapitalize="words"
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            error={errors.displayName?.message}
-          />
-        )}
-      />
-
-      <Controller
-        control={control}
-        name="email"
-        render={({ field }) => (
-          <TextField
-            label={t('auth.fields.email')}
-            placeholder={t('auth.fields.emailPlaceholder')}
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            error={errors.email?.message}
-          />
-        )}
-      />
-
-      <Controller
-        control={control}
-        name="password"
-        render={({ field }) => (
-          <TextField
-            label={t('auth.fields.password')}
-            placeholder="••••••••"
-            secureTextEntry
-            autoComplete="new-password"
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            error={errors.password?.message}
-          />
-        )}
-      />
-
-      <View style={styles.action}>
-        <Button
-          label={submitting ? t('auth.signUp.submitting') : t('auth.signUp.submit')}
-          onPress={handleSubmit(onSubmit)}
-          disabled={busy}
+        <Controller
+          control={control}
+          name="displayName"
+          render={({ field }) => (
+            <TextField
+              label={t('auth.fields.name')}
+              placeholder={t('auth.fields.namePlaceholder')}
+              autoCapitalize="words"
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              error={errors.displayName?.message}
+              returnKeyType="next"
+              onSubmitEditing={() => emailRef.current?.focus()}
+              blurOnSubmit={false}
+            />
+          )}
         />
-      </View>
 
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>{t('auth.orSignUpWith')}</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
-      <View style={styles.social}>
-        <AppleButton onPress={onApple} disabled={busy} />
-        <Button
-          variant="secondary"
-          icon="logo-google"
-          label={googleSubmitting ? t('auth.google.signingIn') : t('auth.google.continue')}
-          onPress={onGoogle}
-          disabled={busy}
+        <Controller
+          control={control}
+          name="email"
+          render={({ field }) => (
+            <TextField
+              ref={emailRef}
+              label={t('auth.fields.email')}
+              placeholder={t('auth.fields.emailPlaceholder')}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              error={errors.email?.message}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              blurOnSubmit={false}
+            />
+          )}
         />
-      </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.muted}>{t('auth.signUp.hasAccount')}</Text>
-        <Link href="/(auth)/sign-in" style={styles.link}>
-          {t('auth.signIn.submit')}
-        </Link>
-      </View>
-    </View>
+        <Controller
+          control={control}
+          name="password"
+          render={({ field }) => (
+            <TextField
+              label={t('auth.fields.password')}
+              placeholder="••••••••"
+              ref={passwordRef}
+              secureTextEntry
+              autoComplete="new-password"
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              error={errors.password?.message}
+              returnKeyType="go"
+              onSubmitEditing={handleSubmit(onSubmit)}
+            />
+          )}
+        />
+
+        <View style={styles.action}>
+          <Button
+            label={submitting ? t('auth.signUp.submitting') : t('auth.signUp.submit')}
+            onPress={handleSubmit(onSubmit)}
+            disabled={busy}
+          />
+        </View>
+
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>{t('auth.orSignUpWith')}</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <View style={styles.social}>
+          <AppleButton onPress={onApple} disabled={busy} />
+          <Button
+            variant="secondary"
+            icon="logo-google"
+            label={googleSubmitting ? t('auth.google.signingIn') : t('auth.google.continue')}
+            onPress={onGoogle}
+            disabled={busy}
+          />
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.muted}>{t('auth.signUp.hasAccount')}</Text>
+          <Link href="/(auth)/sign-in" style={styles.link}>
+            {t('auth.signIn.submit')}
+          </Link>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 
@@ -189,8 +220,12 @@ function BrandLockup() {
 }
 
 const styles = StyleSheet.create((theme, rt) => ({
-  container: {
+  flex: {
     flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  container: {
+    flexGrow: 1,
     justifyContent: 'center',
     gap: theme.gap(4),
     paddingHorizontal: theme.gap(6),

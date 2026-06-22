@@ -4,7 +4,15 @@ import { Link, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Alert, Pressable, Text, View } from 'react-native'
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { z } from 'zod'
 
@@ -49,18 +57,94 @@ export default function ForgotPasswordScreen() {
 
   if (sent) {
     return (
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <BrandLockup />
+
+          <View
+            style={[styles.iconCircle, { backgroundColor: withAlpha(theme.colors.primary, 0.1) }]}
+          >
+            <Ionicons name="mail-unread-outline" size={40} color={theme.colors.primary} />
+          </View>
+
+          <View style={styles.heading}>
+            <Text style={styles.title}>{t('auth.forgotPassword.sentTitle')}</Text>
+            <Text style={styles.subtitle}>{t('auth.forgotPassword.sentBody')}</Text>
+          </View>
+
+          <View style={styles.footer}>
+            <Link href="/(auth)/sign-in" style={styles.link}>
+              {t('auth.forgotPassword.backToSignIn')}
+            </Link>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    )
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
+          hitSlop={8}
+          style={styles.backTile}
+        >
+          <Ionicons name="chevron-back" size={20} color={theme.colors.foreground} />
+        </Pressable>
         <BrandLockup />
 
-        <View
-          style={[styles.iconCircle, { backgroundColor: withAlpha(theme.colors.primary, 0.1) }]}
-        >
-          <Ionicons name="mail-unread-outline" size={40} color={theme.colors.primary} />
+        <View style={styles.heading}>
+          <Text style={styles.title}>{t('auth.forgotPassword.title')}</Text>
+          <Text style={styles.subtitle}>{t('auth.forgotPassword.subtitle')}</Text>
         </View>
 
-        <View style={styles.heading}>
-          <Text style={styles.title}>{t('auth.forgotPassword.sentTitle')}</Text>
-          <Text style={styles.subtitle}>{t('auth.forgotPassword.sentBody')}</Text>
+        <Controller
+          control={control}
+          name="email"
+          render={({ field }) => (
+            <TextField
+              label={t('auth.fields.email')}
+              placeholder={t('auth.fields.emailPlaceholder')}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              error={errors.email?.message}
+              returnKeyType="go"
+              onSubmitEditing={handleSubmit(onSubmit)}
+            />
+          )}
+        />
+
+        <View style={styles.action}>
+          <Button
+            label={
+              submitting ? t('auth.forgotPassword.submitting') : t('auth.forgotPassword.submit')
+            }
+            onPress={handleSubmit(onSubmit)}
+            disabled={submitting}
+          />
         </View>
 
         <View style={styles.footer}>
@@ -68,60 +152,8 @@ export default function ForgotPasswordScreen() {
             {t('auth.forgotPassword.backToSignIn')}
           </Link>
         </View>
-      </View>
-    )
-  }
-
-  return (
-    <View style={styles.container}>
-      <Pressable
-        onPress={() => router.back()}
-        accessibilityRole="button"
-        accessibilityLabel={t('common.back')}
-        hitSlop={8}
-        style={styles.backTile}
-      >
-        <Ionicons name="chevron-back" size={20} color={theme.colors.foreground} />
-      </Pressable>
-      <BrandLockup />
-
-      <View style={styles.heading}>
-        <Text style={styles.title}>{t('auth.forgotPassword.title')}</Text>
-        <Text style={styles.subtitle}>{t('auth.forgotPassword.subtitle')}</Text>
-      </View>
-
-      <Controller
-        control={control}
-        name="email"
-        render={({ field }) => (
-          <TextField
-            label={t('auth.fields.email')}
-            placeholder={t('auth.fields.emailPlaceholder')}
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            error={errors.email?.message}
-          />
-        )}
-      />
-
-      <View style={styles.action}>
-        <Button
-          label={submitting ? t('auth.forgotPassword.submitting') : t('auth.forgotPassword.submit')}
-          onPress={handleSubmit(onSubmit)}
-          disabled={submitting}
-        />
-      </View>
-
-      <View style={styles.footer}>
-        <Link href="/(auth)/sign-in" style={styles.link}>
-          {t('auth.forgotPassword.backToSignIn')}
-        </Link>
-      </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 
@@ -136,8 +168,12 @@ function BrandLockup() {
 }
 
 const styles = StyleSheet.create((theme, rt) => ({
-  container: {
+  flex: {
     flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  container: {
+    flexGrow: 1,
     justifyContent: 'center',
     gap: theme.gap(4),
     paddingHorizontal: theme.gap(6),

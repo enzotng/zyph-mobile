@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
@@ -11,9 +12,17 @@ const LIVE_GREEN = '#5FB98C'
 
 // The "right now" card: the event currently in progress, with an elapsed-progress bar and the
 // time remaining. Rendered only when an event is in progress (the parent decides).
-export function RightNowCard({ event, now }: { event: TripEvent; now: number }) {
+export function RightNowCard({ event, now: initialNow }: { event: TripEvent; now: number }) {
   const { t } = useTranslation()
   const { theme } = useUnistyles()
+
+  // The card is explicitly "live", so it ticks on its own (the parent seeds the first value).
+  // A 30s cadence keeps the progress bar and time-left honest without per-second churn.
+  const [now, setNow] = useState(initialNow)
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
 
   const start = event.starts_at ? new Date(event.starts_at).getTime() : now
   const end = event.ends_at ? new Date(event.ends_at).getTime() : now
