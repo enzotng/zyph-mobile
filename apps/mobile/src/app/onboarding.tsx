@@ -66,6 +66,8 @@ export default function OnboardingScreen() {
         key={`vignette-${slide.key}`}
         entering={FadeInDown.duration(320)}
         style={styles.vignetteWrap}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
       >
         <LinearGradient
           colors={slide.gradient}
@@ -99,7 +101,7 @@ export default function OnboardingScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('onboarding.goToSlide', { index: index + 1 })}
               accessibilityState={{ selected: index === page }}
-              hitSlop={8}
+              hitSlop={18}
             >
               <View style={[styles.dot, index === page && styles.dotActive]} />
             </Pressable>

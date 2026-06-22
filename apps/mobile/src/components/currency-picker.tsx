@@ -62,6 +62,7 @@ export function CurrencyPicker({
         onPress={() => setOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={label ?? t('currencyPicker.title')}
+        style={({ pressed }) => (pressed ? styles.pressed : undefined)}
       >
         {compact ? (
           <Surface
@@ -187,5 +188,8 @@ const styles = StyleSheet.create((theme) => ({
   check: {
     width: 20,
     alignItems: 'center',
+  },
+  pressed: {
+    opacity: 0.85,
   },
 }))

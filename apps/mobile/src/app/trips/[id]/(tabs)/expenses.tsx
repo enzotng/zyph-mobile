@@ -379,18 +379,13 @@ export default function TripExpensesScreen() {
                       <Text style={styles.balanceSub} numberOfLines={1}>
                         {balanceSub}
                       </Text>
-                      <Pressable
-                        onPress={() => {
-                          haptics.light()
-                          goBalances()
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('expenses.settleUp')}
-                        style={({ pressed }) => [styles.settleButton, pressed && styles.pressed]}
+                      <View
+                        style={styles.settleButton}
+                        importantForAccessibility="no-hide-descendants"
                       >
                         <Ionicons name="git-compare-outline" size={16} color={theme.colors.bezel} />
                         <Text style={styles.settleButtonLabel}>{t('expenses.settleUp')}</Text>
-                      </Pressable>
+                      </View>
                     </View>
                   </Pressable>
                 </Animated.View>

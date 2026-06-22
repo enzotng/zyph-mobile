@@ -18,6 +18,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { Badge, BottomSheet, Surface } from '@/components/ui'
 import { formatDistance, formatWalkingTime, haversine } from '@/lib/geo'
+import { haptics } from '@/lib/haptics'
 import { useUserLocation } from '@/lib/sensors'
 
 import type { WayfinderTarget, WayfinderTargetKind } from '../hooks/use-wayfinder-targets'
@@ -466,11 +467,15 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
                 {LAYERS.map((layer) => (
                   <Pressable
                     key={layer}
-                    onPress={() => toggleLayer(layer)}
+                    onPress={() => {
+                      haptics.selection()
+                      toggleLayer(layer)
+                    }}
                     accessibilityRole="button"
                     accessibilityLabel={t(`map.layers.${layer}s`)}
                     accessibilityState={{ selected: visible[layer] }}
                     hitSlop={8}
+                    style={({ pressed }) => (pressed ? styles.pressed : undefined)}
                   >
                     <Surface
                       radius={theme.radius.full}
@@ -548,7 +553,16 @@ function MapButton({
 }) {
   const { theme } = useUnistyles()
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={8}>
+    <Pressable
+      onPress={() => {
+        haptics.selection()
+        onPress()
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={8}
+      style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+    >
       <Surface
         radius={theme.radius.full}
         color={active ? theme.colors.primary : theme.colors.background}
@@ -580,11 +594,15 @@ function DayChip({
   const { theme } = useUnistyles()
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        haptics.selection()
+        onPress()
+      }}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected: active }}
       hitSlop={8}
+      style={({ pressed }) => (pressed ? styles.pressed : undefined)}
     >
       <Surface
         radius={theme.radius.full}
@@ -723,5 +741,8 @@ const styles = StyleSheet.create((theme) => ({
   },
   sheetActions: {
     gap: theme.gap(2),
+  },
+  pressed: {
+    opacity: 0.85,
   },
 }))

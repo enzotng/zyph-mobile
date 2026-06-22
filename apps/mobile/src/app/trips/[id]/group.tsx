@@ -624,6 +624,9 @@ const styles = StyleSheet.create((theme) => ({
   },
   dangerBtn: {
     alignSelf: 'flex-start',
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingVertical: theme.gap(2),
   },
   dangerText: {
     fontFamily: theme.fonts.sans.semibold,

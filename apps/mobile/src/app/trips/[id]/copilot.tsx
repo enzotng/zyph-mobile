@@ -505,12 +505,14 @@ export default function CopilotScreen() {
                 disabled={!canSend}
                 accessibilityRole="button"
                 accessibilityLabel={t('copilot.send')}
+                accessibilityState={{ disabled: !canSend }}
                 style={({ pressed }) => (pressed ? styles.pressed : undefined)}
               >
                 <View
                   style={[
                     styles.sendButton,
                     { backgroundColor: canSend ? theme.colors.primary : theme.colors.muted },
+                    !canSend && styles.sendButtonDisabled,
                   ]}
                 >
                   <Ionicons name="arrow-up" size={22} color={theme.colors.primaryForeground} />
@@ -708,6 +710,9 @@ const styles = StyleSheet.create((theme, rt) => ({
     borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
   },
   pressed: {
     opacity: 0.85,

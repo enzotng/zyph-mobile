@@ -38,6 +38,7 @@ export function CategoryPicker({ label, value, onChange }: CategoryPickerProps) 
         onPress={() => setOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={label ?? t('expenseForm.category')}
+        style={({ pressed }) => (pressed ? styles.pressed : undefined)}
       >
         <Surface
           color={theme.colors.card}
@@ -107,5 +108,8 @@ const styles = StyleSheet.create((theme) => ({
   check: {
     width: 20,
     alignItems: 'center',
+  },
+  pressed: {
+    opacity: 0.85,
   },
 }))

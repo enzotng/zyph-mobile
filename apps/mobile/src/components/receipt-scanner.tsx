@@ -7,6 +7,7 @@ import { ActivityIndicator, Alert, Modal, Pressable, Text, View } from 'react-na
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { type ParsedReceiptItems, parseReceiptItems } from '@/features/expenses'
+import { haptics } from '@/lib/haptics'
 
 import { Button } from './button'
 
@@ -28,6 +29,7 @@ export function ReceiptScanner({ visible, onClose, onResult }: ReceiptScannerPro
     if (!camera || processing) {
       return
     }
+    haptics.medium()
     setProcessing(true)
     try {
       const picture = await camera.takePictureAsync({ quality: 0.7, skipProcessing: true })
@@ -72,7 +74,7 @@ export function ReceiptScanner({ visible, onClose, onResult }: ReceiptScannerPro
                 onPress={onClose}
                 accessibilityRole="button"
                 hitSlop={12}
-                style={styles.closeBtn}
+                style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
               >
                 <Ionicons name="close" size={28} color="#fff" />
               </Pressable>
@@ -89,7 +91,7 @@ export function ReceiptScanner({ visible, onClose, onResult }: ReceiptScannerPro
                   onPress={() => void capture()}
                   accessibilityRole="button"
                   accessibilityLabel={t('scanner.capture')}
-                  style={styles.shutter}
+                  style={({ pressed }) => [styles.shutter, pressed && styles.pressed]}
                 >
                   <View style={styles.shutterInner} />
                 </Pressable>
@@ -185,5 +187,8 @@ const styles = StyleSheet.create((theme, rt) => ({
   processingText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  pressed: {
+    opacity: 0.85,
   },
 }))

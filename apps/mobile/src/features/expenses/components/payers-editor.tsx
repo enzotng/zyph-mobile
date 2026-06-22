@@ -58,6 +58,7 @@ export function PayersEditor({
         onPress={() => setOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={label ?? t('expenseForm.paidBy')}
+        style={({ pressed }) => (pressed ? styles.pressed : undefined)}
       >
         <Surface
           color={theme.colors.card}
@@ -181,5 +182,8 @@ const styles = StyleSheet.create((theme) => ({
   amountInput: {
     width: theme.gap(24),
     textAlign: 'right',
+  },
+  pressed: {
+    opacity: 0.85,
   },
 }))

@@ -1574,6 +1574,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   filterPill: {
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
     paddingVertical: theme.gap(2),
     paddingHorizontal: theme.gap(3.5),
     borderRadius: theme.radius.full,
