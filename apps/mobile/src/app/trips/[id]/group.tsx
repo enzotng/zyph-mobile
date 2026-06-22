@@ -20,6 +20,7 @@ import {
 import { useDeleteTrip, useTrip } from '@/features/trips'
 import { useShareLocation } from '@/features/wayfinder'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { getShareLocation, setShareLocation } from '@/lib/preferences'
 import { paramString } from '@/lib/routing'
 
@@ -64,6 +65,7 @@ export default function TripGroupScreen() {
   )
 
   function toggleSharing() {
+    haptics.selection()
     if (sharing) {
       setSharing(false)
       return
@@ -134,6 +136,7 @@ export default function TripGroupScreen() {
   }
 
   function confirmRegenerate() {
+    haptics.warning()
     Alert.alert(t('group.confirmRegenerateTitle'), t('group.confirmRegenerateBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -156,6 +159,7 @@ export default function TripGroupScreen() {
   const isOwner = trip.owner_id === userId
 
   function confirmDelete() {
+    haptics.warning()
     Alert.alert(t('group.deleteTrip'), t('group.confirmDeleteBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -177,6 +181,7 @@ export default function TripGroupScreen() {
   }
 
   function confirmLeave() {
+    haptics.warning()
     Alert.alert(t('group.leaveTrip'), t('group.confirmLeaveBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -198,6 +203,7 @@ export default function TripGroupScreen() {
   }
 
   function confirmRemove(memberId: string, name: string) {
+    haptics.warning()
     Alert.alert(t('group.confirmRemoveTitle'), t('group.confirmRemoveBody', { name }), [
       { text: t('common.cancel'), style: 'cancel' },
       {

@@ -26,6 +26,7 @@ import {
   signInWithApple,
   signInWithGoogle,
 } from '@/features/auth'
+import { haptics } from '@/lib/haptics'
 import { clearOnboardingSeen } from '@/lib/preferences'
 
 export default function SignInScreen() {
@@ -53,6 +54,7 @@ export default function SignInScreen() {
       await signIn(values)
       // La navigation est gérée par la garde d'authentification après la mise à jour de la session.
     } catch (error) {
+      haptics.error()
       Alert.alert(
         t('auth.signIn.errorTitle'),
         error instanceof Error ? error.message : t('common.tryAgain'),

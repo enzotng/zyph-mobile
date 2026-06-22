@@ -35,6 +35,7 @@ import {
 } from '@/features/settlements'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { formatAmount } from '@/lib/money'
 import { paramString } from '@/lib/routing'
 
@@ -169,6 +170,7 @@ export default function TripBalancesScreen() {
         })
         done += 1
       }
+      haptics.success()
     } catch (error) {
       Alert.alert(
         t('group.paymentFailedTitle'),
@@ -203,6 +205,7 @@ export default function TripBalancesScreen() {
         toMemberId: pendingSettlement.toMemberId,
         amountCents,
       })
+      haptics.success()
       setPendingSettlement(null)
     } catch (error) {
       Alert.alert(
@@ -213,6 +216,7 @@ export default function TripBalancesScreen() {
   }
 
   function confirmUndo(settlement: TripSettlement) {
+    haptics.warning()
     Alert.alert(t('group.confirmUndoTitle'), t('group.confirmUndoBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -221,6 +225,7 @@ export default function TripBalancesScreen() {
         onPress: async () => {
           try {
             await reverseSettlementMutation.mutateAsync(settlement.id)
+            haptics.success()
           } catch (error) {
             Alert.alert(
               t('group.undoFailedTitle'),

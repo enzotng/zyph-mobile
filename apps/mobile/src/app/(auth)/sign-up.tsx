@@ -25,6 +25,7 @@ import {
   signInWithGoogle,
   signUp,
 } from '@/features/auth'
+import { haptics } from '@/lib/haptics'
 
 export default function SignUpScreen() {
   const router = useRouter()
@@ -52,9 +53,11 @@ export default function SignUpScreen() {
       // Avec la confirmation par e-mail activée il n'y a pas encore de session -> on demande de confirmer.
       // Si une session existe (confirmation désactivée), la garde d'authentification route vers l'accueil.
       if (!session) {
+        haptics.success()
         router.replace('/(auth)/check-email')
       }
     } catch (error) {
+      haptics.error()
       Alert.alert(
         t('auth.signUp.errorTitle'),
         error instanceof Error ? error.message : t('common.tryAgain'),

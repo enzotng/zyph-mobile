@@ -34,6 +34,7 @@ import { convertCents, crossRate, useFxRates } from '@/features/fx'
 import { useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { formatAmount } from '@/lib/money'
 import { paramString } from '@/lib/routing'
 
@@ -218,8 +219,10 @@ export default function AddExpenseScreen() {
         paidBy,
         payers,
       })
+      haptics.success()
       router.back()
     } catch (error) {
+      haptics.error()
       Alert.alert(
         t('expenseForm.createError'),
         error instanceof Error ? error.message : t('common.tryAgain'),

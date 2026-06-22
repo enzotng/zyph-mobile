@@ -13,6 +13,7 @@ import { Spinner } from '@/components/ui'
 import { confidenceLevel, type ParsedEmailEvent, useParseEmail } from '@/features/smart-import'
 import { eventTypeIcon, useCreateEvent } from '@/features/timeline'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
 export default function ImportEmailScreen() {
@@ -81,7 +82,9 @@ export default function ImportEmailScreen() {
       setEditedTitle(result.event.title ?? t('smartImport.defaultTitle'))
       setEditedStartsAt(result.event.startsAt ? new Date(result.event.startsAt) : new Date())
       setEditedNotes(result.event.notes ?? '')
+      haptics.success()
     } catch (error) {
+      haptics.error()
       Alert.alert(
         t('smartImport.parseErrorTitle'),
         error instanceof Error ? error.message : t('common.tryAgain'),
@@ -123,8 +126,10 @@ export default function ImportEmailScreen() {
               }
             : null,
       })
+      haptics.success()
       router.back()
     } catch (error) {
+      haptics.error()
       Alert.alert(
         t('smartImport.createErrorTitle'),
         error instanceof Error ? error.message : t('common.tryAgain'),

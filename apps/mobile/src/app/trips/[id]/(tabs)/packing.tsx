@@ -551,6 +551,7 @@ export default function PackingScreen() {
       })),
       {
         onSuccess: (created) => {
+          haptics.success()
           setPreview(null)
           setLastAdded(created.map((item) => item.id))
         },

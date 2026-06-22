@@ -21,6 +21,7 @@ import { Button } from '@/components/button'
 import { TextField } from '@/components/text-field'
 import { makeEmailSchema, requestPasswordReset } from '@/features/auth'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 
 type ForgotPasswordValues = { email: string }
 
@@ -45,7 +46,9 @@ export default function ForgotPasswordScreen() {
     try {
       await requestPasswordReset(values.email)
       setSent(true)
+      haptics.success()
     } catch (error) {
+      haptics.error()
       Alert.alert(
         t('auth.forgotPassword.errorTitle'),
         error instanceof Error ? error.message : t('common.tryAgain'),
