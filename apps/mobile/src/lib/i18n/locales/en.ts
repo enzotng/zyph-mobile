@@ -913,6 +913,11 @@ export const en = {
   group: {
     title: 'Group and balances',
     notFound: 'Trip not found.',
+    heading: 'Group',
+    inviteCaption: 'Share it once. New members join instantly.',
+    membersTitle: 'Members',
+    memberRole: 'Member',
+    owner: 'Owner',
     inviteCode: 'Invite code',
     copy: 'Copy',
     copied: 'Copied!',

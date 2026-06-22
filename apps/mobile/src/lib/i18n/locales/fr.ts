@@ -924,6 +924,11 @@ export const fr: Translations = {
   group: {
     title: 'Groupe et soldes',
     notFound: 'Voyage introuvable.',
+    heading: 'Groupe',
+    inviteCaption: 'Partage-le une fois. Les nouveaux membres rejoignent aussitôt.',
+    membersTitle: 'Membres',
+    memberRole: 'Membre',
+    owner: 'Propriétaire',
     inviteCode: 'Code d’invitation',
     copy: 'Copier',
     copied: 'Copié !',
