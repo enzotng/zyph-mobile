@@ -2,7 +2,9 @@ import { Image } from 'expo-image'
 import { Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-const AVATAR_TINTS = ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6']
+import { CATEGORICAL_TINTS } from '@/lib/color'
+
+const AVATAR_TINTS = CATEGORICAL_TINTS
 
 // Shared so avatar-like primitives (Avatar, MemberChip) derive initials identically.
 export function initialOf(name?: string): string {

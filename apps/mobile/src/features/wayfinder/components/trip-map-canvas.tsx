@@ -17,7 +17,9 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Badge, BottomSheet, Surface } from '@/components/ui'
+import { CATEGORICAL_TINTS } from '@/lib/color'
 import { formatDistance, formatWalkingTime, haversine } from '@/lib/geo'
+import { haptics } from '@/lib/haptics'
 import { useUserLocation } from '@/lib/sensors'
 
 import type { WayfinderTarget, WayfinderTargetKind } from '../hooks/use-wayfinder-targets'
@@ -33,8 +35,9 @@ const MAP_UI_SETTINGS = {
   togglePitchEnabled: false,
   scaleBarEnabled: false,
 } as const
-// Per-day route colours (cycled); first few align with the brand palette.
-const DAY_COLORS = ['#6366F1', '#38BDF8', '#10B981', '#F59E0B', '#EF4444', '#A855F7', '#EC4899']
+// Per-day route colours (cycled), from the shared categorical palette so routes never reuse the
+// reserved money green/red.
+const DAY_COLORS = CATEGORICAL_TINTS
 // Approx width the bottom-right cluster occupies, reserved as day-bar right padding.
 const CLUSTER_FOOTPRINT = 56
 
@@ -466,11 +469,15 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
                 {LAYERS.map((layer) => (
                   <Pressable
                     key={layer}
-                    onPress={() => toggleLayer(layer)}
+                    onPress={() => {
+                      haptics.selection()
+                      toggleLayer(layer)
+                    }}
                     accessibilityRole="button"
                     accessibilityLabel={t(`map.layers.${layer}s`)}
                     accessibilityState={{ selected: visible[layer] }}
                     hitSlop={8}
+                    style={({ pressed }) => (pressed ? styles.pressed : undefined)}
                   >
                     <Surface
                       radius={theme.radius.full}
@@ -548,7 +555,16 @@ function MapButton({
 }) {
   const { theme } = useUnistyles()
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={8}>
+    <Pressable
+      onPress={() => {
+        haptics.selection()
+        onPress()
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={8}
+      style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+    >
       <Surface
         radius={theme.radius.full}
         color={active ? theme.colors.primary : theme.colors.background}
@@ -580,11 +596,15 @@ function DayChip({
   const { theme } = useUnistyles()
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        haptics.selection()
+        onPress()
+      }}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected: active }}
       hitSlop={8}
+      style={({ pressed }) => (pressed ? styles.pressed : undefined)}
     >
       <Surface
         radius={theme.radius.full}
@@ -723,5 +743,8 @@ const styles = StyleSheet.create((theme) => ({
   },
   sheetActions: {
     gap: theme.gap(2),
+  },
+  pressed: {
+    opacity: 0.85,
   },
 }))

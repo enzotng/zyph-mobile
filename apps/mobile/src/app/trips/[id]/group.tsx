@@ -9,7 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { Avatar, Card, ErrorState, Spinner, Surface } from '@/components/ui'
+import { Avatar, Card, ErrorState, Eyebrow, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   useLeaveTrip,
@@ -20,6 +20,7 @@ import {
 import { useDeleteTrip, useTrip } from '@/features/trips'
 import { useShareLocation } from '@/features/wayfinder'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { getShareLocation, setShareLocation } from '@/lib/preferences'
 import { paramString } from '@/lib/routing'
 
@@ -64,6 +65,7 @@ export default function TripGroupScreen() {
   )
 
   function toggleSharing() {
+    haptics.selection()
     if (sharing) {
       setSharing(false)
       return
@@ -134,6 +136,7 @@ export default function TripGroupScreen() {
   }
 
   function confirmRegenerate() {
+    haptics.warning()
     Alert.alert(t('group.confirmRegenerateTitle'), t('group.confirmRegenerateBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -156,6 +159,7 @@ export default function TripGroupScreen() {
   const isOwner = trip.owner_id === userId
 
   function confirmDelete() {
+    haptics.warning()
     Alert.alert(t('group.deleteTrip'), t('group.confirmDeleteBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -177,6 +181,7 @@ export default function TripGroupScreen() {
   }
 
   function confirmLeave() {
+    haptics.warning()
     Alert.alert(t('group.leaveTrip'), t('group.confirmLeaveBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -198,6 +203,7 @@ export default function TripGroupScreen() {
   }
 
   function confirmRemove(memberId: string, name: string) {
+    haptics.warning()
     Alert.alert(t('group.confirmRemoveTitle'), t('group.confirmRemoveBody', { name }), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -239,7 +245,7 @@ export default function TripGroupScreen() {
     >
       {/* Invite code - ink bezel card */}
       <View style={styles.inviteCard}>
-        <Text style={styles.inviteEyebrow}>{t('group.inviteCode')}</Text>
+        <Eyebrow style={styles.inviteEyebrow}>{t('group.inviteCode')}</Eyebrow>
         <Text style={styles.code} numberOfLines={1} adjustsFontSizeToFit>
           {trip.invite_code}
         </Text>
@@ -304,7 +310,7 @@ export default function TripGroupScreen() {
       {hasMembers ? (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionEyebrow}>{t('group.membersTitle')}</Text>
+            <Eyebrow>{t('group.membersTitle')}</Eyebrow>
             <Text style={styles.sectionCount}>{members.length}</Text>
           </View>
           <Surface
@@ -469,11 +475,6 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(2),
   },
   inviteEyebrow: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
-    fontSize: 11,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
     color: CREAM_MUTED,
   },
   code: {
@@ -555,14 +556,6 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     gap: theme.gap(2),
   },
-  sectionEyebrow: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
-    fontSize: theme.fontSize.sm,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    color: theme.colors.muted,
-  },
   sectionCount: {
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
@@ -618,6 +611,9 @@ const styles = StyleSheet.create((theme) => ({
   },
   dangerBtn: {
     alignSelf: 'flex-start',
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingVertical: theme.gap(2),
   },
   dangerText: {
     fontFamily: theme.fonts.sans.semibold,

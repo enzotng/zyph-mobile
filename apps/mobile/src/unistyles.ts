@@ -44,6 +44,8 @@ const lightTheme = {
     success: '#2F7D57',
     warning: '#C98A2B',
     destructive: '#C8482C',
+    // Fixed (theme-independent) live green, dark enough for white text to clear ~4.5:1 in both
+    // themes; kept green so the badge stays consistent with the "in progress" semantic.
     live: '#2F7D57',
     raised: '#FFFFFF',
     bezel: '#1A1712',
@@ -65,7 +67,9 @@ const darkTheme = {
     success: '#5FB98C',
     warning: '#D8A24A',
     destructive: '#E2674A',
-    live: '#5FB98C',
+    // Fixed (theme-independent) live green: same value as light so white text clears ~4.5:1 here
+    // too, and a money-green "positive balance" pill can't be mistaken for the live badge.
+    live: '#2F7D57',
     raised: '#211C16',
     bezel: '#211C16',
   },

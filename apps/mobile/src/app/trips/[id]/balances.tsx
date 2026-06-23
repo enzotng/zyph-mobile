@@ -15,6 +15,7 @@ import {
   BottomSheet,
   EmptyState,
   ErrorState,
+  Eyebrow,
   Spinner,
   Surface,
 } from '@/components/ui'
@@ -35,6 +36,7 @@ import {
 } from '@/features/settlements'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { formatAmount } from '@/lib/money'
 import { paramString } from '@/lib/routing'
 
@@ -169,6 +171,7 @@ export default function TripBalancesScreen() {
         })
         done += 1
       }
+      haptics.success()
     } catch (error) {
       Alert.alert(
         t('group.paymentFailedTitle'),
@@ -203,6 +206,7 @@ export default function TripBalancesScreen() {
         toMemberId: pendingSettlement.toMemberId,
         amountCents,
       })
+      haptics.success()
       setPendingSettlement(null)
     } catch (error) {
       Alert.alert(
@@ -213,6 +217,7 @@ export default function TripBalancesScreen() {
   }
 
   function confirmUndo(settlement: TripSettlement) {
+    haptics.warning()
     Alert.alert(t('group.confirmUndoTitle'), t('group.confirmUndoBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -221,6 +226,7 @@ export default function TripBalancesScreen() {
         onPress: async () => {
           try {
             await reverseSettlementMutation.mutateAsync(settlement.id)
+            haptics.success()
           } catch (error) {
             Alert.alert(
               t('group.undoFailedTitle'),
@@ -309,7 +315,7 @@ export default function TripBalancesScreen() {
     >
       {/* Who owes whom: the suggested settlement transfers, each tappable to record it */}
       <Animated.View entering={FadeInDown.duration(320)} style={styles.section}>
-        <Text style={styles.eyebrow}>{t('balances.whoOwesWhom')}</Text>
+        <Eyebrow>{t('balances.whoOwesWhom')}</Eyebrow>
         {hasSettlements ? (
           <View style={styles.cardList}>
             {settlements.map((settlement) => (
@@ -349,7 +355,7 @@ export default function TripBalancesScreen() {
 
       {/* Each person: the per-member net balance, signed and money-toned */}
       <Animated.View entering={FadeInDown.delay(60).duration(320)} style={styles.section}>
-        <Text style={styles.eyebrow}>{t('balances.eachPerson')}</Text>
+        <Eyebrow>{t('balances.eachPerson')}</Eyebrow>
         <Surface radius={theme.radius.lg} style={styles.personList}>
           {(balances ?? []).map((balance, index) => (
             <View
@@ -377,7 +383,7 @@ export default function TripBalancesScreen() {
       {/* Payment history: recorded settlements, each reversible */}
       {hasHistory ? (
         <Animated.View entering={FadeInDown.delay(120).duration(320)} style={styles.section}>
-          <Text style={styles.eyebrow}>{t('group.paymentHistory')}</Text>
+          <Eyebrow>{t('group.paymentHistory')}</Eyebrow>
           <Surface radius={theme.radius.lg} style={styles.personList}>
             {paymentHistory.map((settlement, index) => (
               <View
@@ -495,14 +501,6 @@ const styles = StyleSheet.create((theme) => ({
   },
   section: {
     gap: theme.gap(2.5),
-  },
-  eyebrow: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
-    fontSize: 11,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: theme.colors.muted,
   },
   cardList: {
     gap: theme.gap(2.5),

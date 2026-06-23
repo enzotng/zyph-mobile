@@ -70,8 +70,8 @@ describe('coverTint', () => {
   })
 
   it('returns a deterministic tint derived from the seed', () => {
-    expect(coverTint('paris')).toBe('#0891B2')
-    expect(coverTint('tokyo')).toBe('#8B5CF6')
+    expect(coverTint('paris')).toBe('#F59E0B')
+    expect(coverTint('tokyo')).toBe('#F97316')
   })
 
   it('returns the same tint for the same seed across calls', () => {
@@ -81,13 +81,13 @@ describe('coverTint', () => {
   it('always returns a value from the fallback palette', () => {
     const palette = [
       '#4F46E5',
-      '#6366F1',
       '#0EA5E9',
-      '#0891B2',
-      '#2563EB',
-      '#0D9488',
       '#8B5CF6',
-      '#DB2777',
+      '#F59E0B',
+      '#EC4899',
+      '#0D9488',
+      '#F97316',
+      '#06B6D4',
     ]
     for (const seed of ['rome', 'berlin', 'madrid', 'oslo', 'cairo', 'delhi']) {
       expect(palette).toContain(coverTint(seed))
@@ -110,7 +110,7 @@ describe('CityImage', () => {
   it('applies the deterministic tint as the container background', () => {
     render(<CityImage seed="paris" height={140} />)
 
-    expect(hasStyle({ backgroundColor: '#0891B2', height: 140 })).toBe(true)
+    expect(hasStyle({ backgroundColor: '#F59E0B', height: 140 })).toBe(true)
   })
 
   it('renders the photo when a uri is provided', () => {
@@ -171,7 +171,7 @@ describe('CityImage', () => {
 
     // No explicit radius => the theme value is used, never 16 (the explicit-prop value).
     expect(hasStyle({ borderRadius: 16 })).toBe(false)
-    expect(hasStyle({ backgroundColor: '#0891B2' })).toBe(true)
+    expect(hasStyle({ backgroundColor: '#F59E0B' })).toBe(true)
   })
 
   it('applies the provided style to the container', () => {

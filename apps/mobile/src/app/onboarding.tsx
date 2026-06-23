@@ -8,6 +8,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { Eyebrow } from '@/components/ui'
 import { setOnboardingSeen } from '@/lib/preferences'
 
 type SlideKey = 'plan' | 'spend' | 'zo'
@@ -66,6 +67,8 @@ export default function OnboardingScreen() {
         key={`vignette-${slide.key}`}
         entering={FadeInDown.duration(320)}
         style={styles.vignetteWrap}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
       >
         <LinearGradient
           colors={slide.gradient}
@@ -99,7 +102,7 @@ export default function OnboardingScreen() {
               accessibilityRole="button"
               accessibilityLabel={t('onboarding.goToSlide', { index: index + 1 })}
               accessibilityState={{ selected: index === page }}
-              hitSlop={8}
+              hitSlop={18}
             >
               <View style={[styles.dot, index === page && styles.dotActive]} />
             </Pressable>
@@ -123,7 +126,7 @@ function Vignette({ slideKey }: { slideKey: SlideKey }) {
   if (slideKey === 'plan') {
     return (
       <View style={styles.card}>
-        <Text style={styles.eyebrow}>{t('onboarding.demo.day')}</Text>
+        <Eyebrow style={styles.eyebrow}>{t('onboarding.demo.day')}</Eyebrow>
         <View style={styles.cardRow}>
           <View style={[styles.rowIcon, { backgroundColor: 'rgba(95, 185, 140, 0.16)' }]}>
             <Ionicons name="train" size={17} color={GREEN} />
@@ -292,11 +295,8 @@ const styles = StyleSheet.create((theme, rt) => ({
     elevation: 8,
   },
   eyebrow: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
     fontSize: 10,
     letterSpacing: 1,
-    textTransform: 'uppercase',
     color: VIGNETTE_MUTED,
   },
   cardRow: {

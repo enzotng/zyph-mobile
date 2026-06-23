@@ -13,6 +13,7 @@ import { TextField } from '@/components/text-field'
 import { Surface } from '@/components/ui'
 import { type JoinTripValues, joinTripSchema, useJoinTrip } from '@/features/group'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
 export default function JoinTripScreen() {
@@ -38,8 +39,10 @@ export default function JoinTripScreen() {
     async (values: JoinTripValues) => {
       try {
         const tripId = await joinTrip.mutateAsync(values.code)
+        haptics.success()
         router.replace({ pathname: '/trips/[id]', params: { id: tripId } })
       } catch (error) {
+        haptics.error()
         Alert.alert(
           t('joinTrip.errorTitle'),
           error instanceof Error ? error.message : t('joinTrip.errorBody'),

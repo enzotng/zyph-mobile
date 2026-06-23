@@ -15,6 +15,7 @@ import { LocationPicker } from '@/components/location-picker'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { type CreateEventValues, createEventSchema, useCreateEvent } from '@/features/timeline'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
 const ONE_HOUR_MS = 3_600_000
@@ -69,8 +70,10 @@ export default function AddEventScreen() {
         lng: values.lng,
         gateLocation: values.gateLocation ?? null,
       })
+      haptics.success()
       router.back()
     } catch (error) {
+      haptics.error()
       Alert.alert(
         t('events.add.errorTitle'),
         error instanceof Error ? error.message : t('common.tryAgain'),

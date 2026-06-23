@@ -121,7 +121,11 @@ export default function ArScreen() {
       <View style={styles.center}>
         <Text style={styles.message}>{t('ar.cameraNeeded')}</Text>
         <Button label={t('ar.grantAccess')} onPress={() => void requestCameraPermission()} />
-        <Pressable onPress={() => router.back()} accessibilityRole="button" style={styles.backCta}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.backCta, pressed && styles.pressed]}
+        >
           <Text style={styles.link}>{t('ar.goBack')}</Text>
         </Pressable>
       </View>
@@ -141,7 +145,11 @@ export default function ArScreen() {
       <View style={styles.center}>
         <Ionicons name="compass-outline" size={48} color={theme.colors.muted} />
         <Text style={styles.message}>{t('ar.noTargets')}</Text>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" style={styles.backCta}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.backCta, pressed && styles.pressed]}
+        >
           <Text style={styles.link}>{t('ar.goBack')}</Text>
         </Pressable>
       </View>
@@ -182,7 +190,7 @@ export default function ArScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('ar.close')}
           hitSlop={12}
-          style={styles.closeBtn}
+          style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
         >
           <Ionicons name="close" size={26} color={CREAM} />
         </Pressable>
@@ -265,7 +273,12 @@ function TargetChip({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      style={[styles.chip, active ? styles.chipActive : null]}
+      hitSlop={8}
+      style={({ pressed }) => [
+        styles.chip,
+        active ? styles.chipActive : null,
+        pressed && styles.pressed,
+      ]}
     >
       <Ionicons
         name={poiIconName(target.icon)}
@@ -364,6 +377,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 44,
     gap: theme.gap(1.5),
     paddingHorizontal: theme.gap(3),
     paddingVertical: theme.gap(2),
@@ -446,5 +460,8 @@ const styles = StyleSheet.create((theme, rt) => ({
   hudHint: {
     fontSize: theme.fontSize.sm,
     color: withAlpha(CREAM, 0.6),
+  },
+  pressed: {
+    opacity: 0.85,
   },
 }))
