@@ -164,9 +164,10 @@ export default function SignInScreen() {
 
         <View style={styles.action}>
           <Button
-            label={submitting ? t('auth.signIn.submitting') : t('auth.signIn.submit')}
+            label={t('auth.signIn.submit')}
             onPress={handleSubmit(onSubmit)}
             disabled={busy}
+            loading={submitting}
           />
         </View>
 

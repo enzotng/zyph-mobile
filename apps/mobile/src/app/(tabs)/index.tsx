@@ -82,7 +82,17 @@ export default function HomeScreen() {
       {isLoading ? (
         <HomeSkeleton />
       ) : isError ? (
-        <View style={styles.stateWrap}>
+        <ScrollView
+          contentContainerStyle={styles.stateWrap}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={() => void refetch()}
+              tintColor={theme.colors.primary}
+            />
+          }
+        >
           <EmptyState
             icon="cloud-offline-outline"
             title={t('trips.errorTitle')}
@@ -90,9 +100,19 @@ export default function HomeScreen() {
             cta={t('common.retry')}
             onCta={() => void refetch()}
           />
-        </View>
+        </ScrollView>
       ) : tripCount === 0 ? (
-        <View style={styles.stateWrap}>
+        <ScrollView
+          contentContainerStyle={styles.stateWrap}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={() => void refetch()}
+              tintColor={theme.colors.primary}
+            />
+          }
+        >
           <EmptyState
             icon="airplane-outline"
             title={t('trips.empty.title')}
@@ -102,7 +122,7 @@ export default function HomeScreen() {
             secondaryCta={t('trips.join')}
             onSecondaryCta={() => router.push('/trips/join')}
           />
-        </View>
+        </ScrollView>
       ) : (
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -213,9 +233,13 @@ const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  // Used as a ScrollView contentContainerStyle so the centred CTA clears the floating tab bar and
+  // the state is pull-to-refreshable; flexGrow (not flex) lets it fill yet still scroll/bounce.
   stateWrap: {
-    flex: 1,
+    flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: theme.gap(6),
+    paddingBottom: APP_TAB_BAR_CLEARANCE,
   },
   scroll: {
     paddingHorizontal: theme.gap(6),

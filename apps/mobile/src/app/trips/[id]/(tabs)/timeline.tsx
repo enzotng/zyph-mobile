@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
-import { Link, useGlobalSearchParams, useRouter } from 'expo-router'
+import { Link, useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router'
 import type { TFunction } from 'i18next'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import Animated, { FadeIn } from 'react-native-reanimated'
@@ -58,12 +58,16 @@ export default function TimelineScreen() {
   const router = useRouter()
   const items = useMemo(() => groupEventsByDay(events ?? []), [events])
 
-  // Tick once a minute so the countdown stays current without per-second churn.
+  // Tick once a minute so the countdown stays current without per-second churn. Gated to focus so
+  // the timer does not keep firing while another Plan tab (map/expenses) is showing.
   const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000)
-    return () => clearInterval(id)
-  }, [])
+  useFocusEffect(
+    useCallback(() => {
+      setNow(Date.now())
+      const id = setInterval(() => setNow(Date.now()), 60_000)
+      return () => clearInterval(id)
+    }, []),
+  )
 
   const renderItem = useCallback(
     ({ item }: { item: TimelineItem }) => {

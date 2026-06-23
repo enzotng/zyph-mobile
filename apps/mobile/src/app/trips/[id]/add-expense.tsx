@@ -249,9 +249,10 @@ export default function AddExpenseScreen() {
         <View style={styles.footerBar}>
           {blockReason ? <Text style={styles.footerReason}>{blockReason}</Text> : null}
           <Button
-            label={createExpense.isPending ? t('expenseForm.submitting') : t('expenseForm.submit')}
+            label={t('expenseForm.submit')}
             onPress={handleSubmit(onSubmit)}
             disabled={createExpense.isPending || blocked}
+            loading={createExpense.isPending}
           />
         </View>
       }
