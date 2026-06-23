@@ -9,7 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { poiIconName } from '@/components/poi-icon-picker'
 import { Screen } from '@/components/screen'
-import { CityImage, Spinner, Surface } from '@/components/ui'
+import { CityImage, Eyebrow, Spinner, Surface } from '@/components/ui'
 import {
   POI_ICONS,
   type PoiIcon,
@@ -83,7 +83,9 @@ export default function PoiDetailScreen() {
           <View style={styles.headerFoot}>
             <View style={styles.eyebrowRow}>
               <Ionicons name={poiIconName(poi.icon)} size={14} color="#F4F1E8" />
-              <Text style={styles.eyebrow}>{t(`poiDetail.eyebrow.${eyebrowKey(poi.icon)}`)}</Text>
+              <Eyebrow style={styles.eyebrow}>
+                {t(`poiDetail.eyebrow.${eyebrowKey(poi.icon)}`)}
+              </Eyebrow>
             </View>
             <Text style={styles.headerTitle} numberOfLines={2}>
               {poi.label}
@@ -342,11 +344,6 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(1.5),
   },
   eyebrow: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
-    fontSize: theme.fontSize.xs,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
     color: '#F4F1E8',
   },
   headerTitle: {

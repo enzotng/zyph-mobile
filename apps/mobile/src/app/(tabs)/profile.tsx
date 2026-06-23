@@ -9,7 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { APP_TAB_BAR_CLEARANCE } from '@/components/layout/app-tab-bar'
 import { Screen } from '@/components/screen'
-import { Avatar, ListRow, Segmented, Spinner, Surface } from '@/components/ui'
+import { Avatar, Eyebrow, ListRow, Segmented, Spinner, Surface } from '@/components/ui'
 import { signOut, useAuth } from '@/features/auth'
 import { ACCOUNT_HAS_SHARED_TRIPS, deleteAccount, useProfile } from '@/features/profile'
 import { setAppLanguage } from '@/lib/i18n'
@@ -163,7 +163,7 @@ export default function ProfileScreen() {
 
       {/* Account */}
       <View style={styles.group}>
-        <Text style={styles.groupTitle}>{t('profile.section.account')}</Text>
+        <Eyebrow>{t('profile.section.account')}</Eyebrow>
         <Surface
           color={theme.colors.card}
           borderColor={theme.colors.border}
@@ -201,14 +201,14 @@ export default function ProfileScreen() {
 
       {/* Appearance */}
       <View style={styles.group}>
-        <Text style={styles.groupTitle}>{t('profile.section.appearance')}</Text>
+        <Eyebrow>{t('profile.section.appearance')}</Eyebrow>
         <Segmented value={themePref} onChange={selectTheme} options={themeOptions} />
         <Text style={styles.groupHint}>{t('profile.appearanceHint')}</Text>
       </View>
 
       {/* Language */}
       <View style={styles.group}>
-        <Text style={styles.groupTitle}>{t('profile.section.language')}</Text>
+        <Eyebrow>{t('profile.section.language')}</Eyebrow>
         <Segmented value={langPref} onChange={selectLanguage} options={languageOptions} />
         <Surface
           color={theme.colors.card}
@@ -229,7 +229,7 @@ export default function ProfileScreen() {
 
       {/* About / legal */}
       <View style={styles.group}>
-        <Text style={styles.groupTitle}>{t('profile.section.about')}</Text>
+        <Eyebrow>{t('profile.section.about')}</Eyebrow>
         <Surface
           color={theme.colors.card}
           borderColor={theme.colors.border}
@@ -300,14 +300,6 @@ const styles = StyleSheet.create((theme) => ({
   },
   group: {
     gap: theme.gap(2),
-  },
-  groupTitle: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
-    fontSize: theme.fontSize.sm,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    color: theme.colors.muted,
   },
   groupCard: {
     paddingHorizontal: theme.gap(4),

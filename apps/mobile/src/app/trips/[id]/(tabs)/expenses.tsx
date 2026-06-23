@@ -11,7 +11,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { TRIP_TAB_BAR_CLEARANCE } from '@/components/layout/trip-tab-bar'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Amount, Chip, EmptyState, ErrorState, Skeleton, Surface } from '@/components/ui'
+import { Amount, Chip, EmptyState, ErrorState, Eyebrow, Skeleton, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   CATEGORY_ICON,
@@ -223,7 +223,7 @@ export default function TripExpensesScreen() {
   const renderItem = useCallback(
     ({ item }: { item: FeedItem }) => {
       if (item.kind === 'header') {
-        return <Text style={styles.dayHeader}>{item.label}</Text>
+        return <Eyebrow style={styles.dayHeader}>{item.label}</Eyebrow>
       }
 
       const expense = item.expense
@@ -372,7 +372,7 @@ export default function TripExpensesScreen() {
                     style={({ pressed }) => [pressed && styles.pressed]}
                   >
                     <View style={styles.balanceCard}>
-                      <Text style={styles.balanceLabel}>{t('trip.balanceLabel')}</Text>
+                      <Eyebrow style={styles.balanceLabel}>{t('trip.balanceLabel')}</Eyebrow>
                       <Text style={[styles.balanceAmount, { color: balanceColor }]}>
                         {formatAmount(Math.abs(myBalance), tripCurrency)}
                       </Text>
@@ -510,11 +510,6 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(1),
   },
   balanceLabel: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
-    fontSize: 11,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
     color: CREAM_MUTED,
   },
   balanceAmount: {
@@ -552,12 +547,6 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingVertical: theme.gap(0.5),
   },
   dayHeader: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.muted,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
     paddingTop: theme.gap(3),
     paddingBottom: theme.gap(1),
   },

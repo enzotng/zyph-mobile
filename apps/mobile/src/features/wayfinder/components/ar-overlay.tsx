@@ -37,6 +37,11 @@ const FADE_NEAR_M = 50
 const FADE_FAR_M = 350
 const MIN_OPACITY = 0.35
 
+// AR chrome sits over the camera feed, so it uses fixed bezel-style colours (ink + cream) in
+// both themes rather than theme tokens (which would invert with the app theme).
+const AR_INK = '#1A1712'
+const AR_CREAM = '#F4F1E8'
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
@@ -87,7 +92,7 @@ export function ArOverlay({ width, height, user, heading, pitch, targets, active
               <Ionicons
                 name={onRight ? 'chevron-forward' : 'chevron-back'}
                 size={22}
-                color={isActive ? '#FFFFFF' : '#FFD15A'}
+                color={isActive ? AR_CREAM : '#FFD15A'}
               />
             </View>
           )
@@ -116,7 +121,7 @@ export function ArOverlay({ width, height, user, heading, pitch, targets, active
               <Ionicons
                 name={poiIconName(target.icon)}
                 size={Math.max(13, Math.round(discSize * 0.52))}
-                color={isActive ? '#FFFFFF' : '#0F172A'}
+                color={isActive ? AR_CREAM : AR_INK}
               />
             </View>
             {showCard ? (
@@ -126,7 +131,7 @@ export function ArOverlay({ width, height, user, heading, pitch, targets, active
                 </Text>
                 <View style={styles.cardMeta}>
                   <Text style={styles.cardMetaText}>{formatDistance(distance)}</Text>
-                  <Text style={styles.cardMetaDot}>·</Text>
+                  <View style={styles.cardMetaDot} />
                   <Text style={styles.cardMetaText}>{formatWalkingTime(distance)}</Text>
                 </View>
               </View>
@@ -157,63 +162,66 @@ const styles = StyleSheet.create((theme) => ({
     shadowRadius: 5,
   },
   discIdle: {
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    borderColor: 'rgba(255,255,255,0.85)',
+    backgroundColor: 'rgba(244, 241, 232, 0.94)',
+    borderColor: 'rgba(244, 241, 232, 0.85)',
   },
   discActive: {
     backgroundColor: theme.colors.primary,
-    borderColor: '#FFFFFF',
+    borderColor: AR_CREAM,
   },
   card: {
-    marginTop: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: 'rgba(15,23,42,0.6)',
+    marginTop: theme.gap(1.5),
+    paddingHorizontal: theme.gap(2.5),
+    paddingVertical: theme.gap(1.5),
+    borderRadius: theme.radius.sm,
+    borderCurve: 'continuous',
+    backgroundColor: 'rgba(26, 23, 18, 0.6)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(244, 241, 232, 0.14)',
     alignItems: 'center',
     maxWidth: CARD_W,
   },
   cardActive: {
-    backgroundColor: 'rgba(15,23,42,0.78)',
+    backgroundColor: 'rgba(26, 23, 18, 0.78)',
     borderColor: theme.colors.primary,
   },
   cardLabel: {
-    color: '#FFFFFF',
+    color: AR_CREAM,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: theme.fontSize.sm,
   },
   cardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: theme.gap(1),
     marginTop: 1,
   },
   cardMetaText: {
-    color: 'rgba(255,255,255,0.82)',
+    color: 'rgba(244, 241, 232, 0.82)',
     fontFamily: theme.fonts.sans.medium,
-    fontSize: 11,
+    fontSize: theme.fontSize.xs,
   },
   cardMetaDot: {
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 11,
+    width: 3,
+    height: 3,
+    borderRadius: theme.radius.full,
+    backgroundColor: 'rgba(244, 241, 232, 0.45)',
   },
   edge: {
     position: 'absolute',
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: theme.radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(26, 23, 18, 0.5)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(244, 241, 232, 0.2)',
   },
   edgeActive: {
     backgroundColor: theme.colors.primary,
-    borderColor: '#FFFFFF',
+    borderColor: AR_CREAM,
   },
   edgeLeft: {
     left: 8,

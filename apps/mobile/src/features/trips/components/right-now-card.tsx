@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
+import { Eyebrow } from '@/components/ui'
 import type { TripEvent } from '@/features/timeline'
 
 // Text sits on the ink bezel (dark in both themes), so colours stay light/fixed.
@@ -38,7 +39,7 @@ export function RightNowCard({ event, now: initialNow }: { event: TripEvent; now
   return (
     <View style={styles.card}>
       <View style={styles.head}>
-        <Text style={styles.eyebrow}>{t('trip.rightNow')}</Text>
+        <Eyebrow style={styles.eyebrow}>{t('trip.rightNow')}</Eyebrow>
         <Text style={styles.status}>{t('home.inProgress')}</Text>
       </View>
       <Text style={styles.title} numberOfLines={1}>
@@ -74,11 +75,7 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: 'space-between',
   },
   eyebrow: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
     fontSize: 11,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
     color: CREAM_MUTED,
   },
   status: {

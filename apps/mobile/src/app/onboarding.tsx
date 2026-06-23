@@ -8,6 +8,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { Eyebrow } from '@/components/ui'
 import { setOnboardingSeen } from '@/lib/preferences'
 
 type SlideKey = 'plan' | 'spend' | 'zo'
@@ -125,7 +126,7 @@ function Vignette({ slideKey }: { slideKey: SlideKey }) {
   if (slideKey === 'plan') {
     return (
       <View style={styles.card}>
-        <Text style={styles.eyebrow}>{t('onboarding.demo.day')}</Text>
+        <Eyebrow style={styles.eyebrow}>{t('onboarding.demo.day')}</Eyebrow>
         <View style={styles.cardRow}>
           <View style={[styles.rowIcon, { backgroundColor: 'rgba(95, 185, 140, 0.16)' }]}>
             <Ionicons name="train" size={17} color={GREEN} />
@@ -294,11 +295,8 @@ const styles = StyleSheet.create((theme, rt) => ({
     elevation: 8,
   },
   eyebrow: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
     fontSize: 10,
     letterSpacing: 1,
-    textTransform: 'uppercase',
     color: VIGNETTE_MUTED,
   },
   cardRow: {

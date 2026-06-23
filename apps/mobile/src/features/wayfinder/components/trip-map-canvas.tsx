@@ -17,6 +17,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Badge, BottomSheet, Surface } from '@/components/ui'
+import { CATEGORICAL_TINTS } from '@/lib/color'
 import { formatDistance, formatWalkingTime, haversine } from '@/lib/geo'
 import { haptics } from '@/lib/haptics'
 import { useUserLocation } from '@/lib/sensors'
@@ -34,8 +35,9 @@ const MAP_UI_SETTINGS = {
   togglePitchEnabled: false,
   scaleBarEnabled: false,
 } as const
-// Per-day route colours (cycled); first few align with the brand palette.
-const DAY_COLORS = ['#6366F1', '#38BDF8', '#10B981', '#F59E0B', '#EF4444', '#A855F7', '#EC4899']
+// Per-day route colours (cycled), from the shared categorical palette so routes never reuse the
+// reserved money green/red.
+const DAY_COLORS = CATEGORICAL_TINTS
 // Approx width the bottom-right cluster occupies, reserved as day-bar right padding.
 const CLUSTER_FOOTPRINT = 56
 

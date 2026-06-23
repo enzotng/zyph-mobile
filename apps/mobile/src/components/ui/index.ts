@@ -1,4 +1,6 @@
 // ZYPH design-system primitives. Presentational, token-driven, theme-aware.
+
+export { Button } from '@/components/button'
 export { Amount } from './amount'
 export { Avatar, AvatarStack } from './avatar'
 export { Badge } from './badge'
@@ -8,6 +10,7 @@ export { Chip, MemberChip } from './chip'
 export { CityImage, coverTint } from './city-image'
 export { EmptyState } from './empty-state'
 export { ErrorState } from './error-state'
+export { Eyebrow } from './eyebrow'
 export { ListRow } from './list-row'
 export { QuickAction } from './quick-action'
 export { SectionTitle } from './section-title'

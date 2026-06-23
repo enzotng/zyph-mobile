@@ -9,7 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { Avatar, Card, ErrorState, Spinner, Surface } from '@/components/ui'
+import { Avatar, Card, ErrorState, Eyebrow, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   useLeaveTrip,
@@ -245,7 +245,7 @@ export default function TripGroupScreen() {
     >
       {/* Invite code - ink bezel card */}
       <View style={styles.inviteCard}>
-        <Text style={styles.inviteEyebrow}>{t('group.inviteCode')}</Text>
+        <Eyebrow style={styles.inviteEyebrow}>{t('group.inviteCode')}</Eyebrow>
         <Text style={styles.code} numberOfLines={1} adjustsFontSizeToFit>
           {trip.invite_code}
         </Text>
@@ -310,7 +310,7 @@ export default function TripGroupScreen() {
       {hasMembers ? (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionEyebrow}>{t('group.membersTitle')}</Text>
+            <Eyebrow>{t('group.membersTitle')}</Eyebrow>
             <Text style={styles.sectionCount}>{members.length}</Text>
           </View>
           <Surface
@@ -475,11 +475,6 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(2),
   },
   inviteEyebrow: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
-    fontSize: 11,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
     color: CREAM_MUTED,
   },
   code: {
@@ -560,14 +555,6 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(2),
-  },
-  sectionEyebrow: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
-    fontSize: theme.fontSize.sm,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    color: theme.colors.muted,
   },
   sectionCount: {
     fontFamily: theme.fonts.display.bold,
