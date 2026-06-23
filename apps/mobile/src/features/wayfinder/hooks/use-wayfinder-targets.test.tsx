@@ -183,7 +183,7 @@ describe('useWayfinderTargets', () => {
     await waitFor(() => expect(result.current.targets.length).toBe(1))
     expect(result.current.targets[0]).toMatchObject({
       kind: 'gate',
-      label: 'Flight AF1234 · gate',
+      label: 'Flight AF1234 - gate',
     })
   })
 

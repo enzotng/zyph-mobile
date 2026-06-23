@@ -44,7 +44,7 @@ export function useWayfinderTargets(tripId: string, includeMembers: boolean) {
         out.push({
           id: `gate:${event.id}`,
           kind: 'gate',
-          label: gate.label ?? `${event.title} · gate`,
+          label: gate.label ?? `${event.title} - gate`,
           icon: 'gate',
           lat: gate.lat,
           lng: gate.lng,

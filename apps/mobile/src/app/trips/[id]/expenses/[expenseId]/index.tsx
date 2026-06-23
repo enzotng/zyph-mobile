@@ -185,7 +185,7 @@ export default function ExpenseDetailScreen() {
           <View style={styles.fxRow}>
             <Ionicons name="lock-closed-outline" size={13} color={theme.colors.muted} />
             <Text style={styles.fxText}>
-              {t('expenseDetail.rateLocked')} ·{' '}
+              {t('expenseDetail.rateLocked')} -{' '}
               {formatRate(expense.fx_rate, expense.currency, trip.currency)}
             </Text>
           </View>
@@ -225,7 +225,7 @@ export default function ExpenseDetailScreen() {
           <SectionTitle>{t('trip.items')}</SectionTitle>
           <View style={styles.sectionBody}>
             {(items ?? []).map((item, index) => {
-              const names = (membersByItemId.get(item.id) ?? []).map(labelFor).join(' · ')
+              const names = (membersByItemId.get(item.id) ?? []).map(labelFor).join(' - ')
               return (
                 <View
                   key={item.id}

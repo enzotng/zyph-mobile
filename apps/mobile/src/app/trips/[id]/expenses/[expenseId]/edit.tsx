@@ -289,7 +289,7 @@ export default function EditExpenseScreen() {
         <View style={styles.group}>
           <View style={styles.splitHeader}>
             <Text style={[styles.fieldLabel, styles.splitHeaderLabel]} numberOfLines={1}>
-              {`${t('expenseForm.splitBetween')} · ${split.includedCount}/${members.length}`}
+              {`${t('expenseForm.splitBetween')} - ${split.includedCount}/${members.length}`}
             </Text>
             <View style={styles.splitHeaderRight}>
               <Pressable
