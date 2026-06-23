@@ -148,9 +148,9 @@ export default function EditProfileScreen() {
       scroll
       footer={
         <Button
-          label={update.isPending ? t('common.saving') : t('common.save')}
+          label={t('common.save')}
           onPress={handleSubmit(onSubmit)}
-          disabled={update.isPending}
+          loading={update.isPending}
         />
       }
     >
@@ -171,9 +171,9 @@ export default function EditProfileScreen() {
           />
           <View style={styles.cameraBadge}>
             {uploadAvatar.isPending ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={theme.colors.primaryForeground} />
             ) : (
-              <Ionicons name="camera" size={15} color="#FFFFFF" />
+              <Ionicons name="camera" size={15} color={theme.colors.primaryForeground} />
             )}
           </View>
         </Pressable>
@@ -190,6 +190,8 @@ export default function EditProfileScreen() {
             onChangeText={field.onChange}
             onBlur={field.onBlur}
             error={errors.displayName?.message}
+            returnKeyType="done"
+            onSubmitEditing={handleSubmit(onSubmit)}
           />
         )}
       />

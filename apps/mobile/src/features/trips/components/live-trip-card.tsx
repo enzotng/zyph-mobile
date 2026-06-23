@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { AvatarStack, Badge, CityImage } from '@/components/ui'
 import { eventStatus, eventTypeIcon, formatCountdown, useEvents } from '@/features/timeline'
+import { PHOTO_CREAM, PHOTO_CREAM_MUTED } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 
 import type { TripCard } from '../api/trips.api'
@@ -25,6 +26,8 @@ const HERO_FADE_LOCATIONS = [0, 0.32, 0.6, 1] as const
 
 type LiveTripCardProps = {
   trip: TripCard
+  // Seeds the first countdown render; the card then ticks on its own so the live values stay
+  // honest without the parent screen re-rendering.
   now: Date
   onPress: () => void
 }
@@ -47,10 +50,18 @@ function dayProgress(trip: TripCard, now: Date): { day: number; total: number } 
 // The home hero for an in-progress trip: a full-bleed cover with the LIVE badge + day counter,
 // the title and location, members + balance, then a divider and a NEXT row built from the
 // soonest upcoming timeline event. The whole card opens the trip.
-export function LiveTripCard({ trip, now, onPress }: LiveTripCardProps) {
+export function LiveTripCard({ trip, now: initialNow, onPress }: LiveTripCardProps) {
   const { t } = useTranslation()
   const { theme } = useUnistyles()
   const { data: events, isLoading } = useEvents(trip.id)
+
+  // The card is explicitly "live", so it ticks on its own (the parent seeds the first value).
+  // A 30s cadence keeps the day counter and NEXT countdown honest without per-second churn.
+  const [now, setNow] = useState(initialNow)
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(id)
+  }, [])
 
   const nowMs = now.getTime()
   const progress = dayProgress(trip, now)
@@ -130,7 +141,7 @@ export function LiveTripCard({ trip, now, onPress }: LiveTripCardProps) {
           </Text>
           {trip.destination ? (
             <View style={styles.locationRow}>
-              <Ionicons name="location" size={14} color="rgba(255,255,255,0.92)" />
+              <Ionicons name="location" size={14} color={PHOTO_CREAM_MUTED} />
               <Text style={styles.location} numberOfLines={1}>
                 {trip.destination}
               </Text>
@@ -148,7 +159,7 @@ export function LiveTripCard({ trip, now, onPress }: LiveTripCardProps) {
             {showNextEvent && nextEvent ? (
               <>
                 <View style={styles.nextIcon}>
-                  <Ionicons name={eventTypeIcon(nextEvent.type)} size={16} color="#FFFFFF" />
+                  <Ionicons name={eventTypeIcon(nextEvent.type)} size={16} color={PHOTO_CREAM} />
                 </View>
                 <View style={styles.nextText}>
                   <Text style={styles.nextEyebrow} numberOfLines={1}>
@@ -164,7 +175,7 @@ export function LiveTripCard({ trip, now, onPress }: LiveTripCardProps) {
             ) : (
               <>
                 <View style={styles.nextIcon}>
-                  <Ionicons name="map-outline" size={16} color="#FFFFFF" />
+                  <Ionicons name="map-outline" size={16} color={PHOTO_CREAM} />
                 </View>
                 <View style={styles.nextText}>
                   <Text style={styles.nextTitle} numberOfLines={1}>
@@ -173,7 +184,7 @@ export function LiveTripCard({ trip, now, onPress }: LiveTripCardProps) {
                 </View>
               </>
             )}
-            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.92)" />
+            <Ionicons name="chevron-forward" size={20} color={PHOTO_CREAM_MUTED} />
           </View>
         </View>
       </CityImage>
@@ -204,7 +215,7 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(2),
   },
   dayOf: {
-    color: '#FFFFFF',
+    color: PHOTO_CREAM,
     fontFamily: theme.fonts.display.semibold,
     fontWeight: '600',
     fontSize: theme.fontSize.sm,
@@ -223,7 +234,7 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
     fontSize: theme.fontSize.xxl,
-    color: '#FFFFFF',
+    color: PHOTO_CREAM,
     letterSpacing: -0.5,
     textShadowColor: 'rgba(0, 0, 0, 0.35)',
     textShadowOffset: { width: 0, height: 1 },
@@ -239,7 +250,7 @@ const styles = StyleSheet.create((theme) => ({
     flexShrink: 1,
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.sm,
-    color: 'rgba(255, 255, 255, 0.92)',
+    color: PHOTO_CREAM_MUTED,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
@@ -285,7 +296,7 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.display.semibold,
     fontWeight: '600',
     fontSize: theme.fontSize.md,
-    color: '#FFFFFF',
+    color: PHOTO_CREAM,
     textShadowColor: 'rgba(0, 0, 0, 0.35)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,

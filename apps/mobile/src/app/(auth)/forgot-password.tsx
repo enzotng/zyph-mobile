@@ -13,6 +13,7 @@ import {
   Text,
   View,
 } from 'react-native'
+import Animated, { FadeIn } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { z } from 'zod'
 
@@ -72,22 +73,25 @@ export default function ForgotPasswordScreen() {
         >
           <BrandLockup />
 
-          <View
-            style={[styles.iconCircle, { backgroundColor: withAlpha(theme.colors.primary, 0.1) }]}
-          >
-            <Ionicons name="mail-unread-outline" size={40} color={theme.colors.primary} />
-          </View>
+          {/* Gentle fade so the swap from the form to the confirmation does not snap. */}
+          <Animated.View entering={FadeIn.duration(320)} style={styles.sentBody}>
+            <View
+              style={[styles.iconCircle, { backgroundColor: withAlpha(theme.colors.primary, 0.1) }]}
+            >
+              <Ionicons name="mail-unread-outline" size={40} color={theme.colors.primary} />
+            </View>
 
-          <View style={styles.heading}>
-            <Text style={styles.title}>{t('auth.forgotPassword.sentTitle')}</Text>
-            <Text style={styles.subtitle}>{t('auth.forgotPassword.sentBody')}</Text>
-          </View>
+            <View style={styles.heading}>
+              <Text style={styles.title}>{t('auth.forgotPassword.sentTitle')}</Text>
+              <Text style={styles.subtitle}>{t('auth.forgotPassword.sentBody')}</Text>
+            </View>
 
-          <View style={styles.footer}>
-            <Link href="/(auth)/sign-in" style={styles.link}>
-              {t('auth.forgotPassword.backToSignIn')}
-            </Link>
-          </View>
+            <View style={styles.footer}>
+              <Link href="/(auth)/sign-in" style={styles.link}>
+                {t('auth.forgotPassword.backToSignIn')}
+              </Link>
+            </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     )
@@ -205,6 +209,9 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontWeight: '700',
     fontSize: 22,
     letterSpacing: -0.6,
+  },
+  sentBody: {
+    gap: theme.gap(4),
   },
   iconCircle: {
     width: 84,

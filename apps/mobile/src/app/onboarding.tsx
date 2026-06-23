@@ -259,7 +259,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   body: {
     fontFamily: theme.fonts.sans.regular,
-    fontSize: 14.5,
+    fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
     marginTop: theme.gap(2),
     lineHeight: 22,
