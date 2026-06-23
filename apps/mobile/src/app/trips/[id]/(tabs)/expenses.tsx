@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
 import { File, Paths } from 'expo-file-system'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Platform, Pressable, ScrollView, Share, Text, View } from 'react-native'
@@ -88,7 +88,9 @@ function groupExpensesByDay(
 }
 
 export default function TripExpensesScreen() {
-  const params = useLocalSearchParams<{ id: string }>()
+  // The trip id lives on the parent [id] segment; in a nested tab only useGlobalSearchParams
+  // surfaces it (useLocalSearchParams returns the tab's own params, so id would be undefined).
+  const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
   const { theme } = useUnistyles()
