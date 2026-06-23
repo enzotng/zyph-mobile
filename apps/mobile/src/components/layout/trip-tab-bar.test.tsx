@@ -27,28 +27,28 @@ function renderBar(props: Partial<Parameters<typeof TripTabBar>[0]> = {}) {
 describe('TripTabBar', () => {
   beforeEach(() => jest.clearAllMocks())
 
-  it('renders a button for each tab and the centre add action', () => {
+  it('renders a tab for each tab and the centre add action', () => {
     renderBar()
 
-    expect(screen.getByRole('button', { name: 'Cockpit' })).toBeOnTheScreen()
-    expect(screen.getByRole('button', { name: 'Plan' })).toBeOnTheScreen()
-    expect(screen.getByRole('button', { name: 'Spend' })).toBeOnTheScreen()
-    expect(screen.getByRole('button', { name: 'Map' })).toBeOnTheScreen()
+    expect(screen.getByRole('tab', { name: 'Cockpit' })).toBeOnTheScreen()
+    expect(screen.getByRole('tab', { name: 'Plan' })).toBeOnTheScreen()
+    expect(screen.getByRole('tab', { name: 'Spend' })).toBeOnTheScreen()
+    expect(screen.getByRole('tab', { name: 'Map' })).toBeOnTheScreen()
     expect(screen.getByRole('button', { name: 'Add to trip' })).toBeOnTheScreen()
   })
 
   it('marks the active tab as selected and others as not', () => {
     renderBar({ activeName: 'expenses' })
 
-    expect(screen.getByRole('button', { name: 'Spend', selected: true })).toBeOnTheScreen()
-    expect(screen.queryByRole('button', { name: 'Cockpit', selected: true })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Spend', selected: true })).toBeOnTheScreen()
+    expect(screen.queryByRole('tab', { name: 'Cockpit', selected: true })).toBeNull()
   })
 
   it('calls onSelect with the tab name when a tab is pressed', () => {
     const onSelect = jest.fn()
     renderBar({ onSelect })
 
-    fireEvent.press(screen.getByRole('button', { name: 'Map' }))
+    fireEvent.press(screen.getByRole('tab', { name: 'Map' }))
 
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith('pois')
@@ -68,7 +68,7 @@ describe('TripTabBar', () => {
     const light = jest.spyOn(haptics, 'light')
     renderBar()
 
-    fireEvent.press(screen.getByRole('button', { name: 'Plan' }))
+    fireEvent.press(screen.getByRole('tab', { name: 'Plan' }))
     fireEvent.press(screen.getByRole('button', { name: 'Add to trip' }))
 
     expect(selection).toHaveBeenCalledTimes(1)

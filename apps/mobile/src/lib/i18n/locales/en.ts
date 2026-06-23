@@ -48,6 +48,8 @@ export const en = {
   },
   trip: {
     manage: 'Manage',
+    members: 'Trip members',
+    settings: 'Trip settings',
     addSheetTitle: 'Add to trip',
     rightNow: 'Right now',
     minutesLeft: '{{minutes}}m left',

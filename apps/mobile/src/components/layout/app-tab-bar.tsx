@@ -49,7 +49,7 @@ function TabButton({ tab, active, onPress, activeColor, inactiveColor }: TabButt
   return (
     <Pressable
       onPress={handlePress}
-      accessibilityRole="button"
+      accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       accessibilityLabel={tab.label}
       style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
@@ -80,7 +80,7 @@ export function AppTabBar({ tabs, activeName, onSelect, onAdd, addLabel }: AppTa
       pointerEvents="box-none"
       style={[styles.wrap, { paddingBottom: Math.max(rt.insets.bottom, 12) }]}
     >
-      <View style={styles.bar}>
+      <View style={styles.bar} accessibilityRole="tablist">
         {tabs[0] ? (
           <TabButton
             tab={tabs[0]}
@@ -95,6 +95,7 @@ export function AppTabBar({ tabs, activeName, onSelect, onAdd, addLabel }: AppTa
           onPress={handleAdd}
           accessibilityRole="button"
           accessibilityLabel={addLabel}
+          accessibilityHint="Opens the create menu"
           style={({ pressed }) => [styles.addTile, pressed && styles.pressed]}
         >
           <Ionicons name="add" size={28} color={theme.colors.primaryForeground} />
@@ -132,7 +133,7 @@ const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: theme.gap(3),
     borderRadius: theme.radius.full,
     backgroundColor: theme.colors.bezel,
-    shadowColor: '#1A1712',
+    shadowColor: theme.colors.shadow,
     shadowOpacity: 0.18,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },

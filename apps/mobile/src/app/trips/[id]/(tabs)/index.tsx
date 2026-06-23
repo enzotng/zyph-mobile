@@ -33,6 +33,8 @@ import { paramString } from '@/lib/routing'
 
 // Staggered entrance for the content blocks below the cover. Short step, capped so the
 // last block never lags; the cover hero stays static (its corner-radius logic is untouched).
+// Only the loaded content runs this stagger (the skeleton placeholder stays still), so the
+// skeleton -> content swap plays the entrance exactly once instead of replaying it.
 const ENTER_STEP = 50
 const enter = (index: number) => FadeInDown.duration(320).delay(index * ENTER_STEP)
 
@@ -56,7 +58,10 @@ function CoverButton({
 }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        haptics.light()
+        onPress()
+      }}
       style={({ pressed }) => [styles.coverButton, pressed && styles.coverButtonPressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -406,7 +411,7 @@ export default function TripDashboardScreen() {
               />
               <CoverButton
                 icon="ellipsis-horizontal"
-                label={t('trip.manage')}
+                label={t('trip.settings')}
                 onPress={() => setActionsOpen(true)}
               />
             </View>
@@ -428,9 +433,12 @@ export default function TripDashboardScreen() {
               </View>
               {avatarMembers.length > 0 ? (
                 <Pressable
-                  onPress={goGroup}
+                  onPress={() => {
+                    haptics.light()
+                    goGroup()
+                  }}
                   accessibilityRole="button"
-                  accessibilityLabel={t('trip.manage')}
+                  accessibilityLabel={t('trip.members')}
                   hitSlop={6}
                 >
                   <AvatarStack members={avatarMembers} size={32} />
@@ -540,26 +548,25 @@ export default function TripDashboardScreen() {
 }
 
 // Loading placeholder shaped like the new cockpit: a full-bleed cover block, then the balance
-// strip, the right-now card and a couple of rail rows. The cover stays static (mirrors the
-// real hero); the content blocks fade in staggered to match the loaded screen.
+// strip, the right-now card and a couple of rail rows. It stays static (only the real content
+// runs the staggered entrance), so the skeleton -> content swap plays the stagger exactly once.
 function TripDashboardSkeleton() {
   const { theme } = useUnistyles()
+  // Match the real cover's device-corner radius so the skeleton -> hero swap doesn't shift the
+  // corner shape (falls back to the xl token when the radius is undetectable).
+  const coverRadius = ScreenCornerRadius > 0 ? ScreenCornerRadius : theme.radius.xl
   return (
     <View style={styles.container}>
       <View style={styles.skeletonCover}>
-        <Skeleton width="100%" height={284} radius={theme.radius.xl} />
+        <Skeleton width="100%" height={284} radius={coverRadius} />
       </View>
       <View style={styles.content}>
-        <Animated.View entering={enter(0)}>
-          <Skeleton width="100%" height={64} radius={theme.radius.lg} />
-        </Animated.View>
-        <Animated.View entering={enter(1)}>
-          <Skeleton width="100%" height={96} radius={theme.radius.lg} />
-        </Animated.View>
-        <Animated.View style={styles.skeletonSection} entering={enter(2)}>
+        <Skeleton width="100%" height={64} radius={theme.radius.lg} />
+        <Skeleton width="100%" height={96} radius={theme.radius.lg} />
+        <View style={styles.skeletonSection}>
           <Skeleton width="100%" height={72} radius={theme.radius.md} />
           <Skeleton width="100%" height={40} radius={theme.radius.md} />
-        </Animated.View>
+        </View>
       </View>
     </View>
   )

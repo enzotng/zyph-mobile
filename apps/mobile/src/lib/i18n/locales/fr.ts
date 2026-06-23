@@ -50,6 +50,8 @@ export const fr: Translations = {
   },
   trip: {
     manage: 'Gérer',
+    members: 'Membres du voyage',
+    settings: 'Réglages du voyage',
     addSheetTitle: 'Ajouter au voyage',
     rightNow: 'En ce moment',
     minutesLeft: 'reste {{minutes}} min',

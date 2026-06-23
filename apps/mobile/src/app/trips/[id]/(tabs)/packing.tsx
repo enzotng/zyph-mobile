@@ -628,6 +628,7 @@ export default function PackingScreen() {
   }
 
   function confirmDelete(item: PackingItem) {
+    haptics.warning()
     Alert.alert(t('packing.deleteTitle'), t('packing.deleteBody', { label: item.label }), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -998,9 +999,11 @@ export default function PackingScreen() {
                 ].filter(Boolean)
                 const subtitle = subtitleParts.length > 0 ? subtitleParts.join(', ') : null
                 return (
+                  // Rows use layout + exit transitions only (no per-row entrance): the rows
+                  // remount when scope/filter changes, which would otherwise replay the whole
+                  // list's FadeInDown stagger. The category wrapper's FadeIn covers first paint.
                   <Animated.View
                     key={item.id}
-                    entering={FadeInDown.duration(220).delay(Math.min(index, 6) * 35)}
                     exiting={FadeOut.duration(160)}
                     layout={LinearTransition}
                   >
@@ -1517,6 +1520,10 @@ const styles = StyleSheet.create((theme, rt) => ({
     backgroundColor: theme.colors.bezel,
     borderRadius: theme.radius.lg,
     borderCurve: 'continuous',
+    // A cream hairline lifts the bezel off the canvas: in dark the bezel equals the card colour,
+    // so without it the readiness surface would read flat. Cream-on-ink reads in both themes.
+    borderWidth: 1,
+    borderColor: withAlpha(CREAM, 0.12),
     paddingVertical: theme.gap(4),
     paddingHorizontal: theme.gap(4),
     gap: theme.gap(3),
