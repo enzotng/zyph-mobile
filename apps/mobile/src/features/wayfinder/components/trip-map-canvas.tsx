@@ -222,6 +222,9 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
       [targets, visible, selectedDay],
     )
 
+    // Only the three layer tints feed the markers (see mapTintFor), so depend on those colours, not
+    // the whole theme object - otherwise any unrelated theme change re-builds every marker.
+    const { accent, success, primary } = theme.colors
     const markers = useMemo(
       () =>
         shown.map((target) => ({
@@ -229,9 +232,9 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
           coordinates: { latitude: target.lat, longitude: target.lng },
           title: target.label,
           systemImage: mapSymbolFor(target.kind, target.icon),
-          tintColor: mapTintFor(theme.colors, target.kind),
+          tintColor: mapTintFor({ accent, success, primary }, target.kind),
         })),
-      [shown, theme],
+      [shown, accent, success, primary],
     )
 
     // One coloured polyline per visible day, connecting that day's events in order.

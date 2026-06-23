@@ -9,7 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { Avatar, Card, ErrorState, Eyebrow, Spinner, Surface } from '@/components/ui'
+import { Avatar, Card, EmptyState, ErrorState, Eyebrow, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   useLeaveTrip,
@@ -34,7 +34,12 @@ export default function TripGroupScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const { data: trip, isLoading, isError, refetch } = useTrip(tripId)
-  const { data: members } = useTripMembers(tripId)
+  const {
+    data: members,
+    isLoading: membersLoading,
+    isError: membersError,
+    refetch: refetchMembers,
+  } = useTripMembers(tripId)
   const { session } = useAuth()
   const userId = session?.user.id
   const router = useRouter()
@@ -307,12 +312,29 @@ export default function TripGroupScreen() {
       </Pressable>
 
       {/* Members */}
-      {hasMembers ? (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Eyebrow>{t('group.membersTitle')}</Eyebrow>
-            <Text style={styles.sectionCount}>{members.length}</Text>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Eyebrow>{t('group.membersTitle')}</Eyebrow>
+          {hasMembers ? <Text style={styles.sectionCount}>{members.length}</Text> : null}
+        </View>
+        {membersLoading ? (
+          <View style={styles.membersStatus}>
+            <Spinner />
           </View>
+        ) : membersError ? (
+          <ErrorState
+            title={t('group.membersErrorTitle')}
+            body={t('group.membersErrorBody')}
+            retryLabel={t('common.retry')}
+            onRetry={() => void refetchMembers()}
+          />
+        ) : !hasMembers ? (
+          <EmptyState
+            icon="people-outline"
+            title={t('group.membersEmptyTitle')}
+            body={t('group.membersEmptyBody')}
+          />
+        ) : (
           <Surface
             color={theme.colors.card}
             borderColor={theme.colors.border}
@@ -358,8 +380,8 @@ export default function TripGroupScreen() {
               )
             })}
           </Surface>
-        </View>
-      ) : null}
+        )}
+      </View>
 
       {/* Share location */}
       <Pressable
@@ -561,6 +583,10 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '700',
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
+  },
+  membersStatus: {
+    paddingVertical: theme.gap(6),
+    alignItems: 'center',
   },
   membersCard: {
     paddingHorizontal: theme.gap(4),

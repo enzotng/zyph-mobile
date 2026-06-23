@@ -279,28 +279,32 @@ function MapTab() {
         </View>
       ) : null}
 
-      {/* Accent recenter FAB, top-right under the search row. */}
-      <View
-        style={[styles.recenterWrap, { top: rt.insets.top + theme.gap(14) }]}
-        pointerEvents="box-none"
-      >
-        <Pressable
-          onPress={() => canvasRef.current?.recenter()}
-          accessibilityRole="button"
-          accessibilityLabel={t('map.recenter')}
-          hitSlop={8}
-          style={({ pressed }) => pressed && styles.pressed}
+      {/* Accent recenter FAB, top-right under the search row. Hidden while searching so it never sits
+          under the results dropdown (which spans the same vertical band) - recenter is irrelevant
+          while picking a search result, and the map is covered anyway. */}
+      {searching ? null : (
+        <View
+          style={[styles.recenterWrap, { top: rt.insets.top + theme.gap(14) }]}
+          pointerEvents="box-none"
         >
-          <Surface
-            radius={theme.radius.full}
-            color={theme.colors.primary}
-            borderWidth={0}
-            style={styles.recenterFab}
+          <Pressable
+            onPress={() => canvasRef.current?.recenter()}
+            accessibilityRole="button"
+            accessibilityLabel={t('map.recenter')}
+            hitSlop={8}
+            style={({ pressed }) => pressed && styles.pressed}
           >
-            <Ionicons name="navigate" size={20} color={theme.colors.primaryForeground} />
-          </Surface>
-        </Pressable>
-      </View>
+            <Surface
+              radius={theme.radius.full}
+              color={theme.colors.primary}
+              borderWidth={0}
+              style={styles.recenterFab}
+            >
+              <Ionicons name="navigate" size={20} color={theme.colors.primaryForeground} />
+            </Surface>
+          </Pressable>
+        </View>
+      )}
 
       {/* Persistent Nearby sheet (peek / expanded). No scrim, so the map stays interactive. */}
       <Animated.View style={[styles.sheet, sheetStyle]}>
@@ -442,7 +446,7 @@ function PlacesList({
 
   return (
     <View style={styles.nearbyList}>
-      {places.map((poi, index) => {
+      {places.map((poi) => {
         const distance = userLoc ? haversine(userLoc, { lat: poi.lat, lng: poi.lng }) : null
         const subtitle =
           distance !== null
@@ -452,11 +456,9 @@ function PlacesList({
               })
             : t('pois.subtitle')
         return (
-          <Animated.View
-            key={poi.id}
-            entering={FadeInDown.duration(260).delay(Math.min(index, 7) * 35)}
-            layout={LinearTransition}
-          >
+          // No per-row `entering`: the Nearby list remounts on every Places/People tab switch and
+          // sheet toggle, which would replay a mount animation each time. `layout` only.
+          <Animated.View key={poi.id} layout={LinearTransition}>
             <NearbyRow
               iconTile={
                 <View
@@ -510,7 +512,7 @@ function PeopleList({
 
   return (
     <View style={styles.nearbyList}>
-      {people.map((member, index) => {
+      {people.map((member) => {
         const name = member.trip_member?.profile?.display_name ?? t('common.member')
         const distance = userLoc ? haversine(userLoc, { lat: member.lat, lng: member.lng }) : null
         const subtitle =
@@ -521,9 +523,9 @@ function PeopleList({
               })
             : t('map.locating')
         return (
+          // No per-row `entering` (see PlacesList): the list remounts on tab switch + sheet toggle.
           <Animated.View
             key={member.trip_member?.id ?? member.trip_member_id}
-            entering={FadeInDown.duration(260).delay(Math.min(index, 7) * 35)}
             layout={LinearTransition}
           >
             <NearbyRow
@@ -790,7 +792,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     height: theme.gap(11),
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1A1712',
+    shadowColor: theme.colors.shadow,
     shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -803,7 +805,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(2),
     height: theme.gap(11),
     paddingHorizontal: theme.gap(4),
-    shadowColor: '#1A1712',
+    shadowColor: theme.colors.shadow,
     shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -825,7 +827,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   searchCard: {
     maxHeight: 260,
     paddingVertical: theme.gap(1),
-    shadowColor: '#1A1712',
+    shadowColor: theme.colors.shadow,
     shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -865,7 +867,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     height: theme.gap(12),
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1A1712',
+    shadowColor: theme.colors.shadow,
     shadowOpacity: 0.2,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -881,7 +883,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     flex: 1,
     paddingTop: theme.gap(2),
     paddingHorizontal: theme.gap(5),
-    shadowColor: '#1A1712',
+    shadowColor: theme.colors.shadow,
     shadowOpacity: 0.16,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: -4 },
@@ -935,7 +937,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   segmentActive: {
     backgroundColor: theme.colors.card,
-    shadowColor: '#1A1712',
+    shadowColor: theme.colors.shadow,
     shadowOpacity: 0.06,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 },

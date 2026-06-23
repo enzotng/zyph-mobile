@@ -246,6 +246,16 @@ export default function TripExpensesScreen() {
         shareColor = theme.colors.destructive
       }
 
+      // Mirror the visible row in one spoken string: description + total, who paid, then the
+      // user's share/owe status (the colored sub-line) when it applies.
+      const rowA11yLabel = [
+        `${expense.description}, ${formatAmount(expense.amount_cents, expense.currency)}`,
+        t('trip.paidBy', { name: payerName(expense.paid_by) }),
+        shareLabel,
+      ]
+        .filter(Boolean)
+        .join(', ')
+
       return (
         <Animated.View layout={LinearTransition}>
           <Pressable
@@ -258,7 +268,7 @@ export default function TripExpensesScreen() {
               })
             }}
             accessibilityRole="button"
-            accessibilityLabel={`${expense.description}, ${formatAmount(expense.amount_cents, expense.currency)}`}
+            accessibilityLabel={rowA11yLabel}
           >
             <Surface
               width={42}

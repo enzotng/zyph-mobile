@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
+import { FlashList } from '@shopify/flash-list'
 import { useGlobalSearchParams } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -296,23 +297,12 @@ export default function TripBalancesScreen() {
 
   const hasSettlements = settlements.length > 0
   const canSettleAll = myDebts.length > 0
+  const history = paymentHistory ?? []
 
-  return (
-    <Screen
-      title={t('balances.title')}
-      showBack
-      scroll
-      right={
-        <Pressable
-          onPress={() => void onShare()}
-          accessibilityRole="button"
-          accessibilityLabel={t('balances.share')}
-          hitSlop={8}
-        >
-          <Ionicons name="share-outline" size={22} color={theme.colors.foreground} />
-        </Pressable>
-      }
-    >
+  // The fixed top of the page (who-owes-whom + per-person balances + the history eyebrow) - rendered
+  // as the FlashList header so the long, growable payment history below is the virtualized data.
+  const ListHeader = (
+    <View style={styles.headerSections}>
       {/* Who owes whom: the suggested settlement transfers, each tappable to record it */}
       <Animated.View entering={FadeInDown.duration(320)} style={styles.section}>
         <Eyebrow>{t('balances.whoOwesWhom')}</Eyebrow>
@@ -380,82 +370,107 @@ export default function TripBalancesScreen() {
         </Surface>
       </Animated.View>
 
-      {/* Payment history: recorded settlements, each reversible */}
+      {/* Payment history: recorded settlements, each reversible (the rows below are the list data) */}
       {hasHistory ? (
-        <Animated.View entering={FadeInDown.delay(120).duration(320)} style={styles.section}>
-          <Eyebrow>{t('group.paymentHistory')}</Eyebrow>
-          <Surface radius={theme.radius.lg} style={styles.personList}>
-            {paymentHistory.map((settlement, index) => (
-              <View
-                key={settlement.id}
-                style={[
-                  styles.historyRow,
-                  index === paymentHistory.length - 1 && styles.personRowLast,
-                ]}
-              >
-                <View style={styles.historyInfo}>
-                  <Text style={styles.historyParties} numberOfLines={1}>
-                    <Text style={styles.settleName}>{labelForMember(settlement.from_member)}</Text>
-                    {` ${t('group.paysTo')} `}
-                    <Text style={styles.settleName}>{labelForMember(settlement.to_member)}</Text>
-                  </Text>
-                  <Text style={styles.historyDate}>
-                    {new Date(settlement.paid_at).toLocaleDateString(i18n.language, {
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                  </Text>
-                </View>
-                <Amount
-                  cents={settlement.amount_cents}
-                  currency={settlement.currency}
-                  size={15}
-                  neutral
-                />
-                <Pressable
-                  onPress={() => confirmUndo(settlement)}
-                  disabled={reverseSettlementMutation.isPending}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('group.undo')}
-                  hitSlop={6}
-                  style={({ pressed }) => (pressed ? styles.pressed : undefined)}
-                >
-                  <Text style={styles.removeText}>{t('group.undo')}</Text>
-                </Pressable>
-              </View>
-            ))}
-          </Surface>
-        </Animated.View>
+        <Eyebrow style={styles.historyEyebrow}>{t('group.paymentHistory')}</Eyebrow>
       ) : null}
+    </View>
+  )
 
-      {/* Mark as settled: records all my suggested payments at once */}
-      {canSettleAll ? (
-        <Animated.View entering={FadeInDown.delay(180).duration(320)}>
-          <Pressable
-            onPress={confirmSettleAll}
-            disabled={settlingAll || recordSettlement.isPending}
-            accessibilityRole="button"
-            accessibilityLabel={
-              settlingAll
-                ? t('balances.settlingAll')
-                : t('balances.settleAllMine', {
-                    amount: formatAmount(myDebtsTotal, trip.currency),
-                  })
-            }
-            accessibilityState={{ disabled: settlingAll || recordSettlement.isPending }}
-            style={({ pressed }) => [
-              styles.settleAll,
-              pressed && styles.pressed,
-              (settlingAll || recordSettlement.isPending) && styles.disabled,
+  // Mark as settled (records all my suggested payments at once) sits under the history list.
+  const ListFooter = canSettleAll ? (
+    <Animated.View entering={FadeInDown.delay(180).duration(320)} style={styles.footerSection}>
+      <Pressable
+        onPress={confirmSettleAll}
+        disabled={settlingAll || recordSettlement.isPending}
+        accessibilityRole="button"
+        accessibilityLabel={
+          settlingAll
+            ? t('balances.settlingAll')
+            : t('balances.settleAllMine', {
+                amount: formatAmount(myDebtsTotal, trip.currency),
+              })
+        }
+        accessibilityState={{ disabled: settlingAll || recordSettlement.isPending }}
+        style={({ pressed }) => [
+          styles.settleAll,
+          pressed && styles.pressed,
+          (settlingAll || recordSettlement.isPending) && styles.disabled,
+        ]}
+      >
+        <Ionicons name="checkmark-done" size={18} color={theme.colors.primaryForeground} />
+        <Text style={styles.settleAllLabel}>
+          {settlingAll ? t('balances.settlingAll') : t('balances.markAsSettled')}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  ) : null
+
+  return (
+    <Screen
+      title={t('balances.title')}
+      showBack
+      right={
+        <Pressable
+          onPress={() => void onShare()}
+          accessibilityRole="button"
+          accessibilityLabel={t('balances.share')}
+          hitSlop={8}
+        >
+          <Ionicons name="share-outline" size={22} color={theme.colors.foreground} />
+        </Pressable>
+      }
+    >
+      <FlashList
+        data={history}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={ListHeader}
+        ListFooterComponent={ListFooter}
+        renderItem={({ item: settlement, index }) => (
+          // Single rounded card look across rows: the first row rounds its top, the last its bottom,
+          // matching the previous Surface-wrapped list while staying virtualized.
+          <View
+            style={[
+              styles.historyRow,
+              styles.historyCard,
+              index === 0 && styles.historyCardFirst,
+              index === history.length - 1 && styles.historyCardLast,
             ]}
           >
-            <Ionicons name="checkmark-done" size={18} color={theme.colors.primaryForeground} />
-            <Text style={styles.settleAllLabel}>
-              {settlingAll ? t('balances.settlingAll') : t('balances.markAsSettled')}
-            </Text>
-          </Pressable>
-        </Animated.View>
-      ) : null}
+            <View style={styles.historyInfo}>
+              <Text style={styles.historyParties} numberOfLines={1}>
+                <Text style={styles.settleName}>{labelForMember(settlement.from_member)}</Text>
+                {` ${t('group.paysTo')} `}
+                <Text style={styles.settleName}>{labelForMember(settlement.to_member)}</Text>
+              </Text>
+              <Text style={styles.historyDate}>
+                {new Date(settlement.paid_at).toLocaleDateString(i18n.language, {
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </Text>
+            </View>
+            <Amount
+              cents={settlement.amount_cents}
+              currency={settlement.currency}
+              size={15}
+              neutral
+            />
+            <Pressable
+              onPress={() => confirmUndo(settlement)}
+              disabled={reverseSettlementMutation.isPending}
+              accessibilityRole="button"
+              accessibilityLabel={t('group.undo')}
+              hitSlop={6}
+              style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+            >
+              <Text style={styles.removeText}>{t('group.undo')}</Text>
+            </Pressable>
+          </View>
+        )}
+      />
 
       <BottomSheet
         open={pendingSettlement != null}
@@ -493,11 +508,46 @@ export default function TripBalancesScreen() {
   )
 }
 
-const styles = StyleSheet.create((theme) => ({
+const styles = StyleSheet.create((theme, rt) => ({
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  listContent: {
+    paddingHorizontal: theme.gap(6),
+    paddingTop: theme.gap(4),
+    paddingBottom: rt.insets.bottom + theme.gap(6),
+  },
+  headerSections: {
+    gap: theme.gap(4),
+  },
+  footerSection: {
+    paddingTop: theme.gap(4),
+  },
+  historyEyebrow: {
+    paddingBottom: theme.gap(2.5),
+  },
+  // Card chrome for a virtualized history row (the old Surface wrapper is gone): side borders +
+  // card fill, with the first/last row rounding the top/bottom so the list still reads as one card.
+  historyCard: {
+    paddingHorizontal: theme.gap(3.5),
+    backgroundColor: theme.colors.card,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  historyCardFirst: {
+    borderTopWidth: 1,
+    borderTopLeftRadius: theme.radius.lg,
+    borderTopRightRadius: theme.radius.lg,
+    borderCurve: 'continuous',
+  },
+  historyCardLast: {
+    borderBottomWidth: 1,
+    borderBottomLeftRadius: theme.radius.lg,
+    borderBottomRightRadius: theme.radius.lg,
+    borderCurve: 'continuous',
   },
   section: {
     gap: theme.gap(2.5),
