@@ -91,7 +91,7 @@ describe('pairwiseBalances', () => {
 describe('formatSettleUpSummary', () => {
   it('lists each transfer with resolved names and amounts', () => {
     const summary = formatSettleUpSummary({
-      title: 'Lisbon · Settle up',
+      title: 'Lisbon - Settle up',
       currency: 'EUR',
       settledLabel: 'Everyone is settled up.',
       lines: [
@@ -100,17 +100,17 @@ describe('formatSettleUpSummary', () => {
       ],
     })
     expect(summary).toBe(
-      'Lisbon · Settle up\n\n- Alice → Bob: 12.00 EUR\n- Charlie → Bob: 8.50 EUR',
+      'Lisbon - Settle up\n\n- Alice → Bob: 12.00 EUR\n- Charlie → Bob: 8.50 EUR',
     )
   })
 
   it('falls back to the settled label when there is nothing to settle', () => {
     const summary = formatSettleUpSummary({
-      title: 'Lisbon · Settle up',
+      title: 'Lisbon - Settle up',
       currency: 'EUR',
       settledLabel: 'Everyone is settled up.',
       lines: [],
     })
-    expect(summary).toBe('Lisbon · Settle up\n\nEveryone is settled up.')
+    expect(summary).toBe('Lisbon - Settle up\n\nEveryone is settled up.')
   })
 })

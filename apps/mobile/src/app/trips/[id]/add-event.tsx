@@ -88,10 +88,11 @@ export default function AddEventScreen() {
       scroll
       footer={
         <Button
-          label={createEvent.isPending ? t('events.add.submitting') : t('events.add.submit')}
+          label={t('events.add.submit')}
           icon="add"
           onPress={handleSubmit(onSubmit)}
           disabled={createEvent.isPending}
+          loading={createEvent.isPending}
         />
       }
     >

@@ -163,7 +163,7 @@ export default function TripDocumentsScreen() {
                 <Text style={styles.meta}>
                   {[formatFileSize(doc.size_bytes), formatDocDate(doc.created_at)]
                     .filter(Boolean)
-                    .join(' · ')}
+                    .join(' - ')}
                 </Text>
               </View>
               <Pressable

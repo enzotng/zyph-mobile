@@ -178,9 +178,10 @@ export default function SignUpScreen() {
 
         <View style={styles.action}>
           <Button
-            label={submitting ? t('auth.signUp.submitting') : t('auth.signUp.submit')}
+            label={t('auth.signUp.submit')}
             onPress={handleSubmit(onSubmit)}
             disabled={busy}
+            loading={submitting}
           />
         </View>
 

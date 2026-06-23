@@ -92,9 +92,10 @@ export default function NewTripScreen() {
       showBack
       footer={
         <Button
-          label={createTrip.isPending ? t('newTrip.submitting') : t('newTrip.submit')}
+          label={t('newTrip.submit')}
           onPress={handleSubmit(onSubmit)}
           disabled={createTrip.isPending || !isValid}
+          loading={createTrip.isPending}
         />
       }
     >

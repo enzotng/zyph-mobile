@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
 import { File, Paths } from 'expo-file-system'
-import { useGlobalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Platform, Pressable, ScrollView, Share, Text, View } from 'react-native'
@@ -88,7 +88,7 @@ function groupExpensesByDay(
 }
 
 export default function TripExpensesScreen() {
-  const params = useGlobalSearchParams<{ id: string }>()
+  const params = useLocalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
   const { theme } = useUnistyles()

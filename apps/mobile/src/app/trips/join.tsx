@@ -68,9 +68,10 @@ export default function JoinTripScreen() {
       showBack
       footer={
         <Button
-          label={joinTrip.isPending ? t('joinTrip.submitting') : t('joinTrip.submit')}
+          label={t('joinTrip.submit')}
           onPress={handleSubmit(onSubmit)}
           disabled={joinTrip.isPending || code.length < 4}
+          loading={joinTrip.isPending}
         />
       }
     >

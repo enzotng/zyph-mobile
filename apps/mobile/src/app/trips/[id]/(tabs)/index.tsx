@@ -3,16 +3,16 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
 import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
+import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { ScreenCornerRadius } from 'react-native-screen-corner-radius'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { TRIP_TAB_BAR_CLEARANCE } from '@/components/layout/trip-tab-bar'
 import { Screen } from '@/components/screen'
-import { AvatarStack, BottomSheet, CityImage, Skeleton } from '@/components/ui'
+import { AvatarStack, BottomSheet, CityImage, ErrorState, Skeleton } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import { useTripBalances } from '@/features/expenses'
 import { useLeaveTrip, useRegenerateInviteCode, useTripMembers } from '@/features/group'
@@ -115,13 +115,25 @@ export default function TripDashboardScreen() {
   const { session } = useAuth()
   const userId = session?.user.id
 
-  const { data: trip, isLoading, isError } = useTrip(tripId)
-  const { data: balances } = useTripBalances(tripId)
+  const { data: trip, isLoading, isError, refetch: refetchTrip } = useTrip(tripId)
+  const { data: balances, refetch: refetchBalances } = useTripBalances(tripId)
   const { data: members } = useTripMembers(tripId)
-  const { data: events } = useEvents(tripId)
-  const { data: weather } = useTripWeather(trip)
+  const { data: events, refetch: refetchEvents } = useEvents(tripId)
+  const { data: weather, refetch: refetchWeather } = useTripWeather(trip)
   // Snapshot once on mount; the countdown badge does not need to tick on this screen.
   const [now] = useState(() => Date.now())
+  const [refreshing, setRefreshing] = useState(false)
+
+  // Pull-to-refresh refetches every query feeding the dashboard (trip, events, balances, weather).
+  const onRefresh = useCallback(async () => {
+    haptics.light()
+    setRefreshing(true)
+    try {
+      await Promise.all([refetchTrip(), refetchEvents(), refetchBalances(), refetchWeather()])
+    } finally {
+      setRefreshing(false)
+    }
+  }, [refetchTrip, refetchEvents, refetchBalances, refetchWeather])
 
   const [actionsOpen, setActionsOpen] = useState(false)
   const regenerate = useRegenerateInviteCode(tripId)
@@ -183,9 +195,13 @@ export default function TripDashboardScreen() {
   if (isError || !trip) {
     return (
       <Screen title={t('trip.notFound')} showBack>
-        <View style={styles.center}>
-          <Text style={styles.notFound}>{t('trip.notFound')}</Text>
-        </View>
+        <ErrorState
+          icon="cloud-offline-outline"
+          title={t('trip.notFound')}
+          body={t('errors.body')}
+          retryLabel={t('common.retry')}
+          onRetry={() => void refetchTrip()}
+        />
       </Screen>
     )
   }
@@ -355,7 +371,17 @@ export default function TripDashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={theme.colors.primary}
+          />
+        }
+      >
         {/* Inset cover hero */}
         <View>
           <CityImage
@@ -560,16 +586,6 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontFamily: theme.fonts.sans.medium,
     fontWeight: '500',
     fontSize: theme.fontSize.md,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notFound: {
-    fontFamily: theme.fonts.sans.regular,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.muted,
   },
   scroll: {
     paddingBottom: rt.insets.bottom + TRIP_TAB_BAR_CLEARANCE,

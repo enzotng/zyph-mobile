@@ -30,7 +30,7 @@ function formatEventDate(iso: string | null): string | null {
   const date = new Date(iso)
   const day = date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
   const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  return `${day} · ${time}`
+  return `${day} - ${time}`
 }
 
 export default function EventDetailScreen() {

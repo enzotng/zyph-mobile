@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
-import { type GestureResponderEvent, Pressable, Text } from 'react-native'
+import { ActivityIndicator, type GestureResponderEvent, Pressable, Text } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Surface } from '@/components/ui/surface'
@@ -18,6 +18,9 @@ type ButtonProps = {
   icon?: keyof typeof Ionicons.glyphMap
   // Full-width by default; set false for an inline, content-sized button.
   block?: boolean
+  // Busy state: swaps the label+icon for a spinner and blocks onPress while keeping the enabled
+  // fill, so the button reads as "working" rather than "disabled".
+  loading?: boolean
 }
 
 export function Button({
@@ -28,8 +31,12 @@ export function Button({
   disabled = false,
   icon,
   block = true,
+  loading = false,
 }: ButtonProps) {
   const { theme } = useUnistyles()
+
+  // Loading blocks the press like disabled, but keeps the enabled fill (busy, not disabled).
+  const inert = disabled || loading
 
   const handlePress = (event: GestureResponderEvent) => {
     haptics.light()
@@ -74,12 +81,13 @@ export function Button({
   return (
     <Pressable
       onPress={handlePress}
-      disabled={disabled}
+      disabled={inert}
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled: inert, busy: loading }}
       style={({ pressed }) => [
         styles.pressable(block),
         pressed && styles.pressed,
+        // Keep the enabled fill while loading so it reads as "busy", not "disabled".
         disabled && styles.disabled,
       ]}
     >
@@ -90,8 +98,16 @@ export function Button({
         borderWidth={palette.borderWidth}
         style={styles.content(size)}
       >
-        {icon ? <Ionicons name={icon} size={size === 'sm' ? 16 : 18} color={palette.text} /> : null}
-        <Text style={[styles.label(size), { color: palette.text }]}>{label}</Text>
+        {loading ? (
+          <ActivityIndicator size="small" color={palette.text} />
+        ) : (
+          <>
+            {icon ? (
+              <Ionicons name={icon} size={size === 'sm' ? 16 : 18} color={palette.text} />
+            ) : null}
+            <Text style={[styles.label(size), { color: palette.text }]}>{label}</Text>
+          </>
+        )}
       </Surface>
     </Pressable>
   )

@@ -142,11 +142,10 @@ export default function ForgotPasswordScreen() {
 
         <View style={styles.action}>
           <Button
-            label={
-              submitting ? t('auth.forgotPassword.submitting') : t('auth.forgotPassword.submit')
-            }
+            label={t('auth.forgotPassword.submit')}
             onPress={handleSubmit(onSubmit)}
             disabled={submitting}
+            loading={submitting}
           />
         </View>
 
