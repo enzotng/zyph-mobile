@@ -19,6 +19,8 @@ export {
 export { ARRIVAL_RADIUS_M, ArArrow } from './components/ar-arrow'
 export { ArOverlay } from './components/ar-overlay'
 export { ArPath } from './components/ar-path'
+export type { TripMapCanvasHandle } from './components/trip-map-canvas'
+export { TripMapCanvas } from './components/trip-map-canvas'
 export type { ShareLocationStatus } from './hooks/use-share-location'
 export { useShareLocation } from './hooks/use-share-location'
 export {

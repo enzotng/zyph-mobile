@@ -20,6 +20,7 @@ import {
 } from '@/features/media'
 import { eventStatus, formatCountdown, useDeleteEvent, useEvent } from '@/features/timeline'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
 function formatEventDate(iso: string | null): string | null {
@@ -29,7 +30,7 @@ function formatEventDate(iso: string | null): string | null {
   const date = new Date(iso)
   const day = date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
   const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  return `${day} · ${time}`
+  return `${day} - ${time}`
 }
 
 export default function EventDetailScreen() {
@@ -48,6 +49,7 @@ export default function EventDetailScreen() {
   const deleteEvent = useDeleteEvent(tripId)
 
   function confirmDeleteEvent() {
+    haptics.warning()
     Alert.alert(t('events.detail.deleteEvent'), t('events.detail.deleteBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {

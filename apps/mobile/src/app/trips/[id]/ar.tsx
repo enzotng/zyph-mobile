@@ -23,14 +23,17 @@ import {
   useWayfinderTargets,
   type WayfinderTarget,
 } from '@/features/wayfinder'
+import { withAlpha } from '@/lib/color'
 import { bearing, formatDistance, formatWalkingTime, haversine, relativeHeading } from '@/lib/geo'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 import { useDeviceTilt, useHeading, useUserLocation } from '@/lib/sensors'
 
 export default function ArScreen() {
-  const params = useGlobalSearchParams<{ id: string }>()
+  const params = useGlobalSearchParams<{ id: string; target?: string }>()
   const tripId = paramString(params.id)
+  // Optional initial target (e.g. from the POI detail "Route in AR"); falls back to the first.
+  const initialTarget = paramString(params.target) || null
   const router = useRouter()
   const { theme } = useUnistyles()
   const { t } = useTranslation()
@@ -49,7 +52,7 @@ export default function ArScreen() {
     }
   }, [cameraPermission, requestCameraPermission])
 
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(initialTarget)
   const active = useMemo(
     () => targets.find((t) => t.id === activeId) ?? targets[0] ?? null,
     [targets, activeId],
@@ -118,7 +121,11 @@ export default function ArScreen() {
       <View style={styles.center}>
         <Text style={styles.message}>{t('ar.cameraNeeded')}</Text>
         <Button label={t('ar.grantAccess')} onPress={() => void requestCameraPermission()} />
-        <Pressable onPress={() => router.back()} accessibilityRole="button" style={styles.backCta}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.backCta, pressed && styles.pressed]}
+        >
           <Text style={styles.link}>{t('ar.goBack')}</Text>
         </Pressable>
       </View>
@@ -138,7 +145,11 @@ export default function ArScreen() {
       <View style={styles.center}>
         <Ionicons name="compass-outline" size={48} color={theme.colors.muted} />
         <Text style={styles.message}>{t('ar.noTargets')}</Text>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" style={styles.backCta}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.backCta, pressed && styles.pressed]}
+        >
           <Text style={styles.link}>{t('ar.goBack')}</Text>
         </Pressable>
       </View>
@@ -179,15 +190,15 @@ export default function ArScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('ar.close')}
           hitSlop={12}
-          style={styles.closeBtn}
+          style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
         >
-          <Ionicons name="close" size={26} color={theme.colors.primaryForeground} />
+          <Ionicons name="close" size={26} color={CREAM} />
         </Pressable>
         <View style={styles.accuracyBadge}>
           <Ionicons
             name={heading.available ? 'compass' : 'compass-outline'}
             size={14}
-            color={theme.colors.primaryForeground}
+            color={CREAM}
           />
           <Text style={styles.badgeText} numberOfLines={1}>
             {heading.available
@@ -226,10 +237,9 @@ export default function ArScreen() {
           </View>
           {stats ? (
             <View style={styles.hudRow}>
-              <Text style={styles.hudValue}>{formatDistance(stats.distance)}</Text>
-              <Text style={styles.hudSep}>·</Text>
-              <Text style={styles.hudValue}>{formatWalkingTime(stats.distance)}</Text>
-              <Text style={styles.hudSep}>·</Text>
+              <Text style={styles.hudValue}>
+                {formatDistance(stats.distance)}, {formatWalkingTime(stats.distance)}
+              </Text>
               <Text style={styles.hudDelta}>
                 {stats.distance <= ARRIVAL_RADIUS_M
                   ? t('ar.arrived')
@@ -263,12 +273,17 @@ function TargetChip({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      style={[styles.chip, active ? styles.chipActive : null]}
+      hitSlop={8}
+      style={({ pressed }) => [
+        styles.chip,
+        active ? styles.chipActive : null,
+        pressed && styles.pressed,
+      ]}
     >
       <Ionicons
         name={poiIconName(target.icon)}
         size={14}
-        color={active ? theme.colors.primaryForeground : 'rgba(255,255,255,0.82)'}
+        color={active ? theme.colors.primaryForeground : withAlpha(CREAM, 0.82)}
       />
       <Text style={[styles.chipLabel, active ? styles.chipLabelActive : null]} numberOfLines={1}>
         {target.label}
@@ -276,6 +291,11 @@ function TargetChip({
     </Pressable>
   )
 }
+
+// AR chrome sits over a live camera feed (always dark), so it uses fixed warm ink/cream tints
+// rather than theme surfaces. INK is the ZYPH ink (#1A1712); CREAM is the warm paper (#F4F1E8).
+const INK = '#1A1712'
+const CREAM = '#F4F1E8'
 
 const styles = StyleSheet.create((theme, rt) => ({
   root: {
@@ -322,22 +342,32 @@ const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.gap(5),
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    // Circular ink-translucent tile.
+    backgroundColor: withAlpha(INK, 0.5),
+    borderWidth: 1,
+    borderColor: withAlpha(CREAM, 0.12),
   },
   accuracyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.gap(1),
+    gap: theme.gap(1.5),
     paddingHorizontal: theme.gap(3),
-    paddingVertical: theme.gap(1),
-    borderRadius: theme.radius.md,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingVertical: theme.gap(2),
+    borderRadius: theme.radius.full,
+    // Deeper wash than the chrome buttons so the accuracy reading holds up over bright scenes.
+    backgroundColor: withAlpha(INK, 0.64),
+    borderWidth: 1,
+    borderColor: withAlpha(CREAM, 0.12),
   },
   badgeText: {
-    color: theme.colors.primaryForeground,
+    color: CREAM,
     fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
+    // Subtle ink halo so the glyph never washes out against a bright sky behind the badge.
+    textShadowColor: withAlpha(INK, 0.7),
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   chipsScroll: {
     position: 'absolute',
@@ -352,18 +382,20 @@ const styles = StyleSheet.create((theme, rt) => ({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 44,
     gap: theme.gap(1.5),
     paddingHorizontal: theme.gap(3),
     paddingVertical: theme.gap(2),
     borderRadius: theme.gap(5),
-    // Inactive: dark glass that recedes against the camera (matches the POI cards).
-    backgroundColor: 'rgba(15,23,42,0.55)',
+    // Inactive: translucent cream over an ink wash so it recedes against the camera.
+    backgroundColor: withAlpha(INK, 0.5),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: withAlpha(CREAM, 0.18),
   },
   chipActive: {
-    // Active: solid indigo with an indigo halo so it clearly dominates (no white rim).
+    // Active: solid accent with a halo so it clearly dominates.
     backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
     shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.75,
@@ -374,8 +406,8 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
-    // Inactive label on the dark-glass chip: light but slightly muted so it recedes.
-    color: 'rgba(255,255,255,0.82)',
+    // Inactive label: cream, slightly muted so it recedes.
+    color: withAlpha(CREAM, 0.82),
     maxWidth: theme.gap(40),
   },
   chipLabelActive: {
@@ -390,7 +422,12 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingHorizontal: theme.gap(4),
     paddingVertical: theme.gap(4),
     borderRadius: theme.radius.lg,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderCurve: 'continuous',
+    // Translucent ink card (blur-like wash) so it floats over the camera. Deepened so the distance +
+    // heading readouts stay legible even over a bright scene behind the card.
+    backgroundColor: withAlpha(INK, 0.72),
+    borderWidth: 1,
+    borderColor: withAlpha(CREAM, 0.1),
   },
   hudHead: {
     flexDirection: 'row',
@@ -402,7 +439,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontSize: theme.fontSize.lg,
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
-    color: theme.colors.primaryForeground,
+    color: CREAM,
   },
   hudRow: {
     flexDirection: 'row',
@@ -410,13 +447,15 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(2),
   },
   hudValue: {
+    flex: 1,
     fontSize: theme.fontSize.md,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
-    color: theme.colors.primaryForeground,
-  },
-  hudSep: {
-    color: 'rgba(255,255,255,0.5)',
+    color: CREAM,
+    // Ink halo keeps the distance/walk readout legible over a bright scene.
+    textShadowColor: withAlpha(INK, 0.7),
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   hudDelta: {
     marginLeft: 'auto',
@@ -424,12 +463,19 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '700',
     color: theme.colors.primary,
+    // Halo so the accent heading delta does not vanish against a light background.
+    textShadowColor: withAlpha(INK, 0.7),
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   hudMuted: {
-    color: 'rgba(255,255,255,0.7)',
+    color: withAlpha(CREAM, 0.7),
   },
   hudHint: {
     fontSize: theme.fontSize.sm,
-    color: 'rgba(255,255,255,0.6)',
+    color: withAlpha(CREAM, 0.6),
+  },
+  pressed: {
+    opacity: 0.85,
   },
 }))

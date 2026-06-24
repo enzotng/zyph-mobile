@@ -24,6 +24,7 @@ import {
 import { memberLabel, useTripMemberNames } from '@/features/group'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { formatRate } from '@/lib/money'
 import { paramString } from '@/lib/routing'
 
@@ -69,6 +70,7 @@ export default function ExpenseDetailScreen() {
   }
 
   function confirmDelete() {
+    haptics.warning()
     Alert.alert(t('expenseDetail.deleteTitle'), t('expenseDetail.deleteBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -183,7 +185,7 @@ export default function ExpenseDetailScreen() {
           <View style={styles.fxRow}>
             <Ionicons name="lock-closed-outline" size={13} color={theme.colors.muted} />
             <Text style={styles.fxText}>
-              {t('expenseDetail.rateLocked')} ·{' '}
+              {t('expenseDetail.rateLocked')} -{' '}
               {formatRate(expense.fx_rate, expense.currency, trip.currency)}
             </Text>
           </View>
@@ -223,7 +225,7 @@ export default function ExpenseDetailScreen() {
           <SectionTitle>{t('trip.items')}</SectionTitle>
           <View style={styles.sectionBody}>
             {(items ?? []).map((item, index) => {
-              const names = (membersByItemId.get(item.id) ?? []).map(labelFor).join(' · ')
+              const names = (membersByItemId.get(item.id) ?? []).map(labelFor).join(' - ')
               return (
                 <View
                   key={item.id}

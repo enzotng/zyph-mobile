@@ -16,9 +16,7 @@ import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-n
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
-import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
-import { PackingReadiness } from '@/components/packing/packing-readiness'
-import { TravelerFilter } from '@/components/packing/traveler-filter'
+import { TRIP_TAB_BAR_CLEARANCE } from '@/components/layout/trip-tab-bar'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import {
@@ -27,8 +25,6 @@ import {
   Chip,
   EmptyState,
   ErrorState,
-  ListRow,
-  SectionTitle,
   Segmented,
   Skeleton,
   Surface,
@@ -47,7 +43,6 @@ import {
   groupByCategory,
   groupReadiness,
   inferCategory,
-  memberPackingProgress,
   PACKING_CATEGORIES,
   type PackingCategory,
   type PackingItem,
@@ -70,7 +65,9 @@ import {
 } from '@/features/packing'
 import { useEvents } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
+import { PlanSegmented } from '@/features/trips/components/plan-segmented'
 import { forecastToPrompt, useTripWeather, WeatherCard } from '@/features/weather'
+import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
@@ -89,6 +86,12 @@ const ACTIVITY_SEEDS = [
 ] as const
 
 const SKELETON_ROWS = [0, 1, 2, 3, 4]
+
+// The readiness card sits on the ink bezel (dark in both themes), so its text/progress use
+// fixed brand values rather than theme tokens: cream copy + the bright indigo accent that reads
+// on ink. Cream doubles as the "all packed" fill.
+const CREAM = '#F4F1E8'
+const ACCENT_ON_INK = '#7C74F0'
 
 function tripDays(start: string | null, end: string | null): number | null {
   if (!start || !end) {
@@ -178,6 +181,92 @@ const RefineField = memo(function RefineField({
   )
 })
 
+// Ink readiness card: a linear progress bar + a big percentage on the bezel surface (the
+// spec's conic ring is substituted by a bar + big % since react-native-svg is absent). Pure
+// presentational - it reuses the counts the screen already computes.
+function ReadinessBezel({
+  percent,
+  packed,
+  total,
+  unassigned,
+}: {
+  percent: number
+  packed: number
+  total: number
+  unassigned: number
+}) {
+  const { t } = useTranslation()
+  const clamped = Math.max(0, Math.min(100, Math.round(percent)))
+  const done = clamped === 100 && unassigned === 0
+  const title = done
+    ? t('packing.readyAllPacked')
+    : clamped >= 60
+      ? t('packing.readyAlmost')
+      : t('packing.readyKeepPacking')
+  const subtitle = [
+    t('packing.readyItems', { packed, total }),
+    unassigned > 0 ? t('packing.readyUnassigned', { count: unassigned }) : null,
+  ]
+    .filter(Boolean)
+    .join(', ')
+
+  return (
+    <View style={styles.bezel}>
+      <View style={styles.bezelHead}>
+        <View style={styles.bezelTextBlock}>
+          <Text style={styles.bezelEyebrow}>{t('tabs.packing').toUpperCase()}</Text>
+          <Text style={styles.bezelTitle}>{title}</Text>
+          <Text style={styles.bezelSubtitle}>{subtitle}</Text>
+        </View>
+        <Text style={styles.bezelPercent}>{`${clamped}%`}</Text>
+      </View>
+      <View style={styles.bezelTrack}>
+        <View
+          style={[
+            styles.bezelFill,
+            { width: `${clamped}%`, backgroundColor: done ? CREAM : ACCENT_ON_INK },
+          ]}
+        />
+      </View>
+    </View>
+  )
+}
+
+// A single traveler-filter pill: accent-filled when active, a muted fill otherwise.
+function TravelerPill({
+  label,
+  active,
+  onPress,
+}: {
+  label: string
+  active: boolean
+  onPress: () => void
+}) {
+  return (
+    <Pressable
+      onPress={() => {
+        haptics.selection()
+        onPress()
+      }}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.filterPill,
+        active && styles.filterPillActive,
+        pressed && styles.pressed,
+      ]}
+    >
+      <Text
+        style={[styles.filterPillText, active && styles.filterPillTextActive]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
+
 export default function PackingScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
@@ -261,7 +350,6 @@ export default function PackingScreen() {
 
   // Group-readiness is computed from the FULL shared list (scoped), never the filtered view, so
   // filtering to one traveler can't make the group look "ready".
-  const progress = useMemo(() => memberPackingProgress(scoped, members ?? []), [scoped, members])
   const readiness = useMemo(() => groupReadiness(scoped), [scoped])
   const unassignedCount = useMemo(() => unassignedSharedCount(scoped), [scoped])
 
@@ -463,6 +551,7 @@ export default function PackingScreen() {
       })),
       {
         onSuccess: (created) => {
+          haptics.success()
           setPreview(null)
           setLastAdded(created.map((item) => item.id))
         },
@@ -539,6 +628,7 @@ export default function PackingScreen() {
   }
 
   function confirmDelete(item: PackingItem) {
+    haptics.warning()
     Alert.alert(t('packing.deleteTitle'), t('packing.deleteBody', { label: item.label }), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -622,6 +712,8 @@ export default function PackingScreen() {
 
   return (
     <Screen title={trip?.title} showBack scroll right={addButton}>
+      <PlanSegmented active="packing" tripId={tripId} />
+
       <Segmented
         value={scope}
         onChange={(v) => {
@@ -640,7 +732,7 @@ export default function PackingScreen() {
       />
 
       {weather?.days?.length ? (
-        <Animated.View entering={FadeInDown.duration(320).springify()} layout={LinearTransition}>
+        <Animated.View entering={FadeInDown.duration(320)} layout={LinearTransition}>
           <WeatherCard weather={weather} />
         </Animated.View>
       ) : null}
@@ -775,21 +867,40 @@ export default function PackingScreen() {
       scoped.length > 0 &&
       (members?.length ?? 0) >= 1 ? (
         <Animated.View entering={FadeInDown.duration(280).delay(60)} layout={LinearTransition}>
-          <PackingReadiness
-            progress={progress}
-            unassignedCount={unassignedCount}
-            readyPercent={readiness.percent}
-            onPressMember={(id) => setTravelerFilter(id)}
+          <ReadinessBezel
+            percent={readiness.percent}
+            packed={packedCount}
+            total={scoped.length}
+            unassigned={unassignedCount}
           />
         </Animated.View>
       ) : null}
 
       {scope === 'shared' && scoped.length > 0 && (members?.length ?? 0) >= 2 ? (
-        <TravelerFilter
-          members={(members ?? []).map((m) => ({ id: m.id, display_name: m.display_name }))}
-          selected={safeFilter}
-          onChange={setTravelerFilter}
-        />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+        >
+          <TravelerPill
+            label={t('packing.filterEveryone')}
+            active={safeFilter === null}
+            onPress={() => setTravelerFilter(null)}
+          />
+          {(members ?? []).map((m) => (
+            <TravelerPill
+              key={m.id}
+              label={m.display_name ?? t('common.member')}
+              active={safeFilter === m.id}
+              onPress={() => setTravelerFilter(m.id)}
+            />
+          ))}
+          <TravelerPill
+            label={t('packing.filterUnassigned')}
+            active={safeFilter === UNASSIGNED_FILTER}
+            onPress={() => setTravelerFilter(UNASSIGNED_FILTER)}
+          />
+        </ScrollView>
       ) : null}
 
       {lastAdded.length > 0 ? (
@@ -864,7 +975,7 @@ export default function PackingScreen() {
             exiting={FadeOut.duration(160)}
             layout={LinearTransition}
           >
-            <SectionTitle>{t(`packing.categories.${group.category}`)}</SectionTitle>
+            <Text style={styles.categoryTitle}>{t(`packing.categories.${group.category}`)}</Text>
             <Animated.View entering={FadeIn.duration(280)}>
               {group.items.map((item, index) => {
                 const assignedName = item.assigned_member
@@ -886,98 +997,124 @@ export default function PackingScreen() {
                       })
                     : null,
                 ].filter(Boolean)
+                const subtitle = subtitleParts.length > 0 ? subtitleParts.join(', ') : null
                 return (
+                  // Rows use layout + exit transitions only (no per-row entrance): the rows
+                  // remount when scope/filter changes, which would otherwise replay the whole
+                  // list's FadeInDown stagger. The category wrapper's FadeIn covers first paint.
                   <Animated.View
                     key={item.id}
-                    entering={FadeInDown.duration(220).delay(Math.min(index, 6) * 35)}
                     exiting={FadeOut.duration(160)}
                     layout={LinearTransition}
                   >
-                    <ListRow
-                      icon={(item.packed ? 'checkmark-circle' : 'ellipse-outline') as Glyph}
-                      iconColor={item.packed ? theme.colors.success : theme.colors.muted}
-                      title={item.label}
-                      subtitle={subtitleParts.length > 0 ? subtitleParts.join(' · ') : undefined}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: item.packed }}
-                      onPress={() => {
-                        haptics.selection()
-                        updateItem.mutate({ id: item.id, patch: { packed: !item.packed } })
-                      }}
-                      last={index === group.items.length - 1}
-                      right={
-                        <View style={styles.rowActions}>
-                          {scope === 'shared' && !item.assigned_member && myMember ? (
-                            <Chip
-                              label={t('packing.claim')}
-                              icon="hand-left-outline"
-                              accessibilityLabel={`${t('packing.claim')}, ${item.label}`}
-                              onPress={() => claim(item)}
-                            />
+                    <View
+                      style={[
+                        styles.itemRow,
+                        index === group.items.length - 1 && styles.itemRowLast,
+                      ]}
+                    >
+                      <Pressable
+                        onPress={() => {
+                          haptics.selection()
+                          updateItem.mutate({ id: item.id, patch: { packed: !item.packed } })
+                        }}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: item.packed }}
+                        accessibilityLabel={item.label}
+                        hitSlop={6}
+                        style={({ pressed }) => [styles.itemMain, pressed && styles.pressed]}
+                      >
+                        <Ionicons
+                          name={item.packed ? 'checkbox' : 'square-outline'}
+                          size={24}
+                          color={item.packed ? theme.colors.success : theme.colors.muted}
+                        />
+                        <View style={styles.itemText}>
+                          <Text
+                            style={[styles.itemLabel, item.packed && styles.itemLabelPacked]}
+                            numberOfLines={1}
+                          >
+                            {item.label}
+                          </Text>
+                          {subtitle ? (
+                            <Text style={styles.itemSubtitle} numberOfLines={1}>
+                              {subtitle}
+                            </Text>
                           ) : null}
-                          {scope === 'shared' &&
-                          item.assigned_member &&
-                          item.assigned_member !== myMember?.id ? (
-                            <Pressable
-                              onPress={() => nudge(item)}
-                              accessibilityRole="button"
-                              accessibilityLabel={`${t('packing.nudge')}, ${item.label}`}
-                              hitSlop={11}
-                              style={({ pressed }) => [pressed && styles.pressed]}
-                            >
-                              <Ionicons
-                                name="notifications-outline"
-                                size={20}
-                                color={theme.colors.muted}
-                              />
-                            </Pressable>
-                          ) : null}
-                          {scope === 'shared' ? (
-                            <Pressable
-                              onPress={() => setAssignTarget(item)}
-                              accessibilityRole="button"
-                              accessibilityLabel={`${t('packing.assignTitle')}, ${item.label}`}
-                              hitSlop={11}
-                              style={({ pressed }) => [pressed && styles.pressed]}
-                            >
-                              {assignedName ? (
-                                <Avatar name={assignedName} size={26} />
-                              ) : (
-                                <Ionicons
-                                  name="person-add-outline"
-                                  size={20}
-                                  color={theme.colors.muted}
-                                />
-                              )}
-                            </Pressable>
-                          ) : null}
-                          {scope === 'shared' && !paid ? (
-                            <Pressable
-                              onPress={() => openSplit(item)}
-                              accessibilityRole="button"
-                              accessibilityLabel={`${t('packing.splitExpense')}, ${item.label}`}
-                              hitSlop={11}
-                              style={({ pressed }) => [pressed && styles.pressed]}
-                            >
-                              <Ionicons name="cash-outline" size={20} color={theme.colors.muted} />
-                            </Pressable>
-                          ) : null}
+                        </View>
+                      </Pressable>
+
+                      <View style={styles.rowActions}>
+                        {scope === 'shared' && !item.assigned_member && myMember ? (
+                          <Chip
+                            label={t('packing.claim')}
+                            icon="hand-left-outline"
+                            accessibilityLabel={`${t('packing.claim')}, ${item.label}`}
+                            onPress={() => claim(item)}
+                          />
+                        ) : null}
+                        {scope === 'shared' &&
+                        item.assigned_member &&
+                        item.assigned_member !== myMember?.id ? (
                           <Pressable
-                            onPress={() => confirmDelete(item)}
+                            onPress={() => nudge(item)}
                             accessibilityRole="button"
-                            accessibilityLabel={`${t('packing.deleteItem')}, ${item.label}`}
+                            accessibilityLabel={`${t('packing.nudge')}, ${item.label}`}
                             hitSlop={11}
                             style={({ pressed }) => [pressed && styles.pressed]}
                           >
                             <Ionicons
-                              name="trash-outline"
-                              size={18}
-                              color={theme.colors.destructive}
+                              name="notifications-outline"
+                              size={20}
+                              color={theme.colors.muted}
                             />
                           </Pressable>
-                        </View>
-                      }
-                    />
+                        ) : null}
+                        {scope === 'shared' ? (
+                          <Pressable
+                            onPress={() => setAssignTarget(item)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${t('packing.assignTitle')}, ${item.label}`}
+                            hitSlop={11}
+                            style={({ pressed }) => [pressed && styles.pressed]}
+                          >
+                            {assignedName ? (
+                              <Avatar name={assignedName} size={26} />
+                            ) : (
+                              <View style={styles.unassignedPill}>
+                                <Text style={styles.unassignedPillText}>
+                                  {t('packing.filterUnassigned')}
+                                </Text>
+                              </View>
+                            )}
+                          </Pressable>
+                        ) : null}
+                        {scope === 'shared' && !paid ? (
+                          <Pressable
+                            onPress={() => openSplit(item)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${t('packing.splitExpense')}, ${item.label}`}
+                            hitSlop={11}
+                            style={({ pressed }) => [pressed && styles.pressed]}
+                          >
+                            <Ionicons name="cash-outline" size={20} color={theme.colors.muted} />
+                          </Pressable>
+                        ) : null}
+                        <Pressable
+                          onPress={() => confirmDelete(item)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${t('packing.deleteItem')}, ${item.label}`}
+                          hitSlop={11}
+                          style={({ pressed }) => [pressed && styles.pressed]}
+                        >
+                          <Ionicons
+                            name="trash-outline"
+                            size={18}
+                            color={theme.colors.destructive}
+                          />
+                        </Pressable>
+                      </View>
+                    </View>
                   </Animated.View>
                 )
               })}
@@ -1370,7 +1507,146 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(1),
   },
   section: {
-    gap: theme.gap(1),
+    gap: theme.gap(2),
+  },
+  categoryTitle: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foreground,
+    paddingTop: theme.gap(1),
+  },
+  bezel: {
+    backgroundColor: theme.colors.bezel,
+    borderRadius: theme.radius.lg,
+    borderCurve: 'continuous',
+    // A cream hairline lifts the bezel off the canvas: in dark the bezel equals the card colour,
+    // so without it the readiness surface would read flat. Cream-on-ink reads in both themes.
+    borderWidth: 1,
+    borderColor: withAlpha(CREAM, 0.12),
+    paddingVertical: theme.gap(4),
+    paddingHorizontal: theme.gap(4),
+    gap: theme.gap(3),
+  },
+  bezelHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: theme.gap(3),
+  },
+  bezelTextBlock: {
+    flex: 1,
+    gap: theme.gap(0.5),
+  },
+  bezelEyebrow: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.xs,
+    letterSpacing: 1.2,
+    color: withAlpha(CREAM, 0.6),
+  },
+  bezelTitle: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.lg,
+    color: CREAM,
+  },
+  bezelSubtitle: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: withAlpha(CREAM, 0.7),
+    marginTop: theme.gap(0.5),
+  },
+  bezelPercent: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.xxl,
+    color: CREAM,
+  },
+  bezelTrack: {
+    height: 8,
+    borderRadius: theme.radius.full,
+    overflow: 'hidden',
+    backgroundColor: withAlpha(CREAM, 0.16),
+  },
+  bezelFill: {
+    height: 8,
+    borderRadius: theme.radius.full,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: theme.gap(2),
+    paddingVertical: theme.gap(1),
+  },
+  filterPill: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingVertical: theme.gap(2),
+    paddingHorizontal: theme.gap(3.5),
+    borderRadius: theme.radius.full,
+    backgroundColor: withAlpha(theme.colors.foreground, 0.06),
+  },
+  filterPillActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  filterPillText: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foreground,
+  },
+  filterPillTextActive: {
+    color: theme.colors.primaryForeground,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+    minHeight: 52,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  itemRowLast: {
+    borderBottomWidth: 0,
+  },
+  itemMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+    paddingVertical: theme.gap(2),
+  },
+  itemText: {
+    flex: 1,
+    gap: theme.gap(0.5),
+  },
+  itemLabel: {
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.foreground,
+  },
+  itemLabelPacked: {
+    color: theme.colors.muted,
+    textDecorationLine: 'line-through',
+  },
+  itemSubtitle: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+  },
+  unassignedPill: {
+    paddingVertical: theme.gap(1),
+    paddingHorizontal: theme.gap(2),
+    borderRadius: theme.radius.full,
+    backgroundColor: withAlpha(theme.colors.warning, 0.14),
+  },
+  unassignedPillText: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.warning,
   },
   rowActions: {
     flexDirection: 'row',
@@ -1382,7 +1658,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     transform: [{ scale: 0.97 }],
   },
   spacer: {
-    height: FLOATING_TAB_BAR_CLEARANCE,
+    height: TRIP_TAB_BAR_CLEARANCE,
   },
   sheet: {
     gap: theme.gap(4),

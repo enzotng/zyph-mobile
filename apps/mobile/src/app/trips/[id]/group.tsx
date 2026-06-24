@@ -9,7 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { Avatar, Badge, Card, ErrorState, SectionTitle, Spinner, Surface } from '@/components/ui'
+import { Avatar, Card, EmptyState, ErrorState, Eyebrow, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   useLeaveTrip,
@@ -20,14 +20,26 @@ import {
 import { useDeleteTrip, useTrip } from '@/features/trips'
 import { useShareLocation } from '@/features/wayfinder'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { getShareLocation, setShareLocation } from '@/lib/preferences'
 import { paramString } from '@/lib/routing'
+
+// The invite card sits on the ink bezel (dark in both themes), so text uses fixed cream tones
+// rather than theme.colors.foreground (mirrors RightNowCard / the spend feed balance card).
+const CREAM = '#F4F1E8'
+const CREAM_MUTED = 'rgba(244, 241, 232, 0.62)'
+const CREAM_FILL = 'rgba(244, 241, 232, 0.12)'
 
 export default function TripGroupScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const { data: trip, isLoading, isError, refetch } = useTrip(tripId)
-  const { data: members } = useTripMembers(tripId)
+  const {
+    data: members,
+    isLoading: membersLoading,
+    isError: membersError,
+    refetch: refetchMembers,
+  } = useTripMembers(tripId)
   const { session } = useAuth()
   const userId = session?.user.id
   const router = useRouter()
@@ -58,6 +70,7 @@ export default function TripGroupScreen() {
   )
 
   function toggleSharing() {
+    haptics.selection()
     if (sharing) {
       setSharing(false)
       return
@@ -70,7 +83,7 @@ export default function TripGroupScreen() {
 
   if (isLoading) {
     return (
-      <Screen title={t('group.title')} showBack>
+      <Screen title={t('group.heading')} showBack>
         <View style={styles.center}>
           <Spinner />
         </View>
@@ -80,7 +93,7 @@ export default function TripGroupScreen() {
 
   if (isError) {
     return (
-      <Screen title={t('group.title')} showBack>
+      <Screen title={t('group.heading')} showBack>
         <ErrorState
           title={t('errors.title')}
           body={t('errors.body')}
@@ -93,7 +106,7 @@ export default function TripGroupScreen() {
 
   if (!trip) {
     return (
-      <Screen title={t('group.title')} showBack>
+      <Screen title={t('group.heading')} showBack>
         <View style={styles.center}>
           <Text style={styles.notFound}>{t('group.notFound')}</Text>
         </View>
@@ -128,6 +141,7 @@ export default function TripGroupScreen() {
   }
 
   function confirmRegenerate() {
+    haptics.warning()
     Alert.alert(t('group.confirmRegenerateTitle'), t('group.confirmRegenerateBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -150,6 +164,7 @@ export default function TripGroupScreen() {
   const isOwner = trip.owner_id === userId
 
   function confirmDelete() {
+    haptics.warning()
     Alert.alert(t('group.deleteTrip'), t('group.confirmDeleteBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -171,6 +186,7 @@ export default function TripGroupScreen() {
   }
 
   function confirmLeave() {
+    haptics.warning()
     Alert.alert(t('group.leaveTrip'), t('group.confirmLeaveBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -192,6 +208,7 @@ export default function TripGroupScreen() {
   }
 
   function confirmRemove(memberId: string, name: string) {
+    haptics.warning()
     Alert.alert(t('group.confirmRemoveTitle'), t('group.confirmRemoveBody', { name }), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -215,7 +232,7 @@ export default function TripGroupScreen() {
 
   return (
     <Screen
-      title={t('group.title')}
+      title={t('group.heading')}
       showBack
       scroll
       right={
@@ -231,54 +248,38 @@ export default function TripGroupScreen() {
         ) : undefined
       }
     >
-      {/* Invite code */}
-      <Card>
-        <View style={styles.inviteRow}>
-          <View style={styles.inviteInfo}>
-            <Text style={styles.inviteLabel}>{t('group.inviteCode')}</Text>
-            <Text style={styles.code}>{trip.invite_code}</Text>
-          </View>
-          <Surface
-            width={48}
-            height={48}
-            radius={theme.radius.md}
-            borderWidth={0}
-            color={withAlpha(theme.colors.primary, 0.12)}
-            style={styles.inviteMark}
-          >
-            <Ionicons name="people" size={24} color={theme.colors.primary} />
-          </Surface>
-        </View>
+      {/* Invite code - ink bezel card */}
+      <View style={styles.inviteCard}>
+        <Eyebrow style={styles.inviteEyebrow}>{t('group.inviteCode')}</Eyebrow>
+        <Text style={styles.code} numberOfLines={1} adjustsFontSizeToFit>
+          {trip.invite_code}
+        </Text>
         <View style={styles.inviteActions}>
-          <Button
-            label={copied ? t('group.copied') : t('group.copy')}
-            icon={copied ? 'checkmark' : 'copy-outline'}
-            variant="secondary"
-            size="sm"
-            block={false}
+          <Pressable
             onPress={() => void copyInvite()}
-          />
-          <Button
-            label={t('group.share')}
-            icon="share-outline"
-            variant="secondary"
-            size="sm"
-            block={false}
+            accessibilityRole="button"
+            accessibilityLabel={copied ? t('group.copied') : t('group.copy')}
+            style={({ pressed }) => [styles.inviteTile, styles.copyTile, pressed && styles.pressed]}
+          >
+            <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={18} color={CREAM} />
+            <Text style={styles.copyTileLabel}>{copied ? t('group.copied') : t('group.copy')}</Text>
+          </Pressable>
+          <Pressable
             onPress={() => void shareInvite()}
-          />
-          {isOwner ? (
-            <Button
-              label={regenerate.isPending ? t('group.regenerating') : t('group.regenerate')}
-              icon="refresh-outline"
-              variant="ghost"
-              size="sm"
-              block={false}
-              disabled={regenerate.isPending}
-              onPress={confirmRegenerate}
-            />
-          ) : null}
+            accessibilityRole="button"
+            accessibilityLabel={t('group.share')}
+            style={({ pressed }) => [
+              styles.inviteTile,
+              styles.shareTile,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons name="share-outline" size={18} color={theme.colors.primaryForeground} />
+            <Text style={styles.shareTileLabel}>{t('group.share')}</Text>
+          </Pressable>
         </View>
-      </Card>
+        <Text style={styles.inviteCaption}>{t('group.inviteCaption')}</Text>
+      </View>
 
       {/* Balances & settle up -> dedicated screen */}
       <Pressable
@@ -288,11 +289,20 @@ export default function TripGroupScreen() {
         style={({ pressed }) => (pressed ? styles.pressed : undefined)}
       >
         <Card padding={theme.gap(4)}>
-          <View style={styles.shareRow}>
-            <Ionicons name="scale-outline" size={22} color={theme.colors.primary} />
-            <View style={styles.shareInfo}>
-              <Text style={styles.shareTitle}>{t('balances.title')}</Text>
-              <Text style={styles.shareSub} numberOfLines={1}>
+          <View style={styles.rowCard}>
+            <Surface
+              width={40}
+              height={40}
+              radius={theme.radius.md}
+              borderWidth={0}
+              color={withAlpha(theme.colors.primary, 0.12)}
+              style={styles.rowCardTile}
+            >
+              <Ionicons name="scale-outline" size={20} color={theme.colors.primary} />
+            </Surface>
+            <View style={styles.rowCardInfo}>
+              <Text style={styles.rowCardTitle}>{t('balances.title')}</Text>
+              <Text style={styles.rowCardSub} numberOfLines={1}>
                 {t('group.suggestedSettlements')}
               </Text>
             </View>
@@ -302,29 +312,56 @@ export default function TripGroupScreen() {
       </Pressable>
 
       {/* Members */}
-      {hasMembers ? (
-        <View>
-          <SectionTitle>{t('group.members', { count: members.length })}</SectionTitle>
-          <View style={styles.listBody}>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Eyebrow>{t('group.membersTitle')}</Eyebrow>
+          {hasMembers ? <Text style={styles.sectionCount}>{members.length}</Text> : null}
+        </View>
+        {membersLoading ? (
+          <View style={styles.membersStatus}>
+            <Spinner />
+          </View>
+        ) : membersError ? (
+          <ErrorState
+            title={t('group.membersErrorTitle')}
+            body={t('group.membersErrorBody')}
+            retryLabel={t('common.retry')}
+            onRetry={() => void refetchMembers()}
+          />
+        ) : !hasMembers ? (
+          <EmptyState
+            icon="people-outline"
+            title={t('group.membersEmptyTitle')}
+            body={t('group.membersEmptyBody')}
+          />
+        ) : (
+          <Surface
+            color={theme.colors.card}
+            borderColor={theme.colors.border}
+            borderWidth={1}
+            radius={theme.radius.lg}
+            style={styles.membersCard}
+          >
             {members.map((member, index) => {
               const name =
                 member.user_id === userId
                   ? t('common.you')
                   : (member.display_name ?? t('common.member'))
-              const canRemove = isOwner && member.role !== 'owner' && member.user_id !== userId
+              const isMemberOwner = member.role === 'owner'
+              const canRemove = isOwner && !isMemberOwner && member.user_id !== userId
               return (
                 <View
                   key={member.id}
-                  style={[styles.listRow, index === members.length - 1 && styles.listRowLast]}
+                  style={[styles.memberRow, index === members.length - 1 && styles.memberRowLast]}
                 >
-                  <View style={styles.rowMember}>
-                    <Avatar name={name} imageUrl={member.avatar_url} size={34} />
-                    <Text style={styles.memberName} numberOfLines={1}>
-                      {name}
-                    </Text>
-                  </View>
-                  {member.role === 'owner' ? (
-                    <Badge label={t('group.organizer')} tone="primary" />
+                  <Avatar name={name} imageUrl={member.avatar_url} size={40} />
+                  <Text style={styles.memberName} numberOfLines={1}>
+                    {name}
+                  </Text>
+                  {isMemberOwner ? (
+                    <View style={styles.ownerPill}>
+                      <Text style={styles.ownerPillLabel}>{t('group.owner')}</Text>
+                    </View>
                   ) : canRemove ? (
                     <Pressable
                       onPress={() => confirmRemove(member.id, name)}
@@ -336,13 +373,15 @@ export default function TripGroupScreen() {
                     >
                       <Text style={styles.removeText}>{t('group.remove')}</Text>
                     </Pressable>
-                  ) : null}
+                  ) : (
+                    <Text style={styles.memberRole}>{t('group.memberRole')}</Text>
+                  )}
                 </View>
               )
             })}
-          </View>
-        </View>
-      ) : null}
+          </Surface>
+        )}
+      </View>
 
       {/* Share location */}
       <Pressable
@@ -353,17 +392,29 @@ export default function TripGroupScreen() {
         style={({ pressed }) => (pressed ? styles.pressed : undefined)}
       >
         <Card padding={theme.gap(4)}>
-          <View style={styles.shareRow}>
-            <Ionicons
-              name={sharing ? 'location' : 'location-outline'}
-              size={22}
-              color={sharing ? theme.colors.primary : theme.colors.muted}
-            />
-            <View style={styles.shareInfo}>
-              <Text style={styles.shareTitle}>
+          <View style={styles.rowCard}>
+            <Surface
+              width={40}
+              height={40}
+              radius={theme.radius.md}
+              borderWidth={0}
+              color={withAlpha(
+                sharing ? theme.colors.primary : theme.colors.muted,
+                sharing ? 0.12 : 0.1,
+              )}
+              style={styles.rowCardTile}
+            >
+              <Ionicons
+                name={sharing ? 'location' : 'location-outline'}
+                size={20}
+                color={sharing ? theme.colors.primary : theme.colors.muted}
+              />
+            </Surface>
+            <View style={styles.rowCardInfo}>
+              <Text style={styles.rowCardTitle}>
                 {sharing ? t('group.sharingActive') : t('group.shareLocationToggle')}
               </Text>
-              <Text style={styles.shareSub} numberOfLines={2}>
+              <Text style={styles.rowCardSub} numberOfLines={2}>
                 {shareStatus === 'denied'
                   ? t('group.shareStatusDenied')
                   : shareStatus === 'error'
@@ -381,6 +432,17 @@ export default function TripGroupScreen() {
           </View>
         </Card>
       </Pressable>
+
+      {/* Regenerate code - bordered full-width action (owner only) */}
+      {isOwner ? (
+        <Button
+          label={regenerate.isPending ? t('group.regenerating') : t('trip.regenerateCode')}
+          icon="refresh-outline"
+          variant="secondary"
+          disabled={regenerate.isPending}
+          onPress={confirmRegenerate}
+        />
+      ) : null}
 
       {/* Danger zone */}
       {isOwner ? (
@@ -425,67 +487,147 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.md,
     color: theme.colors.muted,
   },
-  inviteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.gap(3),
+  // Invite-code bezel card: ink in both themes, cream text.
+  inviteCard: {
+    borderRadius: theme.radius.lg,
+    borderCurve: 'continuous',
+    backgroundColor: theme.colors.bezel,
+    paddingVertical: theme.gap(4),
+    paddingHorizontal: theme.gap(4.5),
+    gap: theme.gap(2),
   },
-  inviteInfo: {
-    flexShrink: 1,
-  },
-  inviteLabel: {
-    fontFamily: theme.fonts.sans.regular,
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.muted,
+  inviteEyebrow: {
+    color: CREAM_MUTED,
   },
   code: {
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
-    fontSize: theme.fontSize.xl,
-    letterSpacing: 1.5,
-    color: theme.colors.foreground,
-    marginTop: 2,
-  },
-  inviteMark: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 48,
-    height: 48,
+    fontSize: 23,
+    letterSpacing: 2,
+    color: CREAM,
   },
   inviteActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: theme.gap(2.5),
-    marginTop: theme.gap(3.5),
-  },
-  listBody: {
     marginTop: theme.gap(1),
   },
-  listRow: {
+  inviteTile: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: theme.gap(1.5),
+    minHeight: 44,
+    paddingHorizontal: theme.gap(4),
+    borderRadius: theme.radius.md,
+    borderCurve: 'continuous',
+  },
+  copyTile: {
+    backgroundColor: CREAM_FILL,
+  },
+  copyTileLabel: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: CREAM,
+  },
+  shareTile: {
+    backgroundColor: theme.colors.primary,
+  },
+  shareTileLabel: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primaryForeground,
+  },
+  inviteCaption: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: CREAM_MUTED,
+  },
+  rowCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+  },
+  rowCardTile: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
+    height: 40,
+  },
+  rowCardInfo: {
+    flex: 1,
+    gap: theme.gap(0.5),
+  },
+  rowCardTitle: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.foreground,
+  },
+  rowCardSub: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+  },
+  section: {
+    gap: theme.gap(2),
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+  },
+  sectionCount: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+  },
+  membersStatus: {
+    paddingVertical: theme.gap(6),
+    alignItems: 'center',
+  },
+  membersCard: {
+    paddingHorizontal: theme.gap(4),
+  },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.gap(3),
     paddingVertical: theme.gap(2.5),
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  listRowLast: {
+  memberRowLast: {
     borderBottomWidth: 0,
   },
-  rowMember: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(2.5),
-    flexShrink: 1,
-  },
   memberName: {
-    flexShrink: 1,
+    flex: 1,
+    minWidth: 0,
     fontFamily: theme.fonts.sans.medium,
     fontWeight: '500',
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
+  },
+  ownerPill: {
+    alignSelf: 'flex-start',
+    borderRadius: theme.radius.full,
+    paddingVertical: 3,
+    paddingHorizontal: theme.gap(2.5),
+    backgroundColor: withAlpha(theme.colors.primary, 0.14),
+  },
+  ownerPillLabel: {
+    fontFamily: theme.fonts.sans.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
+  },
+  memberRole: {
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
   },
   removeText: {
     fontFamily: theme.fonts.sans.semibold,
@@ -493,28 +635,11 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     color: theme.colors.destructive,
   },
-  shareRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(3),
-  },
-  shareInfo: {
-    flex: 1,
-    gap: theme.gap(0.5),
-  },
-  shareTitle: {
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
-    fontSize: theme.fontSize.md,
-    color: theme.colors.foreground,
-  },
-  shareSub: {
-    fontFamily: theme.fonts.sans.regular,
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.muted,
-  },
   dangerBtn: {
     alignSelf: 'flex-start',
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingVertical: theme.gap(2),
   },
   dangerText: {
     fontFamily: theme.fonts.sans.semibold,

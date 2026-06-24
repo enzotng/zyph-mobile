@@ -1,3 +1,26 @@
+// One shared categorical palette for "identity" tints (avatars, fallback covers, per-day routes).
+// Distinct hues that deliberately avoid the reserved money green/red so a categorical swatch can
+// never read as a balance. Brand accent indigo leads; sky, violet, amber, pink, teal, orange,
+// cyan follow.
+export const CATEGORICAL_TINTS = [
+  '#4F46E5', // indigo (brand accent)
+  '#0EA5E9', // sky
+  '#8B5CF6', // violet
+  '#F59E0B', // amber
+  '#EC4899', // pink
+  '#0D9488', // teal
+  '#F97316', // orange
+  '#06B6D4', // cyan
+] as const
+
+// Cream-on-photo constants. Full-bleed cover cards (live trip, next departure, upcoming row,
+// CityImage) layer light text and a warm-ink scrim over a photo; these keep those values in one
+// place so a card can never drift. PHOTO_CREAM is the primary overlay text; PHOTO_CREAM_MUTED is
+// the dimmed secondary (location lines, chevrons); PHOTO_SCRIM is the dark gradient/overlay base.
+export const PHOTO_CREAM = '#FFFFFF'
+export const PHOTO_CREAM_MUTED = 'rgba(255, 255, 255, 0.92)'
+export const PHOTO_SCRIM = 'rgba(20, 17, 12, 0.55)'
+
 // Build an rgba() string from a hex color + alpha (0-1). Used for "soft" token
 // fills - a translucent tint of a theme color (RN has no CSS color-mix).
 export function withAlpha(hex: string, alpha: number): string {

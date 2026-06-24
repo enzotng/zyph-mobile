@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons'
+import { FlashList } from '@shopify/flash-list'
 import * as DocumentPicker from 'expo-document-picker'
 import { useGlobalSearchParams } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, Pressable, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Screen } from '@/components/screen'
@@ -39,6 +41,9 @@ export default function TripDocumentsScreen() {
   const { data: documents, isLoading, isError, refetch } = useTripDocuments(tripId)
   const upload = useUploadTripDocument(tripId)
   const del = useDeleteTripDocument(tripId)
+  // The delete hook is shared across rows, so track which document is deleting to scope the row's
+  // spinner + disabled trash to that one row instead of every row.
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   async function addDocument() {
     const result = await DocumentPicker.getDocumentAsync({
@@ -86,6 +91,7 @@ export default function TripDocumentsScreen() {
         text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
+          setDeletingId(doc.id)
           try {
             await del.mutateAsync(doc)
           } catch (error) {
@@ -93,6 +99,8 @@ export default function TripDocumentsScreen() {
               t('documents.deleteError'),
               error instanceof Error ? error.message : t('common.tryAgain'),
             )
+          } finally {
+            setDeletingId(null)
           }
         },
       },
@@ -110,14 +118,14 @@ export default function TripDocumentsScreen() {
     </Pressable>
   )
 
-  return (
-    <Screen title={t('documents.title')} showBack right={addButton} scroll>
-      {upload.isPending ? (
-        <View style={styles.statusRow}>
-          <Spinner label={t('documents.uploading')} />
-        </View>
-      ) : null}
+  const uploadingHeader = upload.isPending ? (
+    <View style={styles.statusRow}>
+      <Spinner label={t('documents.uploading')} />
+    </View>
+  ) : null
 
+  return (
+    <Screen title={t('documents.title')} showBack right={addButton}>
       {isLoading ? (
         <View style={styles.center}>
           <Spinner />
@@ -130,60 +138,77 @@ export default function TripDocumentsScreen() {
           onRetry={() => void refetch()}
         />
       ) : !documents || documents.length === 0 ? (
-        <EmptyState
-          icon="document-text-outline"
-          title={t('documents.emptyTitle')}
-          body={t('documents.emptyBody')}
-          cta={t('documents.add')}
-          onCta={addDocument}
-        />
+        <>
+          {uploadingHeader}
+          <EmptyState
+            icon="document-text-outline"
+            title={t('documents.emptyTitle')}
+            body={t('documents.emptyBody')}
+            cta={t('documents.add')}
+            onCta={addDocument}
+          />
+        </>
       ) : (
-        <View style={styles.list}>
-          {documents.map((doc) => (
-            <Pressable
-              key={doc.id}
-              onPress={() => openDocument(doc)}
-              accessibilityRole="button"
-              style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-            >
-              <Surface
-                width={40}
-                height={40}
-                radius={theme.radius.md}
-                color={withAlpha(theme.colors.destructive, 0.12)}
-                borderWidth={0}
-                style={styles.icon}
-              >
-                <Ionicons name="document-text" size={20} color={theme.colors.destructive} />
-              </Surface>
-              <View style={styles.info}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {doc.name ?? t('documents.fallbackName')}
-                </Text>
-                <Text style={styles.meta}>
-                  {[formatFileSize(doc.size_bytes), formatDocDate(doc.created_at)]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-              </View>
+        <FlashList
+          data={documents}
+          keyExtractor={(doc) => doc.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={uploadingHeader}
+          renderItem={({ item: doc }) => {
+            const deleting = deletingId === doc.id
+            return (
               <Pressable
-                onPress={() => confirmDelete(doc)}
+                onPress={() => openDocument(doc)}
                 accessibilityRole="button"
-                accessibilityLabel={t('documents.delete')}
-                hitSlop={8}
-                style={styles.trash}
+                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
               >
-                <Ionicons name="trash-outline" size={20} color={theme.colors.muted} />
+                <Surface
+                  width={40}
+                  height={40}
+                  radius={theme.radius.md}
+                  color={withAlpha(theme.colors.destructive, 0.12)}
+                  borderWidth={0}
+                  style={styles.icon}
+                >
+                  <Ionicons name="document-text" size={20} color={theme.colors.destructive} />
+                </Surface>
+                <View style={styles.info}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {doc.name ?? t('documents.fallbackName')}
+                  </Text>
+                  <Text style={styles.meta}>
+                    {[formatFileSize(doc.size_bytes), formatDocDate(doc.created_at)]
+                      .filter(Boolean)
+                      .join(' - ')}
+                  </Text>
+                </View>
+                {deleting ? (
+                  <View style={styles.trash}>
+                    <ActivityIndicator size="small" color={theme.colors.muted} />
+                  </View>
+                ) : (
+                  <Pressable
+                    onPress={() => confirmDelete(doc)}
+                    disabled={deletingId !== null}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('documents.delete')}
+                    hitSlop={8}
+                    style={styles.trash}
+                  >
+                    <Ionicons name="trash-outline" size={20} color={theme.colors.muted} />
+                  </Pressable>
+                )}
               </Pressable>
-            </Pressable>
-          ))}
-        </View>
+            )
+          }}
+        />
       )}
     </Screen>
   )
 }
 
-const styles = StyleSheet.create((theme) => ({
+const styles = StyleSheet.create((theme, rt) => ({
   statusRow: {
     alignItems: 'center',
     paddingVertical: theme.gap(2),
@@ -195,12 +220,14 @@ const styles = StyleSheet.create((theme) => ({
     paddingVertical: theme.gap(16),
   },
   list: {
-    gap: theme.gap(2),
+    paddingTop: theme.gap(2),
+    paddingBottom: rt.insets.bottom + theme.gap(4),
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(3),
+    marginBottom: theme.gap(2),
     paddingVertical: theme.gap(2),
     paddingHorizontal: theme.gap(3),
     borderRadius: theme.radius.lg,

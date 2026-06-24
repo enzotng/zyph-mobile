@@ -14,7 +14,7 @@ import { paramString } from '@/lib/routing'
 
 export default function NewPoiScreen() {
   const { t } = useTranslation()
-  const params = useLocalSearchParams<{ id: string; lat?: string; lng?: string }>()
+  const params = useLocalSearchParams<{ id: string; lat?: string; lng?: string; name?: string }>()
   const tripId = paramString(params.id)
   const router = useRouter()
   const createPoi = useCreatePoi(tripId)
@@ -35,7 +35,7 @@ export default function NewPoiScreen() {
   } = useForm<PoiValues>({
     resolver: zodResolver(poiSchema),
     defaultValues: {
-      label: '',
+      label: paramString(params.name),
       icon: 'pin',
       lat: hasPrefill ? prefillLat : 0,
       lng: hasPrefill ? prefillLng : 0,
@@ -71,6 +71,7 @@ export default function NewPoiScreen() {
   return (
     <Screen
       title={t('poiForm.addTitle')}
+      showBack
       scroll
       footer={
         <Button

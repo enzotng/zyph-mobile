@@ -17,6 +17,7 @@ import { Surface } from '@/components/ui'
 import { useFxRates } from '@/features/fx'
 import { type CreateTripValues, createTripSchema, useCreateTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 
 function FieldIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
   const { theme } = useUnistyles()
@@ -74,8 +75,10 @@ export default function NewTripScreen() {
   async function onSubmit(values: CreateTripValues) {
     try {
       const trip = await createTrip.mutateAsync(values)
+      haptics.success()
       router.replace({ pathname: '/trips/[id]', params: { id: trip.id } })
     } catch (error) {
+      haptics.error()
       Alert.alert(
         t('newTrip.errorTitle'),
         error instanceof Error ? error.message : t('common.tryAgain'),
@@ -89,9 +92,10 @@ export default function NewTripScreen() {
       showBack
       footer={
         <Button
-          label={createTrip.isPending ? t('newTrip.submitting') : t('newTrip.submit')}
+          label={t('newTrip.submit')}
           onPress={handleSubmit(onSubmit)}
           disabled={createTrip.isPending || !isValid}
+          loading={createTrip.isPending}
         />
       }
     >

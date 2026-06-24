@@ -1,8 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useRef } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Alert, Text, View } from 'react-native'
+import { Alert, Text, type TextInput, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -56,6 +57,10 @@ export default function EditTripScreen() {
   const endDate = useWatch({ control, name: 'endDate' })
   const destination = useWatch({ control, name: 'destination' })
 
+  // Keyboard "next"/"done" chaining: title hands focus to currency, currency submits the form.
+  const currencyRef = useRef<TextInput>(null)
+  const submit = handleSubmit(onSubmit)
+
   async function onSubmit(values: CreateTripValues) {
     try {
       await updateTrip.mutateAsync({ id: tripId, ...values })
@@ -70,7 +75,7 @@ export default function EditTripScreen() {
 
   if (isLoading) {
     return (
-      <Screen title={t('tripForm.editTitle')}>
+      <Screen title={t('tripForm.editTitle')} showBack>
         <Spinner />
       </Screen>
     )
@@ -89,11 +94,12 @@ export default function EditTripScreen() {
   return (
     <Screen
       title={t('tripForm.editTitle')}
+      showBack
       scroll
       footer={
         <Button
           label={updateTrip.isPending ? t('common.saving') : t('common.save')}
-          onPress={handleSubmit(onSubmit)}
+          onPress={submit}
           disabled={updateTrip.isPending}
         />
       }
@@ -108,6 +114,9 @@ export default function EditTripScreen() {
             onChangeText={field.onChange}
             onBlur={field.onBlur}
             error={errors.title?.message}
+            returnKeyType="next"
+            onSubmitEditing={() => currencyRef.current?.focus()}
+            blurOnSubmit={false}
           />
         )}
       />
@@ -133,6 +142,7 @@ export default function EditTripScreen() {
         name="currency"
         render={({ field }) => (
           <TextField
+            ref={currencyRef}
             label={t('tripForm.currency')}
             autoCapitalize="characters"
             maxLength={3}
@@ -140,6 +150,8 @@ export default function EditTripScreen() {
             onChangeText={field.onChange}
             onBlur={field.onBlur}
             error={errors.currency?.message}
+            returnKeyType="done"
+            onSubmitEditing={() => void submit()}
           />
         )}
       />

@@ -3,17 +3,10 @@ import type { ReactNode } from 'react'
 import { StyleSheet as RNStyleSheet, type StyleProp, View, type ViewStyle } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-// Vibrant indigo/sky/teal family for the colour cover when no photo is available.
-const FALLBACK_TINTS = [
-  '#4F46E5',
-  '#6366F1',
-  '#0EA5E9',
-  '#0891B2',
-  '#2563EB',
-  '#0D9488',
-  '#8B5CF6',
-  '#DB2777',
-]
+import { CATEGORICAL_TINTS, PHOTO_SCRIM } from '@/lib/color'
+
+// Shared categorical hues for the colour cover when no photo is available.
+const FALLBACK_TINTS = CATEGORICAL_TINTS
 
 // Deterministic so a given trip always gets the same cover colour across renders/sessions.
 export function coverTint(seed: string | undefined): string {
@@ -93,6 +86,6 @@ const styles = StyleSheet.create(() => ({
     right: 0,
     bottom: 0,
     top: '35%',
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backgroundColor: PHOTO_SCRIM,
   },
 }))

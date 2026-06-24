@@ -72,7 +72,7 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: 'center',
   },
   label: {
-    fontSize: 12.5,
+    fontSize: theme.fontSize.xs,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     color: theme.colors.foreground,

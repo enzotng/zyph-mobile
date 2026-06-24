@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Alert, ScrollView, Text, View } from 'react-native'
@@ -10,9 +10,10 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
-import { Surface } from '@/components/ui'
+import { Spinner, Surface } from '@/components/ui'
 import { type JoinTripValues, joinTripSchema, useJoinTrip } from '@/features/group'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
 export default function JoinTripScreen() {
@@ -33,13 +34,20 @@ export default function JoinTripScreen() {
 
   const code = useWatch({ control, name: 'code' })
 
+  // While a deep-link auto-join is in flight, show a dedicated "Joining..." state instead of the
+  // empty manual form; on failure we drop back to the form (code prefilled) for a manual retry.
+  const [autoJoining, setAutoJoining] = useState(false)
+
   // Stable across renders so the auto-join effect below does not re-run on every render.
   const onSubmit = useCallback(
     async (values: JoinTripValues) => {
       try {
         const tripId = await joinTrip.mutateAsync(values.code)
+        haptics.success()
         router.replace({ pathname: '/trips/[id]', params: { id: tripId } })
       } catch (error) {
+        haptics.error()
+        setAutoJoining(false)
         Alert.alert(
           t('joinTrip.errorTitle'),
           error instanceof Error ? error.message : t('joinTrip.errorBody'),
@@ -55,9 +63,22 @@ export default function JoinTripScreen() {
   useEffect(() => {
     if (!autoJoined.current && linkCode.length >= 4) {
       autoJoined.current = true
+      setAutoJoining(true)
       void handleSubmit(onSubmit)()
     }
   }, [linkCode, handleSubmit, onSubmit])
+
+  if (autoJoining) {
+    return (
+      <Screen title={t('joinTrip.title')} showBack>
+        <View style={styles.joining}>
+          <Spinner />
+          <Text style={styles.title}>{t('joinTrip.joiningTitle')}</Text>
+          <Text style={styles.subtitle}>{t('joinTrip.joiningBody')}</Text>
+        </View>
+      </Screen>
+    )
+  }
 
   return (
     <Screen
@@ -65,9 +86,10 @@ export default function JoinTripScreen() {
       showBack
       footer={
         <Button
-          label={joinTrip.isPending ? t('joinTrip.submitting') : t('joinTrip.submit')}
+          label={t('joinTrip.submit')}
           onPress={handleSubmit(onSubmit)}
           disabled={joinTrip.isPending || code.length < 4}
+          loading={joinTrip.isPending}
         />
       }
     >
@@ -120,6 +142,12 @@ const styles = StyleSheet.create((theme) => ({
   flex: {
     flex: 1,
     marginHorizontal: -theme.gap(6),
+  },
+  joining: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.gap(4),
   },
   body: {
     paddingHorizontal: theme.gap(6),

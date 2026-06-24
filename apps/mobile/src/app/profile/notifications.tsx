@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Switch, Text, View } from 'react-native'
+import { Alert, Switch, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Screen } from '@/components/screen'
@@ -9,6 +9,7 @@ import {
   useNotificationPreferences,
   useUpdateNotificationPreferences,
 } from '@/features/notifications'
+import { haptics } from '@/lib/haptics'
 
 type PrefKey = 'push' | 'members' | 'expenses' | 'settlements' | 'timeline' | 'packing'
 
@@ -31,16 +32,30 @@ export default function NotificationPreferencesScreen() {
   }
 
   function toggle(key: PrefKey, value: boolean) {
+    haptics.selection()
     const next = { ...resolved, [key]: value }
-    update.mutate({
-      userId,
-      pushEnabled: next.push,
-      membersEnabled: next.members,
-      expensesEnabled: next.expenses,
-      settlementsEnabled: next.settlements,
-      timelineEnabled: next.timeline,
-      packingEnabled: next.packing,
-    })
+    update.mutate(
+      {
+        userId,
+        pushEnabled: next.push,
+        membersEnabled: next.members,
+        expensesEnabled: next.expenses,
+        settlementsEnabled: next.settlements,
+        timelineEnabled: next.timeline,
+        packingEnabled: next.packing,
+      },
+      {
+        // The hook rolls the cache (and thus the Switch) back; surface the failure so the toggle
+        // does not look like it just bounced back on its own.
+        onError: () => {
+          haptics.error()
+          Alert.alert(
+            t('notifications.preferences.saveErrorTitle'),
+            t('notifications.preferences.saveErrorBody'),
+          )
+        },
+      },
+    )
   }
 
   function switchFor(key: PrefKey) {

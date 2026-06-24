@@ -7,9 +7,9 @@ import { Alert, Linking, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
-import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
+import { APP_TAB_BAR_CLEARANCE } from '@/components/layout/app-tab-bar'
 import { Screen } from '@/components/screen'
-import { Avatar, ListRow, Segmented, Spinner, Surface } from '@/components/ui'
+import { Avatar, Eyebrow, ListRow, Segmented, Spinner, Surface } from '@/components/ui'
 import { signOut, useAuth } from '@/features/auth'
 import { ACCOUNT_HAS_SHARED_TRIPS, deleteAccount, useProfile } from '@/features/profile'
 import { setAppLanguage } from '@/lib/i18n'
@@ -163,7 +163,7 @@ export default function ProfileScreen() {
 
       {/* Account */}
       <View style={styles.group}>
-        <Text style={styles.groupTitle}>{t('profile.section.account')}</Text>
+        <Eyebrow>{t('profile.section.account')}</Eyebrow>
         <Surface
           color={theme.colors.card}
           borderColor={theme.colors.border}
@@ -201,14 +201,14 @@ export default function ProfileScreen() {
 
       {/* Appearance */}
       <View style={styles.group}>
-        <Text style={styles.groupTitle}>{t('profile.section.appearance')}</Text>
+        <Eyebrow>{t('profile.section.appearance')}</Eyebrow>
         <Segmented value={themePref} onChange={selectTheme} options={themeOptions} />
         <Text style={styles.groupHint}>{t('profile.appearanceHint')}</Text>
       </View>
 
       {/* Language */}
       <View style={styles.group}>
-        <Text style={styles.groupTitle}>{t('profile.section.language')}</Text>
+        <Eyebrow>{t('profile.section.language')}</Eyebrow>
         <Segmented value={langPref} onChange={selectLanguage} options={languageOptions} />
         <Surface
           color={theme.colors.card}
@@ -229,7 +229,7 @@ export default function ProfileScreen() {
 
       {/* About / legal */}
       <View style={styles.group}>
-        <Text style={styles.groupTitle}>{t('profile.section.about')}</Text>
+        <Eyebrow>{t('profile.section.about')}</Eyebrow>
         <Surface
           color={theme.colors.card}
           borderColor={theme.colors.border}
@@ -251,7 +251,8 @@ export default function ProfileScreen() {
         variant="destructive"
         icon="log-out-outline"
         onPress={onSignOut}
-        disabled={signingOut || deleting}
+        loading={signingOut}
+        disabled={deleting}
       />
 
       <Pressable
@@ -296,18 +297,10 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
-    marginTop: 2,
+    marginTop: theme.gap(0.5),
   },
   group: {
     gap: theme.gap(2),
-  },
-  groupTitle: {
-    fontFamily: theme.fonts.sans.bold,
-    fontWeight: '700',
-    fontSize: theme.fontSize.sm,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    color: theme.colors.muted,
   },
   groupCard: {
     paddingHorizontal: theme.gap(4),
@@ -316,7 +309,7 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.xs,
     color: theme.colors.muted,
-    paddingLeft: 2,
+    paddingLeft: theme.gap(0.5),
   },
   dangerLink: {
     alignItems: 'center',
@@ -338,6 +331,6 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(3),
   },
   spacer: {
-    height: FLOATING_TAB_BAR_CLEARANCE,
+    height: APP_TAB_BAR_CLEARANCE,
   },
 }))

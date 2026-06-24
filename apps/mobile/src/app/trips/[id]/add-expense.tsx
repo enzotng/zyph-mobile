@@ -4,7 +4,8 @@ import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Alert, Pressable, Text, View } from 'react-native'
+import { Alert, Pressable, Text, TextInput, View } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -32,6 +33,8 @@ import { SplitModeSelector } from '@/features/expenses/components/split-mode-sel
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
 import { useTripMembers } from '@/features/group'
 import { useTrip } from '@/features/trips'
+import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 import { formatAmount } from '@/lib/money'
 import { paramString } from '@/lib/routing'
 
@@ -216,8 +219,10 @@ export default function AddExpenseScreen() {
         paidBy,
         payers,
       })
+      haptics.success()
       router.back()
     } catch (error) {
+      haptics.error()
       Alert.alert(
         t('expenseForm.createError'),
         error instanceof Error ? error.message : t('common.tryAgain'),
@@ -229,7 +234,7 @@ export default function AddExpenseScreen() {
   // split list is fully populated before the user interacts.
   if (!trip || !members) {
     return (
-      <Screen title={t('expenseForm.addTitle')}>
+      <Screen title={t('trip.newExpense')} showBack>
         <Spinner label={t('common.loading')} />
       </Screen>
     )
@@ -237,15 +242,18 @@ export default function AddExpenseScreen() {
 
   return (
     <Screen
-      title={t('expenseForm.addTitle')}
+      title={t('trip.newExpense')}
+      showBack
       scroll
       footer={
         <View style={styles.footerBar}>
           {blockReason ? <Text style={styles.footerReason}>{blockReason}</Text> : null}
           <Button
-            label={createExpense.isPending ? t('expenseForm.submitting') : t('expenseForm.submit')}
+            label={t('expenseForm.submit')}
             onPress={handleSubmit(onSubmit)}
             disabled={createExpense.isPending || blocked}
+            loading={createExpense.isPending}
+            accessibilityHint={blocked && blockReason ? blockReason : undefined}
           />
         </View>
       }
@@ -257,70 +265,73 @@ export default function AddExpenseScreen() {
       />
 
       <View style={styles.form}>
-        <View style={styles.group}>
-          <Text style={styles.fieldLabel}>{t('expenseForm.description')}</Text>
-          <View style={styles.titleRow}>
-            <View style={styles.flex}>
-              <Controller
-                control={control}
-                name="description"
-                render={({ field }) => (
-                  <TextField
-                    placeholder={t('expenseForm.descriptionPlaceholder')}
-                    value={field.value}
-                    onChangeText={field.onChange}
-                    onBlur={field.onBlur}
-                    error={errors.description?.message}
-                  />
-                )}
+        {/* Amount hero: the entered value large and centred, with the currency picker as caption. */}
+        <Animated.View entering={FadeInDown.duration(320)} style={styles.hero}>
+          <Controller
+            control={control}
+            name="amount"
+            render={({ field }) => (
+              <TextInput
+                placeholder="0.00"
+                placeholderTextColor={theme.colors.muted}
+                keyboardType="decimal-pad"
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                style={styles.heroInput}
+                accessibilityLabel={t('expenseForm.sectionAmount')}
               />
-            </View>
-            <Pressable
-              onPress={() => setScannerOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel={t('expenseForm.scanReceipt')}
-              style={styles.iconBtn}
-            >
-              <Ionicons name="scan-outline" size={22} color={theme.colors.primary} />
-            </Pressable>
-            <Pressable
-              onPress={openManualSplit}
-              accessibilityRole="button"
-              accessibilityLabel={t('expenseForm.splitByItem')}
-              style={styles.iconBtn}
-            >
-              <Ionicons name="list-outline" size={22} color={theme.colors.primary} />
-            </Pressable>
-          </View>
-        </View>
-
-        <View style={styles.group}>
-          <Text style={styles.fieldLabel}>{t('expenseForm.sectionAmount')}</Text>
-          <View style={styles.amountRow}>
+            )}
+          />
+          <View style={styles.heroCaption}>
+            <Text style={styles.heroCaptionText}>{t('expenseForm.currencyCaption')}</Text>
             <CurrencyPicker compact value={currency} currencies={currencies} onChange={setPicked} />
-            <View style={styles.flex}>
-              <Controller
-                control={control}
-                name="amount"
-                render={({ field }) => (
-                  <TextField
-                    placeholder="45.00"
-                    keyboardType="decimal-pad"
-                    value={field.value}
-                    onChangeText={field.onChange}
-                    onBlur={field.onBlur}
-                    error={errors.amount?.message}
-                  />
-                )}
-              />
-            </View>
           </View>
-          {isForeign && !canConvert ? (
-            <Text style={styles.warn}>{t('expenseForm.rateUnavailable', { currency })}</Text>
+          {errors.amount?.message ? (
+            <Text style={styles.heroError}>{errors.amount.message}</Text>
           ) : null}
-        </View>
+          {isForeign && !canConvert ? (
+            <Text style={styles.heroError}>{t('expenseForm.rateUnavailable', { currency })}</Text>
+          ) : null}
+        </Animated.View>
 
-        <View style={styles.twoCol}>
+        {/* Scan a receipt CTA: ink bezel card opening the Smart Split scanner. */}
+        <Animated.View entering={FadeInDown.delay(60).duration(320)}>
+          <Pressable
+            onPress={() => setScannerOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t('expenseForm.scanReceipt')}
+            style={({ pressed }) => [styles.scanCard, pressed && styles.pressed]}
+          >
+            <View style={styles.scanTile}>
+              <Ionicons name="scan-outline" size={22} color={BEZEL_ACCENT} />
+            </View>
+            <View style={styles.scanInfo}>
+              <Text style={styles.scanTitle}>{t('expenseForm.scanReceipt')}</Text>
+              <Text style={styles.scanSubtitle}>{t('expenseForm.scanSubtitle')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={CREAM_MUTED} />
+          </Pressable>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(120).duration(320)} style={styles.group}>
+          <Text style={styles.fieldLabel}>{t('expenseForm.description')}</Text>
+          <Controller
+            control={control}
+            name="description"
+            render={({ field }) => (
+              <TextField
+                placeholder={t('expenseForm.descriptionPlaceholder')}
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                error={errors.description?.message}
+              />
+            )}
+          />
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(160).duration(320)} style={styles.twoCol}>
           <View style={styles.col}>
             <Text style={styles.fieldLabel}>{t('expenseForm.paidBy')}</Text>
             <PayersEditor
@@ -335,12 +346,12 @@ export default function AddExpenseScreen() {
             <Text style={styles.fieldLabel}>{t('expenseForm.category')}</Text>
             <CategoryPicker value={category} onChange={setCategory} />
           </View>
-        </View>
+        </Animated.View>
 
-        <View style={styles.group}>
+        <Animated.View entering={FadeInDown.delay(200).duration(320)} style={styles.group}>
           <View style={styles.splitHeader}>
             <Text style={[styles.fieldLabel, styles.splitHeaderLabel]} numberOfLines={1}>
-              {`${t('expenseForm.splitBetween')} · ${split.includedCount}/${members.length}`}
+              {`${t('expenseForm.splitBetween')} ${split.includedCount}/${members.length}`}
             </Text>
             <View style={styles.splitHeaderRight}>
               <Pressable
@@ -357,6 +368,19 @@ export default function AddExpenseScreen() {
               <SplitModeSelector mode={split.mode} onChange={split.setMode} />
             </View>
           </View>
+
+          {/* By-item entry: hop to Smart Split, keeping the manual-split flow intact. */}
+          <Pressable
+            onPress={openManualSplit}
+            accessibilityRole="button"
+            accessibilityLabel={t('expenseForm.splitByItem')}
+            style={({ pressed }) => [styles.byItemRow, pressed && styles.pressed]}
+          >
+            <Ionicons name="list-outline" size={18} color={theme.colors.primary} />
+            <Text style={styles.byItemText}>{t('expenseForm.splitByItem')}</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.muted} />
+          </Pressable>
+
           {members.map((member) => (
             <SplitMemberRow
               key={member.id}
@@ -374,23 +398,90 @@ export default function AddExpenseScreen() {
             baseCents={baseCents}
             tripCurrency={tripCurrency}
           />
-        </View>
+        </Animated.View>
       </View>
     </Screen>
   )
 }
 
+// The scan CTA sits on the ink bezel (dark in both themes), so its text uses fixed cream + the
+// lighter accent tone that reads on ink (mirrors RightNowCard / the spend feed).
+const CREAM = '#F4F1E8'
+const CREAM_MUTED = 'rgba(244, 241, 232, 0.6)'
+const BEZEL_ACCENT = '#A5A0FF'
+
 const styles = StyleSheet.create((theme) => ({
-  warn: {
-    fontSize: theme.fontSize.sm,
-    fontFamily: theme.fonts.sans.regular,
-    color: theme.colors.warning,
-  },
   form: {
-    gap: theme.gap(4),
+    gap: theme.gap(5),
   },
   group: {
     gap: theme.gap(1.5),
+  },
+  hero: {
+    alignItems: 'center',
+    gap: theme.gap(1.5),
+    paddingTop: theme.gap(2),
+  },
+  heroInput: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: 50,
+    letterSpacing: -1,
+    color: theme.colors.foreground,
+    textAlign: 'center',
+    minWidth: theme.gap(40),
+  },
+  heroCaption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+  },
+  heroCaptionText: {
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+  },
+  heroError: {
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.regular,
+    color: theme.colors.destructive,
+    textAlign: 'center',
+  },
+  scanCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+    borderRadius: theme.radius.lg,
+    borderCurve: 'continuous',
+    backgroundColor: theme.colors.bezel,
+    paddingVertical: theme.gap(3.5),
+    paddingHorizontal: theme.gap(4),
+  },
+  scanTile: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.md,
+    borderCurve: 'continuous',
+    backgroundColor: withAlpha(BEZEL_ACCENT, 0.16),
+  },
+  scanInfo: {
+    flex: 1,
+    gap: theme.gap(0.5),
+  },
+  scanTitle: {
+    fontFamily: theme.fonts.display.bold,
+    fontWeight: '700',
+    fontSize: theme.fontSize.md,
+    color: CREAM,
+    letterSpacing: -0.2,
+  },
+  scanSubtitle: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: CREAM_MUTED,
   },
   twoCol: {
     flexDirection: 'row',
@@ -405,28 +496,6 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     color: theme.colors.muted,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(2),
-  },
-  flex: {
-    flex: 1,
-  },
-  iconBtn: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  amountRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: theme.gap(2),
   },
   splitHeader: {
     flexDirection: 'row',
@@ -447,6 +516,29 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     color: theme.colors.primary,
+  },
+  byItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+    paddingVertical: theme.gap(2.5),
+    paddingHorizontal: theme.gap(3),
+    borderRadius: theme.radius.md,
+    borderCurve: 'continuous',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+  },
+  byItemText: {
+    flex: 1,
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foreground,
+  },
+  pressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.98 }],
   },
   footerBar: {
     gap: theme.gap(2),

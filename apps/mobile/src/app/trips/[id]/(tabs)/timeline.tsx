@@ -1,16 +1,16 @@
 import { Ionicons } from '@expo/vector-icons'
 import { FlashList } from '@shopify/flash-list'
-import { Link, useGlobalSearchParams, useRouter } from 'expo-router'
+import { Link, useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router'
 import type { TFunction } from 'i18next'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import Animated, { FadeIn } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { FLOATING_TAB_BAR_CLEARANCE } from '@/components/layout/floating-tab-bar'
+import { TRIP_TAB_BAR_CLEARANCE } from '@/components/layout/trip-tab-bar'
 import { Screen } from '@/components/screen'
-import { Badge, Card, EmptyState, ErrorState, Skeleton } from '@/components/ui'
+import { EmptyState, ErrorState, Skeleton } from '@/components/ui'
 import {
   type EventStatus,
   eventStatus,
@@ -21,6 +21,8 @@ import {
   useEvents,
 } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
+import { PlanSegmented } from '@/features/trips/components/plan-segmented'
+import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
@@ -31,14 +33,16 @@ function formatEventTime(iso: string | null): string | null {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 }
 
-function statusBadge(status: EventStatus, t: TFunction) {
+// The right-side status text + its tone, derived from the event status. Tones map to the
+// money-safe palette: muted (done), success (live), primary (upcoming countdown).
+function statusLabel(status: EventStatus, t: TFunction): { label: string; tone: string } | null {
   switch (status.kind) {
     case 'upcoming':
-      return { label: formatCountdown(status, t), tone: 'primary' as const, icon: undefined }
+      return { label: formatCountdown(status, t), tone: 'primary' }
     case 'in_progress':
-      return { label: t('timeline.inProgress'), tone: 'success' as const, icon: 'ellipse' as const }
+      return { label: t('timeline.inProgress'), tone: 'success' }
     case 'completed':
-      return { label: t('timeline.completed'), tone: 'muted' as const, icon: undefined }
+      return { label: t('timeline.done'), tone: 'muted' }
     default:
       return null
   }
@@ -54,12 +58,16 @@ export default function TimelineScreen() {
   const router = useRouter()
   const items = useMemo(() => groupEventsByDay(events ?? []), [events])
 
-  // Tick once a minute so the countdown stays current without per-second churn.
+  // Tick once a minute so the countdown stays current without per-second churn. Gated to focus so
+  // the timer does not keep firing while another Plan tab (map/expenses) is showing.
   const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000)
-    return () => clearInterval(id)
-  }, [])
+  useFocusEffect(
+    useCallback(() => {
+      setNow(Date.now())
+      const id = setInterval(() => setNow(Date.now()), 60_000)
+      return () => clearInterval(id)
+    }, []),
+  )
 
   const renderItem = useCallback(
     ({ item }: { item: TimelineItem }) => {
@@ -67,77 +75,74 @@ export default function TimelineScreen() {
         return <Text style={styles.dayHeader}>{item.label}</Text>
       }
       const status = eventStatus(item.event.starts_at, item.event.ends_at, now)
-      const badge = statusBadge(status, t)
+      const badge = statusLabel(status, t)
       const time = formatEventTime(item.event.starts_at)
       const completed = status.kind === 'completed'
       const inProgress = status.kind === 'in_progress'
 
-      const railColor = completed
+      const tileColor = completed
+        ? withAlpha(theme.colors.foreground, 0.05)
+        : inProgress
+          ? withAlpha(theme.colors.success, 0.16)
+          : withAlpha(theme.colors.primary, 0.1)
+      const iconColor = completed
         ? theme.colors.muted
         : inProgress
           ? theme.colors.success
           : theme.colors.primary
-      const iconColor = completed ? theme.colors.muted : theme.colors.primary
+      const statusColor =
+        badge?.tone === 'success'
+          ? theme.colors.success
+          : badge?.tone === 'muted'
+            ? theme.colors.muted
+            : theme.colors.primary
 
       return (
-        <View style={styles.row}>
+        <Pressable
+          onPress={() => {
+            haptics.light()
+            router.push({
+              pathname: '/trips/[id]/events/[eventId]',
+              params: { id: tripId, eventId: item.event.id },
+            })
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={item.event.title}
+          style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+        >
           <View style={styles.rail}>
-            <View style={styles.railLine} />
-            <View
-              style={[
-                styles.dot,
-                completed && styles.dotCompleted,
-                inProgress && {
-                  backgroundColor: theme.colors.success,
-                  borderColor: theme.colors.background,
-                },
-                status.kind === 'upcoming' && {
-                  backgroundColor: theme.colors.background,
-                  borderColor: theme.colors.primary,
-                  borderWidth: 3,
-                },
-                completed && { backgroundColor: railColor, borderColor: theme.colors.background },
-                inProgress && styles.dotGlow,
-              ]}
-            />
+            <View style={[styles.tile, { backgroundColor: tileColor }]}>
+              <Ionicons name={eventTypeIcon(item.event.type)} size={18} color={iconColor} />
+            </View>
+            <View style={styles.connector} />
           </View>
 
-          <View style={styles.cardWrap}>
-            <Card
-              padding={theme.gap(3.25)}
-              onPress={() => {
-                haptics.light()
-                router.push({
-                  pathname: '/trips/[id]/events/[eventId]',
-                  params: { id: tripId, eventId: item.event.id },
-                })
-              }}
-            >
-              <View style={styles.eventHead}>
-                <View style={styles.eventTitleWrap}>
-                  <Ionicons name={eventTypeIcon(item.event.type)} size={18} color={iconColor} />
-                  <Text style={styles.eventTitle} numberOfLines={1}>
-                    {item.event.title}
-                  </Text>
-                </View>
-                {badge ? <Badge label={badge.label} tone={badge.tone} icon={badge.icon} /> : null}
-              </View>
-
-              {item.event.notes ? (
-                <Text style={styles.eventNotes} numberOfLines={1}>
-                  {item.event.notes}
+          <View style={styles.body}>
+            <View style={styles.head}>
+              <Text style={[styles.title, completed && styles.titleDone]} numberOfLines={1}>
+                {item.event.title}
+              </Text>
+              {badge ? (
+                <Text style={[styles.status, { color: statusColor }]} numberOfLines={1}>
+                  {badge.label}
                 </Text>
               ) : null}
+            </View>
 
-              {time ? (
-                <View style={styles.metaRow}>
-                  <Ionicons name="time-outline" size={13} color={theme.colors.muted} />
-                  <Text style={styles.metaText}>{time}</Text>
-                </View>
-              ) : null}
-            </Card>
+            {item.event.notes ? (
+              <Text style={styles.notes} numberOfLines={1}>
+                {item.event.notes}
+              </Text>
+            ) : null}
+
+            {time ? (
+              <View style={styles.metaRow}>
+                <Ionicons name="time-outline" size={13} color={theme.colors.muted} />
+                <Text style={styles.metaText}>{time}</Text>
+              </View>
+            ) : null}
           </View>
-        </View>
+        </Pressable>
       )
     },
     [now, router, tripId, theme, t],
@@ -153,7 +158,7 @@ export default function TimelineScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('smartImport.open')}
-              hitSlop={8}
+              hitSlop={12}
             >
               <Ionicons name="sparkles" size={22} color={theme.colors.primary} />
             </Pressable>
@@ -162,7 +167,7 @@ export default function TimelineScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('timeline.addEvent')}
-              hitSlop={8}
+              hitSlop={12}
             >
               <Ionicons name="add" size={26} color={theme.colors.primary} />
             </Pressable>
@@ -170,6 +175,10 @@ export default function TimelineScreen() {
         </View>
       }
     >
+      <View style={styles.segment}>
+        <PlanSegmented active="timeline" tripId={tripId} />
+      </View>
+
       {isLoading ? (
         <TimelineSkeleton />
       ) : isError ? (
@@ -219,18 +228,18 @@ function TimelineSkeleton() {
           entering={FadeIn.delay(i * 50).duration(280)}
           style={styles.skeletonRow}
         >
-          <View style={styles.skeletonRail}>
-            <Skeleton width={DOT_SIZE} height={DOT_SIZE} radius={DOT_SIZE / 2} />
+          <Skeleton width={TILE_SIZE} height={TILE_SIZE} radius={theme.radius.md} />
+          <View style={styles.skeletonText}>
+            <Skeleton width="55%" height={15} radius={theme.radius.sm} />
+            <Skeleton width="35%" height={12} radius={theme.radius.sm} />
           </View>
-          <Skeleton width="100%" height={84} radius={theme.radius.lg} style={styles.skeletonCard} />
         </Animated.View>
       ))}
     </View>
   )
 }
 
-const RAIL_WIDTH = 24
-const DOT_SIZE = 16
+const TILE_SIZE = 40
 
 const styles = StyleSheet.create((theme, rt) => ({
   headerActions: {
@@ -238,31 +247,31 @@ const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     gap: theme.gap(2),
   },
+  segment: {
+    marginBottom: theme.gap(3),
+  },
   fill: {
     flex: 1,
   },
   skeleton: {
-    paddingTop: theme.gap(4),
+    paddingTop: theme.gap(1),
   },
   skeletonHeader: {
     marginBottom: theme.gap(3),
   },
   skeletonRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.gap(3),
     paddingBottom: theme.gap(3),
   },
-  skeletonRail: {
-    width: RAIL_WIDTH,
-    alignItems: 'center',
-    paddingTop: theme.gap(4),
-  },
-  skeletonCard: {
+  skeletonText: {
     flex: 1,
+    gap: theme.gap(1.5),
   },
   list: {
     paddingTop: theme.gap(1),
-    paddingBottom: rt.insets.bottom + FLOATING_TAB_BAR_CLEARANCE,
+    paddingBottom: rt.insets.bottom + TRIP_TAB_BAR_CLEARANCE,
   },
   dayHeader: {
     fontFamily: theme.fonts.sans.bold,
@@ -279,73 +288,65 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(3),
     paddingBottom: theme.gap(3),
   },
+  pressed: {
+    opacity: 0.85,
+  },
   rail: {
-    width: RAIL_WIDTH,
+    width: TILE_SIZE,
     alignItems: 'center',
   },
-  railLine: {
-    position: 'absolute',
-    top: 0,
-    bottom: -theme.gap(3),
+  tile: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    borderRadius: theme.radius.md,
+    borderCurve: 'continuous',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connector: {
+    flex: 1,
     width: 2,
+    marginTop: theme.gap(1),
     backgroundColor: theme.colors.border,
   },
-  dot: {
-    width: DOT_SIZE,
-    height: DOT_SIZE,
-    borderRadius: DOT_SIZE / 2,
-    marginTop: theme.gap(4),
-    backgroundColor: theme.colors.primary,
-    borderWidth: 2,
-    borderColor: theme.colors.background,
-  },
-  dotCompleted: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  dotGlow: {
-    shadowColor: theme.colors.success,
-    shadowOpacity: 0.4,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 3,
-  },
-  cardWrap: {
+  body: {
     flex: 1,
+    paddingBottom: theme.gap(1),
   },
-  eventHead: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: theme.gap(2),
-  },
-  eventTitleWrap: {
+  head: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: theme.gap(2),
-    flexShrink: 1,
+    minHeight: TILE_SIZE,
   },
-  eventTitle: {
+  title: {
+    flexShrink: 1,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
-    flexShrink: 1,
   },
-  eventNotes: {
+  titleDone: {
+    color: theme.colors.muted,
+    textDecorationLine: 'line-through',
+  },
+  status: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+  },
+  notes: {
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
-    marginTop: theme.gap(1.5),
-    paddingLeft: theme.gap(6.5),
+    marginTop: theme.gap(0.5),
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.gap(1),
-    marginTop: theme.gap(1.5),
-    paddingLeft: theme.gap(6.5),
+    marginTop: theme.gap(1),
   },
   metaText: {
     fontFamily: theme.fonts.sans.regular,

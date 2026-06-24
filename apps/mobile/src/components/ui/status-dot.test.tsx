@@ -6,9 +6,9 @@ import { StatusDot, type StatusDotTone } from './status-dot'
 // adaptiveThemes is on, so the active theme follows the system scheme in tests; we accept
 // either variant and rely on the per-tone colors being distinct to prove each branch ran.
 const TONE_COLORS: Record<StatusDotTone, readonly [string, string]> = {
-  success: ['#10B981', '#34D399'],
-  warning: ['#F59E0B', '#FBBF24'],
-  muted: ['#64748B', '#94A3B8'],
+  success: ['#2F7D57', '#5FB98C'],
+  warning: ['#C98A2B', '#D8A24A'],
+  muted: ['#8C8578', '#9A9384'],
 }
 
 function flatten(style: unknown): Record<string, unknown> {

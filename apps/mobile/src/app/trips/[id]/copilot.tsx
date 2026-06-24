@@ -2,23 +2,15 @@ import { Ionicons } from '@expo/vector-icons'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
+import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller'
 import Animated, {
   Easing,
+  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -50,9 +42,6 @@ import { paramString } from '@/lib/routing'
 // shown and sent as the question, so the model answers it from the trip context.
 const SUGGESTIONS = ['owe', 'next', 'topPayer', 'airport'] as const
 
-// Header height below the safe-area top inset, for the keyboard avoiding offset.
-const HEADER_HEIGHT = 54
-
 // The edge function rejects a payload with more turns than this, so the sent history is trimmed
 // to the most recent ones (the last turn is always the new user question).
 const MAX_SENT_MESSAGES = 30
@@ -68,7 +57,12 @@ function nextMessageId(list: ChatMessage[]): string {
 function ZoAvatar({ size }: { size: number }) {
   const { theme } = useUnistyles()
   return (
-    <View style={[styles.zoAvatar, { width: size, height: size, borderRadius: size }]}>
+    <View
+      style={[
+        styles.zoAvatar,
+        { width: size, height: size, borderRadius: Math.round(size * 0.34) },
+      ]}
+    >
       <Ionicons
         name="sparkles"
         size={Math.round(size * 0.5)}
@@ -84,7 +78,6 @@ export default function CopilotScreen() {
   const router = useRouter()
   const { t, i18n } = useTranslation()
   const { theme } = useUnistyles()
-  const insets = useSafeAreaInsets()
 
   // Zoom-in pop on open (the route uses a fade, so no horizontal slide).
   const enter = useSharedValue(0)
@@ -210,6 +203,7 @@ export default function CopilotScreen() {
     if (!q || ask.isPending || !dataReady) {
       return
     }
+    haptics.light()
     const convo: ChatMessage[] = [
       ...messages,
       { id: nextMessageId(messages), role: 'user', text: q },
@@ -313,7 +307,15 @@ export default function CopilotScreen() {
             hitSlop={8}
             style={({ pressed }) => (pressed ? styles.pressed : undefined)}
           >
-            <Ionicons name="chevron-back" size={26} color={theme.colors.foreground} />
+            <Surface
+              radius={theme.radius.md}
+              color={theme.colors.card}
+              borderColor={theme.colors.border}
+              borderWidth={1}
+              style={styles.backTile}
+            >
+              <Ionicons name="chevron-back" size={20} color={theme.colors.foreground} />
+            </Surface>
           </Pressable>
           <ZoAvatar size={38} />
           <View style={styles.headerText}>
@@ -336,7 +338,6 @@ export default function CopilotScreen() {
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={insets.top + HEADER_HEIGHT}
         >
           <ScrollView
             ref={scrollRef}
@@ -398,7 +399,8 @@ export default function CopilotScreen() {
               messages.map((message) => {
                 const isUser = message.role === 'user'
                 return (
-                  <View key={message.id}>
+                  // Plain ScrollView map (not a recycling list), so a simple mount entrance is safe.
+                  <Animated.View key={message.id} entering={FadeInDown.duration(240)}>
                     <View
                       style={[
                         styles.bubbleRow,
@@ -407,11 +409,11 @@ export default function CopilotScreen() {
                     >
                       {isUser ? null : <ZoAvatar size={26} />}
                       <Surface
-                        radius={theme.radius.lg}
+                        radius={18}
                         color={isUser ? theme.colors.primary : theme.colors.card}
                         borderColor={isUser ? theme.colors.primary : theme.colors.border}
                         borderWidth={1}
-                        style={styles.bubble}
+                        style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}
                       >
                         <Text style={isUser ? styles.bubbleTextUser : styles.bubbleText}>
                           {message.text}
@@ -423,7 +425,8 @@ export default function CopilotScreen() {
                                 label={t('copilot.confirm')}
                                 size="sm"
                                 block={false}
-                                disabled={execute.isPending}
+                                // Scoped to this card: confirming flips it to 'executing' (the spinner
+                                // branch) right away, so a sibling card running never disables this one.
                                 onPress={() => confirmAction(message)}
                               />
                               <Button
@@ -464,7 +467,7 @@ export default function CopilotScreen() {
                         <CopilotWidget type={message.widget} tripId={tripId} />
                       </View>
                     ) : null}
-                  </View>
+                  </Animated.View>
                 )
               })
             )}
@@ -472,11 +475,11 @@ export default function CopilotScreen() {
               <View style={[styles.bubbleRow, styles.bubbleRowAssistant]}>
                 <ZoAvatar size={26} />
                 <Surface
-                  radius={theme.radius.lg}
+                  radius={18}
                   color={theme.colors.card}
                   borderColor={theme.colors.border}
                   borderWidth={1}
-                  style={styles.bubble}
+                  style={[styles.bubble, styles.bubbleAssistant]}
                 >
                   <Spinner label={t('copilot.thinking')} />
                 </Surface>
@@ -485,9 +488,10 @@ export default function CopilotScreen() {
           </ScrollView>
 
           <View style={styles.composer}>
+            <Text style={styles.disclaimer}>{t('copilot.disclaimer')}</Text>
             <Surface
-              radius={24}
-              color={theme.colors.card}
+              radius={18}
+              color={theme.colors.raised}
               borderColor={theme.colors.border}
               borderWidth={1}
               style={styles.inputPill}
@@ -505,15 +509,17 @@ export default function CopilotScreen() {
                 disabled={!canSend}
                 accessibilityRole="button"
                 accessibilityLabel={t('copilot.send')}
+                accessibilityState={{ disabled: !canSend }}
                 style={({ pressed }) => (pressed ? styles.pressed : undefined)}
               >
                 <View
                   style={[
                     styles.sendButton,
                     { backgroundColor: canSend ? theme.colors.primary : theme.colors.muted },
+                    !canSend && styles.sendButtonDisabled,
                   ]}
                 >
-                  <Ionicons name="arrow-up" size={18} color={theme.colors.primaryForeground} />
+                  <Ionicons name="arrow-up" size={22} color={theme.colors.primaryForeground} />
                 </View>
               </Pressable>
             </Surface>
@@ -546,6 +552,13 @@ const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.primary,
+    borderCurve: 'continuous',
+  },
+  backTile: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerText: {
     flexShrink: 1,
@@ -618,6 +631,12 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingVertical: theme.gap(2.5),
     paddingHorizontal: theme.gap(3.5),
   },
+  bubbleUser: {
+    borderBottomRightRadius: 4,
+  },
+  bubbleAssistant: {
+    borderTopLeftRadius: 4,
+  },
   bubbleText: {
     color: theme.colors.foreground,
     fontFamily: theme.fonts.sans.regular,
@@ -664,6 +683,13 @@ const styles = StyleSheet.create((theme, rt) => ({
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.background,
   },
+  disclaimer: {
+    textAlign: 'center',
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
+    marginBottom: theme.gap(2),
+  },
   inputPill: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -682,11 +708,15 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontSize: theme.fontSize.md,
   },
   sendButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 32,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
   },
   pressed: {
     opacity: 0.85,

@@ -1,10 +1,19 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'expo-router'
+import { Link, useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Alert, Text, View } from 'react-native'
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native'
+import Animated, { FadeIn } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { z } from 'zod'
 
@@ -13,12 +22,14 @@ import { Button } from '@/components/button'
 import { TextField } from '@/components/text-field'
 import { makeEmailSchema, requestPasswordReset } from '@/features/auth'
 import { withAlpha } from '@/lib/color'
+import { haptics } from '@/lib/haptics'
 
 type ForgotPasswordValues = { email: string }
 
 export default function ForgotPasswordScreen() {
   const { t } = useTranslation()
   const { theme } = useUnistyles()
+  const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [sent, setSent] = useState(false)
   const schema = useMemo(() => z.object({ email: makeEmailSchema(t) }), [t])
@@ -36,7 +47,9 @@ export default function ForgotPasswordScreen() {
     try {
       await requestPasswordReset(values.email)
       setSent(true)
+      haptics.success()
     } catch (error) {
+      haptics.error()
       Alert.alert(
         t('auth.forgotPassword.errorTitle'),
         error instanceof Error ? error.message : t('common.tryAgain'),
@@ -48,18 +61,96 @@ export default function ForgotPasswordScreen() {
 
   if (sent) {
     return (
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <BrandLockup />
+
+          {/* Gentle fade so the swap from the form to the confirmation does not snap. */}
+          <Animated.View entering={FadeIn.duration(320)} style={styles.sentBody}>
+            <View
+              style={[styles.iconCircle, { backgroundColor: withAlpha(theme.colors.primary, 0.1) }]}
+            >
+              <Ionicons name="mail-unread-outline" size={40} color={theme.colors.primary} />
+            </View>
+
+            <View style={styles.heading}>
+              <Text style={styles.title}>{t('auth.forgotPassword.sentTitle')}</Text>
+              <Text style={styles.subtitle}>{t('auth.forgotPassword.sentBody')}</Text>
+            </View>
+
+            <View style={styles.footer}>
+              <Link href="/(auth)/sign-in" style={styles.link}>
+                {t('auth.forgotPassword.backToSignIn')}
+              </Link>
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    )
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
+          hitSlop={8}
+          style={styles.backTile}
+        >
+          <Ionicons name="chevron-back" size={20} color={theme.colors.foreground} />
+        </Pressable>
         <BrandLockup />
 
-        <View
-          style={[styles.iconCircle, { backgroundColor: withAlpha(theme.colors.primary, 0.1) }]}
-        >
-          <Ionicons name="mail-unread-outline" size={40} color={theme.colors.primary} />
+        <View style={styles.heading}>
+          <Text style={styles.title}>{t('auth.forgotPassword.title')}</Text>
+          <Text style={styles.subtitle}>{t('auth.forgotPassword.subtitle')}</Text>
         </View>
 
-        <View style={styles.heading}>
-          <Text style={styles.title}>{t('auth.forgotPassword.sentTitle')}</Text>
-          <Text style={styles.subtitle}>{t('auth.forgotPassword.sentBody')}</Text>
+        <Controller
+          control={control}
+          name="email"
+          render={({ field }) => (
+            <TextField
+              label={t('auth.fields.email')}
+              placeholder={t('auth.fields.emailPlaceholder')}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              error={errors.email?.message}
+              returnKeyType="go"
+              onSubmitEditing={handleSubmit(onSubmit)}
+            />
+          )}
+        />
+
+        <View style={styles.action}>
+          <Button
+            label={t('auth.forgotPassword.submit')}
+            onPress={handleSubmit(onSubmit)}
+            disabled={submitting}
+            loading={submitting}
+          />
         </View>
 
         <View style={styles.footer}>
@@ -67,51 +158,8 @@ export default function ForgotPasswordScreen() {
             {t('auth.forgotPassword.backToSignIn')}
           </Link>
         </View>
-      </View>
-    )
-  }
-
-  return (
-    <View style={styles.container}>
-      <BrandLockup />
-
-      <View style={styles.heading}>
-        <Text style={styles.title}>{t('auth.forgotPassword.title')}</Text>
-        <Text style={styles.subtitle}>{t('auth.forgotPassword.subtitle')}</Text>
-      </View>
-
-      <Controller
-        control={control}
-        name="email"
-        render={({ field }) => (
-          <TextField
-            label={t('auth.fields.email')}
-            placeholder={t('auth.fields.emailPlaceholder')}
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-            value={field.value}
-            onChangeText={field.onChange}
-            onBlur={field.onBlur}
-            error={errors.email?.message}
-          />
-        )}
-      />
-
-      <View style={styles.action}>
-        <Button
-          label={submitting ? t('auth.forgotPassword.submitting') : t('auth.forgotPassword.submit')}
-          onPress={handleSubmit(onSubmit)}
-          disabled={submitting}
-        />
-      </View>
-
-      <View style={styles.footer}>
-        <Link href="/(auth)/sign-in" style={styles.link}>
-          {t('auth.forgotPassword.backToSignIn')}
-        </Link>
-      </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 
@@ -126,13 +174,30 @@ function BrandLockup() {
 }
 
 const styles = StyleSheet.create((theme, rt) => ({
-  container: {
+  flex: {
     flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  container: {
+    flexGrow: 1,
     justifyContent: 'center',
     gap: theme.gap(4),
     paddingHorizontal: theme.gap(6),
     paddingTop: rt.insets.top,
     backgroundColor: theme.colors.background,
+  },
+  backTile: {
+    position: 'absolute',
+    top: rt.insets.top + theme.gap(2),
+    left: theme.gap(6),
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   lockup: {
     flexDirection: 'row',
@@ -144,6 +209,9 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontWeight: '700',
     fontSize: 22,
     letterSpacing: -0.6,
+  },
+  sentBody: {
+    gap: theme.gap(4),
   },
   iconCircle: {
     width: 84,
@@ -158,7 +226,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   title: {
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
-    fontSize: theme.fontSize.xl,
+    fontSize: 30,
     color: theme.colors.foreground,
     letterSpacing: -0.6,
   },
