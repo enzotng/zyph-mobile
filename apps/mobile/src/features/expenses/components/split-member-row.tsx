@@ -93,7 +93,7 @@ export function SplitMemberRow({
       ) : null}
 
       {share === undefined ? (
-        <Text style={styles.dash}>—</Text>
+        <Text style={styles.dash}>-</Text>
       ) : (
         <Amount cents={share} currency={tripCurrency} size={15} neutral />
       )}

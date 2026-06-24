@@ -253,6 +253,7 @@ export default function AddExpenseScreen() {
             onPress={handleSubmit(onSubmit)}
             disabled={createExpense.isPending || blocked}
             loading={createExpense.isPending}
+            accessibilityHint={blocked && blockReason ? blockReason : undefined}
           />
         </View>
       }

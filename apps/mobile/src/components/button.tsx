@@ -21,6 +21,8 @@ type ButtonProps = {
   // Busy state: swaps the label+icon for a spinner and blocks onPress while keeping the enabled
   // fill, so the button reads as "working" rather than "disabled".
   loading?: boolean
+  // Supplementary a11y hint, e.g. why a disabled submit is blocked.
+  accessibilityHint?: string
 }
 
 export function Button({
@@ -32,6 +34,7 @@ export function Button({
   icon,
   block = true,
   loading = false,
+  accessibilityHint,
 }: ButtonProps) {
   const { theme } = useUnistyles()
 
@@ -83,6 +86,7 @@ export function Button({
       onPress={handlePress}
       disabled={inert}
       accessibilityRole="button"
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: inert, busy: loading }}
       style={({ pressed }) => [
         styles.pressable(block),

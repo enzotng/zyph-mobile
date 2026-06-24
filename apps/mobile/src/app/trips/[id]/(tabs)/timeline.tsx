@@ -158,7 +158,7 @@ export default function TimelineScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('smartImport.open')}
-              hitSlop={8}
+              hitSlop={12}
             >
               <Ionicons name="sparkles" size={22} color={theme.colors.primary} />
             </Pressable>
@@ -167,7 +167,7 @@ export default function TimelineScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('timeline.addEvent')}
-              hitSlop={8}
+              hitSlop={12}
             >
               <Ionicons name="add" size={26} color={theme.colors.primary} />
             </Pressable>

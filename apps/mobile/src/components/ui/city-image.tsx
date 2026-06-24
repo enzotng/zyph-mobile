@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { StyleSheet as RNStyleSheet, type StyleProp, View, type ViewStyle } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { CATEGORICAL_TINTS } from '@/lib/color'
+import { CATEGORICAL_TINTS, PHOTO_SCRIM } from '@/lib/color'
 
 // Shared categorical hues for the colour cover when no photo is available.
 const FALLBACK_TINTS = CATEGORICAL_TINTS
@@ -86,6 +86,6 @@ const styles = StyleSheet.create(() => ({
     right: 0,
     bottom: 0,
     top: '35%',
-    backgroundColor: 'rgba(20, 17, 12, 0.55)',
+    backgroundColor: PHOTO_SCRIM,
   },
 }))

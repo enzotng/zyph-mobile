@@ -157,7 +157,7 @@ export default function SignInScreen() {
           onPress={() => router.push('/(auth)/forgot-password')}
           accessibilityRole="button"
           hitSlop={8}
-          style={styles.forgot}
+          style={({ pressed }) => [styles.forgot, pressed && styles.pressed]}
         >
           <Text style={styles.forgotText}>{t('auth.signIn.forgotPassword')}</Text>
         </Pressable>
@@ -203,7 +203,7 @@ export default function SignInScreen() {
             }}
             accessibilityRole="button"
             hitSlop={8}
-            style={styles.devReplay}
+            style={({ pressed }) => [styles.devReplay, pressed && styles.pressed]}
           >
             <Text style={styles.devReplayText}>Replay onboarding (dev)</Text>
           </Pressable>
@@ -261,6 +261,9 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.md,
     color: theme.colors.muted,
+  },
+  pressed: {
+    opacity: 0.85,
   },
   forgot: {
     alignSelf: 'flex-end',

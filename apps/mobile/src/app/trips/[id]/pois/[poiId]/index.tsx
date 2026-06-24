@@ -17,7 +17,7 @@ import {
   usePois,
   useShareLocation,
 } from '@/features/wayfinder'
-import { withAlpha } from '@/lib/color'
+import { PHOTO_CREAM, PHOTO_SCRIM, withAlpha } from '@/lib/color'
 import { formatDistance, formatWalkingTime, haversine } from '@/lib/geo'
 import { haptics } from '@/lib/haptics'
 import { getShareLocation, setShareLocation } from '@/lib/preferences'
@@ -82,7 +82,7 @@ export default function PoiDetailScreen() {
 
           <View style={styles.headerFoot}>
             <View style={styles.eyebrowRow}>
-              <Ionicons name={poiIconName(poi.icon)} size={14} color="#F4F1E8" />
+              <Ionicons name={poiIconName(poi.icon)} size={14} color={PHOTO_CREAM} />
               <Eyebrow style={styles.eyebrow}>
                 {t(`poiDetail.eyebrow.${eyebrowKey(poi.icon)}`)}
               </Eyebrow>
@@ -105,7 +105,7 @@ export default function PoiDetailScreen() {
           hitSlop={12}
           style={styles.backBtn}
         >
-          <Ionicons name="chevron-back" size={24} color="#F4F1E8" />
+          <Ionicons name="chevron-back" size={24} color={PHOTO_CREAM} />
         </Pressable>
       </View>
     </View>
@@ -315,7 +315,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: withAlpha('#1A1712', 0.32),
+    backgroundColor: PHOTO_SCRIM,
   },
   backWrap: {
     position: 'absolute',
@@ -327,9 +327,9 @@ const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.gap(5),
-    backgroundColor: withAlpha('#1A1712', 0.5),
+    backgroundColor: withAlpha(theme.colors.shadow, 0.5),
     borderWidth: 1,
-    borderColor: withAlpha('#F4F1E8', 0.12),
+    borderColor: withAlpha(PHOTO_CREAM, 0.12),
   },
   headerFoot: {
     position: 'absolute',
@@ -344,13 +344,13 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(1.5),
   },
   eyebrow: {
-    color: '#F4F1E8',
+    color: PHOTO_CREAM,
   },
   headerTitle: {
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
-    fontSize: 26,
-    color: '#F4F1E8',
+    fontSize: theme.fontSize.xl,
+    color: PHOTO_CREAM,
   },
   sheet: {
     flex: 1,
@@ -363,7 +363,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingHorizontal: theme.gap(5),
     paddingBottom: rt.insets.bottom + theme.gap(8),
     gap: theme.gap(4),
-    shadowColor: '#1A1712',
+    shadowColor: theme.colors.shadow,
     shadowOpacity: 0.16,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: -4 },

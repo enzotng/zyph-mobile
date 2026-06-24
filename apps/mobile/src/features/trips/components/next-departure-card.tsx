@@ -5,6 +5,7 @@ import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { AvatarStack, CityImage } from '@/components/ui'
+import { PHOTO_CREAM, PHOTO_CREAM_MUTED } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 
 import type { TripCard } from '../api/trips.api'
@@ -88,7 +89,7 @@ export function NextDepartureCard({
 
         <View style={styles.topRow}>
           <View style={styles.tag}>
-            <Ionicons name="airplane" size={13} color="#FFFFFF" />
+            <Ionicons name="airplane" size={13} color={PHOTO_CREAM} />
             <Text style={styles.tagText}>{t('home.nextDeparture')}</Text>
           </View>
           <View style={styles.countdownCol}>
@@ -105,7 +106,7 @@ export function NextDepartureCard({
           </Text>
           {trip.destination ? (
             <View style={styles.locationRow}>
-              <Ionicons name="location" size={14} color="rgba(255,255,255,0.92)" />
+              <Ionicons name="location" size={14} color={PHOTO_CREAM_MUTED} />
               <Text style={styles.location} numberOfLines={1}>
                 {trip.destination}
               </Text>
@@ -153,7 +154,7 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: 'rgba(255, 255, 255, 0.22)',
   },
   tagText: {
-    color: '#FFFFFF',
+    color: PHOTO_CREAM,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     fontSize: theme.fontSize.xs,
@@ -162,7 +163,7 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'flex-end',
   },
   countdown: {
-    color: '#FFFFFF',
+    color: PHOTO_CREAM,
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
     fontSize: theme.fontSize.xl,
@@ -172,7 +173,7 @@ const styles = StyleSheet.create((theme) => ({
     textShadowRadius: 8,
   },
   departureDate: {
-    color: 'rgba(255, 255, 255, 0.92)',
+    color: PHOTO_CREAM_MUTED,
     fontFamily: theme.fonts.sans.medium,
     fontSize: theme.fontSize.sm,
   },
@@ -187,7 +188,7 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
     fontSize: theme.fontSize.xxl,
-    color: '#FFFFFF',
+    color: PHOTO_CREAM,
     letterSpacing: -0.5,
     textShadowColor: 'rgba(0, 0, 0, 0.35)',
     textShadowOffset: { width: 0, height: 1 },
@@ -203,7 +204,7 @@ const styles = StyleSheet.create((theme) => ({
     flexShrink: 1,
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.sm,
-    color: 'rgba(255, 255, 255, 0.92)',
+    color: PHOTO_CREAM_MUTED,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,

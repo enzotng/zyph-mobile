@@ -49,6 +49,9 @@ const lightTheme = {
     live: '#2F7D57',
     raised: '#FFFFFF',
     bezel: '#1A1712',
+    // Fixed ink shadow colour, dark in both themes so floating surfaces read as lifted on the
+    // warm canvas as well as the ink one.
+    shadow: '#1A1712',
   },
   ...shared,
 } as const
@@ -72,6 +75,8 @@ const darkTheme = {
     live: '#2F7D57',
     raised: '#211C16',
     bezel: '#211C16',
+    // Same fixed ink shadow as light: shadows read dark in both themes.
+    shadow: '#1A1712',
   },
   ...shared,
 } as const

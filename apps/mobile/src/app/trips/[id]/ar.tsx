@@ -354,7 +354,8 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingHorizontal: theme.gap(3),
     paddingVertical: theme.gap(2),
     borderRadius: theme.radius.full,
-    backgroundColor: withAlpha(INK, 0.5),
+    // Deeper wash than the chrome buttons so the accuracy reading holds up over bright scenes.
+    backgroundColor: withAlpha(INK, 0.64),
     borderWidth: 1,
     borderColor: withAlpha(CREAM, 0.12),
   },
@@ -363,6 +364,10 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
+    // Subtle ink halo so the glyph never washes out against a bright sky behind the badge.
+    textShadowColor: withAlpha(INK, 0.7),
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   chipsScroll: {
     position: 'absolute',
@@ -418,8 +423,9 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingVertical: theme.gap(4),
     borderRadius: theme.radius.lg,
     borderCurve: 'continuous',
-    // Translucent ink card (blur-like wash) so it floats over the camera.
-    backgroundColor: withAlpha(INK, 0.62),
+    // Translucent ink card (blur-like wash) so it floats over the camera. Deepened so the distance +
+    // heading readouts stay legible even over a bright scene behind the card.
+    backgroundColor: withAlpha(INK, 0.72),
     borderWidth: 1,
     borderColor: withAlpha(CREAM, 0.1),
   },
@@ -446,6 +452,10 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     color: CREAM,
+    // Ink halo keeps the distance/walk readout legible over a bright scene.
+    textShadowColor: withAlpha(INK, 0.7),
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   hudDelta: {
     marginLeft: 'auto',
@@ -453,6 +463,10 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '700',
     color: theme.colors.primary,
+    // Halo so the accent heading delta does not vanish against a light background.
+    textShadowColor: withAlpha(INK, 0.7),
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   hudMuted: {
     color: withAlpha(CREAM, 0.7),

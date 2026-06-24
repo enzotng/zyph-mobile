@@ -36,7 +36,7 @@ export function HomeHeader({
   return (
     <View style={styles.header}>
       <View style={styles.text}>
-        <Text style={styles.greeting} numberOfLines={1}>
+        <Text style={styles.greeting} numberOfLines={2}>
           {greeting}
         </Text>
         <Text style={styles.subtitle} numberOfLines={1}>

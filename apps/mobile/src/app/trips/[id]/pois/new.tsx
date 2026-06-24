@@ -71,6 +71,7 @@ export default function NewPoiScreen() {
   return (
     <Screen
       title={t('poiForm.addTitle')}
+      showBack
       scroll
       footer={
         <Button

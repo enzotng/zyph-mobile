@@ -251,7 +251,8 @@ export default function ProfileScreen() {
         variant="destructive"
         icon="log-out-outline"
         onPress={onSignOut}
-        disabled={signingOut || deleting}
+        loading={signingOut}
+        disabled={deleting}
       />
 
       <Pressable
@@ -296,7 +297,7 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
-    marginTop: 2,
+    marginTop: theme.gap(0.5),
   },
   group: {
     gap: theme.gap(2),
@@ -308,7 +309,7 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.xs,
     color: theme.colors.muted,
-    paddingLeft: 2,
+    paddingLeft: theme.gap(0.5),
   },
   dangerLink: {
     alignItems: 'center',

@@ -439,6 +439,19 @@ function AttributionEditor({
   const saveDisabled =
     isPending || unassignedCount > 0 || itemsTotal <= 0 || (isForeign && !canConvert)
 
+  // Concise reason shown above a disabled Save (and spoken as its a11y hint), so the user knows what
+  // is blocking the action without guessing - which line is unassigned, a zero total, a missing rate.
+  const saveBlockReason =
+    isPending || !saveDisabled
+      ? null
+      : isForeign && !canConvert
+        ? t('smartSplit.rateUnavailable', { currency: expenseCurrency })
+        : itemsTotal <= 0
+          ? t('smartSplit.zeroTotalTitle')
+          : unassignedCount > 0
+            ? t('smartSplit.unassignedBody', { count: unassignedCount })
+            : null
+
   return (
     <Screen title={mode === 'edit' ? t('smartSplit.editTitle') : t('smartSplit.title')} showBack>
       <View style={styles.fill}>
@@ -649,6 +662,7 @@ function AttributionEditor({
               )
             })}
           </ScrollView>
+          {saveBlockReason ? <Text style={styles.saveReason}>{saveBlockReason}</Text> : null}
           <Button
             label={
               isPending
@@ -661,6 +675,7 @@ function AttributionEditor({
             }
             onPress={onSave}
             disabled={saveDisabled}
+            accessibilityHint={saveBlockReason ?? undefined}
           />
         </Animated.View>
       </View>
@@ -810,10 +825,13 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(2),
   },
   labelField: {
-    flex: 1,
+    flex: 2,
   },
+  // Amount flexes with a sensible floor instead of a fixed 88pt, so the label + amount + trash row
+  // does not crowd on a narrow screen (iPhone SE) while still keeping the amount readable.
   amountField: {
-    width: theme.gap(22),
+    flex: 1,
+    minWidth: theme.gap(18),
   },
   removeBtn: {
     height: 48,
@@ -910,6 +928,13 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingBottom: rt.insets.bottom + theme.gap(2),
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
+  },
+  saveReason: {
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    color: theme.colors.muted,
+    textAlign: 'center',
   },
   summaryRow: {
     gap: theme.gap(2),

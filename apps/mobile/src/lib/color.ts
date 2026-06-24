@@ -13,6 +13,14 @@ export const CATEGORICAL_TINTS = [
   '#06B6D4', // cyan
 ] as const
 
+// Cream-on-photo constants. Full-bleed cover cards (live trip, next departure, upcoming row,
+// CityImage) layer light text and a warm-ink scrim over a photo; these keep those values in one
+// place so a card can never drift. PHOTO_CREAM is the primary overlay text; PHOTO_CREAM_MUTED is
+// the dimmed secondary (location lines, chevrons); PHOTO_SCRIM is the dark gradient/overlay base.
+export const PHOTO_CREAM = '#FFFFFF'
+export const PHOTO_CREAM_MUTED = 'rgba(255, 255, 255, 0.92)'
+export const PHOTO_SCRIM = 'rgba(20, 17, 12, 0.55)'
+
 // Build an rgba() string from a hex color + alpha (0-1). Used for "soft" token
 // fills - a translucent tint of a theme color (RN has no CSS color-mix).
 export function withAlpha(hex: string, alpha: number): string {

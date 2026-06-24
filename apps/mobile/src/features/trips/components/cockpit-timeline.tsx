@@ -7,6 +7,15 @@ import { eventStatus, eventTypeIcon, formatCountdown, type TripEvent } from '@/f
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 
+// Short clock time for the rail's secondary line (e.g. "18:00"), so the compact rows aren't
+// bare one-liners. Null for an all-day event with no start time.
+function formatEventTime(iso: string | null): string | null {
+  if (!iso) {
+    return null
+  }
+  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+}
+
 // The cockpit "what's next" rail: the next few upcoming events. The first is a bordered NEXT
 // card, the rest are compact rows, all threaded on a vertical timeline rail.
 export function CockpitTimeline({
@@ -30,6 +39,9 @@ export function CockpitTimeline({
       {events.map((event, index) => {
         const status = eventStatus(event.starts_at, event.ends_at, now)
         const countdown = status.kind === 'upcoming' ? formatCountdown(status, t) : null
+        // Secondary line for the compact rows: the start time, falling back to the note so the
+        // row carries a little context instead of just a bare title.
+        const rowSecondary = formatEventTime(event.starts_at) ?? event.notes
         const isFirst = index === 0
         const isLast = index === events.length - 1
         const press = () => {
@@ -95,9 +107,16 @@ export function CockpitTimeline({
                 <View style={styles.rowIconTile}>
                   <Ionicons name={eventTypeIcon(event.type)} size={18} color={theme.colors.muted} />
                 </View>
-                <Text style={styles.rowTitle} numberOfLines={1}>
-                  {event.title}
-                </Text>
+                <View style={styles.rowBody}>
+                  <Text style={styles.rowTitle} numberOfLines={1}>
+                    {event.title}
+                  </Text>
+                  {rowSecondary ? (
+                    <Text style={styles.rowSecondary} numberOfLines={1}>
+                      {rowSecondary}
+                    </Text>
+                  ) : null}
+                </View>
                 {countdown ? <Text style={styles.rowCountdown}>{countdown}</Text> : null}
               </Pressable>
             )}
@@ -198,12 +217,20 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: 'center',
     backgroundColor: withAlpha(theme.colors.muted, 0.12),
   },
-  rowTitle: {
+  rowBody: {
     flex: 1,
+    gap: 1,
+  },
+  rowTitle: {
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     fontSize: theme.fontSize.md,
     color: theme.colors.foreground,
+  },
+  rowSecondary: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
   },
   rowCountdown: {
     fontFamily: theme.fonts.display.bold,

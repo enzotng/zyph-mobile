@@ -32,6 +32,7 @@ export default function NotificationPreferencesScreen() {
   }
 
   function toggle(key: PrefKey, value: boolean) {
+    haptics.selection()
     const next = { ...resolved, [key]: value }
     update.mutate(
       {

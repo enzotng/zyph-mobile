@@ -6,6 +6,7 @@ import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'r
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller'
 import Animated, {
   Easing,
+  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -202,6 +203,7 @@ export default function CopilotScreen() {
     if (!q || ask.isPending || !dataReady) {
       return
     }
+    haptics.light()
     const convo: ChatMessage[] = [
       ...messages,
       { id: nextMessageId(messages), role: 'user', text: q },
@@ -397,7 +399,8 @@ export default function CopilotScreen() {
               messages.map((message) => {
                 const isUser = message.role === 'user'
                 return (
-                  <View key={message.id}>
+                  // Plain ScrollView map (not a recycling list), so a simple mount entrance is safe.
+                  <Animated.View key={message.id} entering={FadeInDown.duration(240)}>
                     <View
                       style={[
                         styles.bubbleRow,
@@ -422,7 +425,8 @@ export default function CopilotScreen() {
                                 label={t('copilot.confirm')}
                                 size="sm"
                                 block={false}
-                                disabled={execute.isPending}
+                                // Scoped to this card: confirming flips it to 'executing' (the spinner
+                                // branch) right away, so a sibling card running never disables this one.
                                 onPress={() => confirmAction(message)}
                               />
                               <Button
@@ -463,7 +467,7 @@ export default function CopilotScreen() {
                         <CopilotWidget type={message.widget} tripId={tripId} />
                       </View>
                     ) : null}
-                  </View>
+                  </Animated.View>
                 )
               })
             )}

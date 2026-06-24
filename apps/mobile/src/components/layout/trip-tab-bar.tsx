@@ -50,7 +50,7 @@ function TripTabButton({
   return (
     <Pressable
       onPress={handlePress}
-      accessibilityRole="button"
+      accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       accessibilityLabel={tab.label}
       style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
@@ -81,7 +81,7 @@ export function TripTabBar({ tabs, activeName, onSelect, onAdd, addLabel }: Trip
       pointerEvents="box-none"
       style={[styles.wrap, { paddingBottom: Math.max(rt.insets.bottom, 12) }]}
     >
-      <View style={styles.bar}>
+      <View style={styles.bar} accessibilityRole="tablist">
         {left.map((tab) => (
           <TripTabButton
             key={tab.name}
@@ -133,7 +133,7 @@ const styles = StyleSheet.create((theme) => ({
     borderRadius: 22,
     borderCurve: 'continuous',
     backgroundColor: theme.colors.bezel,
-    shadowColor: '#1A1712',
+    shadowColor: theme.colors.shadow,
     shadowOpacity: 0.18,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
