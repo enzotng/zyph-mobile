@@ -220,7 +220,7 @@ export default {
       return Response.json({ blocks: [{ kind: "text", text: content }] })
     }
 
-    const blocks = validateBlocks(parsed, { sources: WIDGETS, tools: TOOLS })
+    const blocks = validateBlocks(parsed, { sources: WIDGETS, tools: TOOLS }, language)
     return Response.json(
       blocks.length
         ? { blocks }

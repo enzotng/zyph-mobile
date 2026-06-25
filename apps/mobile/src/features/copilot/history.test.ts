@@ -130,6 +130,21 @@ describe('migrateMessage', () => {
   it('throws on invalid role', () => {
     expect(() => migrateMessage({ id: 'm1', role: 'system', text: 'hi' })).toThrow()
   })
+
+  it('throws when already-blocks record contains only invalid blocks', () => {
+    expect(() =>
+      migrateMessage({ id: 'm1', role: 'assistant', blocks: [{ kind: 'bogus' }] }),
+    ).toThrow()
+  })
+
+  it('keeps only valid blocks when already-blocks record mixes valid and invalid', () => {
+    const result = migrateMessage({
+      id: 'm1',
+      role: 'assistant',
+      blocks: [{ kind: 'text', text: 'Hello' }, { kind: 'bogus' }],
+    })
+    expect(result.blocks).toEqual([{ kind: 'text', text: 'Hello' }])
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -192,6 +207,16 @@ describe('copilot history persistence', () => {
   it('ignores an empty trip id', () => {
     saveCopilotHistory('', [userTurn])
     expect(loadCopilotHistory('')).toEqual([])
+  })
+
+  it('drops a record with only invalid blocks on load', () => {
+    mockStore.set(
+      'chat-v2:t1',
+      JSON.stringify([{ id: 'm99', role: 'assistant', blocks: [{ kind: 'bogus' }] }, userTurn]),
+    )
+    const loaded = loadCopilotHistory('t1')
+    expect(loaded).toHaveLength(1)
+    expect(loaded[0].id).toBe('m1')
   })
 
   it('migrates legacy stored messages on load', () => {

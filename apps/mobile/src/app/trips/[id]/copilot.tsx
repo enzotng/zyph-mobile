@@ -256,6 +256,7 @@ export default function CopilotScreen() {
         style: 'destructive',
         onPress: () => {
           setMessages([])
+          setActionStates({})
           clearCopilotHistory(tripId)
         },
       },

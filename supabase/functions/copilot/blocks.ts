@@ -14,6 +14,7 @@ export type Block =
 export function validateBlocks(
   parsed: unknown,
   allow: { sources: string[]; tools: string[] },
+  language: "en" | "fr" = "en",
 ): Block[] {
   const arr = (parsed as { blocks?: unknown })?.blocks
   if (!Array.isArray(arr)) return []
@@ -47,7 +48,11 @@ export function validateBlocks(
             ? (a.args as Record<string, unknown>)
             : {},
         text:
-          typeof a.text === "string" && a.text.trim() ? a.text : "Confirm?",
+          typeof a.text === "string" && a.text.trim()
+            ? a.text
+            : language === "fr"
+              ? "Je confirme ?"
+              : "Confirm?",
       })
     }
   }

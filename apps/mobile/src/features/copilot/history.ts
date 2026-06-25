@@ -1,6 +1,6 @@
 import { createMMKV } from 'react-native-mmkv'
-
 import type { Block, CopilotTool, CopilotWidgetType } from './schemas'
+import { blockSchema } from './schemas'
 
 // One chat turn shown in the copilot screen. Persisted per trip (plain MMKV, same durability as
 // the react-query cache that already holds this trip's data) so the conversation survives
@@ -79,9 +79,18 @@ export function migrateMessage(raw: unknown): ChatMessage {
     ...(retryText !== undefined ? { retryText } : {}),
   } as const
 
-  // Already migrated - blocks array present
+  // Already migrated - blocks array present; validate each element with blockSchema
+  // to guard against corrupt persisted records (e.g. { kind: 'bogus' }) that would
+  // crash the renderer at assertNever.
   if (Array.isArray(r['blocks'])) {
-    return { ...base, blocks: r['blocks'] as Block[] }
+    const validBlocks: Block[] = r['blocks']
+      .map((el: unknown) => blockSchema.safeParse(el))
+      .filter((result): result is { success: true; data: Block } => result.success)
+      .map((result) => result.data)
+    if (validBlocks.length === 0) {
+      throw new Error('migrateMessage: blocks array contains no valid blocks')
+    }
+    return { ...base, blocks: validBlocks }
   }
 
   // Legacy shape - build blocks from old fields
