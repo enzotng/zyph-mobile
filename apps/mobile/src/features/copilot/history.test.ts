@@ -4,6 +4,7 @@ import {
   type ChatMessage,
   clearCopilotHistory,
   loadCopilotHistory,
+  migrateMessage,
   saveCopilotHistory,
 } from './history'
 
@@ -27,13 +28,119 @@ jest.mock('react-native-mmkv', () => {
   }
 })
 
-const mockStore = createMMKV({ id: 'test' }) as unknown as { clearAll: () => void }
+const mockStore = createMMKV({ id: 'test' }) as unknown as {
+  clearAll: () => void
+  set: (k: string, v: string) => void
+}
 
 beforeEach(() => {
   mockStore.clearAll()
 })
 
-const userTurn: ChatMessage = { id: 'm1', role: 'user', text: 'How much do I owe?' }
+// ---------------------------------------------------------------------------
+// migrateMessage
+// ---------------------------------------------------------------------------
+
+describe('migrateMessage', () => {
+  it('legacy text-only -> one text block', () => {
+    const result = migrateMessage({ id: 'm1', role: 'user', text: 'How much do I owe?' })
+    expect(result).toEqual({
+      id: 'm1',
+      role: 'user',
+      blocks: [{ kind: 'text', text: 'How much do I owe?' }],
+    })
+  })
+
+  it('legacy text+widget -> [text, widget] blocks', () => {
+    const result = migrateMessage({
+      id: 'm2',
+      role: 'assistant',
+      text: 'Here are the balances:',
+      widget: 'balances',
+    })
+    expect(result).toEqual({
+      id: 'm2',
+      role: 'assistant',
+      blocks: [
+        { kind: 'text', text: 'Here are the balances:' },
+        { kind: 'widget', source: 'balances' },
+      ],
+    })
+  })
+
+  it('legacy action -> one action block (with tool/args/text)', () => {
+    const result = migrateMessage({
+      id: 'm3',
+      role: 'assistant',
+      text: 'Add the 40 EUR dinner?',
+      action: { tool: 'add_expense', args: { amount: 40, currency: 'EUR' }, text: 'Add it?' },
+      actionState: 'executing',
+    })
+    expect(result).toEqual({
+      id: 'm3',
+      role: 'assistant',
+      blocks: [
+        { kind: 'text', text: 'Add the 40 EUR dinner?' },
+        {
+          kind: 'action',
+          tool: 'add_expense',
+          args: { amount: 40, currency: 'EUR' },
+          text: 'Add it?',
+        },
+      ],
+    })
+  })
+
+  it('already-blocks record passes through unchanged', () => {
+    const input: ChatMessage = {
+      id: 'm4',
+      role: 'assistant',
+      blocks: [{ kind: 'text', text: 'Already migrated.' }],
+    }
+    expect(migrateMessage(input)).toEqual(input)
+  })
+
+  it('preserves error and retryText on legacy records', () => {
+    const result = migrateMessage({
+      id: 'm5',
+      role: 'assistant',
+      text: 'Something went wrong.',
+      error: true,
+      retryText: 'What is the weather?',
+    })
+    expect(result).toEqual({
+      id: 'm5',
+      role: 'assistant',
+      blocks: [{ kind: 'text', text: 'Something went wrong.' }],
+      error: true,
+      retryText: 'What is the weather?',
+    })
+  })
+
+  it('throws on non-object input', () => {
+    expect(() => migrateMessage(null)).toThrow()
+    expect(() => migrateMessage('string')).toThrow()
+    expect(() => migrateMessage(42)).toThrow()
+  })
+
+  it('throws on missing id', () => {
+    expect(() => migrateMessage({ role: 'user', text: 'hi' })).toThrow()
+  })
+
+  it('throws on invalid role', () => {
+    expect(() => migrateMessage({ id: 'm1', role: 'system', text: 'hi' })).toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Persistence (round-trips with new MMKV key chat-v2:<tripId>)
+// ---------------------------------------------------------------------------
+
+const userTurn: ChatMessage = {
+  id: 'm1',
+  role: 'user',
+  blocks: [{ kind: 'text', text: 'How much do I owe?' }],
+}
 
 describe('copilot history persistence', () => {
   it('returns an empty list when nothing is stored', () => {
@@ -47,33 +154,26 @@ describe('copilot history persistence', () => {
     expect(loadCopilotHistory('t2')).toEqual([])
   })
 
-  it('resets a stale "executing" action to "pending" on load', () => {
-    const message: ChatMessage = {
-      id: 'm2',
-      role: 'assistant',
-      text: 'Add the 40 EUR dinner?',
-      action: { tool: 'add_expense', args: { amount: 40 }, text: 'Add it?' },
-      actionState: 'executing',
-    }
-    saveCopilotHistory('t1', [message])
-    expect(loadCopilotHistory('t1')[0].actionState).toBe('pending')
-  })
-
   it('returns an empty list for corrupt stored data', () => {
     saveCopilotHistory('t1', [userTurn])
     // Overwrite with invalid JSON via the same mocked store.
-    ;(createMMKV({ id: 'test' }) as unknown as { set: (k: string, v: string) => void }).set(
-      'chat:t1',
-      '{ not json',
-    )
+    mockStore.set('chat-v2:t1', '{ not json')
     expect(loadCopilotHistory('t1')).toEqual([])
+  })
+
+  it('drops unparseable records instead of crashing', () => {
+    mockStore.set('chat-v2:t1', JSON.stringify([{ bad: 'record' }, userTurn]))
+    const loaded = loadCopilotHistory('t1')
+    // The bad record is dropped; the valid one is kept.
+    expect(loaded).toHaveLength(1)
+    expect(loaded[0].id).toBe('m1')
   })
 
   it('keeps only the most recent messages when over the cap', () => {
     const many: ChatMessage[] = Array.from({ length: 60 }, (_, i) => ({
       id: `m${i + 1}`,
       role: 'user',
-      text: `q${i + 1}`,
+      blocks: [{ kind: 'text', text: `q${i + 1}` }],
     }))
     saveCopilotHistory('t1', many)
     const loaded = loadCopilotHistory('t1')
@@ -92,5 +192,24 @@ describe('copilot history persistence', () => {
   it('ignores an empty trip id', () => {
     saveCopilotHistory('', [userTurn])
     expect(loadCopilotHistory('')).toEqual([])
+  })
+
+  it('migrates legacy stored messages on load', () => {
+    // Simulate old data stored under the old key format (will simply not be found by v2 key).
+    // Instead store legacy JSON directly under the v2 key to test loadCopilotHistory migration.
+    mockStore.set(
+      'chat-v2:t1',
+      JSON.stringify([{ id: 'l1', role: 'assistant', text: 'Hello!', widget: 'weather' }]),
+    )
+    const loaded = loadCopilotHistory('t1')
+    expect(loaded).toHaveLength(1)
+    expect(loaded[0]).toEqual({
+      id: 'l1',
+      role: 'assistant',
+      blocks: [
+        { kind: 'text', text: 'Hello!' },
+        { kind: 'widget', source: 'weather' },
+      ],
+    })
   })
 })
