@@ -17,40 +17,56 @@ beforeEach(() => {
 })
 
 describe('askCopilot', () => {
-  it('invokes the copilot function and returns the answer', async () => {
-    invoke.mockResolvedValue({ data: { answer: 'You owe 12.00 EUR.' }, error: null })
-
-    await expect(askCopilot(input)).resolves.toEqual({ answer: 'You owe 12.00 EUR.' })
-    expect(invoke).toHaveBeenCalledWith('copilot', { body: input })
-  })
-
-  it('returns an answer with a widget', async () => {
+  it('invokes the copilot function and returns a text block', async () => {
     invoke.mockResolvedValue({
-      data: { answer: 'It will be sunny.', widget: 'weather' },
+      data: { blocks: [{ kind: 'text', text: 'You owe 12.00 EUR.' }] },
       error: null,
     })
 
     await expect(askCopilot(input)).resolves.toEqual({
-      answer: 'It will be sunny.',
-      widget: 'weather',
+      blocks: [{ kind: 'text', text: 'You owe 12.00 EUR.' }],
+    })
+    expect(invoke).toHaveBeenCalledWith('copilot', { body: input })
+  })
+
+  it('returns a widget block', async () => {
+    invoke.mockResolvedValue({
+      data: {
+        blocks: [
+          { kind: 'text', text: 'It will be sunny.' },
+          { kind: 'widget', source: 'weather' },
+        ],
+      },
+      error: null,
+    })
+
+    await expect(askCopilot(input)).resolves.toEqual({
+      blocks: [
+        { kind: 'text', text: 'It will be sunny.' },
+        { kind: 'widget', source: 'weather' },
+      ],
     })
   })
 
-  it('rejects an unknown widget type at the zod boundary', async () => {
-    invoke.mockResolvedValue({ data: { answer: 'ok', widget: 'bogus' }, error: null })
+  it('rejects an unknown widget source at the zod boundary', async () => {
+    invoke.mockResolvedValue({
+      data: { blocks: [{ kind: 'widget', source: 'bogus' }] },
+      error: null,
+    })
 
     await expect(askCopilot(input)).rejects.toThrow()
   })
 
-  it('returns a proposed action', async () => {
-    const action = {
-      tool: 'add_expense',
+  it('returns an action block', async () => {
+    const block = {
+      kind: 'action' as const,
+      tool: 'add_expense' as const,
       args: { description: 'Dinner', amount: 40 },
       text: 'Add the 40 EUR dinner?',
     }
-    invoke.mockResolvedValue({ data: { action }, error: null })
+    invoke.mockResolvedValue({ data: { blocks: [block] }, error: null })
 
-    await expect(askCopilot(input)).resolves.toEqual({ action })
+    await expect(askCopilot(input)).resolves.toEqual({ blocks: [block] })
   })
 
   it('throws when the function errors', async () => {
@@ -65,8 +81,14 @@ describe('askCopilot', () => {
     await expect(askCopilot(input)).rejects.toThrow('Empty response')
   })
 
-  it('rejects an empty answer at the zod boundary', async () => {
-    invoke.mockResolvedValue({ data: { answer: '' }, error: null })
+  it('rejects an empty blocks array at the zod boundary', async () => {
+    invoke.mockResolvedValue({ data: { blocks: [] }, error: null })
+
+    await expect(askCopilot(input)).rejects.toThrow()
+  })
+
+  it('rejects a response with no blocks field at the zod boundary', async () => {
+    invoke.mockResolvedValue({ data: {}, error: null })
 
     await expect(askCopilot(input)).rejects.toThrow()
   })

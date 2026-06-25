@@ -21,7 +21,7 @@ export async function askCopilot(input: AskCopilotInput): Promise<CopilotRespons
   if (!data) {
     throw new Error('Empty response from the copilot.')
   }
-  // Validate at the boundary: the function returns an answer OR a proposed action.
+  // Validate at the boundary: the function returns a blocks array.
   return copilotResponseSchema.parse(data)
 }
 

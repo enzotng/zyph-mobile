@@ -20,7 +20,6 @@ import {
   buildTripContext,
   type ChatMessage,
   type CopilotMessage,
-  CopilotWidget,
   classifyCopilotError,
   clearCopilotHistory,
   loadCopilotHistory,
@@ -28,6 +27,8 @@ import {
   useAskCopilot,
   useExecuteCopilotAction,
 } from '@/features/copilot'
+import { type ActionState, CopilotBlocks } from '@/features/copilot/components/copilot-blocks'
+import type { Block } from '@/features/copilot/schemas'
 import { useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
 import { usePackingItems } from '@/features/packing'
@@ -107,9 +108,20 @@ export default function CopilotScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadCopilotHistory(tripId))
   const [draft, setDraft] = useState('')
   const scrollRef = useRef<ScrollView>(null)
-  // Ids whose action is being executed, tracked synchronously so a double-tap cannot fire the
-  // mutation twice before the 'executing' state has re-rendered (a stale-closure double-write).
+
+  // Per-block action states: key = `${messageId}:${blockIndex}`.
+  const [actionStates, setActionStates] = useState<Record<string, ActionState>>({})
+
+  // Block-scoped in-flight guard: synchronous so a double-tap cannot fire the mutation twice
+  // before 'executing' has re-rendered (a stale-closure double-write).
   const inFlight = useRef<Set<string>>(new Set())
+
+  const actionStateFor = (messageId: string, index: number): ActionState =>
+    actionStates[`${messageId}:${index}`] ?? 'pending'
+
+  const setBlockActionState = (messageId: string, index: number, s: ActionState) => {
+    setActionStates((prev) => ({ ...prev, [`${messageId}:${index}`]: s }))
+  }
 
   // Persist the conversation per trip so it survives leaving the screen or restarting the app.
   useEffect(() => {
@@ -137,11 +149,18 @@ export default function CopilotScreen() {
     if (!trip.data || !events.data || !expenses.data || !balances.data || !members.data) {
       return
     }
-    // History drops error bubbles and any action card that is not yet done (pending, executing,
-    // cancelled), so the model never echoes a proposal as a turn but stays aware of what it did.
+    // Build history from text blocks only; skip error messages and messages with empty content.
+    // Action/widget blocks contribute no text context to the LLM.
     const history: CopilotMessage[] = convo
-      .filter((message) => !message.error && !(message.action && message.actionState !== 'done'))
-      .map((message) => ({ role: message.role, content: message.text }))
+      .filter((message) => !message.error)
+      .map((message) => ({
+        role: message.role,
+        content: message.blocks
+          .filter((b) => b.kind === 'text')
+          .map((b) => (b as Extract<Block, { kind: 'text' }>).text)
+          .join('\n'),
+      }))
+      .filter((m) => m.content.length > 0)
     if (history.length === 0) {
       return
     }
@@ -167,18 +186,7 @@ export default function CopilotScreen() {
         onSuccess: (res) => {
           setMessages((prev) => {
             const id = nextMessageId(prev)
-            return [
-              ...prev,
-              res.action
-                ? {
-                    id,
-                    role: 'assistant',
-                    text: res.action.text,
-                    action: res.action,
-                    actionState: 'pending',
-                  }
-                : { id, role: 'assistant', text: res.answer ?? '', widget: res.widget },
-            ]
+            return [...prev, { id, role: 'assistant', blocks: res.blocks }]
           })
         },
         onError: (error) => {
@@ -191,7 +199,13 @@ export default function CopilotScreen() {
                 : t('copilot.error')
           setMessages((prev) => [
             ...prev,
-            { id: nextMessageId(prev), role: 'assistant', text, error: true, retryText },
+            {
+              id: nextMessageId(prev),
+              role: 'assistant',
+              blocks: [{ kind: 'text', text }],
+              error: true,
+              retryText,
+            },
           ])
         },
       },
@@ -206,7 +220,7 @@ export default function CopilotScreen() {
     haptics.light()
     const convo: ChatMessage[] = [
       ...messages,
-      { id: nextMessageId(messages), role: 'user', text: q },
+      { id: nextMessageId(messages), role: 'user', blocks: [{ kind: 'text', text: q }] },
     ]
     setMessages(convo)
     setDraft('')
@@ -242,53 +256,57 @@ export default function CopilotScreen() {
         style: 'destructive',
         onPress: () => {
           setMessages([])
+          setActionStates({})
           clearCopilotHistory(tripId)
         },
       },
     ])
   }
 
-  function setActionState(id: string, actionState: ChatMessage['actionState']) {
-    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, actionState } : m)))
-  }
-
-  function confirmAction(message: ChatMessage) {
+  function confirmAction(
+    messageId: string,
+    index: number,
+    block: Extract<Block, { kind: 'action' }>,
+  ) {
+    const key = `${messageId}:${index}`
     // Guard against a double-tap (or a tap on an already-executing/resolved card) writing twice.
     // The ref check is synchronous, so it holds even before 'executing' has re-rendered.
-    if (message.actionState !== 'pending' || inFlight.current.has(message.id)) {
+    if (actionStateFor(messageId, index) !== 'pending' || inFlight.current.has(key)) {
       return
     }
-    if (!message.action || !trip.data || !members.data || !myUserId) {
+    if (!trip.data || !members.data || !myUserId) {
       return
     }
-    inFlight.current.add(message.id)
+    inFlight.current.add(key)
     haptics.light()
-    setActionState(message.id, 'executing')
+    setBlockActionState(messageId, index, 'executing')
+    const language = i18n.language === 'fr' ? 'fr' : 'en'
     execute.mutate(
       {
-        action: message.action,
+        action: { tool: block.tool, args: block.args, text: block.text },
         members: members.data,
         myUserId,
         trip: trip.data,
-        language: i18n.language === 'fr' ? 'fr' : 'en',
+        language,
       },
       {
         onSuccess: () => {
-          inFlight.current.delete(message.id)
-          setActionState(message.id, 'done')
+          setBlockActionState(messageId, index, 'done')
         },
         onError: () => {
-          inFlight.current.delete(message.id)
-          setActionState(message.id, 'pending')
+          setBlockActionState(messageId, index, 'pending')
           setMessages((prev) => [
             ...prev,
             {
               id: nextMessageId(prev),
               role: 'assistant',
-              text: t('copilot.actionError'),
+              blocks: [{ kind: 'text', text: t('copilot.actionError') }],
               error: true,
             },
           ])
+        },
+        onSettled: () => {
+          inFlight.current.delete(key)
         },
       },
     )
@@ -408,65 +426,46 @@ export default function CopilotScreen() {
                       ]}
                     >
                       {isUser ? null : <ZoAvatar size={26} />}
-                      <Surface
-                        radius={18}
-                        color={isUser ? theme.colors.primary : theme.colors.card}
-                        borderColor={isUser ? theme.colors.primary : theme.colors.border}
-                        borderWidth={1}
-                        style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}
-                      >
-                        <Text style={isUser ? styles.bubbleTextUser : styles.bubbleText}>
-                          {message.text}
-                        </Text>
-                        {message.action ? (
-                          message.actionState === 'pending' ? (
-                            <View style={styles.actionButtons}>
-                              <Button
-                                label={t('copilot.confirm')}
-                                size="sm"
-                                block={false}
-                                // Scoped to this card: confirming flips it to 'executing' (the spinner
-                                // branch) right away, so a sibling card running never disables this one.
-                                onPress={() => confirmAction(message)}
-                              />
-                              <Button
-                                label={t('common.cancel')}
-                                variant="ghost"
-                                size="sm"
-                                block={false}
-                                onPress={() => setActionState(message.id, 'cancelled')}
-                              />
-                            </View>
-                          ) : message.actionState === 'executing' ? (
-                            <View style={styles.actionStatusRow}>
-                              <Spinner label={t('copilot.actionRunning')} />
-                            </View>
-                          ) : (
-                            <Text style={styles.actionStatus}>
-                              {message.actionState === 'done'
-                                ? `✓ ${t('copilot.actionDone')}`
-                                : t('copilot.actionCancelled')}
-                            </Text>
-                          )
-                        ) : null}
-                        {message.error && message.retryText ? (
-                          <Pressable
-                            onPress={() => retry(message)}
-                            disabled={ask.isPending}
-                            accessibilityRole="button"
-                            accessibilityLabel={t('copilot.retry')}
-                            style={({ pressed }) => (pressed ? styles.pressed : undefined)}
-                          >
-                            <Text style={styles.retryText}>{t('copilot.retry')}</Text>
-                          </Pressable>
-                        ) : null}
-                      </Surface>
+                      {isUser ? (
+                        <Surface
+                          radius={18}
+                          color={theme.colors.primary}
+                          borderColor={theme.colors.primary}
+                          borderWidth={1}
+                          style={[styles.bubble, styles.bubbleUser]}
+                        >
+                          <Text style={styles.bubbleTextUser}>
+                            {message.blocks
+                              .filter((b) => b.kind === 'text')
+                              .map((b) => (b as Extract<Block, { kind: 'text' }>).text)
+                              .join('\n')}
+                          </Text>
+                        </Surface>
+                      ) : (
+                        <View style={styles.assistantColumn}>
+                          <CopilotBlocks
+                            blocks={message.blocks}
+                            tripId={tripId}
+                            messageId={message.id}
+                            actionStateFor={(i) => actionStateFor(message.id, i)}
+                            onConfirm={(i, b) => confirmAction(message.id, i, b)}
+                            onCancel={(i) => setBlockActionState(message.id, i, 'cancelled')}
+                            executePending={execute.isPending}
+                          />
+                          {message.error && message.retryText ? (
+                            <Pressable
+                              onPress={() => retry(message)}
+                              disabled={ask.isPending}
+                              accessibilityRole="button"
+                              accessibilityLabel={t('copilot.retry')}
+                              style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+                            >
+                              <Text style={styles.retryText}>{t('copilot.retry')}</Text>
+                            </Pressable>
+                          ) : null}
+                        </View>
+                      )}
                     </View>
-                    {message.widget ? (
-                      <View style={styles.widgetRow}>
-                        <CopilotWidget type={message.widget} tripId={tripId} />
-                      </View>
-                    ) : null}
                   </Animated.View>
                 )
               })
@@ -626,6 +625,10 @@ const styles = StyleSheet.create((theme, rt) => ({
   bubbleRowAssistant: {
     justifyContent: 'flex-start',
   },
+  assistantColumn: {
+    flex: 1,
+    gap: theme.gap(1),
+  },
   bubble: {
     maxWidth: '82%',
     paddingVertical: theme.gap(2.5),
@@ -647,33 +650,12 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.md,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.gap(2),
-    marginTop: theme.gap(2.5),
-  },
-  actionStatus: {
-    marginTop: theme.gap(2),
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.muted,
-  },
-  actionStatusRow: {
-    marginTop: theme.gap(2),
-  },
   retryText: {
     marginTop: theme.gap(2),
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
     fontSize: theme.fontSize.sm,
     color: theme.colors.primary,
-  },
-  // Aligns the widget card under the assistant bubble (clears the 26px avatar + its row gap).
-  widgetRow: {
-    marginTop: theme.gap(2),
-    marginLeft: 26 + theme.gap(2),
   },
   composer: {
     paddingHorizontal: theme.gap(4),

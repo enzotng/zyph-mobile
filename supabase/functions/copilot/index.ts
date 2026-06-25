@@ -15,6 +15,7 @@ import "@supabase/functions-js/edge-runtime.d.ts"
 import { withSupabase } from "@supabase/server"
 
 import { isWithinRateLimit } from "../_shared/rate-limit.ts"
+import { validateBlocks } from "./blocks.ts"
 
 const DEFAULT_MODEL = "llama-3.1-8b-instant"
 const DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
@@ -39,32 +40,41 @@ const SYSTEM_PROMPT = `You are Zo, ZYPH's friendly travel copilot, scoped to a S
 
 You are given a TRIP CONTEXT block (facts about this trip: dates, members, balances, timeline events, expenses, packing, recorded settlements, and a short weather forecast) followed by the conversation. Use earlier turns for follow-ups.
 
-You can do TWO things:
-1) ANSWER a question about this trip.
-2) PROPOSE ONE ACTION, only when the user clearly asks to DO/ADD/CREATE/RECORD something in the app.
+ALWAYS reply with a SINGLE JSON object with a "blocks" array:
+{"blocks":[...]}
 
-ALWAYS reply with a SINGLE JSON object, exactly one of these shapes:
-{"type":"answer","text":"<your reply>","widget":"<optional, see WIDGETS>"}
-{"type":"action","tool":"<tool>","args":{...},"text":"<one short sentence, in the user's language, asking them to confirm>"}
+Each element of "blocks" must be exactly one of these three shapes:
 
-Available tools (propose at most one; the user will confirm before anything is written):
-- "add_expense": {"description": string, "amount": number, "splitWith": "all" OR array of member names}. Paid by the current user. amount is in the trip currency.
+1. Text block — your reply text:
+{"kind":"text","text":"<your reply, 1-3 sentences>"}
+
+2. Widget block — show a data card (use at most one per response, only when it directly illustrates the answer):
+{"kind":"widget","source":"<one of: weather, balances, next_events, packing, expenses>"}
+
+3. Action block — propose ONE user-initiated action (only when the user clearly asks to DO/ADD/CREATE/RECORD something):
+{"kind":"action","tool":"<tool>","args":{...},"text":"<one short sentence in the user's language asking them to confirm>"}
+
+Available tools for action blocks (propose at most one; the user confirms before anything is written):
+- "add_expense": {"description": string, "amount": number, "splitWith": "all" OR array of member names}. Paid by the current user.
 - "add_event": {"title": string, "type": string (flight|hotel|activity|restaurant|transport|event), "date": "YYYY-MM-DD", "time": "HH:MM" optional}.
 - "add_packing": {"scope": "shared" OR "personal", "request": string describing what to pack}.
 - "record_settlement": {"from": member name who paid, "to": member name who received, "amount": number}.
 
-WIDGETS (optional, ANSWER only): add a "widget" field to show a card under your text when it directly illustrates the answer. Use at most one, and ONLY when relevant - otherwise omit it. Always still write the text.
-- "weather": the user asks about the weather, forecast, or what to wear/bring.
-- "balances": about who owes what, balances, or settling up.
-- "next_events": about the schedule, what's next, or upcoming plans.
-- "packing": about packing or what is left to pack.
-- "expenses": about spending, budget, or costs by category.
+Widget sources and when to use them:
+- "weather": user asks about weather, forecast, or what to wear/bring.
+- "balances": user asks about who owes what, balances, or settling up.
+- "next_events": user asks about the schedule, what's next, or upcoming plans.
+- "packing": user asks about packing or what is left to pack.
+- "expenses": user asks about spending, budget, or costs by category.
+
+CRITICAL — NEVER put numbers or amounts in a text block. For any data (balances, expenses, weather figures, etc.), emit a widget block with the relevant source; the app fetches and formats the figures itself.
 
 Rules:
-- Propose an action ONLY for an explicit add/create/record request. Anything else -> ANSWER.
+- A typical answer is: one text block, optionally followed by one widget block.
+- An action response is: one text block (brief acknowledgment) + one action block.
+- Propose an action ONLY for an explicit add/create/record request. Anything else -> text (+ optional widget).
 - Use member names exactly as in MEMBERS. For the current user use "me".
-- Answers: 1-3 sentences, plain text, grounded ONLY in the TRIP CONTEXT, never invent facts; if unknown, say so briefly. Refuse politely anything unrelated to this trip.
-- Money in context is already formatted; quote exactly. POSITIVE balance = owed money; NEGATIVE = owes.
+- Text is plain, grounded ONLY in the TRIP CONTEXT; never invent facts. If unknown, say so briefly. Refuse politely anything unrelated to this trip.
 - Be warm; address the user informally (in French use "tu"). Reply in the language given by LANGUAGE (fr/en). Output JSON only, no markdown.`
 
 type ChatMessage = { role: "user" | "assistant"; content: string }
@@ -202,30 +212,19 @@ export default {
       return Response.json({ error: "LLM returned an empty response" }, { status: 502 })
     }
 
-    let parsed: { type?: unknown; text?: unknown; tool?: unknown; args?: unknown; widget?: unknown }
+    let parsed: unknown
     try {
       parsed = JSON.parse(content)
     } catch {
-      // Defensive: if the model ignored JSON mode, surface the raw text as an answer.
-      return Response.json({ answer: content })
+      // Defensive: if the model ignored JSON mode, surface the raw text as a text block.
+      return Response.json({ blocks: [{ kind: "text", text: content }] })
     }
 
-    const text = typeof parsed.text === "string" ? parsed.text.trim() : ""
-
-    // An action is only ever PROPOSED here - the client confirms and executes it under the
-    // user's own RLS. We just validate the envelope shape.
-    if (parsed.type === "action" && typeof parsed.tool === "string" && TOOLS.includes(parsed.tool)) {
-      const args = parsed.args && typeof parsed.args === "object" ? parsed.args : {}
-      // The client schema requires a non-empty text; fall back in the user's language.
-      const fallback = language === "fr" ? "Je confirme ?" : "Confirm?"
-      return Response.json({ action: { tool: parsed.tool, args, text: text || fallback } })
-    }
-
-    // The client renders the card from its own cached data; we only pass through a valid type.
-    const widget = typeof parsed.widget === "string" && WIDGETS.includes(parsed.widget)
-      ? parsed.widget
-      : undefined
-    const answer = text || content
-    return Response.json(widget ? { answer, widget } : { answer })
+    const blocks = validateBlocks(parsed, { sources: WIDGETS, tools: TOOLS }, language)
+    return Response.json(
+      blocks.length
+        ? { blocks }
+        : { blocks: [{ kind: "text", text: content }] },
+    )
   }),
 }
