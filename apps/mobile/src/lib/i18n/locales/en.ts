@@ -564,6 +564,7 @@ export const en = {
       packing: 'Packing',
       packed: '{{packed}}/{{total}} packed',
       expenses: 'By category',
+      spendByCategory: 'Spending by category',
       uncategorized: 'Other',
     },
     suggestions: {

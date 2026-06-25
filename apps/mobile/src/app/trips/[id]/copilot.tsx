@@ -28,7 +28,7 @@ import {
   useExecuteCopilotAction,
 } from '@/features/copilot'
 import { type ActionState, CopilotBlocks } from '@/features/copilot/components/copilot-blocks'
-import type { Block } from '@/features/copilot/schemas'
+import type { Block, Chip, NavTarget } from '@/features/copilot/schemas'
 import { useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
 import { usePackingItems } from '@/features/packing'
@@ -46,6 +46,18 @@ const SUGGESTIONS = ['owe', 'next', 'topPayer', 'airport'] as const
 // The edge function rejects a payload with more turns than this, so the sent history is trimmed
 // to the most recent ones (the last turn is always the new user question).
 const MAX_SENT_MESSAGES = 30
+
+// Maps each NavTarget to its expo-router pathname. The (tabs) group is omitted from the URL
+// since expo-router treats parenthesised groups as transparent.
+const NAV_HREFS = {
+  trip_home: '/trips/[id]',
+  spend: '/trips/[id]/expenses',
+  timeline: '/trips/[id]/timeline',
+  packing: '/trips/[id]/packing',
+  map: '/trips/[id]/pois', // POIs tab - primary map surface (not the /map wayfinder stack)
+  balances: '/trips/[id]/balances',
+  group: '/trips/[id]/group',
+} as const satisfies Record<NavTarget, string>
 
 // Next collision-free id derived from the current list (ids are `m<n>`). Computed from the list
 // rather than a seeded ref counter, so a restored conversation can never produce a duplicate id.
@@ -312,6 +324,34 @@ export default function CopilotScreen() {
     )
   }
 
+  function onChip(chip: Chip) {
+    switch (chip.action) {
+      case 'navigate':
+        haptics.selection()
+        router.navigate({
+          pathname: NAV_HREFS[chip.to] as '/trips/[id]',
+          params: { id: tripId },
+        })
+        break
+      case 'prompt':
+        send(chip.prompt)
+        break
+      case 'tool':
+        setMessages((prev) => {
+          const id = nextMessageId(prev)
+          return [
+            ...prev,
+            {
+              id,
+              role: 'assistant',
+              blocks: [{ kind: 'action', tool: chip.tool, args: chip.args, text: chip.label }],
+            },
+          ]
+        })
+        break
+    }
+  }
+
   const canSend = draft.trim().length > 0 && !ask.isPending && dataReady
 
   return (
@@ -450,6 +490,7 @@ export default function CopilotScreen() {
                             actionStateFor={(i) => actionStateFor(message.id, i)}
                             onConfirm={(i, b) => confirmAction(message.id, i, b)}
                             onCancel={(i) => setBlockActionState(message.id, i, 'cancelled')}
+                            onChip={onChip}
                             executePending={execute.isPending}
                           />
                           {message.error && message.retryText ? (

@@ -10,6 +10,7 @@ import { groupReadiness, usePackingItems } from '@/features/packing'
 import { eventTypeIcon, useEvents } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
 import { useTripWeather, WeatherCard } from '@/features/weather'
+import { withAlpha } from '@/lib/color'
 
 import type { CopilotWidgetType } from '../schemas'
 import { expensesByCategory } from '../widgets'
@@ -29,6 +30,8 @@ export function CopilotWidget({ type, tripId }: { type: CopilotWidgetType; tripI
       return <PackingWidget tripId={tripId} />
     case 'expenses':
       return <ExpensesWidget tripId={tripId} />
+    case 'spend_by_category':
+      return <SpendByCategoryWidget tripId={tripId} />
     default:
       return null
   }
@@ -179,6 +182,50 @@ function ExpensesWidget({ tripId }: { tripId: string }) {
   )
 }
 
+const TOP_N = 5
+
+function SpendByCategoryWidget({ tripId }: { tripId: string }) {
+  const { t } = useTranslation()
+  const { theme } = useUnistyles()
+  const expenses = useExpenses(tripId)
+  const trip = useTrip(tripId)
+  if (!expenses.data?.length || !trip.data) {
+    return null
+  }
+  const rows = expensesByCategory(expenses.data).slice(0, TOP_N)
+  const maxCents = rows[0]?.cents ?? 0
+  if (maxCents === 0) {
+    return null
+  }
+
+  return (
+    <WidgetCard title={t('copilot.widget.spendByCategory')}>
+      {rows.map((row) => {
+        const fillPercent = (row.cents / maxCents) * 100
+        return (
+          <View key={row.category ?? 'uncategorized'} style={styles.barRow}>
+            <Text style={styles.barLabel} numberOfLines={1}>
+              {row.category ? t(`categories.${row.category}`) : t('copilot.widget.uncategorized')}
+            </Text>
+            <View style={styles.barTrack}>
+              <View
+                style={[
+                  styles.barFill,
+                  {
+                    width: `${fillPercent}%`,
+                    backgroundColor: withAlpha(theme.colors.primary, 0.75),
+                  },
+                ]}
+              />
+            </View>
+            <Amount cents={row.cents} currency={trip.data.currency} size={13} neutral />
+          </View>
+        )
+      })}
+    </WidgetCard>
+  )
+}
+
 const styles = StyleSheet.create((theme) => ({
   card: {
     paddingVertical: theme.gap(3),
@@ -225,5 +272,28 @@ const styles = StyleSheet.create((theme) => ({
     height: 8,
     borderRadius: theme.radius.full,
     backgroundColor: theme.colors.primary,
+  },
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+  },
+  barLabel: {
+    width: 90,
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.foreground,
+  },
+  barTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: theme.radius.full,
+    backgroundColor: withAlpha(theme.colors.border, 0.6),
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: 6,
+    borderRadius: theme.radius.full,
   },
 }))

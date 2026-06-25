@@ -570,6 +570,7 @@ export const fr: Translations = {
       packing: 'Bagages',
       packed: '{{packed}}/{{total}} prêts',
       expenses: 'Par catégorie',
+      spendByCategory: 'Dépenses par catégorie',
       uncategorized: 'Autre',
     },
     suggestions: {
