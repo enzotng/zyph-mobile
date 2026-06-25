@@ -23,13 +23,34 @@ export const COPILOT_WIDGET_TYPES = [
 export const copilotWidgetSchema = z.enum(COPILOT_WIDGET_TYPES)
 export type CopilotWidgetType = z.infer<typeof copilotWidgetSchema>
 
-export const copilotResponseSchema = z
-  .object({
-    answer: z.string().min(1).optional(),
-    action: copilotActionSchema.optional(),
-    widget: copilotWidgetSchema.optional(),
-  })
-  .refine((d) => Boolean(d.answer) || Boolean(d.action), {
-    message: 'The copilot returned neither an answer nor an action.',
-  })
+// --- Block schemas ---
+
+export const textBlockSchema = z.object({
+  kind: z.literal('text'),
+  text: z.string().min(1),
+})
+
+export const widgetBlockSchema = z.object({
+  kind: z.literal('widget'),
+  source: copilotWidgetSchema,
+})
+
+export const actionBlockSchema = z.object({
+  kind: z.literal('action'),
+  tool: copilotActionSchema.shape.tool,
+  args: copilotActionSchema.shape.args,
+  text: copilotActionSchema.shape.text,
+})
+
+export const blockSchema = z.discriminatedUnion('kind', [
+  textBlockSchema,
+  widgetBlockSchema,
+  actionBlockSchema,
+])
+
+export type Block = z.infer<typeof blockSchema>
+
+export const copilotResponseSchema = z.object({
+  blocks: z.array(blockSchema).min(1),
+})
 export type CopilotResponse = z.infer<typeof copilotResponseSchema>
