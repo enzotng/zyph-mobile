@@ -54,7 +54,7 @@ const NAV_HREFS = {
   spend: '/trips/[id]/expenses',
   timeline: '/trips/[id]/timeline',
   packing: '/trips/[id]/packing',
-  map: '/trips/[id]/pois',
+  map: '/trips/[id]/pois', // POIs tab - primary map surface (not the /map wayfinder stack)
   balances: '/trips/[id]/balances',
   group: '/trips/[id]/group',
 } as const satisfies Record<NavTarget, string>

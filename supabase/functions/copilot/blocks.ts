@@ -95,7 +95,7 @@ export function validateBlocks(
       }
 
       if (validChips.length > 0) {
-        out.push({ kind: "chips", chips: validChips })
+        out.push({ kind: "chips", chips: validChips.slice(0, 3) })
       }
     }
   }

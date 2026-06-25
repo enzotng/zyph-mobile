@@ -55,7 +55,7 @@ Each element of "blocks" must be exactly one of these four shapes:
 3. Action block — propose ONE user-initiated action (only when the user clearly asks to DO/ADD/CREATE/RECORD something):
 {"kind":"action","tool":"<tool>","args":{...},"text":"<one short sentence in the user's language asking them to confirm>"}
 
-4. Chips block — suggest 1 to 3 quick next steps (see rules below):
+4. Chips block - suggest 1 to 3 quick next steps (see rules below):
 {"kind":"chips","chips":[...]}
 Each chip is one of:
 - Navigate to a screen: {"action":"navigate","to":"<one of: trip_home, spend, timeline, packing, map, balances, group>","label":"<short, user's language>"}

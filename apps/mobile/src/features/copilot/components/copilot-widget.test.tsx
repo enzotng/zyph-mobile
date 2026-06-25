@@ -74,6 +74,11 @@ describe('CopilotWidget spend_by_category', () => {
     useTripMock.mockReturnValue({ data: TRIP_FIXTURE })
   })
 
+  it('renders the widget title', () => {
+    render(<CopilotWidget type="spend_by_category" tripId="t1" />)
+    expect(screen.getByText('Spending by category')).toBeTruthy()
+  })
+
   it('renders each category label', () => {
     render(<CopilotWidget type="spend_by_category" tripId="t1" />)
 
