@@ -19,6 +19,7 @@ export const COPILOT_WIDGET_TYPES = [
   'next_events',
   'packing',
   'expenses',
+  'spend_by_category',
 ] as const
 export const copilotWidgetSchema = z.enum(COPILOT_WIDGET_TYPES)
 export type CopilotWidgetType = z.infer<typeof copilotWidgetSchema>
@@ -42,10 +43,56 @@ export const actionBlockSchema = z.object({
   text: copilotActionSchema.shape.text,
 })
 
+// --- Navigation targets for chips ---
+export const NAV_TARGETS = [
+  'trip_home',
+  'spend',
+  'timeline',
+  'packing',
+  'map',
+  'balances',
+  'group',
+] as const
+export const navTargetSchema = z.enum(NAV_TARGETS)
+export type NavTarget = z.infer<typeof navTargetSchema>
+
+// --- Chip schemas ---
+const navigateChipSchema = z.object({
+  action: z.literal('navigate'),
+  to: navTargetSchema,
+  label: z.string().min(1),
+})
+
+const promptChipSchema = z.object({
+  action: z.literal('prompt'),
+  prompt: z.string().min(1),
+  label: z.string().min(1),
+})
+
+const toolChipSchema = z.object({
+  action: z.literal('tool'),
+  tool: copilotActionSchema.shape.tool,
+  args: copilotActionSchema.shape.args,
+  label: z.string().min(1),
+})
+
+export const chipSchema = z.discriminatedUnion('action', [
+  navigateChipSchema,
+  promptChipSchema,
+  toolChipSchema,
+])
+export type Chip = z.infer<typeof chipSchema>
+
+export const chipsBlockSchema = z.object({
+  kind: z.literal('chips'),
+  chips: z.array(chipSchema).min(1).max(3),
+})
+
 export const blockSchema = z.discriminatedUnion('kind', [
   textBlockSchema,
   widgetBlockSchema,
   actionBlockSchema,
+  chipsBlockSchema,
 ])
 
 export type Block = z.infer<typeof blockSchema>
