@@ -17,6 +17,7 @@ const defaultProps = {
   actionStateFor: (_index: number): ActionState => 'pending',
   onConfirm: jest.fn(),
   onCancel: jest.fn(),
+  onChip: jest.fn(),
   executePending: false,
 }
 
@@ -63,5 +64,24 @@ describe('CopilotBlocks', () => {
     fireEvent.press(confirmButton)
     expect(onConfirm).toHaveBeenCalledTimes(1)
     expect(onConfirm).toHaveBeenCalledWith(0, actionBlock)
+  })
+
+  it('renders chips and fires onChip on press', () => {
+    const onChip = jest.fn()
+    const chip = { action: 'navigate', to: 'spend', label: 'Open Spend' } as const
+    render(
+      <CopilotBlocks
+        blocks={[{ kind: 'chips', chips: [chip] }]}
+        tripId="t1"
+        messageId="m1"
+        actionStateFor={() => 'pending'}
+        onConfirm={jest.fn()}
+        onCancel={jest.fn()}
+        onChip={onChip}
+        executePending={false}
+      />,
+    )
+    fireEvent.press(screen.getByText('Open Spend'))
+    expect(onChip).toHaveBeenCalledWith(chip)
   })
 })

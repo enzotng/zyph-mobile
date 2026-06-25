@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Spinner, Surface } from '@/components/ui'
 
-import type { Block } from '../schemas'
+import type { Block, Chip } from '../schemas'
 import { CopilotWidget } from './copilot-widget'
 
 export type ActionState = 'pending' | 'executing' | 'done' | 'cancelled'
@@ -21,6 +21,7 @@ type Props = {
   actionStateFor: (index: number) => ActionState
   onConfirm: (index: number, block: Extract<Block, { kind: 'action' }>) => void
   onCancel: (index: number) => void
+  onChip: (chip: Chip) => void
   executePending: boolean
 }
 
@@ -31,6 +32,7 @@ export function CopilotBlocks({
   actionStateFor,
   onConfirm,
   onCancel,
+  onChip,
   executePending,
 }: Props): React.JSX.Element {
   const { t } = useTranslation()
@@ -109,6 +111,22 @@ export function CopilotBlocks({
             )
           }
 
+          case 'chips':
+            return (
+              <View key={key} style={styles.chipRow}>
+                {block.chips.map((chip, chipIndex) => (
+                  <Pressable
+                    key={`${messageId}:${index}:${chipIndex}`}
+                    style={({ pressed }) => [styles.chipPill, pressed && styles.chipPillPressed]}
+                    onPress={() => onChip(chip)}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.chipLabel}>{chip.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )
+
           default: {
             // Exhaustive check: if a new kind is added to Block, TypeScript will flag this.
             assertNever(block)
@@ -154,5 +172,31 @@ const styles = StyleSheet.create((theme) => ({
   },
   widgetRow: {
     alignSelf: 'stretch',
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.gap(2),
+    alignSelf: 'flex-start',
+  },
+  chipPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingVertical: theme.gap(2),
+    paddingHorizontal: theme.gap(3),
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+  },
+  chipPillPressed: {
+    opacity: 0.7,
+  },
+  chipLabel: {
+    color: theme.colors.foreground,
+    fontFamily: theme.fonts.sans.medium,
+    fontSize: theme.fontSize.sm,
   },
 }))
