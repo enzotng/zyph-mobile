@@ -13,8 +13,10 @@ beforeEach(() => {
 })
 
 describe('useAskCopilot', () => {
-  it('resolves with the copilot answer', async () => {
-    jest.mocked(api.askCopilot).mockResolvedValue({ answer: 'Next up: your flight to Rome.' })
+  it('resolves with the copilot blocks', async () => {
+    jest.mocked(api.askCopilot).mockResolvedValue({
+      blocks: [{ kind: 'text', text: 'Next up: your flight to Rome.' }],
+    })
     const { wrapper } = createQueryWrapper()
 
     const { result } = renderHook(() => useAskCopilot(), { wrapper })
@@ -25,7 +27,9 @@ describe('useAskCopilot', () => {
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data).toEqual({ answer: 'Next up: your flight to Rome.' })
+    expect(result.current.data).toEqual({
+      blocks: [{ kind: 'text', text: 'Next up: your flight to Rome.' }],
+    })
     // TanStack Query v5 passes a second mutate-context arg to the mutationFn.
     expect(api.askCopilot).toHaveBeenCalledWith(
       {
