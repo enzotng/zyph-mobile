@@ -7,6 +7,7 @@ import {
   eventQueryKey,
   eventsQueryKey,
   useCreateEvent,
+  useCreateEvents,
   useDeleteEvent,
   useEvent,
   useEvents,
@@ -92,6 +93,32 @@ describe('useCreateEvent', () => {
       title: 'Eiffel Tower visit',
       startsAt: '2024-06-01T10:00:00Z',
       notes: 'Bring camera',
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: eventsQueryKey('t1') })
+  })
+})
+
+describe('useCreateEvents', () => {
+  it('invalidates the events list on success', async () => {
+    jest.mocked(api.createEvents).mockResolvedValue([event])
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useCreateEvents(), { wrapper })
+    result.current.mutate({
+      tripId: 't1',
+      events: [
+        {
+          title: 'Eiffel Tower',
+          type: 'activity',
+          startsAt: '2024-06-01T10:00:00Z',
+          lat: 48.8584,
+          lng: 2.2945,
+          placeId: 'place1',
+        },
+      ],
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
