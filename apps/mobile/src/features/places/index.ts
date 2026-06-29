@@ -1,4 +1,7 @@
 export { searchPlaces } from './api/places.api'
 export { placeSearchQueryKey, usePlaceSearch } from './hooks/use-places'
+export { poisQueryKey, usePois } from './hooks/use-pois'
+export { searchPois } from './poi.api'
+export type { Poi, PoiSearchInput } from './poi.types'
 export type { PlaceResult } from './schemas'
 export { placeResultSchema, placeSearchResponseSchema } from './schemas'
