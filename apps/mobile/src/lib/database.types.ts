@@ -790,54 +790,72 @@ export type Database = {
       }
       trips: {
         Row: {
+          budget_level: string | null
+          budget_total_cents: number | null
           cover_photo_author: string | null
           cover_photo_author_url: string | null
           cover_photo_url: string | null
           created_at: string
           currency: string
           destination: string | null
+          dietary: string[]
           end_date: string | null
           id: string
+          interests: string[]
           invite_code: string
           latitude: number | null
           longitude: number | null
           owner_id: string
+          pace: string | null
           start_date: string | null
           title: string
+          trip_type: string | null
           updated_at: string
         }
         Insert: {
+          budget_level?: string | null
+          budget_total_cents?: number | null
           cover_photo_author?: string | null
           cover_photo_author_url?: string | null
           cover_photo_url?: string | null
           created_at?: string
           currency?: string
           destination?: string | null
+          dietary?: string[]
           end_date?: string | null
           id?: string
+          interests?: string[]
           invite_code?: string
           latitude?: number | null
           longitude?: number | null
           owner_id: string
+          pace?: string | null
           start_date?: string | null
           title: string
+          trip_type?: string | null
           updated_at?: string
         }
         Update: {
+          budget_level?: string | null
+          budget_total_cents?: number | null
           cover_photo_author?: string | null
           cover_photo_author_url?: string | null
           cover_photo_url?: string | null
           created_at?: string
           currency?: string
           destination?: string | null
+          dietary?: string[]
           end_date?: string | null
           id?: string
+          interests?: string[]
           invite_code?: string
           latitude?: number | null
           longitude?: number | null
           owner_id?: string
+          pace?: string | null
           start_date?: string | null
           title?: string
+          trip_type?: string | null
           updated_at?: string
         }
         Relationships: [

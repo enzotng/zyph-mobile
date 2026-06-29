@@ -8,6 +8,7 @@ import {
   listTrips,
   resetTripCover,
   updateTrip,
+  updateTripPreferences,
   uploadTripCover,
 } from './trips.api'
 
@@ -200,7 +201,20 @@ describe('createTrip', () => {
       end_date: null,
       latitude: null,
       longitude: null,
+      trip_type: null,
+      budget_level: null,
     })
+  })
+
+  it('persists the light profile fields collected at creation', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const builder = makeQueryBuilder({ data: trip, error: null })
+    from.mockReturnValue(builder)
+
+    await createTrip({ ...input, tripType: 'beach', budgetLevel: 'high' })
+    expect(builder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ trip_type: 'beach', budget_level: 'high' }),
+    )
   })
 
   it('persists the picked coordinates', async () => {
@@ -362,6 +376,50 @@ describe('updateTrip', () => {
         longitude: null,
       }),
     ).rejects.toThrow('update fail')
+  })
+})
+
+describe('updateTripPreferences', () => {
+  it('maps the profile fields to snake_case columns and returns the trip', async () => {
+    const builder = makeQueryBuilder({ data: trip, error: null })
+    from.mockReturnValue(builder)
+
+    await expect(
+      updateTripPreferences({
+        id: 't1',
+        tripType: 'beach',
+        budgetLevel: 'high',
+        budgetTotalCents: 120000,
+        pace: 'relaxed',
+        interests: ['food', 'museums'],
+        dietary: ['vegan'],
+      }),
+    ).resolves.toEqual(trip)
+    expect(builder.update).toHaveBeenCalledWith({
+      trip_type: 'beach',
+      budget_level: 'high',
+      budget_total_cents: 120000,
+      pace: 'relaxed',
+      interests: ['food', 'museums'],
+      dietary: ['vegan'],
+    })
+    expect(builder.eq).toHaveBeenCalledWith('id', 't1')
+  })
+
+  it('throws on error', async () => {
+    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('prefs fail') }))
+
+    await expect(
+      updateTripPreferences({
+        id: 't1',
+        tripType: null,
+        budgetLevel: null,
+        budgetTotalCents: null,
+        pace: null,
+        interests: [],
+        dietary: [],
+      }),
+    ).rejects.toThrow('prefs fail')
   })
 })
 

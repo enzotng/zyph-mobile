@@ -40,6 +40,16 @@ export function buildTripContext(input: CopilotContextInput): string {
       ? `Dates: ${trip.start_date}${trip.end_date ? ` to ${trip.end_date}` : ''}`
       : null,
     `Currency: ${trip.currency}`,
+    // Trip profile (preferences) - grounds Zo's suggestions. Optional/`?.` because a trip cached
+    // before these columns existed has them undefined until it refetches.
+    trip.trip_type ? `Trip type: ${trip.trip_type}` : null,
+    trip.budget_level ? `Budget level: ${trip.budget_level}` : null,
+    trip.budget_total_cents != null
+      ? `Budget total: ${formatAmount(trip.budget_total_cents, trip.currency)}`
+      : null,
+    trip.pace ? `Pace: ${trip.pace}` : null,
+    trip.interests?.length ? `Interests: ${trip.interests.join(', ')}` : null,
+    trip.dietary?.length ? `Dietary: ${trip.dietary.join(', ')}` : null,
     `Members: ${members.map((m) => m.display_name ?? 'Unknown').join(', ') || 'none'}`,
   ]
     .filter(Boolean)

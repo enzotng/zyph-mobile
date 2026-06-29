@@ -7,6 +7,7 @@ import {
   listTrips,
   resetTripCover,
   updateTrip,
+  updateTripPreferences,
   uploadTripCover,
 } from '../api/trips.api'
 
@@ -38,6 +39,17 @@ export function useUpdateTrip() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: updateTrip,
+    onSuccess: (trip) => {
+      void queryClient.invalidateQueries({ queryKey: tripsQueryKey, exact: true })
+      void queryClient.invalidateQueries({ queryKey: [...tripsQueryKey, trip.id], exact: true })
+    },
+  })
+}
+
+export function useUpdateTripPreferences() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateTripPreferences,
     onSuccess: (trip) => {
       void queryClient.invalidateQueries({ queryKey: tripsQueryKey, exact: true })
       void queryClient.invalidateQueries({ queryKey: [...tripsQueryKey, trip.id], exact: true })

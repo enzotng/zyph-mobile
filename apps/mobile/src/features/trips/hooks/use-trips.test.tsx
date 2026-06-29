@@ -32,6 +32,12 @@ const trip = {
   cover_photo_author_url: null,
   created_at: '2026-05-22T00:00:00Z',
   updated_at: '2026-05-22T00:00:00Z',
+  trip_type: null,
+  budget_level: null,
+  budget_total_cents: null,
+  pace: null,
+  interests: [],
+  dietary: [],
   members: [],
   myBalanceCents: 0,
 }

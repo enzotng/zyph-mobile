@@ -165,6 +165,13 @@ export default function EditTripScreen() {
         }}
         error={errors.endDate?.message}
       />
+
+      <Button
+        label={t('tripForm.preferencesLink')}
+        variant="secondary"
+        icon="options-outline"
+        onPress={() => router.push({ pathname: '/trips/[id]/preferences', params: { id: tripId } })}
+      />
     </Screen>
   )
 }
