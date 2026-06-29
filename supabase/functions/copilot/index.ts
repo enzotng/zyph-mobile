@@ -8,7 +8,7 @@
 //
 // Env vars (set via `supabase secrets set`):
 //   GROQ_API_KEY   — required
-//   GROQ_MODEL     — optional, defaults to llama-3.1-8b-instant
+//   GROQ_MODEL     — optional, defaults to llama-3.3-70b-versatile
 //   GROQ_BASE_URL  — optional, defaults to https://api.groq.com/openai/v1
 
 import "@supabase/functions-js/edge-runtime.d.ts"
@@ -224,7 +224,9 @@ export default {
           validCandidates
             .map((c) => {
               const typeLabel =
-                Array.isArray(c.types) && c.types.length > 0 ? c.types[0] : "place"
+                Array.isArray(c.types) && typeof c.types[0] === "string" && c.types[0]
+                  ? c.types[0]
+                  : "place"
               return `- ${c.placeId} | ${c.name} | ${typeLabel} | rating ${c.rating ?? "?"} | price ${c.priceLevel ?? "?"}`
             })
             .join("\n")
