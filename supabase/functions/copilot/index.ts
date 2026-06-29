@@ -17,7 +17,7 @@ import { withSupabase } from "@supabase/server"
 import { isWithinRateLimit } from "../_shared/rate-limit.ts"
 import { validateBlocks } from "./blocks.ts"
 
-const DEFAULT_MODEL = "llama-3.1-8b-instant"
+const DEFAULT_MODEL = "llama-3.3-70b-versatile"
 const DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 
 const MAX_MESSAGES = 30
@@ -44,7 +44,7 @@ You are given a TRIP CONTEXT block (facts about this trip: dates, members, balan
 ALWAYS reply with a SINGLE JSON object with a "blocks" array:
 {"blocks":[...]}
 
-Each element of "blocks" must be exactly one of these four shapes:
+Each element of "blocks" must be exactly one of these five shapes:
 
 1. Text block — your reply text:
 {"kind":"text","text":"<your reply, 1-3 sentences>"}
@@ -61,6 +61,9 @@ Each chip is one of:
 - Navigate to a screen: {"action":"navigate","to":"<one of: trip_home, spend, timeline, packing, map, balances, group>","label":"<short, user's language>"}
 - Ask a follow-up question: {"action":"prompt","prompt":"<a follow-up question to ask you>","label":"<short, user's language>"}
 - Trigger a quick action: {"action":"tool","tool":"<one of the available tools>","args":{...},"label":"<short, user's language>"}
+
+5. Itinerary block — a day-by-day trip plan built from CANDIDATE PLACES (emit ONLY when the user asks to plan, build, fill, or organize their trip schedule, or to replan a day):
+{"kind":"itinerary","days":[{"date":"YYYY-MM-DD","items":[{"placeId":"<id from CANDIDATE PLACES>","title":"<place name>","type":"<activity|restaurant|transport|hotel|flight|event>","time":"HH:MM","notes":"<one short line, optional>"}]}]}
 
 Available tools for action blocks (propose at most one; the user confirms before anything is written):
 - "add_expense": {"description": string, "amount": number, "splitWith": "all" OR array of member names}. Paid by the current user.
@@ -84,6 +87,10 @@ Rules:
 - Propose an action ONLY for an explicit add/create/record request. Anything else -> text (+ optional widget).
 - Optionally end with ONE chips block (1-3 chips) suggesting natural next steps - opening a relevant screen, a useful follow-up question, or a quick action. Omit it when nothing is natural.
 - A "tool" chip RUNS that action when tapped, so ONLY use one when the conversation already gives you ALL of its args (e.g. add_expense needs a concrete description AND amount). For a generic suggestion like "add an expense" with no specifics, use a "navigate" chip to the relevant screen (e.g. spend) instead - never a tool chip with empty or guessed args.
+- Itinerary response: one short text block (intro) + one itinerary block; optionally a chips block after. Emit an itinerary block ONLY when explicitly asked to plan/build/fill/organize the trip schedule or replan a day.
+- Choose itinerary items ONLY from the CANDIDATE PLACES list, copying the exact placeId and using the place's name as title. NEVER invent a place or placeId. If there are no candidates, reply with a text block asking the user to try again instead.
+- Spread items across the real trip dates (from TRIP CONTEXT): 2-5 items/day, realistic times, respecting the traveller profile (trip type, budget, pace, interests, dietary) and weather. Three modes: (a) empty timeline -> propose a full day-by-day plan; (b) timeline already has events -> fill only the empty time slots, do NOT duplicate existing events; (c) rain in the forecast -> prefer indoor candidates for that day.
+- Never put prices or amounts in any itinerary text field (NO-NUMBERS rule applies).
 - Use member names exactly as in MEMBERS. For the current user use "me".
 - Text is plain, grounded ONLY in the TRIP CONTEXT; never invent facts. If unknown, say so briefly. Refuse politely anything unrelated to this trip.
 - Be warm; address the user informally (in French use "tu"). Reply in the SAME language as the user's most recent message - a French question gets a French reply, including every chip label and the action confirm text; if the language is genuinely unclear, fall back to LANGUAGE (fr/en). Output JSON only, no markdown.`
@@ -152,7 +159,7 @@ export default {
       return Response.json({ error: "Too many requests, please slow down." }, { status: 429 })
     }
 
-    let body: { context?: unknown; language?: unknown; messages?: unknown }
+    let body: { context?: unknown; language?: unknown; messages?: unknown; candidates?: unknown }
     try {
       body = await req.json()
     } catch {
@@ -162,6 +169,37 @@ export default {
     const context = typeof body.context === "string" ? body.context.trim() : ""
     const language = body.language === "fr" ? "fr" : "en"
     const messages = parseMessages(body.messages)
+
+    const rawCandidates = Array.isArray(body.candidates) ? (body.candidates as unknown[]) : []
+    const validCandidates = rawCandidates
+      .slice(0, 60)
+      .filter(
+        (
+          c,
+        ): c is {
+          placeId: string
+          name: string
+          lat: number
+          lng: number
+          rating?: number | null
+          priceLevel?: number | null
+          types?: string[]
+        } => {
+          if (!c || typeof c !== "object") return false
+          const obj = c as Record<string, unknown>
+          return (
+            typeof obj.placeId === "string" &&
+            obj.placeId.trim().length > 0 &&
+            typeof obj.name === "string" &&
+            obj.name.trim().length > 0 &&
+            typeof obj.lat === "number" &&
+            isFinite(obj.lat) &&
+            typeof obj.lng === "number" &&
+            isFinite(obj.lng)
+          )
+        },
+      )
+    const candidateIds = new Set(validCandidates.map((c) => c.placeId))
 
     if (!messages) {
       return Response.json({ error: "Invalid or empty messages" }, { status: 400 })
@@ -180,6 +218,18 @@ export default {
     const model = Deno.env.get("GROQ_MODEL") || DEFAULT_MODEL
     const baseUrl = Deno.env.get("GROQ_BASE_URL") || DEFAULT_BASE_URL
 
+    const candidatesContext =
+      validCandidates.length > 0
+        ? "\n\nCANDIDATE PLACES (choose itinerary items ONLY from these, by place_id):\n" +
+          validCandidates
+            .map((c) => {
+              const typeLabel =
+                Array.isArray(c.types) && c.types.length > 0 ? c.types[0] : "place"
+              return `- ${c.placeId} | ${c.name} | ${typeLabel} | rating ${c.rating ?? "?"} | price ${c.priceLevel ?? "?"}`
+            })
+            .join("\n")
+        : ""
+
     let groqResponse: Response
     try {
       groqResponse = await callGroqWithRetry(`${baseUrl}/chat/completions`, {
@@ -194,12 +244,12 @@ export default {
             { role: "system", content: SYSTEM_PROMPT },
             {
               role: "system",
-              content: `LANGUAGE: ${language}\n\nTRIP CONTEXT:\n${context || "(no trip data available)"}`,
+              content: `LANGUAGE: ${language}\n\nTRIP CONTEXT:\n${context || "(no trip data available)"}${candidatesContext}`,
             },
             ...messages,
           ],
           temperature: 0.2,
-          max_tokens: 600,
+          max_tokens: 3000,
           response_format: { type: "json_object" },
         }),
       })
@@ -231,7 +281,11 @@ export default {
       return Response.json({ blocks: [{ kind: "text", text: content }] })
     }
 
-    const blocks = validateBlocks(parsed, { sources: WIDGETS, tools: TOOLS, navTargets: NAV_TARGETS }, language)
+    const blocks = validateBlocks(
+      parsed,
+      { sources: WIDGETS, tools: TOOLS, navTargets: NAV_TARGETS, candidateIds, maxItinDays: 14 },
+      language,
+    )
     return Response.json(
       blocks.length
         ? { blocks }
