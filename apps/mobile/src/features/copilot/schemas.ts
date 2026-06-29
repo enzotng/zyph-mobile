@@ -88,11 +88,36 @@ export const chipsBlockSchema = z.object({
   chips: z.array(chipSchema).min(1).max(3),
 })
 
+// --- Itinerary block ---
+const itineraryItemSchema = z.object({
+  placeId: z.string().min(1),
+  title: z.string().min(1),
+  type: z.string().min(1),
+  time: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional(),
+  notes: z.string().optional(),
+})
+const itineraryDaySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  items: z.array(itineraryItemSchema).min(1).max(6),
+})
+export const itineraryBlockSchema = z.object({
+  kind: z.literal('itinerary'),
+  days: z.array(itineraryDaySchema).min(1).max(14),
+})
+
+export type ItineraryItem = z.infer<typeof itineraryItemSchema>
+export type ItineraryDay = z.infer<typeof itineraryDaySchema>
+export type ItineraryBlock = z.infer<typeof itineraryBlockSchema>
+
 export const blockSchema = z.discriminatedUnion('kind', [
   textBlockSchema,
   widgetBlockSchema,
   actionBlockSchema,
   chipsBlockSchema,
+  itineraryBlockSchema,
 ])
 
 export type Block = z.infer<typeof blockSchema>

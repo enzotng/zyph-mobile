@@ -127,6 +127,10 @@ export function CopilotBlocks({
               </View>
             )
 
+          case 'itinerary':
+            // Itinerary rendering is handled by a dedicated screen; no inline bubble.
+            return null
+
           default: {
             // Exhaustive check: if a new kind is added to Block, TypeScript will flag this.
             assertNever(block)

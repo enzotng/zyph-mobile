@@ -1,4 +1,4 @@
-import { copilotResponseSchema } from './schemas'
+import { blockSchema, copilotResponseSchema } from './schemas'
 
 describe('copilotResponseSchema (block-based)', () => {
   // --- text block ---
@@ -126,6 +126,79 @@ describe('copilotResponseSchema (block-based)', () => {
   it('accepts a widget block with spend_by_category source', () => {
     const result = copilotResponseSchema.safeParse({
       blocks: [{ kind: 'widget', source: 'spend_by_category' }],
+    })
+    expect(result.success).toBe(true)
+  })
+})
+
+// --- itinerary block ---
+describe('itinerary block schema', () => {
+  const validItineraryBlock = {
+    kind: 'itinerary',
+    days: [
+      {
+        date: '2026-07-15',
+        items: [
+          { placeId: 'place-1', title: 'Eiffel Tower', type: 'landmark' },
+          {
+            placeId: 'place-2',
+            title: 'Le Marais',
+            type: 'neighbourhood',
+            time: '14:00',
+            notes: 'Great for lunch',
+          },
+        ],
+      },
+    ],
+  }
+
+  it('accepts a valid itinerary block via blockSchema', () => {
+    const result = blockSchema.safeParse(validItineraryBlock)
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects an itinerary block with empty days array', () => {
+    const result = blockSchema.safeParse({ kind: 'itinerary', days: [] })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects an itinerary block with a day that has empty items array', () => {
+    const result = blockSchema.safeParse({
+      kind: 'itinerary',
+      days: [{ date: '2026-07-15', items: [] }],
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects an itinerary block with an item missing placeId', () => {
+    const result = blockSchema.safeParse({
+      kind: 'itinerary',
+      days: [
+        {
+          date: '2026-07-15',
+          items: [{ title: 'Eiffel Tower', type: 'landmark' }],
+        },
+      ],
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects an itinerary block with a day exceeding 6 items', () => {
+    const items = Array.from({ length: 7 }, (_, i) => ({
+      placeId: `place-${i}`,
+      title: `Place ${i}`,
+      type: 'landmark',
+    }))
+    const result = blockSchema.safeParse({
+      kind: 'itinerary',
+      days: [{ date: '2026-07-15', items }],
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('parses a copilotResponseSchema with a text block and an itinerary block', () => {
+    const result = copilotResponseSchema.safeParse({
+      blocks: [{ kind: 'text', text: 'Here is your itinerary:' }, validItineraryBlock],
     })
     expect(result.success).toBe(true)
   })
