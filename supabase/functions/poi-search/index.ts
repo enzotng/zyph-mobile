@@ -3,7 +3,8 @@
 // API cost. On any Google error the function degrades to an empty list (HTTP 200) rather than 500.
 //
 // Env vars (set via `supabase secrets set`):
-//   GOOGLE_PLACES_API_KEY  — required
+//   GOOGLE_MAPS_API_KEY    — required (same Google Cloud key the trip-cover fn already uses for
+//                            Places API New; the API is enabled on that project)
 //   SUPABASE_URL           — auto-injected by the runtime
 //   SUPABASE_SERVICE_ROLE_KEY — auto-injected by the runtime
 
@@ -87,9 +88,9 @@ export default {
       max = Math.max(1, Math.min(20, Math.round(rawMax)))
     }
 
-    const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY")
+    const apiKey = Deno.env.get("GOOGLE_MAPS_API_KEY")
     if (!apiKey) {
-      return Response.json({ error: "GOOGLE_PLACES_API_KEY is not configured" }, { status: 500 })
+      return Response.json({ error: "GOOGLE_MAPS_API_KEY is not configured" }, { status: 500 })
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? ""
