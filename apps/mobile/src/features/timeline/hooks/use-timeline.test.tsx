@@ -28,6 +28,7 @@ const event = {
   lat: null,
   lng: null,
   gate_location: null,
+  place_id: null,
   created_by: 'u1',
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
