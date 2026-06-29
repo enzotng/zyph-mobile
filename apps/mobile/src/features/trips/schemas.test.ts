@@ -1,4 +1,10 @@
-import { createTripSchema, dateToIsoDay, isoDayToDate } from './schemas'
+import {
+  createTripSchema,
+  dateToIsoDay,
+  isoDayToDate,
+  newTripSchema,
+  tripPreferencesSchema,
+} from './schemas'
 
 const base = {
   title: 'Rome',
@@ -43,6 +49,81 @@ describe('createTripSchema', () => {
 
   it('rejects a malformed date', () => {
     expect(createTripSchema.safeParse({ ...base, startDate: '10/06/2026' }).success).toBe(false)
+  })
+})
+
+describe('newTripSchema', () => {
+  it('accepts the create fields with no profile set', () => {
+    expect(newTripSchema.safeParse({ ...base, tripType: null, budgetLevel: null }).success).toBe(
+      true,
+    )
+  })
+
+  it('accepts valid trip type and budget level', () => {
+    expect(
+      newTripSchema.safeParse({ ...base, tripType: 'beach', budgetLevel: 'luxury' }).success,
+    ).toBe(true)
+  })
+
+  it('rejects an unknown trip type', () => {
+    expect(
+      newTripSchema.safeParse({ ...base, tripType: 'spaceflight', budgetLevel: null }).success,
+    ).toBe(false)
+  })
+
+  it('still enforces the date ordering inherited from the base', () => {
+    expect(
+      newTripSchema.safeParse({
+        ...base,
+        tripType: null,
+        budgetLevel: null,
+        startDate: '2026-06-12',
+        endDate: '2026-06-10',
+      }).success,
+    ).toBe(false)
+  })
+})
+
+describe('tripPreferencesSchema', () => {
+  const prefsBase = {
+    tripType: null,
+    budgetLevel: null,
+    budgetTotal: '',
+    pace: null,
+    interests: [],
+    dietary: [],
+  }
+
+  it('accepts an empty (unset) profile', () => {
+    expect(tripPreferencesSchema.safeParse(prefsBase).success).toBe(true)
+  })
+
+  it('accepts a fully filled profile', () => {
+    expect(
+      tripPreferencesSchema.safeParse({
+        tripType: 'city_break',
+        budgetLevel: 'medium',
+        budgetTotal: '1200.50',
+        pace: 'balanced',
+        interests: ['food', 'museums'],
+        dietary: ['vegan'],
+      }).success,
+    ).toBe(true)
+  })
+
+  it('accepts a comma decimal and rejects a non-numeric budget', () => {
+    expect(tripPreferencesSchema.safeParse({ ...prefsBase, budgetTotal: '99,90' }).success).toBe(
+      true,
+    )
+    expect(tripPreferencesSchema.safeParse({ ...prefsBase, budgetTotal: 'abc' }).success).toBe(
+      false,
+    )
+  })
+
+  it('rejects an unknown interest', () => {
+    expect(
+      tripPreferencesSchema.safeParse({ ...prefsBase, interests: ['teleportation'] }).success,
+    ).toBe(false)
   })
 })
 

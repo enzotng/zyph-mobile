@@ -8,6 +8,7 @@ import { Alert, ScrollView, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
+import { SingleChipField } from '@/components/chip-select-field'
 import { CurrencyPicker } from '@/components/currency-picker'
 import { DestinationField } from '@/components/destination-field'
 import { Screen } from '@/components/screen'
@@ -15,7 +16,13 @@ import { TextField } from '@/components/text-field'
 import { TripDatesField } from '@/components/trip-dates-field'
 import { Surface } from '@/components/ui'
 import { useFxRates } from '@/features/fx'
-import { type CreateTripValues, createTripSchema, useCreateTrip } from '@/features/trips'
+import {
+  BUDGET_LEVELS,
+  type NewTripValues,
+  newTripSchema,
+  TRIP_TYPES,
+  useCreateTrip,
+} from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 
@@ -54,8 +61,8 @@ export default function NewTripScreen() {
     handleSubmit,
     setValue,
     formState: { errors, isValid },
-  } = useForm<CreateTripValues>({
-    resolver: zodResolver(createTripSchema),
+  } = useForm<NewTripValues>({
+    resolver: zodResolver(newTripSchema),
     mode: 'onChange',
     defaultValues: {
       title: '',
@@ -65,6 +72,8 @@ export default function NewTripScreen() {
       endDate: null,
       latitude: null,
       longitude: null,
+      tripType: null,
+      budgetLevel: null,
     },
   })
 
@@ -72,7 +81,24 @@ export default function NewTripScreen() {
   const endDate = useWatch({ control, name: 'endDate' })
   const destination = useWatch({ control, name: 'destination' })
 
-  async function onSubmit(values: CreateTripValues) {
+  const tripTypeOptions = useMemo(
+    () =>
+      TRIP_TYPES.map((value) => ({
+        value,
+        label: t(`tripPreferences.options.tripTypes.${value}`),
+      })),
+    [t],
+  )
+  const budgetLevelOptions = useMemo(
+    () =>
+      BUDGET_LEVELS.map((value) => ({
+        value,
+        label: t(`tripPreferences.options.budgetLevels.${value}`),
+      })),
+    [t],
+  )
+
+  async function onSubmit(values: NewTripValues) {
     try {
       const trip = await createTrip.mutateAsync(values)
       haptics.success()
@@ -173,6 +199,32 @@ export default function NewTripScreen() {
               setValue('endDate', next.endDate, { shouldValidate: true })
             }}
             error={errors.endDate?.message}
+          />
+
+          <Controller
+            control={control}
+            name="tripType"
+            render={({ field }) => (
+              <SingleChipField
+                label={t('tripPreferences.tripType')}
+                options={tripTypeOptions}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="budgetLevel"
+            render={({ field }) => (
+              <SingleChipField
+                label={t('tripPreferences.budgetLevel')}
+                options={budgetLevelOptions}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
           />
         </ScrollView>
       </View>

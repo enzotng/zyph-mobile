@@ -2,7 +2,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
-import type { CreateTripValues } from '../schemas'
+import type { BudgetLevel, CreateTripValues, Dietary, Interest, Pace, TripType } from '../schemas'
 
 export type Trip = Database['public']['Tables']['trips']['Row']
 
@@ -156,7 +156,14 @@ export async function getTrip(id: string): Promise<Trip> {
   return data
 }
 
-export async function createTrip(input: CreateTripValues): Promise<Trip> {
+// The create form (createTripSchema) plus the two optional "light" profile fields the
+// new-trip screen collects (newTripSchema). Both default to null when omitted.
+export type CreateTripInput = CreateTripValues & {
+  tripType?: TripType | null
+  budgetLevel?: BudgetLevel | null
+}
+
+export async function createTrip(input: CreateTripInput): Promise<Trip> {
   // getSession reads the cached local session (no auth-server round-trip).
   const { data: auth } = await supabase.auth.getSession()
   const ownerId = auth.session?.user.id
@@ -175,6 +182,8 @@ export async function createTrip(input: CreateTripValues): Promise<Trip> {
       end_date: input.endDate,
       latitude: input.latitude,
       longitude: input.longitude,
+      trip_type: input.tripType ?? null,
+      budget_level: input.budgetLevel ?? null,
     })
     .select()
     .single()
@@ -214,6 +223,39 @@ export async function updateTrip({
     throw error
   }
   return withCover(data)
+}
+
+// Trip profile / preferences. A dedicated path (not updateTrip) so the trip edit form, which
+// renders none of these fields, can never blank them out. budgetTotalCents is integer cents in
+// the trip currency. Owner-only at the DB (trips_update_owner RLS) and gated again in the UI.
+export type UpdateTripPreferencesInput = {
+  id: string
+  tripType: TripType | null
+  budgetLevel: BudgetLevel | null
+  budgetTotalCents: number | null
+  pace: Pace | null
+  interests: Interest[]
+  dietary: Dietary[]
+}
+
+export async function updateTripPreferences(input: UpdateTripPreferencesInput): Promise<Trip> {
+  const { data, error } = await supabase
+    .from('trips')
+    .update({
+      trip_type: input.tripType,
+      budget_level: input.budgetLevel,
+      budget_total_cents: input.budgetTotalCents,
+      pace: input.pace,
+      interests: input.interests,
+      dietary: input.dietary,
+    })
+    .eq('id', input.id)
+    .select()
+    .single()
+  if (error) {
+    throw error
+  }
+  return data
 }
 
 export async function deleteTrip(id: string): Promise<void> {
