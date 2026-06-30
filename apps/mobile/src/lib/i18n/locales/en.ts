@@ -1066,6 +1066,18 @@ export const en = {
     typeLabel: 'Type',
     titleLabel: 'Title',
     timeLabel: 'Time',
+    cta: {
+      coldStart: 'Plan my trip with Zo',
+      gapFill: 'Plan more with Zo',
+      subtitle: 'Zo builds a day-by-day plan from real places',
+      rainyTitle: 'Rain expected',
+      rainyAction: 'Replan the day',
+    },
+    prompts: {
+      coldStart: 'Plan my trip - suggest a day-by-day itinerary.',
+      gapFill: 'Fill the gaps in my itinerary with things to do.',
+      rainyDay: 'It is going to rain on {{date}} - replan that day with indoor activities.',
+    },
   },
 }
 
