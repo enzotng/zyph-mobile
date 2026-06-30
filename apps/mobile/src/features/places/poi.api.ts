@@ -13,3 +13,17 @@ export async function searchPois(input: PoiSearchInput): Promise<Poi[]> {
   }
   return data.pois ?? []
 }
+
+// Resolves a Google Places photo resource name (e.g. "places/.../photos/...") into a keyless,
+// embeddable URL via the poi-photo edge function. The API key never reaches the client.
+// Returns null on any provider or network error so callers can silently fall back to a placeholder.
+export async function resolvePoiPhoto(photoName: string, maxWidthPx = 800): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke<{ photoUri: string | null }>(
+    'poi-photo',
+    { body: { photoName, maxWidthPx } },
+  )
+  if (error || !data) {
+    return null
+  }
+  return data.photoUri ?? null
+}

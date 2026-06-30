@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { searchPois } from './poi.api'
+import { resolvePoiPhoto, searchPois } from './poi.api'
 import type { Poi } from './poi.types'
 
 jest.mock('@/lib/supabase')
@@ -22,6 +22,26 @@ const fixturePoi: Poi = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+})
+
+describe('resolvePoiPhoto', () => {
+  const photoName = 'places/x/photos/y'
+
+  it('invokes poi-photo with body and returns data.photoUri', async () => {
+    const uri = 'https://lh3.googleusercontent.com/photo.jpg'
+    invoke.mockResolvedValue({ data: { photoUri: uri }, error: null })
+
+    const result = await resolvePoiPhoto(photoName)
+
+    expect(result).toBe(uri)
+    expect(invoke).toHaveBeenCalledWith('poi-photo', { body: { photoName, maxWidthPx: 800 } })
+  })
+
+  it('returns null when invoke returns an error', async () => {
+    invoke.mockResolvedValue({ data: null, error: new Error('network') })
+
+    await expect(resolvePoiPhoto(photoName)).resolves.toBeNull()
+  })
 })
 
 describe('searchPois', () => {
