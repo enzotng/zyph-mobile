@@ -147,8 +147,9 @@ function ZoAvatar({ size }: { size: number }) {
 }
 
 export default function CopilotScreen() {
-  const params = useGlobalSearchParams<{ id: string }>()
+  const params = useGlobalSearchParams<{ id: string; prompt?: string }>()
   const tripId = paramString(params.id)
+  const initialPrompt = paramString(params.prompt)
   const router = useRouter()
   const { t, i18n } = useTranslation()
   const { theme } = useUnistyles()
@@ -228,6 +229,20 @@ export default function CopilotScreen() {
     void balances.refetch()
     void members.refetch()
   }
+
+  // Auto-send the initial prompt from a deep-link CTA exactly once on mount.
+  // The ref guard ensures the effect fires only once even across re-renders,
+  // query refetches, or history rehydration. `send` is a hoisted function declaration
+  // so calling it here is safe even though it appears later in the file.
+  const autoSentRef = useRef(false)
+  useEffect(() => {
+    if (autoSentRef.current || !initialPrompt || !dataReady || ask.isPending) {
+      return
+    }
+    autoSentRef.current = true
+    send(initialPrompt)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrompt, dataReady, ask.isPending])
 
   // Sends a conversation whose last turn is the user's question to the copilot. Used by both a
   // fresh send and a retry (which re-sends the failed question without duplicating the bubble).
