@@ -11,6 +11,7 @@ export const en = {
     done: 'Done',
     back: 'Back',
     you: 'You',
+    dismiss: 'Dismiss',
     retry: 'Try again',
     loading: 'Loading…',
     saving: 'Saving…',

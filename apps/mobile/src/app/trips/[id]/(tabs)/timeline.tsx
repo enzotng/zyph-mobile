@@ -250,7 +250,7 @@ export default function TimelineScreen() {
             <Pressable
               onPress={() => setRainyDismissed(true)}
               accessibilityRole="button"
-              accessibilityLabel="Dismiss"
+              accessibilityLabel={t('common.dismiss')}
               hitSlop={12}
             >
               <Ionicons name="close-outline" size={20} color={theme.colors.muted} />

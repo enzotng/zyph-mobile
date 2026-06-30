@@ -63,7 +63,7 @@ Each chip is one of:
 - Trigger a quick action: {"action":"tool","tool":"<one of the available tools>","args":{...},"label":"<short, user's language>"}
 
 5. Itinerary block — a day-by-day trip plan built from CANDIDATE PLACES (emit ONLY when the user asks to plan, build, fill, or organize their trip schedule, or to replan a day):
-{"kind":"itinerary","days":[{"date":"YYYY-MM-DD","items":[{"placeId":"<id from CANDIDATE PLACES>","title":"<place name>","type":"<activity|restaurant|transport|hotel|flight|event>","time":"HH:MM","notes":"<one short line, optional>"}]}]}
+{"kind":"itinerary","days":[{"date":"YYYY-MM-DD","items":[{"placeId":"<id from CANDIDATE PLACES>","title":"<place name>","type":"<activity|food|transport|lodging|flight|event>","time":"HH:MM","notes":"<one short line, optional>"}]}]}
 
 Available tools for action blocks (propose at most one; the user confirms before anything is written):
 - "add_expense": {"description": string, "amount": number, "splitWith": "all" OR array of member names}. Paid by the current user.
@@ -288,10 +288,16 @@ export default {
       { sources: WIDGETS, tools: TOOLS, navTargets: NAV_TARGETS, candidateIds, maxItinDays: 14 },
       language,
     )
+    // When nothing validates (e.g. the model proposed an itinerary but no candidate matched), the
+    // parsed `content` is raw JSON - never surface that. Degrade to a friendly, localized message.
+    const emptyFallback =
+      language === "fr"
+        ? "Désolé, je n'ai pas réussi à préparer ça. Tu peux reformuler ta demande ?"
+        : "Sorry, I could not put that together. Could you rephrase your request?"
     return Response.json(
       blocks.length
         ? { blocks }
-        : { blocks: [{ kind: "text", text: content }] },
+        : { blocks: [{ kind: "text", text: emptyFallback }] },
     )
   }),
 }

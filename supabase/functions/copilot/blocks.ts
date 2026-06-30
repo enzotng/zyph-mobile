@@ -6,11 +6,13 @@ export type Chip =
   | { action: "prompt"; prompt: string; label: string }
   | { action: "tool"; tool: string; args: Record<string, unknown>; label: string }
 
+// Must match the client's canonical EVENT_TYPES (features/timeline/event-types.ts) so the
+// inserted trip_events.type resolves to a real timeline icon. food = restaurants, lodging = hotels.
 const VALID_ITEM_TYPES = [
   "activity",
-  "restaurant",
+  "food",
   "transport",
-  "hotel",
+  "lodging",
   "flight",
   "event",
 ] as const

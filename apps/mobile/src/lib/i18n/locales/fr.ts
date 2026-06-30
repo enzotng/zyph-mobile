@@ -13,6 +13,7 @@ export const fr: Translations = {
     done: 'Terminer',
     back: 'Retour',
     you: 'Toi',
+    dismiss: 'Fermer',
     retry: 'Réessayer',
     loading: 'Chargement…',
     saving: 'Enregistrement…',
