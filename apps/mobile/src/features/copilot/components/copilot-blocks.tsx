@@ -4,9 +4,12 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Spinner, Surface } from '@/components/ui'
+import type { Poi } from '@/features/places'
+import type { NewItineraryEvent } from '@/features/timeline'
 
 import type { Block, Chip } from '../schemas'
 import { CopilotWidget } from './copilot-widget'
+import { ItineraryBlock } from './itinerary-block'
 
 export type ActionState = 'pending' | 'executing' | 'done' | 'cancelled'
 
@@ -23,6 +26,11 @@ type Props = {
   onCancel: (index: number) => void
   onChip: (chip: Chip) => void
   executePending: boolean
+  // Itinerary support
+  candidates: Poi[]
+  itineraryStateFor: (index: number) => 'adding' | 'added' | undefined
+  onAddItinerary: (index: number, events: NewItineraryEvent[]) => void
+  onRegenerateItinerary: () => void
 }
 
 export function CopilotBlocks({
@@ -34,6 +42,10 @@ export function CopilotBlocks({
   onCancel,
   onChip,
   executePending,
+  candidates,
+  itineraryStateFor,
+  onAddItinerary,
+  onRegenerateItinerary,
 }: Props): React.JSX.Element {
   const { t } = useTranslation()
   const { theme } = useUnistyles()
@@ -128,8 +140,17 @@ export function CopilotBlocks({
             )
 
           case 'itinerary':
-            // Itinerary rendering is handled by a dedicated screen; no inline bubble.
-            return null
+            return (
+              <ItineraryBlock
+                key={key}
+                block={block}
+                candidates={candidates}
+                onAdd={(events) => onAddItinerary(index, events)}
+                onRegenerate={onRegenerateItinerary}
+                isAdding={itineraryStateFor(index) === 'adding'}
+                added={itineraryStateFor(index) === 'added'}
+              />
+            )
 
           default: {
             // Exhaustive check: if a new kind is added to Block, TypeScript will flag this.

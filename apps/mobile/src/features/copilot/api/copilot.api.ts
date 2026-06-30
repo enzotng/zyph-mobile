@@ -1,3 +1,4 @@
+import type { Poi } from '@/features/places'
 import { supabase } from '@/lib/supabase'
 
 import { type CopilotResponse, copilotResponseSchema } from '../schemas'
@@ -9,6 +10,9 @@ export type AskCopilotInput = {
   language: 'en' | 'fr'
   // Full conversation so far; the last message is the new user question.
   messages: CopilotMessage[]
+  // POI candidates fetched when the turn looks like a planning request. Forwarded
+  // to the edge function so the model can reference real places in the itinerary.
+  candidates?: Poi[]
 }
 
 export async function askCopilot(input: AskCopilotInput): Promise<CopilotResponse> {
