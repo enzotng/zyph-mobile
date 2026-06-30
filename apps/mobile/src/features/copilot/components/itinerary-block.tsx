@@ -81,7 +81,6 @@ function ItineraryItemCard({ item, poi, onToggle, onChange }: ItemCardProps) {
           ) : (
             <Surface
               radius={theme.radius.md}
-              color={theme.colors.raised}
               borderColor={theme.colors.border}
               borderWidth={1}
               style={styles.photoPlaceholder}
