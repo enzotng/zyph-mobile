@@ -1057,6 +1057,16 @@ export const en = {
     inMinutes: 'in {{minutes}}m',
     now: 'starting now',
   },
+  itinerary: {
+    add: 'Add to timeline',
+    added: 'Added',
+    regenerate: 'Regenerate',
+    open: 'Open',
+    closed: 'Closed',
+    typeLabel: 'Type',
+    titleLabel: 'Title',
+    timeLabel: 'Time',
+  },
 }
 
 // Structural shape (string leaves) so locale files match keys, not exact English text.

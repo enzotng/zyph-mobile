@@ -1070,4 +1070,14 @@ export const fr: Translations = {
     inMinutes: 'dans {{minutes}} min',
     now: 'ça commence',
   },
+  itinerary: {
+    add: 'Ajouter à la timeline',
+    added: 'Ajouté',
+    regenerate: 'Régénérer',
+    open: 'Ouvert',
+    closed: 'Fermé',
+    typeLabel: 'Type',
+    titleLabel: 'Titre',
+    timeLabel: 'Heure',
+  },
 }
