@@ -38,11 +38,6 @@ export default function TripTabsLayout() {
           // `packing` has no tab of its own - it lives under the Plan (timeline) segment, so keep
           // Plan highlighted while packing is open.
           const activeName = rawActive === 'packing' ? 'timeline' : rawActive
-          // The Map tab (iOS) is a full-screen map with its own Nearby sheet at the bottom; the
-          // floating tab bar would overlap it, so hide it there (Map's back tile returns to Cockpit).
-          if (rawActive === 'pois' && Platform.OS === 'ios') {
-            return null
-          }
           const routesByName = new Map(props.state.routes.map((route) => [route.name, route]))
           const tabs: TripTab[] = TAB_ORDER.flatMap((name) => {
             const route = routesByName.get(name)
@@ -84,7 +79,10 @@ export default function TripTabsLayout() {
         <Tabs.Screen name="index" options={{ title: t('tabs.cockpit') }} />
         <Tabs.Screen name="timeline" options={{ title: t('tabs.plan') }} />
         <Tabs.Screen name="expenses" options={{ title: t('tabs.spend') }} />
-        <Tabs.Screen name="pois" options={{ title: t('tabs.map') }} />
+        <Tabs.Screen
+          name="pois"
+          options={{ title: Platform.OS === 'ios' ? t('tabs.map') : t('tabs.places') }}
+        />
         <Tabs.Screen name="packing" options={{ title: t('tabs.packing') }} />
       </Tabs>
       <TripAddSheet open={addOpen} onClose={() => setAddOpen(false)} tripId={tripId} />

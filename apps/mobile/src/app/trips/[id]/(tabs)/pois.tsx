@@ -877,7 +877,9 @@ const styles = StyleSheet.create((theme, rt) => ({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
+    // Floats above the trip tab bar (now shown on the Map tab too) so its peek/expanded content
+    // is never rendered underneath it; matches the clearance every other trip tab reserves.
+    bottom: rt.insets.bottom + TRIP_TAB_BAR_CLEARANCE,
   },
   sheetSurface: {
     flex: 1,
