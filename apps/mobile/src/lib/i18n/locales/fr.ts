@@ -570,9 +570,6 @@ export const fr: Translations = {
     emptyBody: 'Garde tes réservations, billets et PDF de ce voyage au même endroit.',
   },
   map: {
-    title: 'Carte',
-    iosOnly: 'La carte est disponible sur iOS.',
-    empty: 'Rien à afficher pour le moment. Ajoute un événement ou un lieu, ou active un calque.',
     layers: {
       title: 'Calques',
       events: 'Événements',
