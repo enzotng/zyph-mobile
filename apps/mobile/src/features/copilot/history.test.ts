@@ -3,8 +3,10 @@ import { createMMKV } from 'react-native-mmkv'
 import {
   type ChatMessage,
   clearCopilotHistory,
+  loadBlockStates,
   loadCopilotHistory,
   migrateMessage,
+  saveBlockStates,
   saveCopilotHistory,
 } from './history'
 
@@ -236,5 +238,47 @@ describe('copilot history persistence', () => {
         { kind: 'widget', source: 'weather' },
       ],
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// per-block outcome persistence (action / itinerary states)
+// ---------------------------------------------------------------------------
+
+describe('copilot block-state persistence', () => {
+  it('round-trips terminal action and itinerary states', () => {
+    saveBlockStates('t1', { 'm1:0': 'done', 'm2:1': 'cancelled' }, { 'm3:0': 'added' })
+    expect(loadBlockStates('t1')).toEqual({
+      actions: { 'm1:0': 'done', 'm2:1': 'cancelled' },
+      itineraries: { 'm3:0': 'added' },
+    })
+  })
+
+  it('restores a persisted executing action as cancelled (never re-armed)', () => {
+    saveBlockStates('t1', { 'm1:0': 'executing' }, {})
+    expect(loadBlockStates('t1').actions).toEqual({ 'm1:0': 'cancelled' })
+  })
+
+  it('drops transient/unknown values on load', () => {
+    saveBlockStates('t1', { 'm1:0': 'pending', 'm2:0': 'bogus' }, { 'm3:0': 'adding' })
+    expect(loadBlockStates('t1')).toEqual({ actions: {}, itineraries: {} })
+  })
+
+  it('returns empty states for an unknown trip or corrupt payload', () => {
+    expect(loadBlockStates('nope')).toEqual({ actions: {}, itineraries: {} })
+    mockStore.set('chat-states-v1:t9', 'not json')
+    expect(loadBlockStates('t9')).toEqual({ actions: {}, itineraries: {} })
+  })
+
+  it('saving empty maps removes the stored entry', () => {
+    saveBlockStates('t1', { 'm1:0': 'done' }, {})
+    saveBlockStates('t1', {}, {})
+    expect(loadBlockStates('t1')).toEqual({ actions: {}, itineraries: {} })
+  })
+
+  it('clearCopilotHistory also clears the block states', () => {
+    saveBlockStates('t1', { 'm1:0': 'done' }, { 'm2:0': 'added' })
+    clearCopilotHistory('t1')
+    expect(loadBlockStates('t1')).toEqual({ actions: {}, itineraries: {} })
   })
 })

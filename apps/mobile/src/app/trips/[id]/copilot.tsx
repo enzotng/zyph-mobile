@@ -22,7 +22,9 @@ import {
   type CopilotMessage,
   classifyCopilotError,
   clearCopilotHistory,
+  loadBlockStates,
   loadCopilotHistory,
+  saveBlockStates,
   saveCopilotHistory,
   useAskCopilot,
   useExecuteCopilotAction,
@@ -183,11 +185,19 @@ export default function CopilotScreen() {
   const [draft, setDraft] = useState('')
   const scrollRef = useRef<ScrollView>(null)
 
-  // Per-block action states: key = `${messageId}:${blockIndex}`.
-  const [actionStates, setActionStates] = useState<Record<string, ActionState>>({})
+  // Per-block action states: key = `${messageId}:${blockIndex}`. Re-hydrated from storage so an
+  // already-executed action card can never re-arm as tappable after a restart (the chat history
+  // persists, so without this the restored card would read 'pending' again - a financial
+  // re-execution hazard).
+  const [actionStates, setActionStates] = useState<Record<string, ActionState>>(
+    () => loadBlockStates(tripId).actions,
+  )
 
-  // Per-block itinerary add states: key = `${messageId}:${blockIndex}`.
-  const [itineraryStates, setItineraryStates] = useState<Record<string, 'adding' | 'added'>>({})
+  // Per-block itinerary add states: key = `${messageId}:${blockIndex}`. Re-hydrated for the same
+  // reason: an added itinerary must keep reading "Added" across restarts.
+  const [itineraryStates, setItineraryStates] = useState<Record<string, 'adding' | 'added'>>(
+    () => loadBlockStates(tripId).itineraries,
+  )
 
   // POI candidates from the most recent planning search; passed to every itinerary block so
   // each card can show photos, ratings and coordinates even after more messages are sent.
@@ -214,6 +224,20 @@ export default function CopilotScreen() {
   useEffect(() => {
     saveCopilotHistory(tripId, messages)
   }, [tripId, messages])
+
+  // Persist the per-block outcomes alongside the chat (executed actions, added itineraries) so
+  // they survive a restart too. Transient values ('executing'/'adding') are coerced or dropped
+  // at load time by loadBlockStates. Keys whose message no longer exists (history trimmed at
+  // MAX_STORED, or an error bubble replaced) are pruned so the stored map stays bounded like
+  // the chat itself.
+  useEffect(() => {
+    const liveIds = new Set(messages.map((m) => m.id))
+    const prune = <T extends Record<string, string>>(states: T): T =>
+      Object.fromEntries(
+        Object.entries(states).filter(([k]) => liveIds.has(k.slice(0, k.lastIndexOf(':')))),
+      ) as T
+    saveBlockStates(tripId, prune(actionStates), prune(itineraryStates))
+  }, [tripId, messages, actionStates, itineraryStates])
 
   const dataReady = Boolean(
     trip.data && events.data && expenses.data && balances.data && members.data,
@@ -416,6 +440,11 @@ export default function CopilotScreen() {
     inFlight.current.add(key)
     haptics.light()
     setBlockActionState(messageId, index, 'executing')
+    // Also persist 'executing' synchronously BEFORE the mutation fires: the reactive persist
+    // effect only flushes after the React commit, so if the app were killed in that window the
+    // restored card would re-arm as 'pending' while the write may have reached the server.
+    // loadBlockStates restores a persisted 'executing' as 'cancelled' (never re-armed).
+    saveBlockStates(tripId, { ...actionStates, [key]: 'executing' }, itineraryStates)
     const language = i18n.language === 'fr' ? 'fr' : 'en'
     execute.mutate(
       {
