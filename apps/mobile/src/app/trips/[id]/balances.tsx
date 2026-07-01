@@ -299,11 +299,8 @@ export default function TripBalancesScreen() {
   const canSettleAll = myDebts.length > 0
   const history = paymentHistory ?? []
 
-  // The fixed top of the page (who-owes-whom + per-person balances + the history eyebrow) - rendered
-  // as the FlashList header so the long, growable payment history below is the virtualized data.
   const ListHeader = (
     <View style={styles.headerSections}>
-      {/* Who owes whom: the suggested settlement transfers, each tappable to record it */}
       <Animated.View entering={FadeInDown.duration(320)} style={styles.section}>
         <Eyebrow>{t('balances.whoOwesWhom')}</Eyebrow>
         {hasSettlements ? (
@@ -515,7 +512,6 @@ const styles = StyleSheet.create((theme, rt) => ({
     justifyContent: 'center',
   },
   listContent: {
-    paddingHorizontal: theme.gap(6),
     paddingTop: theme.gap(4),
     paddingBottom: rt.insets.bottom + theme.gap(6),
   },
