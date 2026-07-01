@@ -13,6 +13,7 @@ export const fr: Translations = {
     done: 'Terminer',
     back: 'Retour',
     you: 'Toi',
+    dismiss: 'Fermer',
     retry: 'Réessayer',
     loading: 'Chargement…',
     saving: 'Enregistrement…',
@@ -1069,5 +1070,28 @@ export const fr: Translations = {
     inHoursMinutes: 'dans {{hours}} h {{minutes}} min',
     inMinutes: 'dans {{minutes}} min',
     now: 'ça commence',
+  },
+  itinerary: {
+    add: 'Ajouter à la timeline',
+    added: 'Ajouté',
+    regenerate: 'Régénérer',
+    open: 'Ouvert',
+    closed: 'Fermé',
+    typeLabel: 'Type',
+    titleLabel: 'Titre',
+    timeLabel: 'Heure',
+    cta: {
+      coldStart: 'Planifie mon voyage avec Zo',
+      gapFill: 'Planifier plus avec Zo',
+      subtitle: 'Zo construit un programme jour par jour à partir de vrais lieux',
+      rainyTitle: 'Pluie prévue',
+      rainyAction: 'Replanifier la journée',
+    },
+    prompts: {
+      coldStart: 'Planifie mon voyage - propose-moi un itinéraire jour par jour.',
+      gapFill: 'Remplis les trous de mon itinéraire avec des activités.',
+      rainyDay:
+        'Il va pleuvoir le {{date}} - replanifie cette journée avec des activités en intérieur.',
+    },
   },
 }

@@ -6,11 +6,37 @@ export type Chip =
   | { action: "prompt"; prompt: string; label: string }
   | { action: "tool"; tool: string; args: Record<string, unknown>; label: string }
 
+// Must match the client's canonical EVENT_TYPES (features/timeline/event-types.ts) so the
+// inserted trip_events.type resolves to a real timeline icon. food = restaurants, lodging = hotels.
+const VALID_ITEM_TYPES = [
+  "activity",
+  "food",
+  "transport",
+  "lodging",
+  "flight",
+  "event",
+] as const
+type ItineraryItemType = (typeof VALID_ITEM_TYPES)[number]
+
+export type ItineraryItem = {
+  placeId: string
+  title: string
+  type: ItineraryItemType
+  time?: string
+  notes?: string
+}
+
+export type ItineraryDay = {
+  date: string
+  items: ItineraryItem[]
+}
+
 export type Block =
   | { kind: "text"; text: string }
   | { kind: "widget"; source: string }
   | { kind: "action"; tool: string; args: Record<string, unknown>; text: string }
   | { kind: "chips"; chips: Chip[] }
+  | { kind: "itinerary"; days: ItineraryDay[] }
 
 /**
  * Validates the raw object returned by the model and produces a typed Block array.
@@ -19,7 +45,13 @@ export type Block =
  */
 export function validateBlocks(
   parsed: unknown,
-  allow: { sources: string[]; tools: string[]; navTargets: string[] },
+  allow: {
+    sources: string[]
+    tools: string[]
+    navTargets: string[]
+    candidateIds: Set<string>
+    maxItinDays: number
+  },
   language: "en" | "fr" = "en",
 ): Block[] {
   const arr = (parsed as { blocks?: unknown })?.blocks
@@ -96,6 +128,66 @@ export function validateBlocks(
 
       if (validChips.length > 0) {
         out.push({ kind: "chips", chips: validChips.slice(0, 3) })
+      }
+    } else if (kind === "itinerary") {
+      const rawDays = (b as { days?: unknown }).days
+      if (!Array.isArray(rawDays) || rawDays.length === 0) continue
+
+      const validDays: ItineraryDay[] = []
+      for (const d of rawDays.slice(0, allow.maxItinDays)) {
+        if (!d || typeof d !== "object") continue
+        const date = (d as { date?: unknown }).date
+        if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+        const rawItems = (d as { items?: unknown }).items
+        if (!Array.isArray(rawItems)) continue
+
+        const validItems: ItineraryItem[] = []
+        for (const item of rawItems) {
+          if (!item || typeof item !== "object") continue
+          const placeId = (item as { placeId?: unknown }).placeId
+          const title = (item as { title?: unknown }).title
+          if (
+            typeof placeId !== "string" ||
+            !placeId.trim() ||
+            !allow.candidateIds.has(placeId) ||
+            typeof title !== "string" ||
+            !title.trim()
+          ) {
+            continue
+          }
+
+          const rawType = (item as { type?: unknown }).type
+          const type: ItineraryItemType = VALID_ITEM_TYPES.includes(rawType as ItineraryItemType)
+            ? (rawType as ItineraryItemType)
+            : "activity"
+
+          const rawTime = (item as { time?: unknown }).time
+          const time =
+            typeof rawTime === "string" && /^\d{2}:\d{2}$/.test(rawTime)
+              ? rawTime
+              : undefined
+
+          const rawNotes = (item as { notes?: unknown }).notes
+          const notes =
+            typeof rawNotes === "string" && rawNotes.trim() ? rawNotes : undefined
+
+          validItems.push({
+            placeId,
+            title,
+            type,
+            ...(time !== undefined ? { time } : {}),
+            ...(notes !== undefined ? { notes } : {}),
+          })
+          if (validItems.length >= 6) break
+        }
+
+        if (validItems.length > 0) {
+          validDays.push({ date, items: validItems })
+        }
+      }
+
+      if (validDays.length > 0) {
+        out.push({ kind: "itinerary", days: validDays })
       }
     }
   }

@@ -11,6 +11,7 @@ export const en = {
     done: 'Done',
     back: 'Back',
     you: 'You',
+    dismiss: 'Dismiss',
     retry: 'Try again',
     loading: 'Loading…',
     saving: 'Saving…',
@@ -1056,6 +1057,28 @@ export const en = {
     inHoursMinutes: 'in {{hours}}h {{minutes}}m',
     inMinutes: 'in {{minutes}}m',
     now: 'starting now',
+  },
+  itinerary: {
+    add: 'Add to timeline',
+    added: 'Added',
+    regenerate: 'Regenerate',
+    open: 'Open',
+    closed: 'Closed',
+    typeLabel: 'Type',
+    titleLabel: 'Title',
+    timeLabel: 'Time',
+    cta: {
+      coldStart: 'Plan my trip with Zo',
+      gapFill: 'Plan more with Zo',
+      subtitle: 'Zo builds a day-by-day plan from real places',
+      rainyTitle: 'Rain expected',
+      rainyAction: 'Replan the day',
+    },
+    prompts: {
+      coldStart: 'Plan my trip - suggest a day-by-day itinerary.',
+      gapFill: 'Fill the gaps in my itinerary with things to do.',
+      rainyDay: 'It is going to rain on {{date}} - replan that day with indoor activities.',
+    },
   },
 }
 

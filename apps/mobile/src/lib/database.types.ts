@@ -572,6 +572,7 @@ export type Database = {
           lng: number | null
           location: unknown
           notes: string | null
+          place_id: string | null
           starts_at: string | null
           title: string
           trip_id: string
@@ -588,6 +589,7 @@ export type Database = {
           lng?: number | null
           location?: unknown
           notes?: string | null
+          place_id?: string | null
           starts_at?: string | null
           title: string
           trip_id: string
@@ -604,6 +606,7 @@ export type Database = {
           lng?: number | null
           location?: unknown
           notes?: string | null
+          place_id?: string | null
           starts_at?: string | null
           title?: string
           trip_id?: string

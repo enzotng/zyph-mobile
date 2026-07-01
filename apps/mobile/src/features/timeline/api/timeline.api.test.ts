@@ -1,7 +1,14 @@
 import { supabase } from '@/lib/supabase'
 import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
 
-import { createEvent, deleteEvent, getEvent, listEvents, updateEvent } from './timeline.api'
+import {
+  createEvent,
+  createEvents,
+  deleteEvent,
+  getEvent,
+  listEvents,
+  updateEvent,
+} from './timeline.api'
 
 jest.mock('@/lib/supabase')
 
@@ -217,6 +224,77 @@ describe('updateEvent', () => {
     from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('update fail') }))
 
     await expect(updateEvent(input)).rejects.toThrow('update fail')
+  })
+})
+
+describe('createEvents', () => {
+  const e1 = {
+    title: 'Eiffel Tower',
+    type: 'activity',
+    startsAt: '2024-06-01T10:00:00Z',
+    lat: 48.8584,
+    lng: 2.2945,
+    placeId: 'place1',
+    notes: 'Great view',
+  }
+  const e2 = {
+    title: 'Louvre',
+    type: 'activity',
+    startsAt: '2024-06-01T14:00:00Z',
+    lat: 48.8606,
+    lng: 2.3376,
+    placeId: null,
+  }
+  const row1 = {
+    trip_id: 't1',
+    title: 'Eiffel Tower',
+    type: 'activity',
+    starts_at: '2024-06-01T10:00:00Z',
+    ends_at: null,
+    notes: 'Great view',
+    lat: 48.8584,
+    lng: 2.2945,
+    place_id: 'place1',
+    created_by: 'u1',
+  }
+  const row2 = {
+    trip_id: 't1',
+    title: 'Louvre',
+    type: 'activity',
+    starts_at: '2024-06-01T14:00:00Z',
+    ends_at: null,
+    notes: null,
+    lat: 48.8606,
+    lng: 2.3376,
+    place_id: null,
+    created_by: 'u1',
+  }
+
+  it('inserts a batch of events and returns the inserted rows', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const returned = [
+      { ...event, title: 'Eiffel Tower' },
+      { ...event, id: 'ev2', title: 'Louvre' },
+    ]
+    const builder = makeQueryBuilder({ data: returned, error: null })
+    from.mockReturnValue(builder)
+
+    await expect(createEvents('t1', [e1, e2])).resolves.toEqual(returned)
+    expect(from).toHaveBeenCalledWith('trip_events')
+    expect(builder.insert).toHaveBeenCalledWith([row1, row2])
+    expect(builder.select).toHaveBeenCalled()
+  })
+
+  it('returns [] and does not call supabase.from when events array is empty', async () => {
+    await expect(createEvents('t1', [])).resolves.toEqual([])
+    expect(from).not.toHaveBeenCalled()
+  })
+
+  it('throws when the insert returns an error', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('batch fail') }))
+
+    await expect(createEvents('t1', [e1])).rejects.toThrow('batch fail')
   })
 })
 

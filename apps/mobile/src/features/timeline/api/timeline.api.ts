@@ -129,6 +129,49 @@ export async function updateEvent({
   return data
 }
 
+export type NewItineraryEvent = {
+  title: string
+  type: string
+  startsAt: string
+  lat: number | null
+  lng: number | null
+  placeId: string | null
+  notes?: string
+}
+
+// Batch-inserts itinerary events into the shared timeline in one round trip. created_by is the
+// signed-in user. Returns the inserted rows. An empty list is a no-op (returns []).
+export async function createEvents(
+  tripId: string,
+  events: NewItineraryEvent[],
+): Promise<TripEvent[]> {
+  if (events.length === 0) {
+    return []
+  }
+  const { data: auth } = await supabase.auth.getSession()
+  const userId = auth.session?.user.id
+  if (!userId) {
+    throw new Error('You must be signed in.')
+  }
+  const rows = events.map((e) => ({
+    trip_id: tripId,
+    title: e.title,
+    type: e.type || 'activity',
+    starts_at: e.startsAt,
+    ends_at: null,
+    notes: e.notes || null,
+    lat: e.lat,
+    lng: e.lng,
+    place_id: e.placeId,
+    created_by: userId,
+  }))
+  const { data, error } = await supabase.from('trip_events').insert(rows).select()
+  if (error) {
+    throw error
+  }
+  return data ?? []
+}
+
 export async function deleteEvent(eventId: string): Promise<void> {
   const { error } = await supabase.from('trip_events').delete().eq('id', eventId)
   if (error) {
