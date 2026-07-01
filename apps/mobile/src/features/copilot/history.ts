@@ -169,4 +169,88 @@ export function clearCopilotHistory(tripId: string): void {
     return
   }
   storage.remove(key(tripId))
+  storage.remove(statesKey(tripId))
+}
+
+// ---------------------------------------------------------------------------
+// Per-block outcome persistence
+// ---------------------------------------------------------------------------
+// The chat turns above persist across restarts, but the per-block UI states used to live only in
+// React state: after a restart an already-executed action card re-rendered as 'pending' (tappable
+// again), letting the user re-run a financial write, and an added itinerary re-armed its
+// "Add to timeline" button. Persist the outcomes alongside the chat and re-hydrate them on mount.
+
+export type PersistedBlockStates = {
+  // key = `${messageId}:${blockIndex}` (same keying as the screen's state maps)
+  actions: Record<string, 'done' | 'cancelled'>
+  itineraries: Record<string, 'added'>
+}
+
+function statesKey(tripId: string): string {
+  return `chat-states-v1:${tripId}`
+}
+
+// A fresh object per call: the result seeds React state, so a shared constant could leak
+// mutations across screens.
+function emptyStates(): PersistedBlockStates {
+  return { actions: {}, itineraries: {} }
+}
+
+export function loadBlockStates(tripId: string): PersistedBlockStates {
+  if (!tripId) {
+    return emptyStates()
+  }
+  const raw = storage.getString(statesKey(tripId))
+  if (!raw) {
+    return emptyStates()
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null) {
+      return emptyStates()
+    }
+    const record = parsed as Record<string, unknown>
+    const actions: PersistedBlockStates['actions'] = {}
+    const rawActions = record['actions']
+    if (typeof rawActions === 'object' && rawActions !== null) {
+      for (const [k, v] of Object.entries(rawActions as Record<string, unknown>)) {
+        if (v === 'done' || v === 'cancelled') {
+          actions[k] = v
+        } else if (v === 'executing') {
+          // The app died mid-execution: the outcome is unknown. Restoring as 'pending' could
+          // double-run a financial action, so restore as cancelled - the user can re-ask Zo.
+          actions[k] = 'cancelled'
+        }
+      }
+    }
+    const itineraries: PersistedBlockStates['itineraries'] = {}
+    const rawItineraries = record['itineraries']
+    if (typeof rawItineraries === 'object' && rawItineraries !== null) {
+      for (const [k, v] of Object.entries(rawItineraries as Record<string, unknown>)) {
+        // 'adding' (died mid-add) is intentionally dropped: the card re-arms, and a duplicate
+        // event is visible and deletable on the timeline - unlike a duplicated money write.
+        if (v === 'added') {
+          itineraries[k] = v
+        }
+      }
+    }
+    return { actions, itineraries }
+  } catch {
+    return emptyStates()
+  }
+}
+
+export function saveBlockStates(
+  tripId: string,
+  actions: Record<string, string>,
+  itineraries: Record<string, string>,
+): void {
+  if (!tripId) {
+    return
+  }
+  if (Object.keys(actions).length === 0 && Object.keys(itineraries).length === 0) {
+    storage.remove(statesKey(tripId))
+    return
+  }
+  storage.set(statesKey(tripId), JSON.stringify({ actions, itineraries }))
 }
