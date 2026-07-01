@@ -43,6 +43,18 @@ import { paramString } from '@/lib/routing'
 
 const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
 
+// History rows read as "28 Jun" for the current year; a settlement from an earlier (or later)
+// year gains a year suffix ("28 Jun 2025") so multi-year trips never read as ambiguous.
+function formatHistoryDate(paidAt: string, locale: string): string {
+  const date = new Date(paidAt)
+  const sameYear = date.getFullYear() === new Date().getFullYear()
+  return date.toLocaleDateString(locale, {
+    day: 'numeric',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  })
+}
+
 export default function TripBalancesScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
@@ -367,41 +379,42 @@ export default function TripBalancesScreen() {
         </Surface>
       </Animated.View>
 
+      {/* Mark as settled (records all my suggested payments at once): the strongest action on the
+          screen, so it sits right above history instead of below a potentially long list. */}
+      {canSettleAll ? (
+        <Animated.View entering={FadeInDown.delay(180).duration(320)}>
+          <Pressable
+            onPress={confirmSettleAll}
+            disabled={settlingAll || recordSettlement.isPending}
+            accessibilityRole="button"
+            accessibilityLabel={
+              settlingAll
+                ? t('balances.settlingAll')
+                : t('balances.settleAllMine', {
+                    amount: formatAmount(myDebtsTotal, trip.currency),
+                  })
+            }
+            accessibilityState={{ disabled: settlingAll || recordSettlement.isPending }}
+            style={({ pressed }) => [
+              styles.settleAll,
+              pressed && styles.pressed,
+              (settlingAll || recordSettlement.isPending) && styles.disabled,
+            ]}
+          >
+            <Ionicons name="checkmark-done" size={18} color={theme.colors.primaryForeground} />
+            <Text style={styles.settleAllLabel}>
+              {settlingAll ? t('balances.settlingAll') : t('balances.markAsSettled')}
+            </Text>
+          </Pressable>
+        </Animated.View>
+      ) : null}
+
       {/* Payment history: recorded settlements, each reversible (the rows below are the list data) */}
       {hasHistory ? (
         <Eyebrow style={styles.historyEyebrow}>{t('group.paymentHistory')}</Eyebrow>
       ) : null}
     </View>
   )
-
-  // Mark as settled (records all my suggested payments at once) sits under the history list.
-  const ListFooter = canSettleAll ? (
-    <Animated.View entering={FadeInDown.delay(180).duration(320)} style={styles.footerSection}>
-      <Pressable
-        onPress={confirmSettleAll}
-        disabled={settlingAll || recordSettlement.isPending}
-        accessibilityRole="button"
-        accessibilityLabel={
-          settlingAll
-            ? t('balances.settlingAll')
-            : t('balances.settleAllMine', {
-                amount: formatAmount(myDebtsTotal, trip.currency),
-              })
-        }
-        accessibilityState={{ disabled: settlingAll || recordSettlement.isPending }}
-        style={({ pressed }) => [
-          styles.settleAll,
-          pressed && styles.pressed,
-          (settlingAll || recordSettlement.isPending) && styles.disabled,
-        ]}
-      >
-        <Ionicons name="checkmark-done" size={18} color={theme.colors.primaryForeground} />
-        <Text style={styles.settleAllLabel}>
-          {settlingAll ? t('balances.settlingAll') : t('balances.markAsSettled')}
-        </Text>
-      </Pressable>
-    </Animated.View>
-  ) : null
 
   return (
     <Screen
@@ -424,7 +437,6 @@ export default function TripBalancesScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={ListHeader}
-        ListFooterComponent={ListFooter}
         renderItem={({ item: settlement, index }) => (
           // Single rounded card look across rows: the first row rounds its top, the last its bottom,
           // matching the previous Surface-wrapped list while staying virtualized.
@@ -443,10 +455,7 @@ export default function TripBalancesScreen() {
                 <Text style={styles.settleName}>{labelForMember(settlement.to_member)}</Text>
               </Text>
               <Text style={styles.historyDate}>
-                {new Date(settlement.paid_at).toLocaleDateString(i18n.language, {
-                  day: 'numeric',
-                  month: 'short',
-                })}
+                {formatHistoryDate(settlement.paid_at, i18n.language)}
               </Text>
             </View>
             <Amount
@@ -517,9 +526,6 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   headerSections: {
     gap: theme.gap(4),
-  },
-  footerSection: {
-    paddingTop: theme.gap(4),
   },
   historyEyebrow: {
     paddingBottom: theme.gap(2.5),
