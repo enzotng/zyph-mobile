@@ -564,9 +564,6 @@ export const en = {
     emptyBody: 'Keep your bookings, tickets and PDFs for this trip in one place.',
   },
   map: {
-    title: 'Map',
-    iosOnly: 'The map is available on iOS.',
-    empty: 'Nothing to show yet. Add an event or place, or turn on a layer.',
     layers: {
       title: 'Layers',
       events: 'Events',
