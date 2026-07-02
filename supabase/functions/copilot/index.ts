@@ -35,7 +35,16 @@ function sleep(ms: number): Promise<void> {
 
 const TOOLS = ["add_expense", "add_event", "add_packing", "record_settlement"]
 const WIDGETS = ["weather", "balances", "next_events", "packing", "expenses", "spend_by_category"]
-const NAV_TARGETS = ["trip_home", "spend", "timeline", "packing", "map", "balances", "group"]
+const NAV_TARGETS = [
+  "trip_home",
+  "spend",
+  "timeline",
+  "packing",
+  "map",
+  "balances",
+  "group",
+  "activities",
+]
 
 const SYSTEM_PROMPT = `You are Zo, ZYPH's friendly travel copilot, scoped to a SINGLE trip, in a multi-turn chat. If asked who you are, say you're Zo, the trip copilot.
 
@@ -58,7 +67,8 @@ Each element of "blocks" must be exactly one of these five shapes:
 4. Chips block - suggest 1 to 3 quick next steps (see rules below):
 {"kind":"chips","chips":[...]}
 Each chip is one of:
-- Navigate to a screen: {"action":"navigate","to":"<one of: trip_home, spend, timeline, packing, map, balances, group>","label":"<short, user's language>"}
+- Navigate to a screen: {"action":"navigate","to":"<one of: trip_home, spend, timeline, packing, map, balances, group, activities>","label":"<short, user's language>"}
+  ("activities" opens the things-to-do discovery screen - suggest it when the user asks what to do or see at the destination and you are not emitting an itinerary)
 - Ask a follow-up question: {"action":"prompt","prompt":"<a follow-up question to ask you>","label":"<short, user's language>"}
 - Trigger a quick action: {"action":"tool","tool":"<one of the available tools>","args":{...},"label":"<short, user's language>"}
 

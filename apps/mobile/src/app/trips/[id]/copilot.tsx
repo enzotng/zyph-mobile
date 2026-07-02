@@ -92,6 +92,7 @@ const NAV_HREFS = {
   map: '/trips/[id]/pois', // POIs tab - primary map surface (not the /map wayfinder stack)
   balances: '/trips/[id]/balances',
   group: '/trips/[id]/group',
+  activities: '/trips/[id]/activities',
 } as const satisfies Record<NavTarget, string>
 
 // Next collision-free id derived from the current list (ids are `m<n>`). Computed from the list
