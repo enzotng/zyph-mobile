@@ -6,7 +6,7 @@
 const GOOGLE_PLACES_URL = "https://places.googleapis.com/v1/places:searchNearby"
 // No spaces in the field mask — whitespace breaks the X-Goog-FieldMask header.
 const FIELD_MASK =
-  "places.id,places.displayName,places.location,places.rating,places.userRatingCount,places.priceLevel,places.types,places.photos,places.formattedAddress,places.currentOpeningHours.openNow"
+  "places.id,places.displayName,places.location,places.rating,places.userRatingCount,places.priceLevel,places.types,places.photos,places.formattedAddress,places.currentOpeningHours.openNow,places.editorialSummary,places.priceRange,places.primaryTypeDisplayName,places.regularOpeningHours.weekdayDescriptions"
 
 const TIMEOUT_MS = 25_000
 const ATTEMPTS = 2
@@ -31,9 +31,29 @@ export type Poi = {
   photoName: string | null // Google photo resource name "places/X/photos/Y"
   address: string | null
   openNow: boolean | null
+  description: string | null // editorialSummary.text, localized to languageCode
+  typeLabel: string | null // primaryTypeDisplayName.text, localized to languageCode
+  priceStart: number | null // priceRange.startPrice.units, parsed to a number
+  priceEnd: number | null // priceRange.endPrice.units, parsed to a number
+  priceCurrency: string | null // priceRange.startPrice.currencyCode
+  weekdayHours: string[] | null // regularOpeningHours.weekdayDescriptions, localized, 7 lines
 }
 
-export type PoiSearchOpts = { lat: number; lng: number; includedTypes: string[]; max: number }
+export type PoiSearchOpts = {
+  lat: number
+  lng: number
+  includedTypes: string[]
+  max: number
+  languageCode: string
+}
+
+// priceRange units are a STRING of a whole number ("12"), never a float — parse defensively and
+// fall back to null rather than throwing on an unexpected shape.
+function parsePriceUnits(raw: unknown): number | null {
+  if (typeof raw !== "string") return null
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isNaN(parsed) ? null : parsed
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -97,7 +117,68 @@ export function normalizeGooglePlace(raw: unknown): Poi | null {
     openNow = typeof oh["openNow"] === "boolean" ? oh["openNow"] : null
   }
 
-  return { placeId: id, name, lat, lng, rating, ratingCount, priceLevel, types, photoName, address, openNow }
+  const editorialSummary = r["editorialSummary"]
+  const descriptionRaw =
+    editorialSummary !== null && typeof editorialSummary === "object"
+      ? (editorialSummary as Record<string, unknown>)["text"]
+      : undefined
+  const description = typeof descriptionRaw === "string" ? descriptionRaw : null
+
+  const primaryTypeDisplayName = r["primaryTypeDisplayName"]
+  const typeLabelRaw =
+    primaryTypeDisplayName !== null && typeof primaryTypeDisplayName === "object"
+      ? (primaryTypeDisplayName as Record<string, unknown>)["text"]
+      : undefined
+  const typeLabel = typeof typeLabelRaw === "string" ? typeLabelRaw : null
+
+  const priceRange = r["priceRange"]
+  let priceStart: number | null = null
+  let priceEnd: number | null = null
+  let priceCurrency: string | null = null
+  if (priceRange !== null && typeof priceRange === "object") {
+    const pr = priceRange as Record<string, unknown>
+    const startPrice = pr["startPrice"]
+    if (startPrice !== null && typeof startPrice === "object") {
+      const sp = startPrice as Record<string, unknown>
+      priceStart = parsePriceUnits(sp["units"])
+      priceCurrency = typeof sp["currencyCode"] === "string" ? sp["currencyCode"] : null
+    }
+    const endPrice = pr["endPrice"]
+    if (endPrice !== null && typeof endPrice === "object") {
+      const ep = endPrice as Record<string, unknown>
+      priceEnd = parsePriceUnits(ep["units"])
+    }
+  }
+
+  const regularOpeningHours = r["regularOpeningHours"]
+  const weekdayDescriptionsRaw =
+    regularOpeningHours !== null && typeof regularOpeningHours === "object"
+      ? (regularOpeningHours as Record<string, unknown>)["weekdayDescriptions"]
+      : undefined
+  const weekdayDescriptions = Array.isArray(weekdayDescriptionsRaw)
+    ? weekdayDescriptionsRaw.filter((d): d is string => typeof d === "string")
+    : []
+  const weekdayHours = weekdayDescriptions.length > 0 ? weekdayDescriptions : null
+
+  return {
+    placeId: id,
+    name,
+    lat,
+    lng,
+    rating,
+    ratingCount,
+    priceLevel,
+    types,
+    photoName,
+    address,
+    openNow,
+    description,
+    typeLabel,
+    priceStart,
+    priceEnd,
+    priceCurrency,
+    weekdayHours,
+  }
 }
 
 // Calls Google Places Nearby Search with a per-attempt timeout; retries once on a transient
@@ -143,6 +224,7 @@ export async function searchPlaces(apiKey: string, opts: PoiSearchOpts): Promise
       includedTypes: opts.includedTypes,
       maxResultCount: opts.max,
       rankPreference: "POPULARITY",
+      languageCode: opts.languageCode,
       locationRestriction: {
         circle: {
           center: { latitude: opts.lat, longitude: opts.lng },
