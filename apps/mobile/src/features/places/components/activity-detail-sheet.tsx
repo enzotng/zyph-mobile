@@ -1,10 +1,12 @@
+import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
+import type { TFunction } from 'i18next'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, ScrollView, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Badge, BottomSheet, Button, Chip, Surface } from '@/components/ui'
+import { Badge, BottomSheet, Button, Chip, ListRow, Surface } from '@/components/ui'
 import { formatEventDay, type NewItineraryEvent, useCreateEvents } from '@/features/timeline'
 import { dateToIsoDay, isoDayToDate, type Trip } from '@/features/trips'
 import { useCreatePoi } from '@/features/wayfinder'
@@ -40,6 +42,24 @@ export function mapPoiType(types: string[]): 'food' | 'lodging' | 'activity' {
     return 'lodging'
   }
   return 'activity'
+}
+
+// A real price range string ("10-20 EUR"), a one-sided "from"/"up to" string when only one bound
+// is known, or null when neither bound is known - in which case the caller falls back to the
+// '$'.repeat price-level display. Pure + exported so this file's tests can exercise it directly.
+export function formatPriceRange(poi: Poi, t: TFunction): string | null {
+  const { priceStart, priceEnd, priceCurrency } = poi
+  if (priceStart === null && priceEnd === null) {
+    return null
+  }
+  const currency = priceCurrency ? ` ${priceCurrency}` : ''
+  if (priceStart !== null && priceEnd !== null) {
+    return `${priceStart}-${priceEnd}${currency}`
+  }
+  if (priceStart !== null) {
+    return t('activities.priceFrom', { price: `${priceStart}${currency}` })
+  }
+  return t('activities.priceUpTo', { price: `${priceEnd}${currency}` })
 }
 
 // The trip's calendar days (start..end inclusive, local calendar), capped at MAX_TRIP_DAYS.
@@ -92,6 +112,7 @@ export function ActivityDetailSheet({
   const [selectedDay, setSelectedDay] = useState<string | null>(() => defaultDay(days))
   const [added, setAdded] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [hoursExpanded, setHoursExpanded] = useState(false)
 
   if (poi && poi.placeId !== sessionPoiId) {
     setSessionPoiId(poi.placeId)
@@ -99,8 +120,10 @@ export function ActivityDetailSheet({
     setSelectedDay(defaultDay(days))
     setAdded(false)
     setSaved(false)
+    setHoursExpanded(false)
   } else if (!poi && sessionPoiId !== null) {
     setSessionPoiId(null)
+    setHoursExpanded(false)
   }
 
   const { data: photoUri } = usePoiPhoto(activePoi?.photoName ?? null, 1200)
@@ -153,6 +176,9 @@ export function ActivityDetailSheet({
     }
   }
 
+  const typeChipLabel = activePoi.typeLabel ?? categoryLabel
+  const priceRangeLabel = formatPriceRange(activePoi, t)
+
   return (
     <BottomSheet open={poi !== null} onClose={onClose}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -169,16 +195,59 @@ export function ActivityDetailSheet({
 
         <Text style={styles.name}>{activePoi.name}</Text>
 
-        {activePoi.rating !== null || activePoi.priceLevel !== null ? (
+        {activePoi.rating !== null ? (
           <View style={styles.metaRow}>
-            {activePoi.rating !== null ? (
-              <Text style={styles.metaText}>
-                {`★ ${activePoi.rating}`}
-                {activePoi.ratingCount !== null ? ` (${formatCount(activePoi.ratingCount)})` : ''}
-              </Text>
-            ) : null}
-            {activePoi.priceLevel !== null ? (
-              <Text style={styles.metaText}>{'$'.repeat(activePoi.priceLevel + 1)}</Text>
+            <Text style={styles.metaText}>
+              {`★ ${activePoi.rating}`}
+              {activePoi.ratingCount !== null ? ` (${formatCount(activePoi.ratingCount)})` : ''}
+            </Text>
+          </View>
+        ) : null}
+
+        {typeChipLabel ? (
+          <View style={styles.badgeRow}>
+            <Badge label={typeChipLabel} tone="primary" />
+          </View>
+        ) : null}
+
+        {activePoi.description ? (
+          <Text style={styles.description} numberOfLines={4}>
+            {activePoi.description}
+          </Text>
+        ) : null}
+
+        {priceRangeLabel ? (
+          <View style={styles.metaRow}>
+            <Text style={styles.metaText}>{priceRangeLabel}</Text>
+          </View>
+        ) : activePoi.priceLevel !== null ? (
+          <View style={styles.metaRow}>
+            <Text style={styles.metaText}>{'$'.repeat(activePoi.priceLevel + 1)}</Text>
+          </View>
+        ) : null}
+
+        {activePoi.weekdayHours ? (
+          <View style={styles.hoursSection}>
+            <ListRow
+              title={t('activities.hours')}
+              onPress={() => setHoursExpanded((expanded) => !expanded)}
+              accessibilityState={{ expanded: hoursExpanded }}
+              right={
+                <Ionicons
+                  name={hoursExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={theme.colors.muted}
+                />
+              }
+            />
+            {hoursExpanded ? (
+              <View style={styles.hoursList}>
+                {activePoi.weekdayHours.map((line) => (
+                  <Text key={line} style={styles.hoursLine}>
+                    {line}
+                  </Text>
+                ))}
+              </View>
             ) : null}
           </View>
         ) : null}
@@ -193,12 +262,6 @@ export function ActivityDetailSheet({
           <Text style={[styles.openLabel, activePoi.openNow ? styles.open : styles.closed]}>
             {activePoi.openNow ? t('activities.open') : t('activities.closed')}
           </Text>
-        ) : null}
-
-        {categoryLabel ? (
-          <View style={styles.badgeRow}>
-            <Badge label={categoryLabel} tone="primary" />
-          </View>
         ) : null}
 
         {inPlan ? (
@@ -273,6 +336,12 @@ const styles = StyleSheet.create((theme) => ({
     fontFamily: theme.fonts.sans.regular,
     color: theme.colors.muted,
   },
+  description: {
+    fontSize: theme.fontSize.sm,
+    fontFamily: theme.fonts.sans.regular,
+    color: theme.colors.muted,
+    marginBottom: theme.gap(2),
+  },
   address: {
     fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.sans.regular,
@@ -294,6 +363,19 @@ const styles = StyleSheet.create((theme) => ({
   badgeRow: {
     alignItems: 'flex-start',
     marginBottom: theme.gap(2),
+  },
+  hoursSection: {
+    marginBottom: theme.gap(2),
+  },
+  hoursList: {
+    gap: theme.gap(1),
+    paddingTop: theme.gap(1),
+    paddingBottom: theme.gap(2),
+  },
+  hoursLine: {
+    fontSize: theme.fontSize.xs,
+    fontFamily: theme.fonts.sans.regular,
+    color: theme.colors.muted,
   },
   dayPicker: {
     gap: theme.gap(2),

@@ -14,6 +14,12 @@ function poi(placeId: string): Poi {
     photoName: null,
     address: null,
     openNow: null,
+    description: null,
+    typeLabel: null,
+    priceStart: null,
+    priceEnd: null,
+    priceCurrency: null,
+    weekdayHours: null,
   }
 }
 

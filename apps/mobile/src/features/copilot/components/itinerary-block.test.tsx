@@ -40,6 +40,12 @@ const CANDIDATES: Poi[] = [
     photoName: null,
     address: null,
     openNow: null,
+    description: null,
+    typeLabel: null,
+    priceStart: null,
+    priceEnd: null,
+    priceCurrency: null,
+    weekdayHours: null,
   },
   {
     placeId: 'place-2',
@@ -53,6 +59,12 @@ const CANDIDATES: Poi[] = [
     photoName: null,
     address: null,
     openNow: true,
+    description: null,
+    typeLabel: null,
+    priceStart: null,
+    priceEnd: null,
+    priceCurrency: null,
+    weekdayHours: null,
   },
 ]
 

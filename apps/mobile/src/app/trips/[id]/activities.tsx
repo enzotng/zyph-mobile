@@ -34,8 +34,9 @@ export default function ActivitiesScreen() {
   const tripId = paramString(params.id)
   // Optional target POI id (e.g. from a timeline CTA) to open in the detail sheet on arrival.
   const focusId = paramString(params.focus) || null
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { theme } = useUnistyles()
+  const languageCode = i18n.language === 'fr' ? 'fr' : 'en'
 
   const { data: trip, isLoading: tripLoading, isError: tripError } = useTrip(tripId)
   const { data: events } = useEvents(tripId)
@@ -47,7 +48,13 @@ export default function ActivitiesScreen() {
 
   const poisInput =
     trip && isFiniteCoord(trip.latitude) && isFiniteCoord(trip.longitude)
-      ? { lat: trip.latitude, lng: trip.longitude, includedTypes: active.googleTypes, max: 20 }
+      ? {
+          lat: trip.latitude,
+          lng: trip.longitude,
+          includedTypes: active.googleTypes,
+          max: 20,
+          languageCode,
+        }
       : null
   const hasCoords = poisInput !== null
 
@@ -93,6 +100,7 @@ export default function ActivitiesScreen() {
           lng: trip.longitude,
           includedTypes: googleTypesFor(trip.interests ?? []),
           max: 10,
+          languageCode,
         }
       : null
 

@@ -18,6 +18,12 @@ const fixturePoi: Poi = {
   photoName: 'places/ChIJD7fiBh9u5kcRYJSMaMOCCwQ/photos/AXC',
   address: 'Champ de Mars, 5 Av. Anatole France, Paris',
   openNow: true,
+  description: 'Iconic wrought-iron lattice tower on the Champ de Mars.',
+  typeLabel: 'Landmark',
+  priceStart: null,
+  priceEnd: null,
+  priceCurrency: null,
+  weekdayHours: null,
 }
 
 beforeEach(() => {
@@ -66,5 +72,14 @@ describe('searchPois', () => {
     invoke.mockResolvedValue({ data: {}, error: null })
 
     await expect(searchPois(input)).resolves.toEqual([])
+  })
+
+  it('passes languageCode through in the body', async () => {
+    invoke.mockResolvedValue({ data: { pois: [] }, error: null })
+    const inputWithLanguage = { ...input, languageCode: 'fr' }
+
+    await searchPois(inputWithLanguage)
+
+    expect(invoke).toHaveBeenCalledWith('poi-search', { body: inputWithLanguage })
   })
 })
