@@ -649,6 +649,13 @@ export const en = {
       food: 'Food & drinks',
     },
     inPlan: 'In your plan',
+    open: 'Open now',
+    closed: 'Closed',
+    pickDay: 'Add on',
+    addToTimeline: 'Add to timeline',
+    added: 'Added',
+    saveWaypoint: 'Save as waypoint',
+    saved: 'Saved',
   },
   offline: {
     banner: 'Offline - showing saved data',

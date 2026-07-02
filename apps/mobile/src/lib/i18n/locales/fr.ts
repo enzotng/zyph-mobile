@@ -655,6 +655,13 @@ export const fr: Translations = {
       food: 'Restos & bars',
     },
     inPlan: 'Dans le plan',
+    open: 'Ouvert',
+    closed: 'Fermé',
+    pickDay: 'Ajouter le',
+    addToTimeline: 'Ajouter à la timeline',
+    added: 'Ajouté',
+    saveWaypoint: 'Enregistrer en repère',
+    saved: 'Enregistré',
   },
   offline: {
     banner: 'Hors ligne - affichage des données enregistrées',
