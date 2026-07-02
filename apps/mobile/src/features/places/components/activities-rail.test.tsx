@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
+import { ScrollView } from 'react-native'
 
 import { useEvents } from '@/features/timeline'
 import type { Trip } from '@/features/trips'
@@ -163,5 +164,34 @@ describe('ActivitiesRail', () => {
       pathname: '/trips/[id]/activities',
       params: { id: 't1', focus: 'place-1' },
     })
+  })
+
+  it('configures the carousel to snap card by card', () => {
+    render(<ActivitiesRail trip={makeTrip()} />)
+
+    const scrollView = screen.UNSAFE_getByType(ScrollView)
+
+    // 200 (CARD_WIDTH) + 12 (theme.gap(3)) - kept in sync with the list style's gap.
+    expect(scrollView.props.snapToInterval).toBe(212)
+    expect(scrollView.props.decelerationRate).toBe('fast')
+    expect(scrollView.props.disableIntervalMomentum).toBe(true)
+  })
+
+  it('renders one dot per POI', () => {
+    usePoisMock.mockReturnValue({
+      data: [
+        makePoi({ placeId: 'place-1' }),
+        makePoi({ placeId: 'place-2', name: 'Time Out Market' }),
+        makePoi({ placeId: 'place-3', name: 'LX Factory' }),
+      ],
+      isLoading: false,
+      isError: false,
+    })
+
+    render(<ActivitiesRail trip={makeTrip()} />)
+
+    expect(
+      screen.getAllByTestId('activities-rail-dot', { includeHiddenElements: true }),
+    ).toHaveLength(3)
   })
 })
