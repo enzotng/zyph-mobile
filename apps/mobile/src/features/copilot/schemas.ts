@@ -52,6 +52,7 @@ export const NAV_TARGETS = [
   'map',
   'balances',
   'group',
+  'activities',
 ] as const
 export const navTargetSchema = z.enum(NAV_TARGETS)
 export type NavTarget = z.infer<typeof navTargetSchema>

@@ -16,6 +16,7 @@ import { AvatarStack, BottomSheet, CityImage, ErrorState, Skeleton } from '@/com
 import { useAuth } from '@/features/auth'
 import { useTripBalances } from '@/features/expenses'
 import { useLeaveTrip, useRegenerateInviteCode, useTripMembers } from '@/features/group'
+import { ActivitiesRail } from '@/features/places'
 import { eventStatus, useEvents } from '@/features/timeline'
 import {
   formatTripDates,
@@ -470,6 +471,10 @@ export default function TripDashboardScreen() {
                 })
               }
             />
+          </Animated.View>
+
+          <Animated.View entering={enter(3)}>
+            <ActivitiesRail trip={trip} />
           </Animated.View>
         </View>
       </ScrollView>
