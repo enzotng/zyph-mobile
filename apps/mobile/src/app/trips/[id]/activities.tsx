@@ -10,8 +10,10 @@ import { Chip, EmptyState, ErrorState, Skeleton, Spinner } from '@/components/ui
 import {
   ActivityDetailSheet,
   categoriesForTrip,
+  googleTypesFor,
   type Poi,
   PoiCard,
+  resolveFocusedPoi,
   usePois,
 } from '@/features/places'
 import { useEvents } from '@/features/timeline'
@@ -69,13 +71,35 @@ export default function ActivitiesScreen() {
 
   const [selectedPoi, setSelectedPoi] = useState<Poi | null>(null)
 
-  // Opens the focused POI in the sheet exactly once, as soon as it shows up in the loaded grid.
+  // Opens the focused POI in the sheet exactly once, as soon as it shows up in either result.
   // Adjusted during render (React's supported pattern for derived state, mirroring
   // ActivityDetailSheet's own session-reset guard) rather than in an effect, so re-renders from
   // refetches or category switches never re-open a sheet the user has since closed.
   const [openedFocusId, setOpenedFocusId] = useState<string | null>(null)
-  if (focusId && pois && openedFocusId !== focusId) {
-    const match = pois.find((poi) => poi.placeId === focusId)
+
+  // The grid query is scoped to the active category, but a focus id (e.g. from the cockpit rail
+  // or a timeline CTA) can point at a POI from another interest entirely. While unresolved, run
+  // the rail's exact query shape (same query key -> instant cache hit, since the rail just
+  // fetched it) so the focus can resolve regardless of which category is active. Disabled (null)
+  // once resolved or when there is no focus param.
+  const unionInput =
+    focusId &&
+    openedFocusId !== focusId &&
+    trip &&
+    isFiniteCoord(trip.latitude) &&
+    isFiniteCoord(trip.longitude)
+      ? {
+          lat: trip.latitude,
+          lng: trip.longitude,
+          includedTypes: googleTypesFor(trip.interests ?? []),
+          max: 10,
+        }
+      : null
+
+  const { data: unionPois } = usePois(unionInput)
+
+  if (focusId && openedFocusId !== focusId) {
+    const match = resolveFocusedPoi(focusId, unionPois, pois)
     if (match) {
       setOpenedFocusId(focusId)
       setSelectedPoi(match)

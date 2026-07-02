@@ -92,6 +92,43 @@ describe('askCopilot', () => {
 
     await expect(askCopilot(input)).rejects.toThrow()
   })
+
+  it('drops an invalid block and keeps the valid ones instead of discarding the whole turn', async () => {
+    invoke.mockResolvedValue({
+      data: {
+        blocks: [
+          { kind: 'text', text: 'Here is what I found.' },
+          { kind: 'chips', chips: [{ action: 'navigate', to: 'bogus-target', label: 'Go' }] },
+        ],
+      },
+      error: null,
+    })
+
+    await expect(askCopilot(input)).resolves.toEqual({
+      blocks: [{ kind: 'text', text: 'Here is what I found.' }],
+    })
+  })
+
+  it('throws when every block is invalid', async () => {
+    invoke.mockResolvedValue({
+      data: {
+        blocks: [{ kind: 'chips', chips: [{ action: 'navigate', to: 'bogus', label: 'Go' }] }],
+      },
+      error: null,
+    })
+
+    await expect(askCopilot(input)).rejects.toThrow()
+  })
+
+  it('passes through a fully valid multi-block response unchanged', async () => {
+    const blocks = [
+      { kind: 'text' as const, text: 'It will be sunny.' },
+      { kind: 'widget' as const, source: 'weather' as const },
+    ]
+    invoke.mockResolvedValue({ data: { blocks }, error: null })
+
+    await expect(askCopilot(input)).resolves.toEqual({ blocks })
+  })
 })
 
 describe('classifyCopilotError', () => {
