@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
+import { ScrollView } from 'react-native'
 
 import { useEvents } from '@/features/timeline'
 import type { Trip } from '@/features/trips'
@@ -114,10 +115,11 @@ describe('ActivitiesRail', () => {
     expect(toJSON()).toBeNull()
   })
 
-  it('renders the destination-based title and the POI cards', () => {
+  it('renders the generic title and the POI cards', () => {
     render(<ActivitiesRail trip={makeTrip({ destination: 'Lisbon' })} />)
 
-    expect(screen.getByText('Things to do in Lisbon')).toBeOnTheScreen()
+    // Deliberately generic (not destination-based): long destinations would wrap the header.
+    expect(screen.getByText('Things to do')).toBeOnTheScreen()
     expect(screen.getByText('Belem Tower')).toBeOnTheScreen()
   })
 
@@ -163,5 +165,36 @@ describe('ActivitiesRail', () => {
       pathname: '/trips/[id]/activities',
       params: { id: 't1', focus: 'place-1' },
     })
+  })
+
+  it('configures the carousel to snap card by card', () => {
+    render(<ActivitiesRail trip={makeTrip()} />)
+
+    const scrollView = screen.UNSAFE_getByType(ScrollView)
+
+    // cardWidth = 750 (jest-expo's default window width) - 48 (theme.gap(6) x2 inset) - 36
+    // (PEEK) = 666; interval = 666 + 12 (theme.gap(3)) = 678 - kept in sync with the list
+    // style's gap.
+    expect(scrollView.props.snapToInterval).toBe(678)
+    expect(scrollView.props.decelerationRate).toBe('fast')
+    expect(scrollView.props.disableIntervalMomentum).toBe(true)
+  })
+
+  it('renders one dot per POI', () => {
+    usePoisMock.mockReturnValue({
+      data: [
+        makePoi({ placeId: 'place-1' }),
+        makePoi({ placeId: 'place-2', name: 'Time Out Market' }),
+        makePoi({ placeId: 'place-3', name: 'LX Factory' }),
+      ],
+      isLoading: false,
+      isError: false,
+    })
+
+    render(<ActivitiesRail trip={makeTrip()} />)
+
+    expect(
+      screen.getAllByTestId('activities-rail-dot', { includeHiddenElements: true }),
+    ).toHaveLength(3)
   })
 })
