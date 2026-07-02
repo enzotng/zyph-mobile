@@ -644,6 +644,12 @@ export const en = {
     noResults: 'No address found.',
   },
   activities: {
+    title: 'Things to do',
+    notFound: 'Trip not found.',
+    noDestination: 'Pick a destination first',
+    noDestinationBody: 'Set the trip destination to see things to do there.',
+    empty: 'Nothing found here yet',
+    emptyBody: 'Try another category.',
     categories: {
       highlights: 'Highlights',
       food: 'Food & drinks',

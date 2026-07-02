@@ -650,6 +650,12 @@ export const fr: Translations = {
     noResults: 'Aucune adresse trouvée.',
   },
   activities: {
+    title: 'À faire',
+    notFound: 'Voyage introuvable.',
+    noDestination: "Choisis d'abord une destination",
+    noDestinationBody: 'Renseigne la destination du voyage pour voir quoi faire sur place.',
+    empty: 'Rien trouvé pour le moment',
+    emptyBody: 'Essaie une autre catégorie.',
     categories: {
       highlights: 'Incontournables',
       food: 'Restos & bars',
