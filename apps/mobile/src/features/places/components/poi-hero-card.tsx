@@ -6,7 +6,7 @@ import { Pressable, StyleSheet as RNStyleSheet, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Badge, Surface } from '@/components/ui'
-import { withAlpha } from '@/lib/color'
+import { PHOTO_CREAM, PHOTO_CREAM_MUTED, withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 
 import { usePoiPhoto } from '../hooks/use-poi-photo'
@@ -23,10 +23,10 @@ export type PoiHeroCardProps = {
   onPress: () => void
 }
 
-// The card sits directly on its own photo behind a dark scrim, so on-photo text uses fixed
-// cream/amber tones rather than theme colors - the same fixed-color rationale as the ink bezel
-// (mirrors RightNowCard / the group invite card): light and legible on a photo in both themes.
-const CREAM = '#F4F1E8'
+// The card sits directly on its own photo behind a dark scrim, so on-photo text uses the app's
+// fixed photo-overlay tones (PHOTO_CREAM, shared with NextDepartureCard/TripListCard/CityImage)
+// rather than theme colors: light and legible on a photo in both themes. AMBER is the one local
+// accent (the rating star), fixed for the same reason.
 const AMBER = '#F5B84B'
 
 // Large "poster" card for the cockpit rail: the photo fills the whole card and the name, rating
@@ -146,14 +146,14 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.xs,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
-    color: withAlpha(CREAM, 0.8),
+    color: PHOTO_CREAM_MUTED,
     textTransform: 'uppercase',
   },
   name: {
     fontSize: theme.fontSize.lg,
     fontFamily: theme.fonts.display.bold,
     fontWeight: '700',
-    color: CREAM,
+    color: PHOTO_CREAM,
   },
   metaRow: {
     flexDirection: 'row',
@@ -170,11 +170,11 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600',
-    color: CREAM,
+    color: PHOTO_CREAM,
   },
   priceText: {
     fontSize: theme.fontSize.sm,
     fontFamily: theme.fonts.sans.regular,
-    color: CREAM,
+    color: PHOTO_CREAM,
   },
 }))
