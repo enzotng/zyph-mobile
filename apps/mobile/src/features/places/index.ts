@@ -1,4 +1,13 @@
 export { searchPlaces } from './api/places.api'
+export type { ActivityCategory } from './categories'
+export {
+  ACTIVITY_CATEGORIES,
+  categoriesForTrip,
+  googleTypesFor,
+  INTEREST_GOOGLE_TYPES,
+} from './categories'
+export type { PoiCardProps } from './components/poi-card'
+export { PoiCard } from './components/poi-card'
 export { placeSearchQueryKey, usePlaceSearch } from './hooks/use-places'
 export { usePoiPhoto } from './hooks/use-poi-photo'
 export { poisQueryKey, usePois } from './hooks/use-pois'

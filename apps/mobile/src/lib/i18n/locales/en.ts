@@ -643,6 +643,13 @@ export const en = {
     searchPlaceholder: 'Search an address…',
     noResults: 'No address found.',
   },
+  activities: {
+    categories: {
+      highlights: 'Highlights',
+      food: 'Food & drinks',
+    },
+    inPlan: 'In your plan',
+  },
   offline: {
     banner: 'Offline - showing saved data',
   },

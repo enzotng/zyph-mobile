@@ -649,6 +649,13 @@ export const fr: Translations = {
     searchPlaceholder: 'Rechercher une adresse…',
     noResults: 'Aucune adresse trouvée.',
   },
+  activities: {
+    categories: {
+      highlights: 'Incontournables',
+      food: 'Restos & bars',
+    },
+    inPlan: 'Dans le plan',
+  },
   offline: {
     banner: 'Hors ligne - affichage des données enregistrées',
   },

@@ -34,7 +34,7 @@ import type { Block, Chip, NavTarget } from '@/features/copilot/schemas'
 import { useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
 import { usePackingItems } from '@/features/packing'
-import { type Poi, searchPois } from '@/features/places'
+import { googleTypesFor, type Poi, searchPois } from '@/features/places'
 import { useSettlements } from '@/features/settlements'
 import { type NewItineraryEvent, useCreateEvents, useEvents } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
@@ -80,34 +80,6 @@ const PLANNING_HINTS = [
 function looksLikePlanning(text: string): boolean {
   const lower = text.toLowerCase()
   return PLANNING_HINTS.some((h) => lower.includes(h))
-}
-
-// Maps trip interest keys (stored as strings in the DB) to Google Places types. Always
-// includes a base set so the model has candidates even when no interests are configured.
-const INTEREST_GOOGLE_TYPES: Record<string, string[]> = {
-  food: ['restaurant'],
-  nightlife: ['bar', 'night_club'],
-  museums: ['museum'],
-  nature: ['park'],
-  shopping: ['shopping_mall'],
-  sports: ['stadium'],
-  history: ['historical_landmark'],
-  art: ['art_gallery'],
-  music: ['performing_arts_theater'],
-  photography: ['tourist_attraction'],
-  relaxation: ['spa'],
-  local_culture: ['tourist_attraction'],
-}
-
-function googleTypesFor(interests: string[]): string[] {
-  const set = new Set<string>(['restaurant', 'tourist_attraction'])
-  for (const interest of interests) {
-    for (const googleType of INTEREST_GOOGLE_TYPES[interest] ?? []) {
-      set.add(googleType)
-    }
-  }
-  // The poi-search edge function caps includedTypes at 10.
-  return Array.from(set).slice(0, 10)
 }
 
 // Maps each NavTarget to its expo-router pathname. The (tabs) group is omitted from the URL
