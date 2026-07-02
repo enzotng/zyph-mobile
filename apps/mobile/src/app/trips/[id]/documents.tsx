@@ -21,11 +21,11 @@ import {
 import { withAlpha } from '@/lib/color'
 import { paramString } from '@/lib/routing'
 
-function formatDocDate(iso: string | null): string {
+function formatDocDate(iso: string | null, locale: string): string {
   if (!iso) {
     return ''
   }
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString(locale, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -36,7 +36,7 @@ export default function TripDocumentsScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const { theme } = useUnistyles()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const { data: documents, isLoading, isError, refetch } = useTripDocuments(tripId)
   const upload = useUploadTripDocument(tripId)
@@ -178,7 +178,7 @@ export default function TripDocumentsScreen() {
                     {doc.name ?? t('documents.fallbackName')}
                   </Text>
                   <Text style={styles.meta}>
-                    {[formatFileSize(doc.size_bytes), formatDocDate(doc.created_at)]
+                    {[formatFileSize(doc.size_bytes), formatDocDate(doc.created_at, i18n.language)]
                       .filter(Boolean)
                       .join(' - ')}
                   </Text>

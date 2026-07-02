@@ -4,11 +4,11 @@ export type TimelineItem =
   | { kind: 'header'; key: string; label: string }
   | { kind: 'event'; key: string; event: TripEvent }
 
-export function formatEventDay(iso: string | null): string {
+export function formatEventDay(iso: string | null, locale: string, noDateLabel: string): string {
   if (!iso) {
-    return 'No date'
+    return noDateLabel
   }
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString(locale, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -22,14 +22,22 @@ function localDayKey(iso: string): string {
 
 // Flattens chronologically-sorted events into [header, ...events] sections by day,
 // ready for a single FlashList. Undated events fall under a trailing "No date" group.
-export function groupEventsByDay(events: TripEvent[]): TimelineItem[] {
+export function groupEventsByDay(
+  events: TripEvent[],
+  locale: string,
+  noDateLabel: string,
+): TimelineItem[] {
   const items: TimelineItem[] = []
   let lastDay: string | null = null
 
   for (const event of events) {
     const day = event.starts_at ? localDayKey(event.starts_at) : 'undated'
     if (day !== lastDay) {
-      items.push({ kind: 'header', key: `header-${day}`, label: formatEventDay(event.starts_at) })
+      items.push({
+        kind: 'header',
+        key: `header-${day}`,
+        label: formatEventDay(event.starts_at, locale, noDateLabel),
+      })
       lastDay = day
     }
     items.push({ kind: 'event', key: event.id, event })
