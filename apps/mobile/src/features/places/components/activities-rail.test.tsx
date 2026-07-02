@@ -171,8 +171,10 @@ describe('ActivitiesRail', () => {
 
     const scrollView = screen.UNSAFE_getByType(ScrollView)
 
-    // 200 (CARD_WIDTH) + 12 (theme.gap(3)) - kept in sync with the list style's gap.
-    expect(scrollView.props.snapToInterval).toBe(212)
+    // cardWidth = 750 (jest-expo's default window width) - 48 (theme.gap(6) x2 inset) - 36
+    // (PEEK) = 666; interval = 666 + 12 (theme.gap(3)) = 678 - kept in sync with the list
+    // style's gap.
+    expect(scrollView.props.snapToInterval).toBe(678)
     expect(scrollView.props.decelerationRate).toBe('fast')
     expect(scrollView.props.disableIntervalMomentum).toBe(true)
   })

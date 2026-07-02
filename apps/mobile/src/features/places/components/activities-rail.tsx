@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ScrollView, View } from 'react-native'
+import { ScrollView, useWindowDimensions, View } from 'react-native'
 import Animated, {
   Extrapolation,
   interpolate,
@@ -21,14 +21,15 @@ import { haptics } from '@/lib/haptics'
 import { googleTypesFor } from '../categories'
 import { usePois } from '../hooks/use-pois'
 import type { Poi } from '../poi.types'
-import { PoiCard } from './poi-card'
+import { PoiHeroCard } from './poi-hero-card'
 
 export type ActivitiesRailProps = {
   trip: Trip
 }
 
-// Fixed card width for the carousel (PoiCard flexes to fill in the /activities grid instead).
-const CARD_WIDTH = 200
+// Sliver of the next card kept visible past the current card's right edge, so the rail always
+// reads as scrollable. Kept in sync with the width formula in ActivitiesRail below.
+const PEEK = 36
 // Keeps the teaser short - the full list lives behind "See all".
 const MAX_POIS = 10
 
@@ -42,6 +43,7 @@ function isFiniteCoord(value: number | null): value is number {
 type ActivityCardProps = {
   poi: Poi
   index: number
+  width: number
   interval: number
   scrollX: SharedValue<number>
   inPlan: boolean
@@ -51,7 +53,15 @@ type ActivityCardProps = {
 // One carousel card: scales down slightly as it drifts away from its own snap offset, driven
 // purely by the shared scroll position. Transform only (no layout jump), so it's safe on a plain
 // (non-recycling) ScrollView with up to MAX_POIS instances mounted at once.
-function ActivityCard({ poi, index, interval, scrollX, inPlan, onPress }: ActivityCardProps) {
+function ActivityCard({
+  poi,
+  index,
+  width,
+  interval,
+  scrollX,
+  inPlan,
+  onPress,
+}: ActivityCardProps) {
   const cardStyle = useAnimatedStyle(() => {
     const offset = index * interval
     const scale = interpolate(
@@ -65,7 +75,7 @@ function ActivityCard({ poi, index, interval, scrollX, inPlan, onPress }: Activi
 
   return (
     <Animated.View style={cardStyle}>
-      <PoiCard poi={poi} width={CARD_WIDTH} inPlan={inPlan} onPress={onPress} />
+      <PoiHeroCard poi={poi} width={width} inPlan={inPlan} onPress={onPress} />
     </Animated.View>
   )
 }
@@ -105,11 +115,16 @@ export function ActivitiesRail({ trip }: ActivitiesRailProps) {
   const router = useRouter()
   const { t, i18n } = useTranslation()
   const { theme } = useUnistyles()
+  const { width: screenWidth } = useWindowDimensions()
   const { data: events } = useEvents(trip.id)
 
+  // Card width fills the cockpit's inset width (theme.gap(6) on each side, matching the trip
+  // screen's own horizontal padding) minus a sliver of the next card (PEEK), so the rail always
+  // reads as scrollable.
+  const cardWidth = Math.round(screenWidth - theme.gap(6) * 2 - PEEK)
   // The exact gap used between cards in the list style below, reused as the slider's snap
   // interval - never hardcode it separately, or the two would silently drift apart.
-  const interval = CARD_WIDTH + theme.gap(3)
+  const interval = cardWidth + theme.gap(3)
 
   const scrollX = useSharedValue(0)
   const lastSnappedIndex = useSharedValue(0)
@@ -187,6 +202,7 @@ export function ActivitiesRail({ trip }: ActivitiesRailProps) {
             key={poi.placeId}
             poi={poi}
             index={index}
+            width={cardWidth}
             interval={interval}
             scrollX={scrollX}
             inPlan={placeIdsInPlan.has(poi.placeId)}

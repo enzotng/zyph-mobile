@@ -12,6 +12,8 @@ export type { ActivityDetailSheetProps } from './components/activity-detail-shee
 export { ActivityDetailSheet, mapPoiType } from './components/activity-detail-sheet'
 export type { PoiCardProps } from './components/poi-card'
 export { PoiCard } from './components/poi-card'
+export type { PoiHeroCardProps } from './components/poi-hero-card'
+export { PoiHeroCard } from './components/poi-hero-card'
 export { placeSearchQueryKey, usePlaceSearch } from './hooks/use-places'
 export { usePoiPhoto } from './hooks/use-poi-photo'
 export { poisQueryKey, usePois } from './hooks/use-pois'
