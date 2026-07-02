@@ -6,6 +6,8 @@ export {
   googleTypesFor,
   INTEREST_GOOGLE_TYPES,
 } from './categories'
+export type { ActivitiesRailProps } from './components/activities-rail'
+export { ActivitiesRail } from './components/activities-rail'
 export type { ActivityDetailSheetProps } from './components/activity-detail-sheet'
 export { ActivityDetailSheet, mapPoiType } from './components/activity-detail-sheet'
 export type { PoiCardProps } from './components/poi-card'

@@ -645,6 +645,8 @@ export const en = {
   },
   activities: {
     title: 'Things to do',
+    railTitle: 'Things to do in {{destination}}',
+    seeAll: 'See all',
     notFound: 'Trip not found.',
     noDestination: 'Pick a destination first',
     noDestinationBody: 'Set the trip destination to see things to do there.',
