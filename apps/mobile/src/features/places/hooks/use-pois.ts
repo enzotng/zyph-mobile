@@ -8,7 +8,14 @@ export const poisQueryKey = ['pois'] as const
 // Pass null to disable. Enabled only with finite coords and at least one type.
 export function usePois(input: PoiSearchInput | null) {
   return useQuery({
-    queryKey: [...poisQueryKey, input?.lat, input?.lng, input?.includedTypes, input?.max],
+    queryKey: [
+      ...poisQueryKey,
+      input?.lat,
+      input?.lng,
+      input?.includedTypes,
+      input?.max,
+      input?.languageCode,
+    ],
     queryFn: () => searchPois(input as PoiSearchInput),
     enabled:
       input != null &&

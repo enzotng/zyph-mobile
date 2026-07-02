@@ -40,6 +40,12 @@ const POI: Poi = {
   photoName: null,
   address: '10 Rue de Rivoli, Paris',
   openNow: true,
+  description: null,
+  typeLabel: null,
+  priceStart: null,
+  priceEnd: null,
+  priceCurrency: null,
+  weekdayHours: null,
 }
 
 function makeTrip(overrides: Partial<Trip> = {}): Trip {
@@ -119,6 +125,70 @@ describe('ActivityDetailSheet', () => {
     renderSheet({ categoryLabel: 'Museums' })
 
     expect(screen.getByText('Museums')).toBeOnTheScreen()
+  })
+
+  it('prefers poi.typeLabel over the categoryLabel prop when present', () => {
+    renderSheet({ poi: { ...POI, typeLabel: 'History museum' }, categoryLabel: 'Museums' })
+
+    expect(screen.getByText('History museum')).toBeOnTheScreen()
+    expect(screen.queryByText('Museums')).toBeNull()
+  })
+
+  it('renders the description when present', () => {
+    renderSheet({ poi: { ...POI, description: 'A grand museum by the Seine.' } })
+
+    expect(screen.getByText('A grand museum by the Seine.')).toBeOnTheScreen()
+  })
+
+  it('does not render a description when absent', () => {
+    renderSheet()
+
+    expect(screen.queryByText('A grand museum by the Seine.')).toBeNull()
+  })
+
+  it('renders a "start-end currency" price range when both bounds are known', () => {
+    renderSheet({ poi: { ...POI, priceStart: 10, priceEnd: 20, priceCurrency: 'EUR' } })
+
+    expect(screen.getByText('10-20 EUR')).toBeOnTheScreen()
+    expect(screen.queryByText('$$')).toBeNull()
+  })
+
+  it('renders a "from" price when only the start bound is known', () => {
+    renderSheet({ poi: { ...POI, priceStart: 10, priceEnd: null, priceCurrency: 'EUR' } })
+
+    expect(screen.getByText('From 10 EUR')).toBeOnTheScreen()
+  })
+
+  it('renders an "up to" price when only the end bound is known', () => {
+    renderSheet({ poi: { ...POI, priceStart: null, priceEnd: 20, priceCurrency: 'EUR' } })
+
+    expect(screen.getByText('Up to 20 EUR')).toBeOnTheScreen()
+  })
+
+  it('falls back to the priceLevel display when no price range is known', () => {
+    renderSheet({ poi: { ...POI, priceStart: null, priceEnd: null } })
+
+    expect(screen.getByText('$$')).toBeOnTheScreen()
+  })
+
+  it('shows a collapsed hours row that expands the weekday lines on press', () => {
+    renderSheet({
+      poi: { ...POI, weekdayHours: ['Monday: 9 AM - 6 PM', 'Tuesday: 9 AM - 6 PM'] },
+    })
+
+    expect(screen.getByText('Hours')).toBeOnTheScreen()
+    expect(screen.queryByText('Monday: 9 AM - 6 PM')).toBeNull()
+
+    fireEvent.press(screen.getByText('Hours'))
+
+    expect(screen.getByText('Monday: 9 AM - 6 PM')).toBeOnTheScreen()
+    expect(screen.getByText('Tuesday: 9 AM - 6 PM')).toBeOnTheScreen()
+  })
+
+  it('does not render an hours row when weekdayHours is absent', () => {
+    renderSheet()
+
+    expect(screen.queryByText('Hours')).toBeNull()
   })
 
   it('shows day chips for the trip range and preselects today', () => {
