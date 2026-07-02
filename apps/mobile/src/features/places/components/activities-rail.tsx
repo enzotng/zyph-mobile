@@ -171,8 +171,9 @@ export function ActivitiesRail({ trip }: ActivitiesRailProps) {
     return null
   }
 
-  const destination = trip.destination?.trim()
-  const title = destination ? t('activities.railTitle', { destination }) : t('activities.title')
+  // Generic title on purpose: destinations can be long ("Lisbonne, Portugal") and the section
+  // header must stay on one line next to its "See all" action.
+  const title = t('activities.title')
 
   function openActivities(focus?: string) {
     router.push({

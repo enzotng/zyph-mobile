@@ -115,10 +115,11 @@ describe('ActivitiesRail', () => {
     expect(toJSON()).toBeNull()
   })
 
-  it('renders the destination-based title and the POI cards', () => {
+  it('renders the generic title and the POI cards', () => {
     render(<ActivitiesRail trip={makeTrip({ destination: 'Lisbon' })} />)
 
-    expect(screen.getByText('Things to do in Lisbon')).toBeOnTheScreen()
+    // Deliberately generic (not destination-based): long destinations would wrap the header.
+    expect(screen.getByText('Things to do')).toBeOnTheScreen()
     expect(screen.getByText('Belem Tower')).toBeOnTheScreen()
   })
 

@@ -651,7 +651,6 @@ export const fr: Translations = {
   },
   activities: {
     title: 'À faire',
-    railTitle: 'À faire à {{destination}}',
     seeAll: 'Voir tout',
     notFound: 'Voyage introuvable.',
     noDestination: "Choisis d'abord une destination",
