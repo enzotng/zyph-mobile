@@ -23,7 +23,7 @@ export default function ImportEmailScreen() {
   const prefilledText = paramString(params.prefilledText)
   const router = useRouter()
   const { theme } = useUnistyles()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const parseEmail = useParseEmail()
   const createEvent = useCreateEvent(tripId)
 
@@ -234,7 +234,9 @@ export default function ImportEmailScreen() {
           {parsed.endsAt ? (
             <PreviewRow
               icon="time-outline"
-              label={t('smartImport.endsAt', { date: formatDateTime(parsed.endsAt) })}
+              label={t('smartImport.endsAt', {
+                date: formatDateTime(parsed.endsAt, i18n.language),
+              })}
             />
           ) : null}
           {parsed.location?.name ? (
@@ -299,9 +301,14 @@ function PreviewRow({
   )
 }
 
-function formatDateTime(iso: string): string {
+function formatDateTime(iso: string, locale: string): string {
   try {
-    return new Date(iso).toLocaleString()
+    return new Date(iso).toLocaleString(locale, {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   } catch {
     return iso
   }

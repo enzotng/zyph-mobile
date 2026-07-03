@@ -1,4 +1,5 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker'
+import { useTranslation } from 'react-i18next'
 import { Platform, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -24,6 +25,7 @@ export function DateField({
   error,
 }: DateFieldProps) {
   const { theme } = useUnistyles()
+  const { i18n } = useTranslation()
 
   // iOS: the native compact control - a tappable date/time chip that pops the system popover.
   if (Platform.OS === 'ios') {
@@ -87,7 +89,9 @@ export function DateField({
           style={styles.input}
         >
           <Text style={styles.value}>
-            {mode === 'date' ? value.toLocaleDateString() : value.toLocaleString()}
+            {mode === 'date'
+              ? value.toLocaleDateString(i18n.language)
+              : value.toLocaleString(i18n.language)}
           </Text>
         </Surface>
       </Pressable>

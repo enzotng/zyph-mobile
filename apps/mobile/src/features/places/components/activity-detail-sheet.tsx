@@ -99,7 +99,7 @@ export function ActivityDetailSheet({
   inPlan,
   onClose,
 }: ActivityDetailSheetProps): React.JSX.Element | null {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { theme } = useUnistyles()
 
   const days = useMemo(() => tripDays(trip), [trip])
@@ -281,7 +281,7 @@ export function ActivityDetailSheet({
               {days.map((day) => (
                 <Chip
                   key={day}
-                  label={formatEventDay(`${day}T12:00:00`)}
+                  label={formatEventDay(`${day}T12:00:00`, i18n.language, t('timeline.noDate'))}
                   selected={selectedDay === day}
                   onPress={() => setSelectedDay(day)}
                 />

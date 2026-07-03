@@ -27,11 +27,11 @@ import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
-function formatEventTime(iso: string | null): string | null {
+function formatEventTime(iso: string | null, locale: string): string | null {
   if (!iso) {
     return null
   }
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 }
 
 // The right-side status text + its tone, derived from the event status. Tones map to the
@@ -55,7 +55,7 @@ function isRainyDay(day: ForecastDay): boolean {
 }
 
 export default function TimelineScreen() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const { data: trip } = useTrip(tripId)
@@ -63,7 +63,10 @@ export default function TimelineScreen() {
   const { data: weather } = useTripWeather(trip)
   const { theme } = useUnistyles()
   const router = useRouter()
-  const items = useMemo(() => groupEventsByDay(events ?? []), [events])
+  const items = useMemo(
+    () => groupEventsByDay(events ?? [], i18n.language, t('timeline.noDate')),
+    [events, i18n.language, t],
+  )
   const [rainyDismissed, setRainyDismissed] = useState(false)
 
   // First forecast day within the trip's date range whose condition indicates rain or storm.
@@ -110,7 +113,7 @@ export default function TimelineScreen() {
       }
       const status = eventStatus(item.event.starts_at, item.event.ends_at, now)
       const badge = statusLabel(status, t)
-      const time = formatEventTime(item.event.starts_at)
+      const time = formatEventTime(item.event.starts_at, i18n.language)
       const completed = status.kind === 'completed'
       const inProgress = status.kind === 'in_progress'
 
@@ -179,7 +182,7 @@ export default function TimelineScreen() {
         </Pressable>
       )
     },
-    [now, router, tripId, theme, t],
+    [now, router, tripId, theme, t, i18n.language],
   )
 
   return (

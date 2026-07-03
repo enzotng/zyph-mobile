@@ -9,11 +9,11 @@ import { haptics } from '@/lib/haptics'
 
 // Short clock time for the rail's secondary line (e.g. "18:00"), so the compact rows aren't
 // bare one-liners. Null for an all-day event with no start time.
-function formatEventTime(iso: string | null): string | null {
+function formatEventTime(iso: string | null, locale: string): string | null {
   if (!iso) {
     return null
   }
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 }
 
 // The cockpit "what's next" rail: the next few upcoming events. The first is a bordered NEXT
@@ -27,7 +27,7 @@ export function CockpitTimeline({
   now: number
   onPressEvent: (id: string) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { theme } = useUnistyles()
 
   if (events.length === 0) {
@@ -41,7 +41,7 @@ export function CockpitTimeline({
         const countdown = status.kind === 'upcoming' ? formatCountdown(status, t) : null
         // Secondary line for the compact rows: the start time, falling back to the note so the
         // row carries a little context instead of just a bare title.
-        const rowSecondary = formatEventTime(event.starts_at) ?? event.notes
+        const rowSecondary = formatEventTime(event.starts_at, i18n.language) ?? event.notes
         const isFirst = index === 0
         const isLast = index === events.length - 1
         const press = () => {

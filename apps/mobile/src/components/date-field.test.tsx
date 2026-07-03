@@ -95,7 +95,7 @@ describe('DateField - Android', () => {
   it('renders the formatted date value as text', () => {
     render(<DateField label="Departure" value={TEST_DATE} onChange={jest.fn()} />)
 
-    expect(screen.getByText(TEST_DATE.toLocaleString())).toBeOnTheScreen()
+    expect(screen.getByText(TEST_DATE.toLocaleString('en'))).toBeOnTheScreen()
   })
 
   it('renders the error message on Android when error prop is set', () => {
@@ -200,7 +200,7 @@ describe('DateField - Android', () => {
   it('renders the day-only formatted value when mode is "date"', () => {
     render(<DateField label="Departure" value={TEST_DATE} onChange={jest.fn()} mode="date" />)
 
-    expect(screen.getByText(TEST_DATE.toLocaleDateString())).toBeOnTheScreen()
+    expect(screen.getByText(TEST_DATE.toLocaleDateString('en'))).toBeOnTheScreen()
   })
 
   it('calls onChange directly without a time dialog when mode is "date"', () => {

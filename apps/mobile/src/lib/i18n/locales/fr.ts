@@ -966,6 +966,7 @@ export const fr: Translations = {
     emptyTitle: 'Timeline vide',
     emptyBody: 'Ajoute ton premier événement pour structurer le voyage.',
     addEvent: 'Ajouter un événement',
+    noDate: 'Sans date',
     docCount_one: '{{count}} doc',
     docCount_other: '{{count}} docs',
   },

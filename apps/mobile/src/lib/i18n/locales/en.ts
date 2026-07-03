@@ -955,6 +955,7 @@ export const en = {
     emptyTitle: 'Empty timeline',
     emptyBody: 'Add your first event to structure the trip.',
     addEvent: 'Add an event',
+    noDate: 'No date',
     docCount_one: '{{count}} doc',
     docCount_other: '{{count}} docs',
   },

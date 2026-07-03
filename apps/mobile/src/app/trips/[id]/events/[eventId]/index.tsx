@@ -23,13 +23,13 @@ import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
-function formatEventDate(iso: string | null): string | null {
+function formatEventDate(iso: string | null, locale: string): string | null {
   if (!iso) {
     return null
   }
   const date = new Date(iso)
-  const day = date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
-  const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  const day = date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
+  const time = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
   return `${day} - ${time}`
 }
 
@@ -39,7 +39,7 @@ export default function EventDetailScreen() {
   const eventId = paramString(params.eventId)
   const { theme } = useUnistyles()
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [now] = useState(() => Date.now())
 
   const { data: event, isLoading } = useEvent(eventId)
@@ -154,7 +154,7 @@ export default function EventDetailScreen() {
   }
 
   const status = eventStatus(event.starts_at, event.ends_at, now)
-  const dateLabel = formatEventDate(event.starts_at)
+  const dateLabel = formatEventDate(event.starts_at, i18n.language)
   const gate = event.gate_location as { label?: string; lat?: number; lng?: number } | null
   const hasGate = Boolean(gate && typeof gate.lat === 'number' && typeof gate.lng === 'number')
 

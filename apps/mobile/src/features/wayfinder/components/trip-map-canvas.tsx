@@ -74,8 +74,8 @@ function dayKeyOf(iso: string): string {
   return `${d.getFullYear()}-${month}-${day}`
 }
 
-function dayLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+function dayLabel(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -124,7 +124,7 @@ function isEventKind(kind: WayfinderTargetKind): boolean {
 export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>(
   function TripMapCanvas({ tripId, showAppBar = true, topInset }, ref) {
     const router = useRouter()
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const { theme, rt } = useUnistyles()
 
     const [visible, setVisible] = useState<Record<MapLayer, boolean>>({
@@ -195,7 +195,11 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
         if (existing) {
           existing.targets.push(target)
         } else {
-          groups.set(key, { key, label: dayLabel(target.startsAt), targets: [target] })
+          groups.set(key, {
+            key,
+            label: dayLabel(target.startsAt, i18n.language),
+            targets: [target],
+          })
         }
       }
       const ordered = [...groups.values()].sort((a, b) => a.key.localeCompare(b.key))
@@ -203,7 +207,7 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
         group.targets.sort((a, b) => (a.startsAt ?? '').localeCompare(b.startsAt ?? ''))
       }
       return ordered
-    }, [targets])
+    }, [targets, i18n.language])
 
     const shown = useMemo(
       () =>
