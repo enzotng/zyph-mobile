@@ -298,6 +298,7 @@ export default function CopilotScreen() {
           lng: tripData.longitude,
           includedTypes: googleTypesFor(tripData.interests ?? []),
           max: 16,
+          languageCode: language,
         }).catch((): Poi[] => [])
         setCandidates(pois)
         lastPlanningPromptRef.current = lastUserContent

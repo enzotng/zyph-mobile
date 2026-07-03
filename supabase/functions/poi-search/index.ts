@@ -38,7 +38,13 @@ export default {
       return Response.json({ error: "Too many requests, please slow down." }, { status: 429 })
     }
 
-    let body: { lat?: unknown; lng?: unknown; includedTypes?: unknown; max?: unknown }
+    let body: {
+      lat?: unknown
+      lng?: unknown
+      includedTypes?: unknown
+      max?: unknown
+      languageCode?: unknown
+    }
     try {
       body = await req.json()
     } catch {
@@ -88,6 +94,9 @@ export default {
       max = Math.max(1, Math.min(20, Math.round(rawMax)))
     }
 
+    // Only 'fr'/'en' are supported (mirrors the copilot's language validation); default 'en'.
+    const languageCode = body.languageCode === "fr" ? "fr" : "en"
+
     const apiKey = Deno.env.get("GOOGLE_MAPS_API_KEY")
     if (!apiKey) {
       return Response.json({ error: "GOOGLE_MAPS_API_KEY is not configured" }, { status: 500 })
@@ -97,12 +106,16 @@ export default {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
 
-    // Canonical cache key: rounded coordinates + sorted types + max.
+    // Canonical cache key: rounded coordinates + sorted types + max + language. `v: 2` busts any
+    // payload cached before the richer place fields (description/price range/hours) shipped, and
+    // `lang` keeps fr/en results cached separately since Google localizes several fields.
     const canonical = JSON.stringify({
+      v: 2,
       lat: round4(lat),
       lng: round4(lng),
       types: [...includedTypes].sort(),
       max,
+      lang: languageCode,
     })
     const hash = await toSha256Hex(canonical)
 
@@ -124,7 +137,7 @@ export default {
     // Cache miss or stale: fetch from Google Places. Degrade to empty list on any error.
     let pois: Poi[]
     try {
-      pois = await searchPlaces(apiKey, { lat, lng, includedTypes, max })
+      pois = await searchPlaces(apiKey, { lat, lng, includedTypes, max, languageCode })
     } catch (err) {
       console.error("poi-search google error", err)
       return Response.json({ pois: [] })

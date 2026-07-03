@@ -19,6 +19,12 @@ const POI: Poi = {
   photoName: null,
   address: null,
   openNow: null,
+  description: null,
+  typeLabel: null,
+  priceStart: null,
+  priceEnd: null,
+  priceCurrency: null,
+  weekdayHours: null,
 }
 
 function renderCard(overrides: Partial<Parameters<typeof PoiCard>[0]> = {}) {

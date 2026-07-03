@@ -32,7 +32,7 @@ function isFiniteCoord(value: number | null): value is number {
 // still-loading or unlucky search never reads as a broken section on the cockpit.
 export function ActivitiesRail({ trip }: ActivitiesRailProps) {
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data: events } = useEvents(trip.id)
 
   const poisInput =
@@ -42,6 +42,7 @@ export function ActivitiesRail({ trip }: ActivitiesRailProps) {
           lng: trip.longitude,
           includedTypes: googleTypesFor(trip.interests),
           max: MAX_POIS,
+          languageCode: i18n.language === 'fr' ? 'fr' : 'en',
         }
       : null
 
