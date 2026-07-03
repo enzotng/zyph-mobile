@@ -22,15 +22,16 @@ import {
 } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
 import { PlanSegmented } from '@/features/trips/components/plan-segmented'
+import { type ForecastDay, useTripWeather } from '@/features/weather'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
-function formatEventTime(iso: string | null): string | null {
+function formatEventTime(iso: string | null, locale: string): string | null {
   if (!iso) {
     return null
   }
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 }
 
 // The right-side status text + its tone, derived from the event status. Tones map to the
@@ -48,15 +49,51 @@ function statusLabel(status: EventStatus, t: TFunction): { label: string; tone: 
   }
 }
 
+// Rain includes both 'rain' (drizzle/showers/precipitation) and 'storm' (thunderstorm with rain).
+function isRainyDay(day: ForecastDay): boolean {
+  return day.condition === 'rain' || day.condition === 'storm'
+}
+
 export default function TimelineScreen() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
   const { data: trip } = useTrip(tripId)
   const { data: events, isLoading, isError, refetch, isRefetching } = useEvents(tripId)
+  const { data: weather } = useTripWeather(trip)
   const { theme } = useUnistyles()
   const router = useRouter()
-  const items = useMemo(() => groupEventsByDay(events ?? []), [events])
+  const items = useMemo(
+    () => groupEventsByDay(events ?? [], i18n.language, t('timeline.noDate')),
+    [events, i18n.language, t],
+  )
+  const [rainyDismissed, setRainyDismissed] = useState(false)
+
+  // First forecast day within the trip's date range whose condition indicates rain or storm.
+  // Null-safe: returns null when weather unavailable or no rainy day found.
+  const rainyDay = useMemo<ForecastDay | null>(() => {
+    if (!weather?.days?.length) return null
+    const start = trip?.start_date ?? null
+    const end = trip?.end_date ?? null
+    return (
+      weather.days.find((d) => {
+        const inRange = (start === null || d.date >= start) && (end === null || d.date <= end)
+        return inRange && isRainyDay(d)
+      }) ?? null
+    )
+  }, [weather, trip])
+
+  // Derived as a plain string so TypeScript does not need to re-narrow inside closures.
+  const rainyDayDate: string = rainyDay?.date ?? ''
+
+  // Navigate to the copilot tab with a pre-filled planning prompt that auto-sends on mount.
+  const pushCopilot = useCallback(
+    (prompt: string) => {
+      haptics.light()
+      router.push({ pathname: '/trips/[id]/copilot', params: { id: tripId, prompt } })
+    },
+    [router, tripId],
+  )
 
   // Tick once a minute so the countdown stays current without per-second churn. Gated to focus so
   // the timer does not keep firing while another Plan tab (map/expenses) is showing.
@@ -76,7 +113,7 @@ export default function TimelineScreen() {
       }
       const status = eventStatus(item.event.starts_at, item.event.ends_at, now)
       const badge = statusLabel(status, t)
-      const time = formatEventTime(item.event.starts_at)
+      const time = formatEventTime(item.event.starts_at, i18n.language)
       const completed = status.kind === 'completed'
       const inProgress = status.kind === 'in_progress'
 
@@ -145,7 +182,7 @@ export default function TimelineScreen() {
         </Pressable>
       )
     },
-    [now, router, tripId, theme, t],
+    [now, router, tripId, theme, t, i18n.language],
   )
 
   return (
@@ -179,6 +216,52 @@ export default function TimelineScreen() {
         <PlanSegmented active="timeline" tripId={tripId} />
       </View>
 
+      {rainyDay !== null && !rainyDismissed ? (
+        <View
+          style={[
+            styles.rainyBanner,
+            {
+              backgroundColor: withAlpha(theme.colors.primary, 0.08),
+              borderColor: withAlpha(theme.colors.primary, 0.2),
+            },
+          ]}
+        >
+          <View style={styles.rainyLeft}>
+            <Ionicons name="rainy-outline" size={18} color={theme.colors.primary} />
+            <View style={styles.rainyTexts}>
+              <Text style={[styles.rainyTitle, { color: theme.colors.foreground }]}>
+                {t('itinerary.cta.rainyTitle')}
+              </Text>
+              <Text style={[styles.rainyDate, { color: theme.colors.muted }]}>{rainyDayDate}</Text>
+            </View>
+          </View>
+          <View style={styles.rainyRight}>
+            <Pressable
+              onPress={() => pushCopilot(t('itinerary.prompts.rainyDay', { date: rainyDayDate }))}
+              accessibilityRole="button"
+              accessibilityLabel={t('itinerary.cta.rainyAction')}
+              style={({ pressed }) => [
+                styles.rainyActionBtn,
+                { backgroundColor: theme.colors.primary },
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={[styles.rainyActionText, { color: theme.colors.background }]}>
+                {t('itinerary.cta.rainyAction')}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setRainyDismissed(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.dismiss')}
+              hitSlop={12}
+            >
+              <Ionicons name="close-outline" size={20} color={theme.colors.muted} />
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       {isLoading ? (
         <TimelineSkeleton />
       ) : isError ? (
@@ -190,25 +273,76 @@ export default function TimelineScreen() {
           onRetry={() => void refetch()}
         />
       ) : items.length === 0 ? (
-        <EmptyState
-          icon="calendar-outline"
-          title={t('timeline.emptyTitle')}
-          body={t('timeline.emptyBody')}
-          cta={t('timeline.addEvent')}
-          onCta={() => router.push({ pathname: '/trips/[id]/add-event', params: { id: tripId } })}
-        />
+        <View style={styles.fill}>
+          <EmptyState
+            icon="calendar-outline"
+            title={t('timeline.emptyTitle')}
+            body={t('timeline.emptyBody')}
+            cta={t('timeline.addEvent')}
+            onCta={() => router.push({ pathname: '/trips/[id]/add-event', params: { id: tripId } })}
+          />
+          <Pressable
+            onPress={() => pushCopilot(t('itinerary.prompts.coldStart'))}
+            accessibilityRole="button"
+            accessibilityLabel={t('itinerary.cta.coldStart')}
+            style={({ pressed }) => [
+              styles.zoCard,
+              {
+                backgroundColor: withAlpha(theme.colors.primary, 0.08),
+                borderColor: withAlpha(theme.colors.primary, 0.2),
+              },
+              pressed && styles.pressed,
+            ]}
+          >
+            <View
+              style={[
+                styles.zoCardIcon,
+                { backgroundColor: withAlpha(theme.colors.primary, 0.12) },
+              ]}
+            >
+              <Ionicons name="sparkles" size={22} color={theme.colors.primary} />
+            </View>
+            <View style={styles.zoCardTexts}>
+              <Text style={[styles.zoCardTitle, { color: theme.colors.foreground }]}>
+                {t('itinerary.cta.coldStart')}
+              </Text>
+              <Text style={[styles.zoCardSubtitle, { color: theme.colors.muted }]}>
+                {t('itinerary.cta.subtitle')}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.muted} />
+          </Pressable>
+        </View>
       ) : (
         <Animated.View entering={FadeIn.duration(280)} style={styles.fill}>
-          <FlashList
-            data={items}
-            keyExtractor={(item) => item.key}
-            getItemType={(item) => item.kind}
-            contentContainerStyle={styles.list}
-            renderItem={renderItem}
-            showsVerticalScrollIndicator={false}
-            refreshing={isRefetching}
-            onRefresh={() => void refetch()}
-          />
+          <Pressable
+            onPress={() => pushCopilot(t('itinerary.prompts.gapFill'))}
+            accessibilityRole="button"
+            accessibilityLabel={t('itinerary.cta.gapFill')}
+            style={({ pressed }) => [
+              styles.gapFillRow,
+              { borderColor: withAlpha(theme.colors.primary, 0.2) },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons name="sparkles" size={16} color={theme.colors.primary} />
+            <Text style={[styles.gapFillLabel, { color: theme.colors.primary }]}>
+              {t('itinerary.cta.gapFill')}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
+          </Pressable>
+          <View style={styles.fill}>
+            <FlashList
+              data={items}
+              keyExtractor={(item) => item.key}
+              getItemType={(item) => item.kind}
+              contentContainerStyle={styles.list}
+              renderItem={renderItem}
+              showsVerticalScrollIndicator={false}
+              refreshing={isRefetching}
+              onRefresh={() => void refetch()}
+            />
+          </View>
         </Animated.View>
       )}
     </Screen>
@@ -352,5 +486,107 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontFamily: theme.fonts.sans.regular,
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
+  },
+  // Rainy-day banner: shown between segment and content when forecast has rain within trip dates.
+  rainyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.gap(2),
+    borderWidth: 1,
+    borderRadius: theme.radius.md,
+    borderCurve: 'continuous',
+    padding: theme.gap(3),
+    marginBottom: theme.gap(3),
+  },
+  rainyLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+  },
+  rainyTexts: {
+    flex: 1,
+    gap: theme.gap(0.5),
+  },
+  rainyTitle: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+  },
+  rainyDate: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+  },
+  rainyRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+  },
+  rainyActionBtn: {
+    paddingHorizontal: theme.gap(3),
+    paddingVertical: theme.gap(1.5),
+    borderRadius: theme.radius.sm,
+    borderCurve: 'continuous',
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rainyActionText: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+  },
+  // Cold-start CTA card shown in the empty-timeline state.
+  zoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(3),
+    borderWidth: 1,
+    borderRadius: theme.radius.lg,
+    borderCurve: 'continuous',
+    padding: theme.gap(4),
+    marginBottom: theme.gap(4),
+    minHeight: 44,
+  },
+  zoCardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.md,
+    borderCurve: 'continuous',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoCardTexts: {
+    flex: 1,
+    gap: theme.gap(1),
+  },
+  zoCardTitle: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.md,
+  },
+  zoCardSubtitle: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+  },
+  // Gap-fill CTA: lightweight row above the event list when timeline is non-empty.
+  gapFillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
+    borderWidth: 1,
+    borderRadius: theme.radius.md,
+    borderCurve: 'continuous',
+    paddingHorizontal: theme.gap(3),
+    paddingVertical: theme.gap(2.5),
+    marginBottom: theme.gap(3),
+    minHeight: 44,
+  },
+  gapFillLabel: {
+    flex: 1,
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
   },
 }))

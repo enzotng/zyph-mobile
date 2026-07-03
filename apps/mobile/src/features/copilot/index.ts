@@ -13,7 +13,10 @@ export { buildTripContext } from './context'
 export {
   type ChatMessage,
   clearCopilotHistory,
+  loadBlockStates,
   loadCopilotHistory,
+  type PersistedBlockStates,
+  saveBlockStates,
   saveCopilotHistory,
 } from './history'
 export { useAskCopilot } from './hooks/use-copilot'

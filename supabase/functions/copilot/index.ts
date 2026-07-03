@@ -8,15 +8,16 @@
 //
 // Env vars (set via `supabase secrets set`):
 //   GROQ_API_KEY   — required
-//   GROQ_MODEL     — optional, defaults to llama-3.1-8b-instant
+//   GROQ_MODEL     — optional, defaults to llama-3.3-70b-versatile
 //   GROQ_BASE_URL  — optional, defaults to https://api.groq.com/openai/v1
 
 import "@supabase/functions-js/edge-runtime.d.ts"
 import { withSupabase } from "@supabase/server"
 
 import { isWithinRateLimit } from "../_shared/rate-limit.ts"
+import { validateBlocks } from "./blocks.ts"
 
-const DEFAULT_MODEL = "llama-3.1-8b-instant"
+const DEFAULT_MODEL = "llama-3.3-70b-versatile"
 const DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 
 const MAX_MESSAGES = 30
@@ -33,39 +34,76 @@ function sleep(ms: number): Promise<void> {
 }
 
 const TOOLS = ["add_expense", "add_event", "add_packing", "record_settlement"]
-const WIDGETS = ["weather", "balances", "next_events", "packing", "expenses"]
+const WIDGETS = ["weather", "balances", "next_events", "packing", "expenses", "spend_by_category"]
+const NAV_TARGETS = [
+  "trip_home",
+  "spend",
+  "timeline",
+  "packing",
+  "map",
+  "balances",
+  "group",
+  "activities",
+]
 
 const SYSTEM_PROMPT = `You are Zo, ZYPH's friendly travel copilot, scoped to a SINGLE trip, in a multi-turn chat. If asked who you are, say you're Zo, the trip copilot.
 
 You are given a TRIP CONTEXT block (facts about this trip: dates, members, balances, timeline events, expenses, packing, recorded settlements, and a short weather forecast) followed by the conversation. Use earlier turns for follow-ups.
 
-You can do TWO things:
-1) ANSWER a question about this trip.
-2) PROPOSE ONE ACTION, only when the user clearly asks to DO/ADD/CREATE/RECORD something in the app.
+ALWAYS reply with a SINGLE JSON object with a "blocks" array:
+{"blocks":[...]}
 
-ALWAYS reply with a SINGLE JSON object, exactly one of these shapes:
-{"type":"answer","text":"<your reply>","widget":"<optional, see WIDGETS>"}
-{"type":"action","tool":"<tool>","args":{...},"text":"<one short sentence, in the user's language, asking them to confirm>"}
+Each element of "blocks" must be exactly one of these five shapes:
 
-Available tools (propose at most one; the user will confirm before anything is written):
-- "add_expense": {"description": string, "amount": number, "splitWith": "all" OR array of member names}. Paid by the current user. amount is in the trip currency.
+1. Text block — your reply text:
+{"kind":"text","text":"<your reply, 1-3 sentences>"}
+
+2. Widget block — show a data card (use at most one per response, only when it directly illustrates the answer):
+{"kind":"widget","source":"<one of: weather, balances, next_events, packing, expenses, spend_by_category>"}
+
+3. Action block — propose ONE user-initiated action (only when the user clearly asks to DO/ADD/CREATE/RECORD something):
+{"kind":"action","tool":"<tool>","args":{...},"text":"<one short sentence in the user's language asking them to confirm>"}
+
+4. Chips block - suggest 1 to 3 quick next steps (see rules below):
+{"kind":"chips","chips":[...]}
+Each chip is one of:
+- Navigate to a screen: {"action":"navigate","to":"<one of: trip_home, spend, timeline, packing, map, balances, group, activities>","label":"<short, user's language>"}
+  ("activities" opens the things-to-do discovery screen - suggest it when the user asks what to do or see at the destination and you are not emitting an itinerary)
+- Ask a follow-up question: {"action":"prompt","prompt":"<a follow-up question to ask you>","label":"<short, user's language>"}
+- Trigger a quick action: {"action":"tool","tool":"<one of the available tools>","args":{...},"label":"<short, user's language>"}
+
+5. Itinerary block — a day-by-day trip plan built from CANDIDATE PLACES (emit ONLY when the user asks to plan, build, fill, or organize their trip schedule, or to replan a day):
+{"kind":"itinerary","days":[{"date":"YYYY-MM-DD","items":[{"placeId":"<id from CANDIDATE PLACES>","title":"<place name>","type":"<activity|food|transport|lodging|flight|event>","time":"HH:MM","notes":"<one short line, optional>"}]}]}
+
+Available tools for action blocks (propose at most one; the user confirms before anything is written):
+- "add_expense": {"description": string, "amount": number, "splitWith": "all" OR array of member names}. Paid by the current user.
 - "add_event": {"title": string, "type": string (flight|hotel|activity|restaurant|transport|event), "date": "YYYY-MM-DD", "time": "HH:MM" optional}.
 - "add_packing": {"scope": "shared" OR "personal", "request": string describing what to pack}.
 - "record_settlement": {"from": member name who paid, "to": member name who received, "amount": number}.
 
-WIDGETS (optional, ANSWER only): add a "widget" field to show a card under your text when it directly illustrates the answer. Use at most one, and ONLY when relevant - otherwise omit it. Always still write the text.
-- "weather": the user asks about the weather, forecast, or what to wear/bring.
-- "balances": about who owes what, balances, or settling up.
-- "next_events": about the schedule, what's next, or upcoming plans.
-- "packing": about packing or what is left to pack.
-- "expenses": about spending, budget, or costs by category.
+Widget sources and when to use them:
+- "weather": user asks about weather, forecast, or what to wear/bring.
+- "balances": user asks about who owes what, balances, or settling up.
+- "next_events": user asks about the schedule, what's next, or upcoming plans.
+- "packing": user asks about packing or what is left to pack.
+- "expenses": user asks about spending, budget, or total costs.
+- "spend_by_category": user asks about spending broken down by category (a bar chart of spending per category).
+
+CRITICAL — NEVER put numbers or amounts in a text block. For any data (balances, expenses, weather figures, etc.), emit a widget block with the relevant source; the app fetches and formats the figures itself.
 
 Rules:
-- Propose an action ONLY for an explicit add/create/record request. Anything else -> ANSWER.
+- A typical answer is: one text block, optionally followed by one widget block.
+- An action response is: one text block (brief acknowledgment) + one action block.
+- Propose an action ONLY for an explicit add/create/record request. Anything else -> text (+ optional widget).
+- Optionally end with ONE chips block (1-3 chips) suggesting natural next steps - opening a relevant screen, a useful follow-up question, or a quick action. Omit it when nothing is natural.
+- A "tool" chip RUNS that action when tapped, so ONLY use one when the conversation already gives you ALL of its args (e.g. add_expense needs a concrete description AND amount). For a generic suggestion like "add an expense" with no specifics, use a "navigate" chip to the relevant screen (e.g. spend) instead - never a tool chip with empty or guessed args.
+- Itinerary response: one short text block (intro) + one itinerary block; optionally a chips block after. Emit an itinerary block ONLY when explicitly asked to plan/build/fill/organize the trip schedule or replan a day.
+- Choose itinerary items ONLY from the CANDIDATE PLACES list, copying the exact placeId and using the place's name as title. NEVER invent a place or placeId. If there are no candidates, reply with a text block asking the user to try again instead.
+- Spread items across the real trip dates (from TRIP CONTEXT): 2-5 items/day, realistic times, respecting the traveller profile (trip type, budget, pace, interests, dietary) and weather. Three modes: (a) empty timeline -> propose a full day-by-day plan; (b) timeline already has events -> fill only the empty time slots, do NOT duplicate existing events; (c) rain in the forecast -> prefer indoor candidates for that day.
+- Never put prices or amounts in any itinerary text field (NO-NUMBERS rule applies).
 - Use member names exactly as in MEMBERS. For the current user use "me".
-- Answers: 1-3 sentences, plain text, grounded ONLY in the TRIP CONTEXT, never invent facts; if unknown, say so briefly. Refuse politely anything unrelated to this trip.
-- Money in context is already formatted; quote exactly. POSITIVE balance = owed money; NEGATIVE = owes.
-- Be warm; address the user informally (in French use "tu"). Reply in the language given by LANGUAGE (fr/en). Output JSON only, no markdown.`
+- Text is plain, grounded ONLY in the TRIP CONTEXT; never invent facts. If unknown, say so briefly. Refuse politely anything unrelated to this trip.
+- Be warm; address the user informally (in French use "tu"). Reply in the SAME language as the user's most recent message - a French question gets a French reply, including every chip label and the action confirm text; if the language is genuinely unclear, fall back to LANGUAGE (fr/en). Output JSON only, no markdown.`
 
 type ChatMessage = { role: "user" | "assistant"; content: string }
 
@@ -131,7 +169,7 @@ export default {
       return Response.json({ error: "Too many requests, please slow down." }, { status: 429 })
     }
 
-    let body: { context?: unknown; language?: unknown; messages?: unknown }
+    let body: { context?: unknown; language?: unknown; messages?: unknown; candidates?: unknown }
     try {
       body = await req.json()
     } catch {
@@ -141,6 +179,37 @@ export default {
     const context = typeof body.context === "string" ? body.context.trim() : ""
     const language = body.language === "fr" ? "fr" : "en"
     const messages = parseMessages(body.messages)
+
+    const rawCandidates = Array.isArray(body.candidates) ? (body.candidates as unknown[]) : []
+    const validCandidates = rawCandidates
+      .slice(0, 60)
+      .filter(
+        (
+          c,
+        ): c is {
+          placeId: string
+          name: string
+          lat: number
+          lng: number
+          rating?: number | null
+          priceLevel?: number | null
+          types?: string[]
+        } => {
+          if (!c || typeof c !== "object") return false
+          const obj = c as Record<string, unknown>
+          return (
+            typeof obj.placeId === "string" &&
+            obj.placeId.trim().length > 0 &&
+            typeof obj.name === "string" &&
+            obj.name.trim().length > 0 &&
+            typeof obj.lat === "number" &&
+            isFinite(obj.lat) &&
+            typeof obj.lng === "number" &&
+            isFinite(obj.lng)
+          )
+        },
+      )
+    const candidateIds = new Set(validCandidates.map((c) => c.placeId))
 
     if (!messages) {
       return Response.json({ error: "Invalid or empty messages" }, { status: 400 })
@@ -159,6 +228,20 @@ export default {
     const model = Deno.env.get("GROQ_MODEL") || DEFAULT_MODEL
     const baseUrl = Deno.env.get("GROQ_BASE_URL") || DEFAULT_BASE_URL
 
+    const candidatesContext =
+      validCandidates.length > 0
+        ? "\n\nCANDIDATE PLACES (choose itinerary items ONLY from these, by place_id):\n" +
+          validCandidates
+            .map((c) => {
+              const typeLabel =
+                Array.isArray(c.types) && typeof c.types[0] === "string" && c.types[0]
+                  ? c.types[0]
+                  : "place"
+              return `- ${c.placeId} | ${c.name} | ${typeLabel} | rating ${c.rating ?? "?"} | price ${c.priceLevel ?? "?"}`
+            })
+            .join("\n")
+        : ""
+
     let groqResponse: Response
     try {
       groqResponse = await callGroqWithRetry(`${baseUrl}/chat/completions`, {
@@ -173,12 +256,12 @@ export default {
             { role: "system", content: SYSTEM_PROMPT },
             {
               role: "system",
-              content: `LANGUAGE: ${language}\n\nTRIP CONTEXT:\n${context || "(no trip data available)"}`,
+              content: `LANGUAGE: ${language}\n\nTRIP CONTEXT:\n${context || "(no trip data available)"}${candidatesContext}`,
             },
             ...messages,
           ],
           temperature: 0.2,
-          max_tokens: 600,
+          max_tokens: 3000,
           response_format: { type: "json_object" },
         }),
       })
@@ -202,30 +285,29 @@ export default {
       return Response.json({ error: "LLM returned an empty response" }, { status: 502 })
     }
 
-    let parsed: { type?: unknown; text?: unknown; tool?: unknown; args?: unknown; widget?: unknown }
+    let parsed: unknown
     try {
       parsed = JSON.parse(content)
     } catch {
-      // Defensive: if the model ignored JSON mode, surface the raw text as an answer.
-      return Response.json({ answer: content })
+      // Defensive: if the model ignored JSON mode, surface the raw text as a text block.
+      return Response.json({ blocks: [{ kind: "text", text: content }] })
     }
 
-    const text = typeof parsed.text === "string" ? parsed.text.trim() : ""
-
-    // An action is only ever PROPOSED here - the client confirms and executes it under the
-    // user's own RLS. We just validate the envelope shape.
-    if (parsed.type === "action" && typeof parsed.tool === "string" && TOOLS.includes(parsed.tool)) {
-      const args = parsed.args && typeof parsed.args === "object" ? parsed.args : {}
-      // The client schema requires a non-empty text; fall back in the user's language.
-      const fallback = language === "fr" ? "Je confirme ?" : "Confirm?"
-      return Response.json({ action: { tool: parsed.tool, args, text: text || fallback } })
-    }
-
-    // The client renders the card from its own cached data; we only pass through a valid type.
-    const widget = typeof parsed.widget === "string" && WIDGETS.includes(parsed.widget)
-      ? parsed.widget
-      : undefined
-    const answer = text || content
-    return Response.json(widget ? { answer, widget } : { answer })
+    const blocks = validateBlocks(
+      parsed,
+      { sources: WIDGETS, tools: TOOLS, navTargets: NAV_TARGETS, candidateIds, maxItinDays: 14 },
+      language,
+    )
+    // When nothing validates (e.g. the model proposed an itinerary but no candidate matched), the
+    // parsed `content` is raw JSON - never surface that. Degrade to a friendly, localized message.
+    const emptyFallback =
+      language === "fr"
+        ? "Désolé, je n'ai pas réussi à préparer ça. Tu peux reformuler ta demande ?"
+        : "Sorry, I could not put that together. Could you rephrase your request?"
+    return Response.json(
+      blocks.length
+        ? { blocks }
+        : { blocks: [{ kind: "text", text: emptyFallback }] },
+    )
   }),
 }

@@ -19,17 +19,111 @@ export const COPILOT_WIDGET_TYPES = [
   'next_events',
   'packing',
   'expenses',
+  'spend_by_category',
 ] as const
 export const copilotWidgetSchema = z.enum(COPILOT_WIDGET_TYPES)
 export type CopilotWidgetType = z.infer<typeof copilotWidgetSchema>
 
-export const copilotResponseSchema = z
-  .object({
-    answer: z.string().min(1).optional(),
-    action: copilotActionSchema.optional(),
-    widget: copilotWidgetSchema.optional(),
-  })
-  .refine((d) => Boolean(d.answer) || Boolean(d.action), {
-    message: 'The copilot returned neither an answer nor an action.',
-  })
+// --- Block schemas ---
+
+export const textBlockSchema = z.object({
+  kind: z.literal('text'),
+  text: z.string().min(1),
+})
+
+export const widgetBlockSchema = z.object({
+  kind: z.literal('widget'),
+  source: copilotWidgetSchema,
+})
+
+export const actionBlockSchema = z.object({
+  kind: z.literal('action'),
+  tool: copilotActionSchema.shape.tool,
+  args: copilotActionSchema.shape.args,
+  text: copilotActionSchema.shape.text,
+})
+
+// --- Navigation targets for chips ---
+export const NAV_TARGETS = [
+  'trip_home',
+  'spend',
+  'timeline',
+  'packing',
+  'map',
+  'balances',
+  'group',
+  'activities',
+] as const
+export const navTargetSchema = z.enum(NAV_TARGETS)
+export type NavTarget = z.infer<typeof navTargetSchema>
+
+// --- Chip schemas ---
+const navigateChipSchema = z.object({
+  action: z.literal('navigate'),
+  to: navTargetSchema,
+  label: z.string().min(1),
+})
+
+const promptChipSchema = z.object({
+  action: z.literal('prompt'),
+  prompt: z.string().min(1),
+  label: z.string().min(1),
+})
+
+const toolChipSchema = z.object({
+  action: z.literal('tool'),
+  tool: copilotActionSchema.shape.tool,
+  args: copilotActionSchema.shape.args,
+  label: z.string().min(1),
+})
+
+export const chipSchema = z.discriminatedUnion('action', [
+  navigateChipSchema,
+  promptChipSchema,
+  toolChipSchema,
+])
+export type Chip = z.infer<typeof chipSchema>
+
+export const chipsBlockSchema = z.object({
+  kind: z.literal('chips'),
+  chips: z.array(chipSchema).min(1).max(3),
+})
+
+// --- Itinerary block ---
+const itineraryItemSchema = z.object({
+  placeId: z.string().min(1),
+  title: z.string().min(1),
+  type: z.string().min(1),
+  time: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional(),
+  notes: z.string().optional(),
+})
+const itineraryDaySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  items: z.array(itineraryItemSchema).min(1).max(6),
+})
+export const itineraryBlockSchema = z.object({
+  kind: z.literal('itinerary'),
+  days: z.array(itineraryDaySchema).min(1).max(14),
+})
+
+export type ItineraryItem = z.infer<typeof itineraryItemSchema>
+export type ItineraryDay = z.infer<typeof itineraryDaySchema>
+export type ItineraryBlock = z.infer<typeof itineraryBlockSchema>
+
+export const blockSchema = z.discriminatedUnion('kind', [
+  textBlockSchema,
+  widgetBlockSchema,
+  actionBlockSchema,
+  chipsBlockSchema,
+  itineraryBlockSchema,
+])
+
+export type Block = z.infer<typeof blockSchema>
+
+export const copilotResponseSchema = z.object({
+  blocks: z.array(blockSchema).min(1),
+})
 export type CopilotResponse = z.infer<typeof copilotResponseSchema>

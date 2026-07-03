@@ -34,7 +34,7 @@ export default function ExpenseDetailScreen() {
   const expenseId = paramString(params.expenseId)
   const router = useRouter()
   const { theme } = useUnistyles()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { session } = useAuth()
   const userId = session?.user.id
 
@@ -108,7 +108,7 @@ export default function ExpenseDetailScreen() {
     payers && payers.length > 1
       ? payers.map((p) => labelFor(p.member_id)).join(', ')
       : labelFor(expense.paid_by)
-  const dateLabel = new Date(expense.created_at).toLocaleDateString(undefined, {
+  const dateLabel = new Date(expense.created_at).toLocaleDateString(i18n.language, {
     day: 'numeric',
     month: 'long',
   })

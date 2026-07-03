@@ -21,6 +21,12 @@ function makeInput(over: LooseInput = {}): CopilotContextInput {
       start_date: '2026-06-10',
       end_date: '2026-06-14',
       currency: 'EUR',
+      trip_type: null,
+      budget_level: null,
+      budget_total_cents: null,
+      pace: null,
+      interests: [],
+      dietary: [],
     },
     members: over.members ?? [
       { id: 'm1', display_name: 'Alice' },
@@ -89,6 +95,40 @@ describe('buildTripContext', () => {
     expect(ctx).toContain('EUR')
     expect(ctx).toContain('Alice')
     expect(ctx).toContain('Bob')
+  })
+
+  it('includes the trip profile lines when set', () => {
+    const ctx = buildTripContext(
+      makeInput({
+        trip: {
+          title: 'Rome trip',
+          destination: 'Rome, Italy',
+          start_date: null,
+          end_date: null,
+          currency: 'EUR',
+          trip_type: 'city_break',
+          budget_level: 'medium',
+          budget_total_cents: 120000,
+          pace: 'balanced',
+          interests: ['food', 'museums'],
+          dietary: ['vegan'],
+        },
+      }),
+    )
+    expect(ctx).toContain('Trip type: city_break')
+    expect(ctx).toContain('Budget level: medium')
+    expect(ctx).toContain('Budget total: 1200.00 EUR')
+    expect(ctx).toContain('Pace: balanced')
+    expect(ctx).toContain('Interests: food, museums')
+    expect(ctx).toContain('Dietary: vegan')
+  })
+
+  it('omits trip-profile lines when unset', () => {
+    const ctx = buildTripContext(makeInput())
+    expect(ctx).not.toContain('Trip type:')
+    expect(ctx).not.toContain('Budget level:')
+    expect(ctx).not.toContain('Interests:')
+    expect(ctx).not.toContain('Dietary:')
   })
 
   it('maps a payer id to the member name and never leaks the id', () => {

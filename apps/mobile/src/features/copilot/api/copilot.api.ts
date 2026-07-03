@@ -1,6 +1,7 @@
+import type { Poi } from '@/features/places'
 import { supabase } from '@/lib/supabase'
 
-import { type CopilotResponse, copilotResponseSchema } from '../schemas'
+import { type Block, blockSchema, type CopilotResponse, copilotResponseSchema } from '../schemas'
 
 export type CopilotMessage = { role: 'user' | 'assistant'; content: string }
 
@@ -9,6 +10,9 @@ export type AskCopilotInput = {
   language: 'en' | 'fr'
   // Full conversation so far; the last message is the new user question.
   messages: CopilotMessage[]
+  // POI candidates fetched when the turn looks like a planning request. Forwarded
+  // to the edge function so the model can reference real places in the itinerary.
+  candidates?: Poi[]
 }
 
 export async function askCopilot(input: AskCopilotInput): Promise<CopilotResponse> {
@@ -21,8 +25,28 @@ export async function askCopilot(input: AskCopilotInput): Promise<CopilotRespons
   if (!data) {
     throw new Error('Empty response from the copilot.')
   }
-  // Validate at the boundary: the function returns an answer OR a proposed action.
-  return copilotResponseSchema.parse(data)
+
+  // Validate the envelope, then each block individually: one block an older client doesn't know
+  // yet (e.g. a navigate chip whose target enum grew server-side) should not discard the whole
+  // assistant turn. Mirrors history.ts's migrateMessage, which applies the same per-block
+  // tolerance to persisted history.
+  const rawBlocks = (data as { blocks?: unknown }).blocks
+  if (!Array.isArray(rawBlocks) || rawBlocks.length === 0) {
+    // Same envelope-shape failure as before - let zod produce the usual error.
+    return copilotResponseSchema.parse(data)
+  }
+
+  const validBlocks: Block[] = rawBlocks
+    .map((block: unknown) => blockSchema.safeParse(block))
+    .filter((result): result is { success: true; data: Block } => result.success)
+    .map((result) => result.data)
+
+  if (validBlocks.length === 0) {
+    // Total garbage still surfaces the error bubble, same as before.
+    return copilotResponseSchema.parse(data)
+  }
+
+  return { blocks: validBlocks }
 }
 
 export type CopilotErrorKind = 'rateLimited' | 'offline' | 'generic'

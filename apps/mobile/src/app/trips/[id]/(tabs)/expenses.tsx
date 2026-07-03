@@ -59,6 +59,7 @@ function localDayKey(iso: string): string {
 function groupExpensesByDay(
   expenses: Expense[],
   labels: { today: string; yesterday: string },
+  locale: string,
 ): FeedItem[] {
   const items: FeedItem[] = []
   const todayKey = localDayKey(new Date().toISOString())
@@ -73,7 +74,7 @@ function groupExpensesByDay(
           ? labels.today
           : day === yesterdayKey
             ? labels.yesterday
-            : new Date(expense.created_at).toLocaleDateString(undefined, {
+            : new Date(expense.created_at).toLocaleDateString(locale, {
                 weekday: 'short',
                 day: 'numeric',
                 month: 'short',
@@ -94,7 +95,7 @@ export default function TripExpensesScreen() {
   const tripId = paramString(params.id)
   const router = useRouter()
   const { theme } = useUnistyles()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { session } = useAuth()
   const userId = session?.user.id
 
@@ -164,8 +165,12 @@ export default function TripExpensesScreen() {
   // Group the filtered expenses into day-header + row sections for the FlashList.
   const feed = useMemo(
     () =>
-      groupExpensesByDay(filtered, { today: t('common.today'), yesterday: t('common.yesterday') }),
-    [filtered, t],
+      groupExpensesByDay(
+        filtered,
+        { today: t('common.today'), yesterday: t('common.yesterday') },
+        i18n.language,
+      ),
+    [filtered, t, i18n.language],
   )
 
   const payerName = useCallback(
