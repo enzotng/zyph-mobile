@@ -14,9 +14,12 @@ export {
   type ChatMessage,
   clearCopilotHistory,
   loadBlockStates,
+  loadCopilotCandidates,
   loadCopilotHistory,
+  mergeCandidates,
   type PersistedBlockStates,
   saveBlockStates,
+  saveCopilotCandidates,
   saveCopilotHistory,
 } from './history'
 export { useAskCopilot } from './hooks/use-copilot'

@@ -1,4 +1,5 @@
 export { searchPlaces } from './api/places.api'
+export { resolvePoiPhoto, searchPois } from './api/poi.api'
 export type { ActivityCategory } from './categories'
 export {
   ACTIVITY_CATEGORIES,
@@ -15,9 +16,13 @@ export { PoiCard } from './components/poi-card'
 export type { PoiHeroCardProps } from './components/poi-hero-card'
 export { PoiHeroCard } from './components/poi-hero-card'
 export { placeSearchQueryKey, usePlaceSearch } from './hooks/use-places'
-export { usePoiPhoto } from './hooks/use-poi-photo'
+export { poiPhotoQueryKey, usePoiPhoto } from './hooks/use-poi-photo'
 export { poisQueryKey, usePois } from './hooks/use-pois'
-export { resolvePoiPhoto, searchPois } from './poi.api'
+export {
+  poiPhotoResponseSchema,
+  poiSchema,
+  poiSearchResponseSchema,
+} from './poi.schemas'
 export type { Poi, PoiSearchInput } from './poi.types'
 export { resolveFocusedPoi } from './resolve-focused-poi'
 export type { PlaceResult } from './schemas'

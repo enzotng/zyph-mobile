@@ -23,8 +23,11 @@ import {
   classifyCopilotError,
   clearCopilotHistory,
   loadBlockStates,
+  loadCopilotCandidates,
   loadCopilotHistory,
+  mergeCandidates,
   saveBlockStates,
+  saveCopilotCandidates,
   saveCopilotHistory,
   useAskCopilot,
   useExecuteCopilotAction,
@@ -172,13 +175,27 @@ export default function CopilotScreen() {
     () => loadBlockStates(tripId).itineraries,
   )
 
-  // POI candidates from the most recent planning search; passed to every itinerary block so
-  // each card can show photos, ratings and coordinates even after more messages are sent.
-  const [candidates, setCandidates] = useState<Poi[]>([])
+  // POI candidates accumulated across planning searches (union by placeId), passed to every
+  // itinerary block so each card can show photos, ratings and coordinates - even for a card from an
+  // earlier turn or after a later search fails. Lazy-loaded from a persisted per-trip snapshot so a
+  // restored conversation's cards render fully instead of degraded.
+  const [candidates, setCandidates] = useState<Poi[]>(() => loadCopilotCandidates(tripId))
 
   // The last user message text that triggered a planning search; re-used by onRegenerateItinerary
   // so tapping Regenerate re-sends the same prompt through the normal send path.
   const lastPlanningPromptRef = useRef<string>('')
+
+  // Turn-level in-flight guard for the ask pipeline. Set synchronously at the top of runAsk -
+  // BEFORE the fire-and-forget POI fetch - so a second send during that network window (a
+  // Regenerate tap, a prompt chip, or fresh typing) is dropped rather than firing a duplicate turn.
+  // `ask.isPending` alone stays false across the whole searchPois await, so it cannot guard this.
+  // askBusy mirrors the ref into render state to disable the composer and show the thinking spinner.
+  const askInFlightRef = useRef(false)
+  const [askBusy, setAskBusy] = useState(false)
+
+  // placeIds from the most recent POI search, kept referenceable by the persist effect so freshly
+  // fetched candidates survive pruning until the itinerary block that references them arrives.
+  const latestSearchIdsRef = useRef<Set<string>>(new Set())
 
   // Block-scoped in-flight guard: synchronous so a double-tap cannot fire the mutation twice
   // before 'executing' has re-rendered (a stale-closure double-write).
@@ -212,6 +229,29 @@ export default function CopilotScreen() {
     saveBlockStates(tripId, prune(actionStates), prune(itineraryStates))
   }, [tripId, messages, actionStates, itineraryStates])
 
+  // Persist a pruned per-trip candidate snapshot so a restored conversation's itinerary cards
+  // render fully (photo/rating/coords) instead of degraded. Keep only candidates an itinerary
+  // block still references, plus the latest search's results (whose block may not have arrived
+  // yet); saveCopilotCandidates caps the snapshot as a backstop.
+  useEffect(() => {
+    const referenced = new Set<string>()
+    for (const message of messages) {
+      for (const block of message.blocks) {
+        if (block.kind === 'itinerary') {
+          for (const day of block.days) {
+            for (const item of day.items) {
+              referenced.add(item.placeId)
+            }
+          }
+        }
+      }
+    }
+    const kept = candidates.filter(
+      (c) => referenced.has(c.placeId) || latestSearchIdsRef.current.has(c.placeId),
+    )
+    saveCopilotCandidates(tripId, kept)
+  }, [tripId, messages, candidates])
+
   const dataReady = Boolean(
     trip.data && events.data && expenses.data && balances.data && members.data,
   )
@@ -233,13 +273,13 @@ export default function CopilotScreen() {
   // so calling it here is safe even though it appears later in the file.
   const autoSentRef = useRef(false)
   useEffect(() => {
-    if (autoSentRef.current || !initialPrompt || !dataReady || ask.isPending) {
+    if (autoSentRef.current || !initialPrompt || !dataReady || ask.isPending || askBusy) {
       return
     }
     autoSentRef.current = true
     send(initialPrompt)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialPrompt, dataReady, ask.isPending])
+  }, [initialPrompt, dataReady, ask.isPending, askBusy])
 
   // Sends a conversation whose last turn is the user's question to the copilot. Used by both a
   // fresh send and a retry (which re-sends the failed question without duplicating the bubble).
@@ -284,6 +324,13 @@ export default function CopilotScreen() {
     })
     const language = i18n.language === 'fr' ? 'fr' : 'en'
 
+    // Claim the turn synchronously - before the awaited POI fetch below - so a second send during
+    // that network window is dropped by the guards in send()/retry() rather than starting a
+    // duplicate turn. Cleared in the mutation's onSettled. Nothing between here and ask.mutate
+    // throws (searchPois is .catch-ed), so the flag can never get stuck set.
+    askInFlightRef.current = true
+    setAskBusy(true)
+
     void (async () => {
       // Fetch POI candidates when the user seems to be asking for a day plan and the trip
       // has coordinates. Failure is swallowed so a network hiccup never blocks the chat.
@@ -300,9 +347,12 @@ export default function CopilotScreen() {
           max: 16,
           languageCode: language,
         }).catch((): Poi[] => [])
-        setCandidates(pois)
+        // Accumulate (union by placeId) so cards from earlier turns keep their data and a failed
+        // search never wipes what is already on screen. lastPlanningPromptRef order is unchanged.
+        setCandidates((prev) => mergeCandidates(prev, pois))
         lastPlanningPromptRef.current = lastUserContent
         if (pois.length > 0) {
+          latestSearchIdsRef.current = new Set(pois.map((p) => p.placeId))
           poiCandidates = pois
         }
       }
@@ -340,6 +390,11 @@ export default function CopilotScreen() {
               },
             ])
           },
+          // Release the turn guard on both success and error, re-arming send()/retry().
+          onSettled: () => {
+            askInFlightRef.current = false
+            setAskBusy(false)
+          },
         },
       )
     })()
@@ -347,7 +402,7 @@ export default function CopilotScreen() {
 
   function send(question: string) {
     const q = question.trim()
-    if (!q || ask.isPending || !dataReady) {
+    if (!q || askInFlightRef.current || ask.isPending || !dataReady) {
       return
     }
     haptics.light()
@@ -363,7 +418,7 @@ export default function CopilotScreen() {
   // Re-sends the question behind an error bubble: drop the bubble (and anything after it) and ask
   // again, so a transient rate-limit/offline blip is one tap to recover from.
   function retry(message: ChatMessage) {
-    if (ask.isPending || !dataReady) {
+    if (askInFlightRef.current || ask.isPending || !dataReady) {
       return
     }
     const index = messages.findIndex((m) => m.id === message.id)
@@ -391,6 +446,8 @@ export default function CopilotScreen() {
           setMessages([])
           setActionStates({})
           setItineraryStates({})
+          setCandidates([])
+          latestSearchIdsRef.current = new Set()
           clearCopilotHistory(tripId)
         },
       },
@@ -519,7 +576,7 @@ export default function CopilotScreen() {
     }
   }
 
-  const canSend = draft.trim().length > 0 && !ask.isPending && dataReady
+  const canSend = draft.trim().length > 0 && !ask.isPending && !askBusy && dataReady
 
   return (
     <Animated.View style={[styles.flex, enterStyle]}>
@@ -669,7 +726,7 @@ export default function CopilotScreen() {
                           {message.error && message.retryText ? (
                             <Pressable
                               onPress={() => retry(message)}
-                              disabled={ask.isPending}
+                              disabled={ask.isPending || askBusy}
                               accessibilityRole="button"
                               accessibilityLabel={t('copilot.retry')}
                               style={({ pressed }) => (pressed ? styles.pressed : undefined)}
@@ -684,7 +741,7 @@ export default function CopilotScreen() {
                 )
               })
             )}
-            {ask.isPending ? (
+            {ask.isPending || askBusy ? (
               <View style={[styles.bubbleRow, styles.bubbleRowAssistant]}>
                 <ZoAvatar size={26} />
                 <Surface

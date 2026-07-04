@@ -1,12 +1,17 @@
 import { createMMKV } from 'react-native-mmkv'
 
+import type { Poi } from '@/features/places'
+
 import {
   type ChatMessage,
   clearCopilotHistory,
   loadBlockStates,
+  loadCopilotCandidates,
   loadCopilotHistory,
+  mergeCandidates,
   migrateMessage,
   saveBlockStates,
+  saveCopilotCandidates,
   saveCopilotHistory,
 } from './history'
 
@@ -280,5 +285,114 @@ describe('copilot block-state persistence', () => {
     saveBlockStates('t1', { 'm1:0': 'done' }, { 'm2:0': 'added' })
     clearCopilotHistory('t1')
     expect(loadBlockStates('t1')).toEqual({ actions: {}, itineraries: {} })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Itinerary candidate persistence (mergeCandidates + candidates-v1:<tripId>)
+// ---------------------------------------------------------------------------
+
+function poi(overrides: Partial<Poi> & Pick<Poi, 'placeId'>): Poi {
+  return {
+    placeId: overrides.placeId,
+    name: overrides.name ?? `Place ${overrides.placeId}`,
+    lat: overrides.lat ?? 48.85,
+    lng: overrides.lng ?? 2.35,
+    rating: overrides.rating ?? null,
+    ratingCount: overrides.ratingCount ?? null,
+    priceLevel: overrides.priceLevel ?? null,
+    types: overrides.types ?? [],
+    photoName: overrides.photoName ?? null,
+    address: overrides.address ?? null,
+    openNow: overrides.openNow ?? null,
+    description: overrides.description ?? null,
+    typeLabel: overrides.typeLabel ?? null,
+    priceStart: overrides.priceStart ?? null,
+    priceEnd: overrides.priceEnd ?? null,
+    priceCurrency: overrides.priceCurrency ?? null,
+    weekdayHours: overrides.weekdayHours ?? null,
+  }
+}
+
+describe('mergeCandidates', () => {
+  it('unions two lists and keeps prior entries', () => {
+    const merged = mergeCandidates([poi({ placeId: 'a' })], [poi({ placeId: 'b' })])
+    expect(merged.map((p) => p.placeId)).toEqual(['a', 'b'])
+  })
+
+  it('newest wins on a duplicate placeId', () => {
+    const merged = mergeCandidates(
+      [poi({ placeId: 'a', name: 'Old' })],
+      [poi({ placeId: 'a', name: 'New' })],
+    )
+    expect(merged).toHaveLength(1)
+    expect(merged[0].name).toBe('New')
+  })
+
+  it('returns the same prev reference when next is empty (failed search must not wipe)', () => {
+    const prev = [poi({ placeId: 'a' })]
+    expect(mergeCandidates(prev, [])).toBe(prev)
+  })
+})
+
+describe('copilot candidate persistence', () => {
+  it('round-trips candidates per trip', () => {
+    const pois = [poi({ placeId: 'a' }), poi({ placeId: 'b' })]
+    saveCopilotCandidates('t1', pois)
+    expect(loadCopilotCandidates('t1')).toEqual(pois)
+    // Keyed by trip: another trip is unaffected.
+    expect(loadCopilotCandidates('t2')).toEqual([])
+  })
+
+  it('drops per-element entries that fail poiSchema, keeps the valid ones', () => {
+    mockStore.set(
+      'candidates-v1:t1',
+      JSON.stringify([poi({ placeId: 'a' }), { placeId: '', name: 'bogus' }, { not: 'a poi' }]),
+    )
+    const loaded = loadCopilotCandidates('t1')
+    expect(loaded).toHaveLength(1)
+    expect(loaded[0].placeId).toBe('a')
+  })
+
+  it('returns an empty list for corrupt JSON', () => {
+    mockStore.set('candidates-v1:t1', '{ not json')
+    expect(loadCopilotCandidates('t1')).toEqual([])
+  })
+
+  it('saving an empty list removes the stored entry', () => {
+    saveCopilotCandidates('t1', [poi({ placeId: 'a' })])
+    saveCopilotCandidates('t1', [])
+    expect(loadCopilotCandidates('t1')).toEqual([])
+  })
+
+  it('caps the persisted snapshot at 100, keeping the most recent', () => {
+    const many = Array.from({ length: 120 }, (_, i) => poi({ placeId: `p${i}` }))
+    saveCopilotCandidates('t1', many)
+    const loaded = loadCopilotCandidates('t1')
+    expect(loaded).toHaveLength(100)
+    // The last 100 are kept (p20..p119).
+    expect(loaded[0].placeId).toBe('p20')
+    expect(loaded[99].placeId).toBe('p119')
+  })
+
+  it('ignores an empty trip id', () => {
+    saveCopilotCandidates('', [poi({ placeId: 'a' })])
+    expect(loadCopilotCandidates('')).toEqual([])
+  })
+
+  it('caps an oversized stored blob on read, keeping the most recent', () => {
+    // Written directly (bypassing the write-side cap) to simulate a foreign oversized blob.
+    const many = Array.from({ length: 150 }, (_, i) => poi({ placeId: `p${i}` }))
+    mockStore.set('candidates-v1:t1', JSON.stringify(many))
+    const loaded = loadCopilotCandidates('t1')
+    expect(loaded).toHaveLength(100)
+    expect(loaded[0].placeId).toBe('p50')
+    expect(loaded[99].placeId).toBe('p149')
+  })
+
+  it('clearCopilotHistory removes the candidates key', () => {
+    saveCopilotCandidates('t1', [poi({ placeId: 'a' })])
+    clearCopilotHistory('t1')
+    expect(loadCopilotCandidates('t1')).toEqual([])
   })
 })
