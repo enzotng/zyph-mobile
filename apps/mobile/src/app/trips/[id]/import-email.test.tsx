@@ -37,6 +37,39 @@ jest.mock('@/features/timeline', () => ({
   useCreateEvents: () => ({ mutateAsync: mockCreateEvents, isPending: false }),
 }))
 
+// Two fictional active members plus one removed member that must never render as a chip - proves
+// the screen's own active/user_id filter, not just the (already-active-only) query.
+jest.mock('@/features/group', () => ({
+  useTripMembers: () => ({
+    data: [
+      {
+        id: 'm1',
+        user_id: 'u1',
+        role: 'member',
+        status: 'active',
+        display_name: 'Zoe Tran',
+        avatar_url: null,
+      },
+      {
+        id: 'm2',
+        user_id: 'u2',
+        role: 'member',
+        status: 'active',
+        display_name: 'Marc-Antoine Dupont',
+        avatar_url: null,
+      },
+      {
+        id: 'm3',
+        user_id: 'u3',
+        role: 'member',
+        status: 'removed',
+        display_name: 'Lea Petit',
+        avatar_url: null,
+      },
+    ],
+  }),
+}))
+
 // A fictional round-trip (two legs, distinct realistic datetimes) matching the API regression
 // same base fields, distinct titles + real dates.
 const validEvent: ParsedEmailEvent = {
@@ -47,6 +80,7 @@ const validEvent: ParsedEmailEvent = {
   location: { name: 'Charles de Gaulle', lat: 49.0097, lng: 2.5479 },
   gateLocation: { label: 'Gate K12', lat: 49.0097, lng: 2.5479 },
   endLocation: null,
+  participants: [],
   notes: 'Window seat',
   currency: 'EUR',
   priceCents: 12_000,
@@ -115,6 +149,7 @@ describe('ImportEmailScreen - multi-event preview', () => {
           startsAt: string
           locationName: string | null
           endLocation: { name: string; lat: number | null; lng: number | null } | null
+          participants: string[] | null
         }[]
       },
     ]
@@ -127,6 +162,8 @@ describe('ImportEmailScreen - multi-event preview', () => {
       lat: 60.1976,
       lng: 11.1004,
     })
+    // No passenger names were parsed (participants: []), so the row sends the "everyone" sentinel.
+    expect(args.events[0].participants).toBeNull()
   })
 
   it('shows the empty state and no CTA when the parse finds nothing', async () => {
@@ -137,5 +174,64 @@ describe('ImportEmailScreen - multi-event preview', () => {
 
     expect(screen.getByText('No event detected')).toBeOnTheScreen()
     expect(screen.queryByText(/Add \d+ events? to trip/)).toBeNull()
+  })
+})
+
+// `Avatar` (components/ui/avatar.tsx) sets its own accessibilityLabel from the `name` it is given,
+// so each chip's Avatar carries the SAME label as its wrapping Pressable (the checkbox) - the same
+// double-label shape already present in attribute-expense.tsx's MemberAvatar. getByLabelText alone
+// is therefore ambiguous; getByRole('checkbox', { name }) is unambiguous, since only the wrapping
+// Pressable (not the inner Avatar) carries accessibilityRole="checkbox".
+function participantChip(name: string) {
+  return screen.getByRole('checkbox', { name })
+}
+
+describe('ImportEmailScreen - participant chips', () => {
+  it('preselects the matching member chip and sends only that id', async () => {
+    mockParse.mockResolvedValueOnce({
+      events: [{ ...validEvent, participants: ['Zoe Ngoc Mai Tran'] }],
+    })
+    render(<ImportEmailScreen />)
+
+    await parse()
+
+    expect(participantChip('Zoe Tran').props.accessibilityState).toEqual({ checked: true })
+    expect(participantChip('Marc-Antoine Dupont').props.accessibilityState).toEqual({
+      checked: false,
+    })
+    // The removed member never renders a chip at all.
+    expect(screen.queryByRole('checkbox', { name: 'Lea Petit' })).toBeNull()
+
+    fireEvent.press(screen.getByText('Add 1 event to trip'))
+
+    await waitFor(() => expect(mockCreateEvents).toHaveBeenCalledTimes(1))
+    const [args] = mockCreateEvents.mock.calls[0] as [
+      { events: { participants: string[] | null }[] },
+    ]
+    expect(args.events[0].participants).toEqual(['u1'])
+  })
+
+  it('toggling a member off from the everyone state sends the remaining active ids', async () => {
+    mockParse.mockResolvedValueOnce({ events: [validEvent] })
+    render(<ImportEmailScreen />)
+
+    await parse()
+
+    // Everyone is selected by default (no passenger names parsed) - both chips start checked.
+    expect(participantChip('Zoe Tran').props.accessibilityState).toEqual({ checked: true })
+    expect(participantChip('Marc-Antoine Dupont').props.accessibilityState).toEqual({
+      checked: true,
+    })
+
+    fireEvent.press(participantChip('Zoe Tran'))
+
+    expect(participantChip('Zoe Tran').props.accessibilityState).toEqual({ checked: false })
+    fireEvent.press(screen.getByText('Add 1 event to trip'))
+
+    await waitFor(() => expect(mockCreateEvents).toHaveBeenCalledTimes(1))
+    const [args] = mockCreateEvents.mock.calls[0] as [
+      { events: { participants: string[] | null }[] },
+    ]
+    expect(args.events[0].participants).toEqual(['u2'])
   })
 })

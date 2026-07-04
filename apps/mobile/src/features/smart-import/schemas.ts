@@ -39,6 +39,10 @@ export const parsedEmailEventSchema = z.object({
   // Arrival place for directional events (flights, transfers). Absent from older edge
   // responses - catch degrades to null, additive both ways.
   endLocation: parsedLocationSchema.catch(null),
+  // Passenger/guest names as written in the booking email, for member matching (see
+  // matchParticipants). Whole-array catch: a non-array or an array with a non-string item
+  // degrades to [] rather than sinking the event - the edge already normalizes this shape.
+  participants: z.array(z.string()).catch([]),
   notes: z.string().nullable().catch(null),
   currency: z.string().nullable().catch(null),
   priceCents: z.number().int().nullable().catch(null),

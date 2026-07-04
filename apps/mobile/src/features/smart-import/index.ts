@@ -7,5 +7,6 @@ export {
   LOW_CONFIDENCE,
 } from './confidence'
 export { useParseEmail } from './hooks/use-parse-email'
+export { matchParticipants } from './participants'
 export type { ParsedEmailEvent, ParsedEventType } from './schemas'
 export { EVENT_TYPES, parsedEmailEventSchema, parseEmailResponseSchema } from './schemas'

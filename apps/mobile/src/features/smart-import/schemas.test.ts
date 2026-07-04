@@ -88,6 +88,21 @@ describe('parsedEmailEventSchema', () => {
       arrival,
     )
   })
+
+  it('normalizes participants: absent or malformed -> [], a valid list kept', () => {
+    // `base` has no participants key at all - the older edge omits it entirely.
+    expect(parsedEmailEventSchema.parse(base).participants).toEqual([])
+    expect(
+      parsedEmailEventSchema.parse({ ...base, participants: ['Zoe Tran', 42] }).participants,
+    ).toEqual([])
+    expect(
+      parsedEmailEventSchema.parse({ ...base, participants: 'Zoe Tran' }).participants,
+    ).toEqual([])
+    expect(
+      parsedEmailEventSchema.parse({ ...base, participants: ['Zoe Tran', 'Marc Dupont'] })
+        .participants,
+    ).toEqual(['Zoe Tran', 'Marc Dupont'])
+  })
 })
 
 describe('parseEmailResponseSchema', () => {
