@@ -6,6 +6,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: '14.5'
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       expense_item_assignments: {
@@ -565,12 +590,14 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          end_location: Json | null
           ends_at: string | null
           gate_location: Json | null
           id: string
           lat: number | null
           lng: number | null
           location: unknown
+          location_name: string | null
           notes: string | null
           place_id: string | null
           starts_at: string | null
@@ -582,12 +609,14 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          end_location?: Json | null
           ends_at?: string | null
           gate_location?: Json | null
           id?: string
           lat?: number | null
           lng?: number | null
           location?: unknown
+          location_name?: string | null
           notes?: string | null
           place_id?: string | null
           starts_at?: string | null
@@ -599,12 +628,14 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          end_location?: Json | null
           ends_at?: string | null
           gate_location?: Json | null
           id?: string
           lat?: number | null
           lng?: number | null
           location?: unknown
+          location_name?: string | null
           notes?: string | null
           place_id?: string | null
           starts_at?: string | null
@@ -1274,6 +1305,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       member_status: ['invited', 'active', 'removed'],
