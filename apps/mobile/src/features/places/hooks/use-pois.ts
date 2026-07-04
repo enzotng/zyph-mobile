@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { searchPois } from '../poi.api'
+import { searchPois } from '../api/poi.api'
 import type { PoiSearchInput } from '../poi.types'
 
 export const poisQueryKey = ['pois'] as const
