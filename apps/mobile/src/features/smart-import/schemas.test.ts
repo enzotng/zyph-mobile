@@ -38,4 +38,42 @@ describe('parsedEmailEventSchema', () => {
   it('falls back to "event" for an unknown type', () => {
     expect(parsedEmailEventSchema.parse({ ...base, type: 'meal' }).type).toBe('event')
   })
+
+  it('accepts an event with missing keys, normalizing them to null', () => {
+    // The 8B model sometimes OMITS keys instead of emitting null despite the prompt
+    // (seen on device: gateLocation/notes/currency absent -> the whole parse blew up).
+    const { gateLocation: _g, notes: _n, currency: _c, ...withoutKeys } = base
+    const result = parsedEmailEventSchema.safeParse(withoutKeys)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.gateLocation).toBeNull()
+      expect(result.data.notes).toBeNull()
+      expect(result.data.currency).toBeNull()
+    }
+  })
+
+  it('accepts a minimal payload where every varying field is absent', () => {
+    const result = parsedEmailEventSchema.safeParse({ type: 'flight', confidence: 0.4 })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.title).toBeNull()
+      expect(result.data.startsAt).toBeNull()
+      expect(result.data.endsAt).toBeNull()
+      expect(result.data.location).toBeNull()
+      expect(result.data.priceCents).toBeNull()
+    }
+  })
+
+  it('degrades a wrong-typed field to null instead of rejecting the event', () => {
+    expect(parsedEmailEventSchema.parse({ ...base, notes: 42 }).notes).toBeNull()
+    expect(parsedEmailEventSchema.parse({ ...base, currency: ['EUR'] }).currency).toBeNull()
+  })
+
+  it('degrades a malformed location object to null', () => {
+    expect(parsedEmailEventSchema.parse({ ...base, location: { lat: 1 } }).location).toBeNull()
+    expect(
+      parsedEmailEventSchema.parse({ ...base, gateLocation: { label: 7, lat: 1, lng: 2 } })
+        .gateLocation,
+    ).toBeNull()
+  })
 })
