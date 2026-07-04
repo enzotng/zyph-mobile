@@ -263,6 +263,8 @@ export const en = {
     tooShortTitle: 'Too short',
     tooShortBody: 'Paste at least the key details of the confirmation email.',
     parseErrorTitle: 'Could not parse the email',
+    parseErrorBody:
+      'The analysis failed. Check your connection or try again with a cleaner excerpt of the email.',
     defaultTitle: 'Imported event',
     confidence: '{{pct}}% confident',
     titlePlaceholder: 'Title',

@@ -85,10 +85,12 @@ export default function ImportEmailScreen() {
       haptics.success()
     } catch (error) {
       haptics.error()
-      Alert.alert(
-        t('smartImport.parseErrorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      if (__DEV__) {
+        console.warn('smart-import parse failed', error)
+      }
+      // Never surface a raw error (a ZodError.message is a JSON issues dump) - the
+      // alert is user-facing, the detail goes to the dev console only.
+      Alert.alert(t('smartImport.parseErrorTitle'), t('smartImport.parseErrorBody'))
     }
   }
 
