@@ -139,6 +139,10 @@ export type NewItineraryEvent = {
   placeId: string | null
   notes?: string
   gateLocation?: GateLocation | null
+  // Departure/venue display name (trip_events.location is a PostGIS point, not a name).
+  locationName?: string | null
+  // Arrival place for directional events (flights, transfers).
+  endLocation?: { name: string; lat: number | null; lng: number | null } | null
 }
 
 // Batch-inserts itinerary events into the shared timeline in one round trip. created_by is the
@@ -166,6 +170,8 @@ export async function createEvents(
     lng: e.lng,
     place_id: e.placeId,
     gate_location: e.gateLocation ?? null,
+    location_name: e.locationName ?? null,
+    end_location: e.endLocation ?? null,
     created_by: userId,
   }))
   const { data, error } = await supabase.from('trip_events').insert(rows).select()

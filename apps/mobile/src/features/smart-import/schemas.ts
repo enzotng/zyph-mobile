@@ -36,6 +36,9 @@ export const parsedEmailEventSchema = z.object({
   endsAt: z.string().nullable().catch(null),
   location: parsedLocationSchema.catch(null),
   gateLocation: parsedGateSchema.catch(null),
+  // Arrival place for directional events (flights, transfers). Absent from older edge
+  // responses - catch degrades to null, additive both ways.
+  endLocation: parsedLocationSchema.catch(null),
   notes: z.string().nullable().catch(null),
   currency: z.string().nullable().catch(null),
   priceCents: z.number().int().nullable().catch(null),

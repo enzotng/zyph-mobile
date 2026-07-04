@@ -129,6 +129,14 @@ export default function ImportEmailScreen() {
         lat: p.source.location?.lat ?? null,
         lng: p.source.location?.lng ?? null,
         placeId: null,
+        locationName: p.source.location?.name.slice(0, 120) ?? null,
+        endLocation: p.source.endLocation
+          ? {
+              name: p.source.endLocation.name.slice(0, 120),
+              lat: p.source.endLocation.lat,
+              lng: p.source.endLocation.lng,
+            }
+          : null,
         gateLocation:
           gate && typeof gate.lat === 'number' && typeof gate.lng === 'number'
             ? { label: gate.label.slice(0, 40), lat: gate.lat, lng: gate.lng }
@@ -356,6 +364,9 @@ function EventPreviewCard({
       ) : null}
       {source.location?.name ? (
         <PreviewRow icon="location-outline" label={source.location.name} />
+      ) : null}
+      {source.endLocation?.name ? (
+        <PreviewRow icon="flag-outline" label={source.endLocation.name} />
       ) : null}
       {source.gateLocation?.label ? (
         <PreviewRow icon="airplane-outline" label={source.gateLocation.label} />

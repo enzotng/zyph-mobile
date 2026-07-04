@@ -76,6 +76,18 @@ describe('parsedEmailEventSchema', () => {
         .gateLocation,
     ).toBeNull()
   })
+
+  it('normalizes endLocation: absent or malformed -> null, valid arrival kept', () => {
+    // `base` has no endLocation key at all - the older edge omits it entirely.
+    expect(parsedEmailEventSchema.parse(base).endLocation).toBeNull()
+    expect(
+      parsedEmailEventSchema.parse({ ...base, endLocation: { lat: 55.6 } }).endLocation,
+    ).toBeNull()
+    const arrival = { name: 'Oslo Airport', lat: 60.1976, lng: 11.1004 }
+    expect(parsedEmailEventSchema.parse({ ...base, endLocation: arrival }).endLocation).toEqual(
+      arrival,
+    )
+  })
 })
 
 describe('parseEmailResponseSchema', () => {

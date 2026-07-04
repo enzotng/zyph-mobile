@@ -256,6 +256,8 @@ describe('createEvents', () => {
     lng: 2.2945,
     place_id: 'place1',
     gate_location: null,
+    location_name: null,
+    end_location: null,
     created_by: 'u1',
   }
   const row2 = {
@@ -269,6 +271,8 @@ describe('createEvents', () => {
     lng: 2.3376,
     place_id: null,
     gate_location: null,
+    location_name: null,
+    end_location: null,
     created_by: 'u1',
   }
 
@@ -306,19 +310,41 @@ describe('createEvents', () => {
 
     await createEvents('trip-1', [
       {
-        title: 'Flight FR9266',
+        title: 'Flight ZY123',
         type: 'flight',
-        startsAt: '2026-07-27T08:20:00+02:00',
-        endsAt: '2026-07-27T10:10:00+02:00',
+        startsAt: '2026-07-10T08:20:00+02:00',
+        endsAt: '2026-07-10T10:35:00+02:00',
         lat: 49.45,
         lng: 2.11,
         placeId: null,
-        gateLocation: { label: 'Gate 12', lat: 49.4544, lng: 2.1128 },
+        gateLocation: { label: 'Gate 12', lat: 49.0097, lng: 2.5479 },
       },
     ])
     const inserted = builder.insert.mock.calls[0][0]
-    expect(inserted[0].ends_at).toBe('2026-07-27T10:10:00+02:00')
-    expect(inserted[0].gate_location).toEqual({ label: 'Gate 12', lat: 49.4544, lng: 2.1128 })
+    expect(inserted[0].ends_at).toBe('2026-07-10T10:35:00+02:00')
+    expect(inserted[0].gate_location).toEqual({ label: 'Gate 12', lat: 49.0097, lng: 2.5479 })
+  })
+
+  it('maps locationName and endLocation onto the inserted rows', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const builder = makeQueryBuilder({ data: [event], error: null })
+    from.mockReturnValue(builder)
+
+    await createEvents('trip-1', [
+      {
+        title: 'Flight ZY123',
+        type: 'flight',
+        startsAt: '2026-07-10T08:20:00+02:00',
+        lat: 49.0097,
+        lng: 2.5479,
+        placeId: null,
+        locationName: 'Paris Charles de Gaulle Airport',
+        endLocation: { name: 'Oslo Airport', lat: 60.1976, lng: 11.1004 },
+      },
+    ])
+    const inserted = builder.insert.mock.calls[0][0]
+    expect(inserted[0].location_name).toBe('Paris Charles de Gaulle Airport')
+    expect(inserted[0].end_location).toEqual({ name: 'Oslo Airport', lat: 60.1976, lng: 11.1004 })
   })
 
   it('defaults ends_at and gate_location to null when omitted', async () => {
@@ -337,6 +363,8 @@ describe('createEvents', () => {
       },
     ])
     const inserted = builder.insert.mock.calls[0][0]
+    expect(inserted[0].location_name).toBeNull()
+    expect(inserted[0].end_location).toBeNull()
     expect(inserted[0].ends_at).toBeNull()
     expect(inserted[0].gate_location).toBeNull()
   })
