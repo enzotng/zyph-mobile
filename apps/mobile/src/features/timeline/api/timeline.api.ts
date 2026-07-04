@@ -43,6 +43,7 @@ export type CreateEventInput = {
   lat?: number
   lng?: number
   gateLocation?: GateLocation | null
+  participants?: string[] | null
 }
 
 export async function createEvent({
@@ -55,6 +56,7 @@ export async function createEvent({
   lat,
   lng,
   gateLocation,
+  participants,
 }: CreateEventInput): Promise<TripEvent> {
   const { data: auth } = await supabase.auth.getSession()
   const userId = auth.session?.user.id
@@ -74,6 +76,8 @@ export async function createEvent({
       lat: lat ?? null,
       lng: lng ?? null,
       gate_location: gateLocation ?? null,
+      // null means "all active members" - callers guarantee that, we just pass it through.
+      participants: participants ?? null,
       created_by: userId,
     })
     .select()
@@ -94,6 +98,7 @@ export type UpdateEventInput = {
   lat?: number
   lng?: number
   gateLocation?: GateLocation | null
+  participants?: string[] | null
 }
 
 export async function updateEvent({
@@ -106,6 +111,7 @@ export async function updateEvent({
   lat,
   lng,
   gateLocation,
+  participants,
 }: UpdateEventInput): Promise<TripEvent> {
   const { data, error } = await supabase
     .from('trip_events')
@@ -119,6 +125,8 @@ export async function updateEvent({
       lat: lat ?? null,
       lng: lng ?? null,
       gate_location: gateLocation ?? null,
+      // null means "all active members" - callers guarantee that, we just pass it through.
+      participants: participants ?? null,
     })
     .eq('id', eventId)
     .select()
@@ -143,6 +151,9 @@ export type NewItineraryEvent = {
   locationName?: string | null
   // Arrival place for directional events (flights, transfers).
   endLocation?: { name: string; lat: number | null; lng: number | null } | null
+  // Subset of active trip members attending. null means "all active members" - callers
+  // guarantee that, we just pass it through.
+  participants?: string[] | null
 }
 
 // Batch-inserts itinerary events into the shared timeline in one round trip. created_by is the
@@ -172,6 +183,7 @@ export async function createEvents(
     gate_location: e.gateLocation ?? null,
     location_name: e.locationName ?? null,
     end_location: e.endLocation ?? null,
+    participants: e.participants ?? null,
     created_by: userId,
   }))
   const { data, error } = await supabase.from('trip_events').insert(rows).select()
