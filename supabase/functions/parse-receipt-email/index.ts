@@ -40,6 +40,7 @@ Rules:
 - For hotels, startsAt = check-in datetime, endsAt = check-out datetime.
 - gateLocation only when terminal/gate is explicit AND lat/lng can be inferred from major airport coordinates (otherwise null).
 - If you cannot extract a meaningful event, return { "type": "event", "title": null, ... "confidence": 0 }.
+- ALWAYS include every key of the schema. Use null for anything not present in the email - never omit a key.
 - Output JSON only. No prose.`
 
 type Event = {
@@ -53,6 +54,64 @@ type Event = {
   currency: string | null
   priceCents: number | null
   confidence: number
+}
+
+const EVENT_TYPES: readonly Event["type"][] = ["flight", "hotel", "transport", "activity", "event"]
+
+// The model does not reliably follow "use null": it sometimes omits keys or emits
+// wrong-typed values, and the client contract requires EVERY key present (null when
+// absent). Normalize here - same normalize-and-null spirit as normalizeGooglePlace in
+// _shared/google-places.ts - so a model quirk can never reach a client as a broken shape.
+function asString(v: unknown): string | null {
+  return typeof v === "string" && v.trim().length > 0 ? v : null
+}
+
+function asNumber(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null
+}
+
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null
+}
+
+function asLocation(v: unknown): Event["location"] {
+  const o = asRecord(v)
+  const name = o ? asString(o.name) : null
+  return o && name ? { name, lat: asNumber(o.lat), lng: asNumber(o.lng) } : null
+}
+
+function asGate(v: unknown): Event["gateLocation"] {
+  const o = asRecord(v)
+  const label = o ? asString(o.label) : null
+  // The 40-char cap mirrors the manual form's gate-label limit (client gateLocationSchema).
+  return o && label ? { label: label.slice(0, 40), lat: asNumber(o.lat), lng: asNumber(o.lng) } : null
+}
+
+function normalizeEvent(raw: unknown): Event {
+  const o = asRecord(raw) ?? {}
+  const type = EVENT_TYPES.includes(o.type as Event["type"]) ? (o.type as Event["type"]) : "event"
+  // Mirror the client's coercion: a 0-100 scale is mapped onto 0-1, then clamped.
+  const rawConfidence = asNumber(o.confidence) ?? 0
+  const confidence = Math.min(
+    1,
+    Math.max(0, rawConfidence > 1 ? rawConfidence / 100 : rawConfidence),
+  )
+  return {
+    type,
+    // Length caps mirror the manual add-event form's invariants (title 120, notes 500)
+    // so the LLM write path can never exceed what the form itself allows.
+    title: asString(o.title)?.slice(0, 120) ?? null,
+    startsAt: asString(o.startsAt),
+    endsAt: asString(o.endsAt),
+    location: asLocation(o.location),
+    gateLocation: asGate(o.gateLocation),
+    notes: asString(o.notes)?.slice(0, 500) ?? null,
+    currency: asString(o.currency),
+    priceCents: typeof o.priceCents === "number" && Number.isInteger(o.priceCents)
+      ? o.priceCents
+      : null,
+    confidence,
+  }
 }
 
 export default {
@@ -127,14 +186,17 @@ export default {
       return Response.json({ error: "LLM returned an empty response" }, { status: 502 })
     }
 
-    let event: Event
+    let raw: unknown
     try {
-      event = JSON.parse(content) as Event
+      raw = JSON.parse(content)
     } catch {
       console.error("Could not parse LLM response", content)
       return Response.json({ error: "Could not parse LLM response" }, { status: 502 })
     }
 
-    return Response.json({ event })
+    // A structurally unusable payload normalizes to the documented "cannot extract"
+    // shape (type event, null title, confidence 0) - the client renders that state
+    // with its low-confidence review hint instead of an error.
+    return Response.json({ event: normalizeEvent(raw) })
   }),
 }
