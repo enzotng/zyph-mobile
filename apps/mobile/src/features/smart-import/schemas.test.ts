@@ -1,4 +1,4 @@
-import { parsedEmailEventSchema } from './schemas'
+import { parsedEmailEventSchema, parseEmailResponseSchema } from './schemas'
 
 const base = {
   type: 'flight',
@@ -75,5 +75,27 @@ describe('parsedEmailEventSchema', () => {
       parsedEmailEventSchema.parse({ ...base, gateLocation: { label: 7, lat: 1, lng: 2 } })
         .gateLocation,
     ).toBeNull()
+  })
+})
+
+describe('parseEmailResponseSchema', () => {
+  it('accepts an events array (items validated separately)', () => {
+    const result = parseEmailResponseSchema.safeParse({ events: [base, { junk: true }] })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts an empty events list', () => {
+    expect(parseEmailResponseSchema.safeParse({ events: [] }).success).toBe(true)
+  })
+
+  it('rejects a non-array events and a missing envelope', () => {
+    expect(parseEmailResponseSchema.safeParse({ events: 'nope' }).success).toBe(false)
+    expect(parseEmailResponseSchema.safeParse('garbage').success).toBe(false)
+  })
+
+  it('rejects a list longer than the 10-event server cap (defense in depth)', () => {
+    const events = Array.from({ length: 11 }, () => ({ ...base }))
+    expect(parseEmailResponseSchema.safeParse({ events }).success).toBe(false)
+    expect(parseEmailResponseSchema.safeParse({ events: events.slice(0, 10) }).success).toBe(true)
   })
 })

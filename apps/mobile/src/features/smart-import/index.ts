@@ -8,4 +8,4 @@ export {
 } from './confidence'
 export { useParseEmail } from './hooks/use-parse-email'
 export type { ParsedEmailEvent, ParsedEventType } from './schemas'
-export { EVENT_TYPES, parsedEmailEventSchema } from './schemas'
+export { EVENT_TYPES, parsedEmailEventSchema, parseEmailResponseSchema } from './schemas'

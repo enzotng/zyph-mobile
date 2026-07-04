@@ -1,13 +1,13 @@
 import { supabase } from '@/lib/supabase'
 
-import { type ParsedEmailEvent, parsedEmailEventSchema } from '../schemas'
+import { type ParsedEmailEvent, parsedEmailEventSchema, parseEmailResponseSchema } from '../schemas'
 
 export type ParseEmailResult = {
-  event: ParsedEmailEvent
+  events: ParsedEmailEvent[]
 }
 
 export async function parseEmailViaAi(text: string): Promise<ParseEmailResult> {
-  const { data, error } = await supabase.functions.invoke<ParseEmailResult>('parse-receipt-email', {
+  const { data, error } = await supabase.functions.invoke<unknown>('parse-receipt-email', {
     body: { text },
   })
   if (error) {
@@ -16,8 +16,13 @@ export async function parseEmailViaAi(text: string): Promise<ParseEmailResult> {
   if (!data) {
     throw new Error('Empty response from the parser.')
   }
-  // Validate at the boundary: the LLM can return unexpected shapes, this is the
-  // contract enforcement before the data hits any UI.
-  const parsedEvent = parsedEmailEventSchema.parse(data.event)
-  return { event: parsedEvent }
+  // Validate at the boundary: the envelope must be a list (throw = final guard, surfaced as the
+  // friendly parse alert); each item is validated tolerantly so one corrupt entry drops itself
+  // without discarding the rest (same pattern as the POI boundary).
+  const envelope = parseEmailResponseSchema.parse(data)
+  const events = envelope.events.flatMap((item) => {
+    const parsed = parsedEmailEventSchema.safeParse(item)
+    return parsed.success ? [parsed.data] : []
+  })
+  return { events }
 }

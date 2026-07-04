@@ -133,10 +133,12 @@ export type NewItineraryEvent = {
   title: string
   type: string
   startsAt: string
+  endsAt?: string | null
   lat: number | null
   lng: number | null
   placeId: string | null
   notes?: string
+  gateLocation?: GateLocation | null
 }
 
 // Batch-inserts itinerary events into the shared timeline in one round trip. created_by is the
@@ -158,11 +160,12 @@ export async function createEvents(
     title: e.title,
     type: e.type || 'activity',
     starts_at: e.startsAt,
-    ends_at: null,
+    ends_at: e.endsAt ?? null,
     notes: e.notes || null,
     lat: e.lat,
     lng: e.lng,
     place_id: e.placeId,
+    gate_location: e.gateLocation ?? null,
     created_by: userId,
   }))
   const { data, error } = await supabase.from('trip_events').insert(rows).select()

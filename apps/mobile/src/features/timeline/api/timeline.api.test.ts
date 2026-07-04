@@ -255,6 +255,7 @@ describe('createEvents', () => {
     lat: 48.8584,
     lng: 2.2945,
     place_id: 'place1',
+    gate_location: null,
     created_by: 'u1',
   }
   const row2 = {
@@ -267,6 +268,7 @@ describe('createEvents', () => {
     lat: 48.8606,
     lng: 2.3376,
     place_id: null,
+    gate_location: null,
     created_by: 'u1',
   }
 
@@ -295,6 +297,48 @@ describe('createEvents', () => {
     from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('batch fail') }))
 
     await expect(createEvents('t1', [e1])).rejects.toThrow('batch fail')
+  })
+
+  it('maps endsAt and gateLocation onto the inserted rows', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const builder = makeQueryBuilder({ data: [event], error: null })
+    from.mockReturnValue(builder)
+
+    await createEvents('trip-1', [
+      {
+        title: 'Flight FR9266',
+        type: 'flight',
+        startsAt: '2026-07-27T08:20:00+02:00',
+        endsAt: '2026-07-27T10:10:00+02:00',
+        lat: 49.45,
+        lng: 2.11,
+        placeId: null,
+        gateLocation: { label: 'Gate 12', lat: 49.4544, lng: 2.1128 },
+      },
+    ])
+    const inserted = builder.insert.mock.calls[0][0]
+    expect(inserted[0].ends_at).toBe('2026-07-27T10:10:00+02:00')
+    expect(inserted[0].gate_location).toEqual({ label: 'Gate 12', lat: 49.4544, lng: 2.1128 })
+  })
+
+  it('defaults ends_at and gate_location to null when omitted', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const builder = makeQueryBuilder({ data: [event], error: null })
+    from.mockReturnValue(builder)
+
+    await createEvents('trip-1', [
+      {
+        title: 'X',
+        type: 'activity',
+        startsAt: '2026-07-27T08:20:00Z',
+        lat: null,
+        lng: null,
+        placeId: null,
+      },
+    ])
+    const inserted = builder.insert.mock.calls[0][0]
+    expect(inserted[0].ends_at).toBeNull()
+    expect(inserted[0].gate_location).toBeNull()
   })
 })
 
