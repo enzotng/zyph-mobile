@@ -280,6 +280,7 @@ export const en = {
     adding: 'Adding…',
     discard: 'Discard and edit text',
     createErrorTitle: 'Could not create event',
+    participantsLabel: 'Who is concerned',
     types: {
       flight: 'Flight',
       hotel: 'Hotel',
@@ -962,6 +963,8 @@ export const en = {
     noDate: 'No date',
     docCount_one: '{{count}} doc',
     docCount_other: '{{count}} docs',
+    filterAll: 'All',
+    filterMine: 'My events',
   },
   events: {
     add: {
