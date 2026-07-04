@@ -33,6 +33,7 @@ Schema:
       "endsAt": string | null,              // ISO 8601 timestamp with timezone (or null for point events)
       "location": { "name": string, "lat": number | null, "lng": number | null } | null,
       "gateLocation": { "label": string, "lat": number | null, "lng": number | null } | null,
+      "endLocation": { "name": string, "lat": number | null, "lng": number | null } | null,
       "notes": string | null,               // additional info (reservation number, terminal, WiFi code, ...)
       "currency": string | null,            // ISO 4217 if a price appears
       "priceCents": integer | null,         // total price in cents
@@ -45,6 +46,7 @@ Rules:
 - For flights, title MUST include flight number and route.
 - For hotels, startsAt = check-in datetime, endsAt = check-out datetime.
 - gateLocation only when terminal/gate is explicit AND lat/lng can be inferred from major airport coordinates (otherwise null).
+- For flights and transport, "location" is the DEPARTURE place and "endLocation" is the ARRIVAL place. ALWAYS provide name AND lat/lng for well-known airports and stations.
 - If you cannot extract any meaningful event, return { "events": [] }.
 - Never return more than 10 events.
 - ALWAYS include every key of the schema. Use null for anything not present in the email - never omit a key.
@@ -57,6 +59,7 @@ type Event = {
   endsAt: string | null
   location: { name: string; lat: number | null; lng: number | null } | null
   gateLocation: { label: string; lat: number | null; lng: number | null } | null
+  endLocation: { name: string; lat: number | null; lng: number | null } | null
   notes: string | null
   currency: string | null
   priceCents: number | null
@@ -84,7 +87,8 @@ function asRecord(v: unknown): Record<string, unknown> | null {
 function asLocation(v: unknown): Event["location"] {
   const o = asRecord(v)
   const name = o ? asString(o.name) : null
-  return o && name ? { name, lat: asNumber(o.lat), lng: asNumber(o.lng) } : null
+  // The 120-char cap mirrors the client-side write cap (title parity).
+  return o && name ? { name: name.slice(0, 120), lat: asNumber(o.lat), lng: asNumber(o.lng) } : null
 }
 
 function asGate(v: unknown): Event["gateLocation"] {
@@ -112,6 +116,7 @@ function normalizeEvent(raw: unknown): Event {
     endsAt: asString(o.endsAt),
     location: asLocation(o.location),
     gateLocation: asGate(o.gateLocation),
+    endLocation: asLocation(o.endLocation),
     notes: asString(o.notes)?.slice(0, 500) ?? null,
     currency: asString(o.currency),
     priceCents: typeof o.priceCents === "number" && Number.isInteger(o.priceCents)
