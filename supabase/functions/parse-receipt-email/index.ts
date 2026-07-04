@@ -1,12 +1,12 @@
 // Smart Import — parses a pasted confirmation email (flight, hotel, train, activity)
-// into a structured itinerary event via Groq Llama. Pilier 1 du pitch ZYPH.
+// into structured itinerary events (one per reservation leg) via Groq Llama. Pilier 1 du pitch ZYPH.
 //
 // Architecture: app mobile → cette Edge Function → Groq API → JSON structuré → app.
 // La clé GROQ_API_KEY est stockée comme secret Supabase (jamais dans le bundle).
 //
 // Env vars (set via `supabase secrets set`):
 //   GROQ_API_KEY   — required, your Groq API key
-//   GROQ_MODEL     — optional, defaults to llama-3.1-8b-instant
+//   GROQ_MODEL     — optional, defaults to llama-3.3-70b-versatile
 //   GROQ_BASE_URL  — optional, defaults to https://api.groq.com/openai/v1
 
 import "@supabase/functions-js/edge-runtime.d.ts"
@@ -14,32 +14,39 @@ import { withSupabase } from "@supabase/server"
 
 import { isWithinRateLimit } from "../_shared/rate-limit.ts"
 
-const DEFAULT_MODEL = "llama-3.1-8b-instant"
+const DEFAULT_MODEL = "llama-3.3-70b-versatile"
 const DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 
 const SYSTEM_PROMPT = `You are an assistant that extracts travel itinerary events from confirmation emails (flights, hotels, trains, car rentals, activities, restaurant reservations).
 
-Extract a single event when the email is clearly about one reservation. Return only valid JSON matching the schema below. When a field is not in the email, use null.
+Extract EVERY distinct reservation leg in the email as its own event (an outbound and a return
+flight are TWO events; a hotel in the same confirmation is its own event). Return only valid JSON
+matching the schema below. When a field is not in the email, use null.
 
 Schema:
 {
-  "type": "flight" | "hotel" | "transport" | "activity" | "event",
-  "title": string,                      // short human title, e.g. "Flight AF1234 CDG → JFK"
-  "startsAt": string | null,            // ISO 8601 timestamp with timezone
-  "endsAt": string | null,              // ISO 8601 timestamp with timezone (or null for point events)
-  "location": { "name": string, "lat": number | null, "lng": number | null } | null,
-  "gateLocation": { "label": string, "lat": number | null, "lng": number | null } | null,
-  "notes": string | null,               // additional info (reservation number, terminal, WiFi code, ...)
-  "currency": string | null,            // ISO 4217 if a price appears
-  "priceCents": integer | null,         // total price in cents
-  "confidence": number                  // 0.0 - 1.0 estimate of how confident you are
+  "events": [
+    {
+      "type": "flight" | "hotel" | "transport" | "activity" | "event",
+      "title": string,                      // short human title, e.g. "Flight AF1234 CDG → JFK"
+      "startsAt": string | null,            // ISO 8601 timestamp with timezone
+      "endsAt": string | null,              // ISO 8601 timestamp with timezone (or null for point events)
+      "location": { "name": string, "lat": number | null, "lng": number | null } | null,
+      "gateLocation": { "label": string, "lat": number | null, "lng": number | null } | null,
+      "notes": string | null,               // additional info (reservation number, terminal, WiFi code, ...)
+      "currency": string | null,            // ISO 4217 if a price appears
+      "priceCents": integer | null,         // total price in cents
+      "confidence": number                  // 0.0 - 1.0 estimate of how confident you are
+    }
+  ]
 }
 
 Rules:
 - For flights, title MUST include flight number and route.
 - For hotels, startsAt = check-in datetime, endsAt = check-out datetime.
 - gateLocation only when terminal/gate is explicit AND lat/lng can be inferred from major airport coordinates (otherwise null).
-- If you cannot extract a meaningful event, return { "type": "event", "title": null, ... "confidence": 0 }.
+- If you cannot extract any meaningful event, return { "events": [] }.
+- Never return more than 10 events.
 - ALWAYS include every key of the schema. Use null for anything not present in the email - never omit a key.
 - Output JSON only. No prose.`
 
@@ -114,6 +121,24 @@ function normalizeEvent(raw: unknown): Event {
   }
 }
 
+// The model is asked for {"events": [...]} but may return a bare event object or a bare array.
+// Normalize every root shape into a bounded list; an item that carries nothing displayable
+// (title AND startsAt both null after normalization) is dropped. Empty list = "cannot extract".
+function normalizeEvents(raw: unknown): Event[] {
+  const root = asRecord(raw)
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : root && Array.isArray(root.events)
+      ? root.events
+      : root
+        ? [root]
+        : []
+  return list
+    .map(normalizeEvent)
+    .filter((e) => e.title !== null || e.startsAt !== null)
+    .slice(0, 10)
+}
+
 export default {
   fetch: withSupabase({ auth: ["publishable"] }, async (req, ctx) => {
     if (req.method !== "POST") {
@@ -165,7 +190,7 @@ export default {
         ],
         response_format: { type: "json_object" },
         temperature: 0.1,
-        max_tokens: 800,
+        max_tokens: 2000,
       }),
     })
 
@@ -194,9 +219,8 @@ export default {
       return Response.json({ error: "Could not parse LLM response" }, { status: 502 })
     }
 
-    // A structurally unusable payload normalizes to the documented "cannot extract"
-    // shape (type event, null title, confidence 0) - the client renders that state
-    // with its low-confidence review hint instead of an error.
-    return Response.json({ event: normalizeEvent(raw) })
+    // A structurally unusable payload normalizes to an empty list; the client renders its
+    // "no event detected" state instead of an error.
+    return Response.json({ events: normalizeEvents(raw) })
   }),
 }
