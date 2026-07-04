@@ -1,4 +1,7 @@
 import { createMMKV } from 'react-native-mmkv'
+
+import { type Poi, poiSchema } from '@/features/places'
+
 import type { Block, CopilotTool, CopilotWidgetType } from './schemas'
 import { blockSchema } from './schemas'
 
@@ -170,6 +173,7 @@ export function clearCopilotHistory(tripId: string): void {
   }
   storage.remove(key(tripId))
   storage.remove(statesKey(tripId))
+  storage.remove(candidatesKey(tripId))
 }
 
 // ---------------------------------------------------------------------------
@@ -253,4 +257,80 @@ export function saveBlockStates(
     return
   }
   storage.set(statesKey(tripId), JSON.stringify({ actions, itineraries }))
+}
+
+// ---------------------------------------------------------------------------
+// Itinerary candidate persistence
+// ---------------------------------------------------------------------------
+// Planning turns fetch POI candidates (photos, ratings, coordinates) that the itinerary cards
+// render from. They used to live only in React state - wholesale-replaced every planning turn and
+// gone after a remount - so a restored (or later) itinerary card rendered degraded (no photo/
+// rating/openNow) and Add-to-timeline inserted events with null coordinates. Accumulate them
+// across turns (mergeCandidates) and persist a per-trip snapshot on the same store, keyed apart
+// from the chat so no chat migration is needed.
+
+// Keep the persisted snapshot bounded, mirroring saveCopilotHistory's trim. Itinerary cards only
+// reference placeIds already in the (capped) chat, so this only guards a pathological accumulation.
+const MAX_STORED_CANDIDATES = 100
+
+function candidatesKey(tripId: string): string {
+  return `candidates-v1:${tripId}`
+}
+
+// Union of two candidate lists, keyed by placeId with the newest entry winning on a duplicate. An
+// empty `next` (a failed search) returns the same `prev` reference unchanged, so a network hiccup
+// never wipes the candidates the already-rendered itinerary cards depend on.
+export function mergeCandidates(prev: Poi[], next: Poi[]): Poi[] {
+  if (next.length === 0) {
+    return prev
+  }
+  const byId = new Map<string, Poi>()
+  for (const poi of prev) {
+    byId.set(poi.placeId, poi)
+  }
+  for (const poi of next) {
+    byId.set(poi.placeId, poi)
+  }
+  return Array.from(byId.values())
+}
+
+export function loadCopilotCandidates(tripId: string): Poi[] {
+  if (!tripId) {
+    return []
+  }
+  const raw = storage.getString(candidatesKey(tripId))
+  if (!raw) {
+    return []
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+    // Bound the read side too, not just the write side: this runs inside a useState lazy
+    // initializer, so an oversized blob (written by anything other than saveCopilotCandidates)
+    // must not block first paint. Same most-recent-kept convention as the write cap.
+    const bounded =
+      parsed.length > MAX_STORED_CANDIDATES ? parsed.slice(-MAX_STORED_CANDIDATES) : parsed
+    // Validate per element: one corrupt entry (e.g. a stale payload from an older POI schema)
+    // drops itself instead of poisoning the whole snapshot.
+    return bounded.flatMap((item) => {
+      const result = poiSchema.safeParse(item)
+      return result.success ? [result.data] : []
+    })
+  } catch {
+    return []
+  }
+}
+
+export function saveCopilotCandidates(tripId: string, pois: Poi[]): void {
+  if (!tripId) {
+    return
+  }
+  if (pois.length === 0) {
+    storage.remove(candidatesKey(tripId))
+    return
+  }
+  const trimmed = pois.length > MAX_STORED_CANDIDATES ? pois.slice(-MAX_STORED_CANDIDATES) : pois
+  storage.set(candidatesKey(tripId), JSON.stringify(trimmed))
 }
