@@ -599,6 +599,7 @@ export type Database = {
           location: unknown
           location_name: string | null
           notes: string | null
+          participants: string[] | null
           place_id: string | null
           starts_at: string | null
           title: string
@@ -618,6 +619,7 @@ export type Database = {
           location?: unknown
           location_name?: string | null
           notes?: string | null
+          participants?: string[] | null
           place_id?: string | null
           starts_at?: string | null
           title: string
@@ -637,6 +639,7 @@ export type Database = {
           location?: unknown
           location_name?: string | null
           notes?: string | null
+          participants?: string[] | null
           place_id?: string | null
           starts_at?: string | null
           title?: string
