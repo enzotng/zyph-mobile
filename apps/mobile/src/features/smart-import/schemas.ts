@@ -46,3 +46,10 @@ export const parsedEmailEventSchema = z.object({
 })
 
 export type ParsedEmailEvent = z.infer<typeof parsedEmailEventSchema>
+
+// The parse-receipt-email envelope: a list of events (1..10 server-side). Items are validated
+// one-by-one by the API caller so a single corrupt item never discards the whole list. The .max
+// mirrors the edge cap as defense in depth - the batch size must not depend on the server alone.
+export const parseEmailResponseSchema = z.object({
+  events: z.array(z.unknown()).max(10),
+})
