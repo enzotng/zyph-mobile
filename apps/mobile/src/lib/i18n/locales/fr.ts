@@ -266,6 +266,8 @@ export const fr: Translations = {
     tooShortTitle: 'Trop court',
     tooShortBody: 'Colle au moins les infos clés de l’e-mail de confirmation.',
     parseErrorTitle: 'Analyse impossible',
+    parseErrorBody:
+      'L’analyse a échoué. Vérifie ta connexion ou réessaie avec un extrait plus propre de l’e-mail.',
     defaultTitle: 'Événement importé',
     confidence: '{{pct}} % de confiance',
     titlePlaceholder: 'Titre',

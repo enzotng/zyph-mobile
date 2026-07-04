@@ -118,13 +118,34 @@ describe('parseEmailViaAi', () => {
     expect(result.event.gateLocation).toBeNull()
   })
 
-  it('throws at the zod boundary when a required field has the wrong type', async () => {
+  it('degrades a wrong-typed field to null instead of throwing', async () => {
     invoke.mockResolvedValue({
       data: { event: { ...validEvent, title: 123 } },
       error: null,
     })
 
-    await expect(parseEmailViaAi('bad title')).rejects.toThrow()
+    const result = await parseEmailViaAi('bad title')
+
+    expect(result.event.title).toBeNull()
+  })
+
+  it('accepts an event whose optional keys were omitted by the model', async () => {
+    // Regression: the 8B model omitted gateLocation/notes/currency for an email that
+    // had none of them, and the strict schema turned the whole parse into a raw
+    // ZodError alert on device.
+    invoke.mockResolvedValue({
+      data: { event: { type: 'flight', title: 'AF1234', confidence: 0.8 } },
+      error: null,
+    })
+
+    const result = await parseEmailViaAi('sparse booking email')
+
+    expect(result.event.title).toBe('AF1234')
+    expect(result.event.gateLocation).toBeNull()
+    expect(result.event.notes).toBeNull()
+    expect(result.event.currency).toBeNull()
+    expect(result.event.location).toBeNull()
+    expect(result.event.startsAt).toBeNull()
   })
 
   it('throws at the zod boundary when the event is missing entirely', async () => {
