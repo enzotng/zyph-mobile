@@ -37,7 +37,7 @@ jest.mock('@/features/timeline', () => ({
   useCreateEvents: () => ({ mutateAsync: mockCreateEvents, isPending: false }),
 }))
 
-// The exact Ryanair BVA<->CPH shape from the smart-import API regression (Task 2): two flights,
+// A fictional round-trip (two legs, distinct realistic datetimes) matching the API regression
 // same base fields, distinct titles + real dates.
 const validEvent: ParsedEmailEvent = {
   type: 'flight',
@@ -46,6 +46,7 @@ const validEvent: ParsedEmailEvent = {
   endsAt: '2026-06-10T10:00:00Z',
   location: { name: 'Charles de Gaulle', lat: 49.0097, lng: 2.5479 },
   gateLocation: { label: 'Gate K12', lat: 49.0097, lng: 2.5479 },
+  endLocation: null,
   notes: 'Window seat',
   currency: 'EUR',
   priceCents: 12_000,
@@ -53,17 +54,19 @@ const validEvent: ParsedEmailEvent = {
 }
 const outbound: ParsedEmailEvent = {
   ...validEvent,
-  title: 'Flight FR9266 BVA -> CPH',
-  startsAt: '2026-07-27T08:20:00+02:00',
-  endsAt: '2026-07-27T10:10:00+02:00',
+  title: 'Flight ZY123 CDG -> OSL',
+  startsAt: '2026-07-10T08:20:00+02:00',
+  endsAt: '2026-07-10T10:35:00+02:00',
+  location: { name: 'Paris Charles de Gaulle Airport', lat: 49.0097, lng: 2.5479 },
+  endLocation: { name: 'Oslo Airport', lat: 60.1976, lng: 11.1004 },
 }
 const inbound: ParsedEmailEvent = {
   ...validEvent,
-  title: 'Flight FR9267 CPH -> BVA',
-  startsAt: '2026-08-08T20:05:00+02:00',
-  endsAt: '2026-08-08T22:00:00+02:00',
+  title: 'Flight ZY124 OSL -> CDG',
+  startsAt: '2026-07-24T20:05:00+02:00',
+  endsAt: '2026-07-24T22:20:00+02:00',
 }
-const RYANAIR_EVENTS: ParsedEmailEvent[] = [outbound, inbound]
+const ROUND_TRIP_EVENTS: ParsedEmailEvent[] = [outbound, inbound]
 
 const SAMPLE_TEXT = 'A booking confirmation long enough to pass the 30 character minimum check.'
 
@@ -84,33 +87,46 @@ beforeEach(() => {
 
 describe('ImportEmailScreen - multi-event preview', () => {
   it('renders a card per parsed event and a plural add-to-trip CTA', async () => {
-    mockParse.mockResolvedValueOnce({ events: RYANAIR_EVENTS })
+    mockParse.mockResolvedValueOnce({ events: ROUND_TRIP_EVENTS })
     render(<ImportEmailScreen />)
 
     await parse()
 
-    expect(screen.getByDisplayValue('Flight FR9266 BVA -> CPH')).toBeOnTheScreen()
-    expect(screen.getByDisplayValue('Flight FR9267 CPH -> BVA')).toBeOnTheScreen()
+    expect(screen.getByDisplayValue('Flight ZY123 CDG -> OSL')).toBeOnTheScreen()
+    expect(screen.getByDisplayValue('Flight ZY124 OSL -> CDG')).toBeOnTheScreen()
     expect(screen.getByText('Add 2 events to trip')).toBeOnTheScreen()
   })
 
   it('excludes a toggled-off card from the batch create call', async () => {
-    mockParse.mockResolvedValueOnce({ events: RYANAIR_EVENTS })
+    mockParse.mockResolvedValueOnce({ events: ROUND_TRIP_EVENTS })
     render(<ImportEmailScreen />)
 
     await parse()
 
     // Toggle the second (inbound) card off, keeping only the outbound flight included.
-    fireEvent.press(screen.getByLabelText('Flight FR9267 CPH -> BVA'))
+    fireEvent.press(screen.getByLabelText('Flight ZY124 OSL -> CDG'))
     fireEvent.press(screen.getByText('Add 1 event to trip'))
 
     await waitFor(() => expect(mockCreateEvents).toHaveBeenCalledTimes(1))
     const [args] = mockCreateEvents.mock.calls[0] as [
-      { tripId: string; events: { startsAt: string }[] },
+      {
+        tripId: string
+        events: {
+          startsAt: string
+          locationName: string | null
+          endLocation: { name: string; lat: number | null; lng: number | null } | null
+        }[]
+      },
     ]
     expect(args.tripId).toBe('t1')
     expect(args.events).toHaveLength(1)
     expect(args.events[0].startsAt).toBe(new Date(outbound.startsAt as string).toISOString())
+    expect(args.events[0].locationName).toBe('Paris Charles de Gaulle Airport')
+    expect(args.events[0].endLocation).toEqual({
+      name: 'Oslo Airport',
+      lat: 60.1976,
+      lng: 11.1004,
+    })
   })
 
   it('shows the empty state and no CTA when the parse finds nothing', async () => {

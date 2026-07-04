@@ -22,6 +22,7 @@ const parsedResult: ParseEmailResult = {
       endsAt: '2026-06-10T10:00:00Z',
       location: { name: 'Charles de Gaulle', lat: 49.0097, lng: 2.5479 },
       gateLocation: { label: 'Gate K12', lat: 49.0097, lng: 2.5479 },
+      endLocation: null,
       notes: 'Window seat',
       currency: 'EUR',
       priceCents: 12_000,

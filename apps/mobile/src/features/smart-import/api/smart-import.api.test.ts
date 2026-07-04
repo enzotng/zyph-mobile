@@ -14,6 +14,7 @@ const validEvent = {
   endsAt: '2026-06-10T10:00:00Z',
   location: { name: 'Charles de Gaulle', lat: 49.0097, lng: 2.5479 },
   gateLocation: { label: 'Gate K12', lat: 49.0097, lng: 2.5479 },
+  endLocation: null,
   notes: 'Window seat',
   currency: 'EUR',
   priceCents: 12_000,
@@ -150,6 +151,18 @@ describe('parseEmailViaAi', () => {
     expect(result.events[0].startsAt).toBeNull()
   })
 
+  it('passes a valid endLocation through the boundary', async () => {
+    const arrival = { name: 'Oslo Airport', lat: 60.1976, lng: 11.1004 }
+    invoke.mockResolvedValue({
+      data: { events: [{ ...validEvent, endLocation: arrival }] },
+      error: null,
+    })
+
+    const result = await parseEmailViaAi('with arrival')
+
+    expect(result.events[0].endLocation).toEqual(arrival)
+  })
+
   it('throws when the envelope is garbage (final guard)', async () => {
     invoke.mockResolvedValue({ data: { events: 'nope' }, error: null })
     await expect(parseEmailViaAi('bad envelope')).rejects.toThrow()
@@ -170,24 +183,24 @@ describe('parseEmailViaAi', () => {
   })
 
   it('regression: a round-trip email yields two flights with their real dates', async () => {
-    // The exact Ryanair BVA<->CPH shape from the 2026-07-04 device report.
+    // A fictional round-trip: fixtures stay decorrelated from any real booking (house rule).
     const outbound = {
       ...validEvent,
-      title: 'Flight FR9266 BVA -> CPH',
-      startsAt: '2026-07-27T08:20:00+02:00',
-      endsAt: '2026-07-27T10:10:00+02:00',
+      title: 'Flight ZY123 CDG -> OSL',
+      startsAt: '2026-07-10T08:20:00+02:00',
+      endsAt: '2026-07-10T10:35:00+02:00',
     }
     const inbound = {
       ...validEvent,
-      title: 'Flight FR9267 CPH -> BVA',
-      startsAt: '2026-08-08T20:05:00+02:00',
-      endsAt: '2026-08-08T22:00:00+02:00',
+      title: 'Flight ZY124 OSL -> CDG',
+      startsAt: '2026-07-24T20:05:00+02:00',
+      endsAt: '2026-07-24T22:20:00+02:00',
     }
     invoke.mockResolvedValue({ data: { events: [outbound, inbound] }, error: null })
-    const result = await parseEmailViaAi('ryanair round trip')
+    const result = await parseEmailViaAi('round trip email')
     expect(result.events).toHaveLength(2)
-    expect(result.events[0].startsAt).toBe('2026-07-27T08:20:00+02:00')
-    expect(result.events[1].startsAt).toBe('2026-08-08T20:05:00+02:00')
+    expect(result.events[0].startsAt).toBe('2026-07-10T08:20:00+02:00')
+    expect(result.events[1].startsAt).toBe('2026-07-24T20:05:00+02:00')
   })
 
   it('drops an item that is not an object at all', async () => {
