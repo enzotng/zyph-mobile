@@ -498,3 +498,13 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/trip-cover/deno.json"
 entrypoint = "./functions/trip-cover/index.ts"
+
+[functions.calendar-feed]
+enabled = true
+# Public: calendar clients (Apple/Google Calendar, etc.) subscribe to this URL directly and cannot
+# send a Supabase JWT. Auth is a bearer capability token (private.calendar_feed_tokens, hashed,
+# revocable) checked inside the function against the service role. Requires a redeploy to take
+# effect on cloud.
+verify_jwt = false
+import_map = "./functions/calendar-feed/deno.json"
+entrypoint = "./functions/calendar-feed/index.ts"
