@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  createCalendarFeedToken,
   createTrip,
   deleteTrip,
   getTrip,
@@ -95,4 +96,10 @@ export function useResetTripCover() {
       void queryClient.invalidateQueries({ queryKey: [...tripsQueryKey, trip.id], exact: true })
     },
   })
+}
+
+// The raw token is never fetched/cached - it lives only in the mutation's own transient state
+// (and the caller's component state), so there is no query key to invalidate.
+export function useCreateCalendarFeedToken() {
+  return useMutation({ mutationFn: createCalendarFeedToken })
 }

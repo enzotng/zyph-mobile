@@ -14,7 +14,14 @@
       "outputs": []
     },
     "test": {
-      "inputs": ["src/**", "jest.config.js", "jest-setup.ts", "jest/**", "package.json"],
+      "inputs": [
+        "src/**",
+        "jest.config.js",
+        "jest-setup.ts",
+        "jest/**",
+        "package.json",
+        "$TURBO_ROOT$/supabase/functions/calendar-feed/**"
+      ],
       "outputs": []
     }
   }
