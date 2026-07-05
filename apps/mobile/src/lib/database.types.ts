@@ -920,6 +920,10 @@ export type Database = {
       }
       claim_packing_item: { Args: { _item_id: string }; Returns: undefined }
       clear_member_location: { Args: { _trip_id: string }; Returns: undefined }
+      create_calendar_feed_token: {
+        Args: { _trip_id: string }
+        Returns: string
+      }
       create_expense_with_items: {
         Args: {
           _amount_cents: number
@@ -1070,6 +1074,13 @@ export type Database = {
         Returns: undefined
       }
       remove_trip_member: { Args: { _member_id: string }; Returns: undefined }
+      resolve_calendar_feed: {
+        Args: { _limit?: number; _token: string; _window_seconds?: number }
+        Returns: {
+          rate_limited: boolean
+          trip_id: string
+        }[]
+      }
       reverse_settlement: {
         Args: { _id: string }
         Returns: {
@@ -1090,6 +1101,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      revoke_calendar_feed_token: {
+        Args: { _trip_id: string }
+        Returns: undefined
       }
       soft_delete_expense: { Args: { _expense_id: string }; Returns: undefined }
       trip_member_names: {
