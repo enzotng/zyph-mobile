@@ -263,6 +263,8 @@ export const en = {
     tooShortTitle: 'Too short',
     tooShortBody: 'Paste at least the key details of the confirmation email.',
     parseErrorTitle: 'Could not parse the email',
+    parseErrorBody:
+      'The analysis failed. Check your connection or try again with a cleaner excerpt of the email.',
     defaultTitle: 'Imported event',
     confidence: '{{pct}}% confident',
     titlePlaceholder: 'Title',
@@ -271,10 +273,14 @@ export const en = {
     dateLabel: 'Date',
     notesPlaceholder: 'Notes',
     endsAt: 'Ends {{date}}',
-    addToTrip: 'Add to trip',
+    addToTrip_one: 'Add {{count}} event to trip',
+    addToTrip_other: 'Add {{count}} events to trip',
+    noEventsTitle: 'No event detected',
+    noEventsBody: 'Nothing usable was found in this text. Edit it and try again.',
     adding: 'Adding…',
     discard: 'Discard and edit text',
     createErrorTitle: 'Could not create event',
+    participantsLabel: 'Who is concerned',
     types: {
       flight: 'Flight',
       hotel: 'Hotel',
@@ -466,6 +472,18 @@ export const en = {
     endDate: 'End date',
     updateError: 'Could not update trip',
     preferencesLink: 'Trip preferences',
+    calendarRow: 'Calendar',
+    calendarTitle: 'Subscribe to the trip calendar',
+    calendarBody:
+      'Events appear in your calendar app and refresh automatically. Anyone with this link can see the trip schedule.',
+    calendarSubscribe: 'Subscribe',
+    calendarCopy: 'Copy link',
+    calendarCopied: 'Link copied',
+    calendarRegenerate: 'Revoke and regenerate',
+    calendarRegenerateConfirmTitle: 'Revoke and regenerate?',
+    calendarRegenerateConfirmBody:
+      'The current link will stop working immediately. Anyone using it will need the new one.',
+    calendarError: 'Could not prepare the calendar link. Try again.',
   },
   newTrip: {
     title: 'New trip',
@@ -957,6 +975,8 @@ export const en = {
     noDate: 'No date',
     docCount_one: '{{count}} doc',
     docCount_other: '{{count}} docs',
+    filterAll: 'All',
+    filterMine: 'My events',
   },
   events: {
     add: {

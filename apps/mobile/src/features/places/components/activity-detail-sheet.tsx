@@ -108,7 +108,9 @@ export function ActivityDetailSheet({
     setHoursExpanded(false)
   }
 
-  const { data: photoUri } = usePoiPhoto(activePoi?.photoName ?? null, 1200)
+  // No width override: share the default width (and therefore the query key) with the tapped
+  // card so opening the sheet is an instant cache hit instead of a second edge fetch.
+  const { data: photoUri } = usePoiPhoto(activePoi?.photoName ?? null)
   const createEvents = useCreateEvents()
   const createPoi = useCreatePoi(trip.id)
 

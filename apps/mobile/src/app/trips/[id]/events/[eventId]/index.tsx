@@ -2,14 +2,15 @@ import { Ionicons } from '@expo/vector-icons'
 import * as DocumentPicker from 'expo-document-picker'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { Badge, Card, SectionTitle, Spinner, Surface } from '@/components/ui'
+import { AvatarStack, Badge, Card, SectionTitle, Spinner, Surface } from '@/components/ui'
+import { useTripMembers } from '@/features/group'
 import {
   formatFileSize,
   getDocumentUrl,
@@ -18,7 +19,13 @@ import {
   useEventDocuments,
   useUploadDocument,
 } from '@/features/media'
-import { eventStatus, formatCountdown, useDeleteEvent, useEvent } from '@/features/timeline'
+import {
+  eventStatus,
+  formatCountdown,
+  resolveParticipantAvatars,
+  useDeleteEvent,
+  useEvent,
+} from '@/features/timeline'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
@@ -44,9 +51,17 @@ export default function EventDetailScreen() {
 
   const { data: event, isLoading } = useEvent(eventId)
   const { data: documents } = useEventDocuments(eventId)
+  const { data: members } = useTripMembers(tripId)
   const upload = useUploadDocument(eventId)
   const del = useDeleteDocument(eventId)
   const deleteEvent = useDeleteEvent(tripId)
+
+  // Resolve the stored subset of ids against the current active-member list, so a member who
+  // left the trip since simply drops out of the row instead of showing a broken avatar.
+  const participantAvatars = useMemo(
+    () => resolveParticipantAvatars(event?.participants ?? null, members ?? []),
+    [event?.participants, members],
+  )
 
   function confirmDeleteEvent() {
     haptics.warning()
@@ -221,6 +236,13 @@ export default function EventDetailScreen() {
         <View>
           <SectionTitle>{t('events.detail.notes')}</SectionTitle>
           <Text style={styles.notes}>{event.notes}</Text>
+        </View>
+      ) : null}
+
+      {event.participants?.length ? (
+        <View>
+          <SectionTitle>{t('smartImport.participantsLabel')}</SectionTitle>
+          <AvatarStack members={participantAvatars} />
         </View>
       ) : null}
 

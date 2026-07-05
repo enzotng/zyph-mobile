@@ -3,7 +3,16 @@ import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { eventStatus, eventTypeIcon, formatCountdown, type TripEvent } from '@/features/timeline'
+import { AvatarStack } from '@/components/ui'
+import {
+  concernsUser,
+  eventStatus,
+  eventTypeIcon,
+  formatCountdown,
+  type ParticipantMember,
+  resolveParticipantAvatars,
+  type TripEvent,
+} from '@/features/timeline'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 
@@ -16,17 +25,25 @@ function formatEventTime(iso: string | null, locale: string): string | null {
   return new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 }
 
+type CockpitTimelineProps = {
+  events: TripEvent[]
+  now: number
+  onPressEvent: (id: string) => void
+  // Active trip members + the signed-in user id, so a participants subset the user is not part
+  // of dims the item while still showing who it concerns. No change to which events are featured.
+  members?: ParticipantMember[]
+  userId?: string | null
+}
+
 // The cockpit "what's next" rail: the next few upcoming events. The first is a bordered NEXT
 // card, the rest are compact rows, all threaded on a vertical timeline rail.
 export function CockpitTimeline({
   events,
   now,
   onPressEvent,
-}: {
-  events: TripEvent[]
-  now: number
-  onPressEvent: (id: string) => void
-}) {
+  members = [],
+  userId = null,
+}: CockpitTimelineProps) {
   const { t, i18n } = useTranslation()
   const { theme } = useUnistyles()
 
@@ -44,6 +61,8 @@ export function CockpitTimeline({
         const rowSecondary = formatEventTime(event.starts_at, i18n.language) ?? event.notes
         const isFirst = index === 0
         const isLast = index === events.length - 1
+        const concerns = concernsUser(event.participants, userId)
+        const avatars = resolveParticipantAvatars(event.participants, members)
         const press = () => {
           haptics.light()
           onPressEvent(event.id)
@@ -70,7 +89,11 @@ export function CockpitTimeline({
                 onPress={press}
                 accessibilityRole="button"
                 accessibilityLabel={event.title}
-                style={({ pressed }) => [styles.nextCard, pressed && styles.pressed]}
+                style={({ pressed }) => [
+                  styles.nextCard,
+                  pressed && styles.pressed,
+                  !concerns && styles.dimmed,
+                ]}
               >
                 <View
                   style={[
@@ -95,14 +118,21 @@ export function CockpitTimeline({
                     </Text>
                   ) : null}
                 </View>
-                {countdown ? <Text style={styles.countdown}>{countdown}</Text> : null}
+                <View style={styles.nextRight}>
+                  {avatars.length > 0 ? <AvatarStack members={avatars} size={20} max={3} /> : null}
+                  {countdown ? <Text style={styles.countdown}>{countdown}</Text> : null}
+                </View>
               </Pressable>
             ) : (
               <Pressable
                 onPress={press}
                 accessibilityRole="button"
                 accessibilityLabel={event.title}
-                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+                style={({ pressed }) => [
+                  styles.row,
+                  pressed && styles.pressed,
+                  !concerns && styles.dimmed,
+                ]}
               >
                 <View style={styles.rowIconTile}>
                   <Ionicons name={eventTypeIcon(event.type)} size={18} color={theme.colors.muted} />
@@ -117,7 +147,10 @@ export function CockpitTimeline({
                     </Text>
                   ) : null}
                 </View>
-                {countdown ? <Text style={styles.rowCountdown}>{countdown}</Text> : null}
+                <View style={styles.rowRight}>
+                  {avatars.length > 0 ? <AvatarStack members={avatars} size={18} max={3} /> : null}
+                  {countdown ? <Text style={styles.rowCountdown}>{countdown}</Text> : null}
+                </View>
               </Pressable>
             )}
           </View>
@@ -162,6 +195,14 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.card,
     borderWidth: 1,
     borderColor: theme.colors.border,
+  },
+  dimmed: {
+    opacity: 0.55,
+  },
+  nextRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
   },
   iconTile: {
     width: 40,
@@ -237,6 +278,11 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '700',
     fontSize: theme.fontSize.xs,
     color: theme.colors.muted,
+  },
+  rowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(1.5),
   },
   pressed: {
     opacity: 0.85,

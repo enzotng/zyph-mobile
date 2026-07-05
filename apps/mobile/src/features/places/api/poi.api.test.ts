@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
+import type { Poi } from '../poi.types'
 import { resolvePoiPhoto, searchPois } from './poi.api'
-import type { Poi } from './poi.types'
 
 jest.mock('@/lib/supabase')
 
@@ -48,6 +48,18 @@ describe('resolvePoiPhoto', () => {
 
     await expect(resolvePoiPhoto(photoName)).resolves.toBeNull()
   })
+
+  it('returns null when photoUri is not a string', async () => {
+    invoke.mockResolvedValue({ data: { photoUri: 123 }, error: null })
+
+    await expect(resolvePoiPhoto(photoName)).resolves.toBeNull()
+  })
+
+  it('returns null when the response envelope is malformed', async () => {
+    invoke.mockResolvedValue({ data: { nope: true }, error: null })
+
+    await expect(resolvePoiPhoto(photoName)).resolves.toBeNull()
+  })
 })
 
 describe('searchPois', () => {
@@ -71,6 +83,24 @@ describe('searchPois', () => {
   it('returns [] when data.pois is missing', async () => {
     invoke.mockResolvedValue({ data: {}, error: null })
 
+    await expect(searchPois(input)).resolves.toEqual([])
+  })
+
+  it('drops invalid pois and keeps only the valid ones', async () => {
+    const invalidPoi = { ...fixturePoi, placeId: '' } // empty placeId fails poiSchema
+    invoke.mockResolvedValue({
+      data: { pois: [fixturePoi, invalidPoi, { garbage: true }] },
+      error: null,
+    })
+
+    await expect(searchPois(input)).resolves.toEqual([fixturePoi])
+  })
+
+  it('returns [] when the response envelope is garbage', async () => {
+    invoke.mockResolvedValue({ data: { pois: 'nope' }, error: null })
+    await expect(searchPois(input)).resolves.toEqual([])
+
+    invoke.mockResolvedValue({ data: 'nope', error: null })
     await expect(searchPois(input)).resolves.toEqual([])
   })
 

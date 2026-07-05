@@ -146,4 +146,29 @@ describe('ItineraryBlock', () => {
 
     expect(onRegenerate).toHaveBeenCalledTimes(1)
   })
+
+  it('resolves lat/lng from an accumulated candidate present from an earlier turn', () => {
+    // The block only references place-1 (an earlier turn), while the merged candidates array also
+    // carries place-2 (a later search). Add-to-timeline must still emit place-1's coordinates from
+    // the accumulated array - the whole point of persisting/merging candidates across turns.
+    const block: ItineraryBlockData = {
+      kind: 'itinerary',
+      days: [
+        {
+          date: '2025-12-05',
+          items: [{ placeId: 'place-1', title: 'Old museum', type: 'activity', time: '09:00' }],
+        },
+      ],
+    }
+    const { onAdd } = renderBlock({ block, candidates: CANDIDATES })
+
+    fireEvent.press(screen.getByText('Add to timeline'))
+
+    expect(onAdd).toHaveBeenCalledTimes(1)
+    const events: NewItineraryEvent[] = onAdd.mock.calls[0][0]
+    expect(events).toHaveLength(1)
+    expect(events[0].placeId).toBe('place-1')
+    expect(events[0].lat).toBe(48.1)
+    expect(events[0].lng).toBe(2.1)
+  })
 })

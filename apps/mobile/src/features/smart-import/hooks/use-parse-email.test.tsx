@@ -14,18 +14,22 @@ beforeEach(() => {
 })
 
 const parsedResult: ParseEmailResult = {
-  event: {
-    type: 'flight',
-    title: 'AF1234 Paris -> Rome',
-    startsAt: '2026-06-10T08:00:00Z',
-    endsAt: '2026-06-10T10:00:00Z',
-    location: { name: 'Charles de Gaulle', lat: 49.0097, lng: 2.5479 },
-    gateLocation: { label: 'Gate K12', lat: 49.0097, lng: 2.5479 },
-    notes: 'Window seat',
-    currency: 'EUR',
-    priceCents: 12_000,
-    confidence: 0.9,
-  },
+  events: [
+    {
+      type: 'flight',
+      title: 'AF1234 Paris -> Rome',
+      startsAt: '2026-06-10T08:00:00Z',
+      endsAt: '2026-06-10T10:00:00Z',
+      location: { name: 'Charles de Gaulle', lat: 49.0097, lng: 2.5479 },
+      gateLocation: { label: 'Gate K12', lat: 49.0097, lng: 2.5479 },
+      endLocation: null,
+      participants: [],
+      notes: 'Window seat',
+      currency: 'EUR',
+      priceCents: 12_000,
+      confidence: 0.9,
+    },
+  ],
 }
 
 describe('useParseEmail', () => {

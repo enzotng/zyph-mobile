@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Alert, Text, type TextInput, View } from 'react-native'
@@ -13,6 +13,7 @@ import { TextField } from '@/components/text-field'
 import { TripDatesField } from '@/components/trip-dates-field'
 import { Spinner } from '@/components/ui'
 import { type CreateTripValues, createTripSchema, useTrip, useUpdateTrip } from '@/features/trips'
+import { CalendarFeedSheet } from '@/features/trips/components/calendar-feed-sheet'
 import { paramString } from '@/lib/routing'
 
 export default function EditTripScreen() {
@@ -22,6 +23,7 @@ export default function EditTripScreen() {
   const router = useRouter()
   const { data: trip, isLoading } = useTrip(tripId)
   const updateTrip = useUpdateTrip()
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const {
     control,
     handleSubmit,
@@ -171,6 +173,19 @@ export default function EditTripScreen() {
         variant="secondary"
         icon="options-outline"
         onPress={() => router.push({ pathname: '/trips/[id]/preferences', params: { id: tripId } })}
+      />
+
+      <Button
+        label={t('tripForm.calendarRow')}
+        variant="secondary"
+        icon="calendar-outline"
+        onPress={() => setCalendarOpen(true)}
+      />
+
+      <CalendarFeedSheet
+        open={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        tripId={tripId}
       />
     </Screen>
   )

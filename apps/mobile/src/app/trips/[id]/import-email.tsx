@@ -1,20 +1,41 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as Clipboard from 'expo-clipboard'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, TextInput, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { DateField } from '@/components/date-field'
+import { MemberChips } from '@/components/member-chips'
 import { Screen } from '@/components/screen'
 import { Spinner } from '@/components/ui'
-import { confidenceLevel, type ParsedEmailEvent, useParseEmail } from '@/features/smart-import'
-import { eventTypeIcon, useCreateEvent } from '@/features/timeline'
+import { type TripMember, useTripMembers } from '@/features/group'
+import {
+  confidenceLevel,
+  matchParticipants,
+  type ParsedEmailEvent,
+  useParseEmail,
+} from '@/features/smart-import'
+import { eventTypeIcon, useCreateEvents } from '@/features/timeline'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
+
+// One editable preview per extracted event; `included` drives the batch. Module-scoped (rather
+// than declared inside the screen) so `EventPreviewCard` below can type its props against it.
+type PreviewEvent = {
+  key: string
+  source: ParsedEmailEvent
+  included: boolean
+  title: string
+  startsAt: Date
+  notes: string
+  // Subset of active member ids this event concerns. [] means "everyone" - the same
+  // convention `createEvents`/`trip_events.participants` use server-side.
+  participantIds: string[]
+}
 
 export default function ImportEmailScreen() {
   const params = useGlobalSearchParams<{ id: string; prefilledText?: string }>()
@@ -23,17 +44,21 @@ export default function ImportEmailScreen() {
   const prefilledText = paramString(params.prefilledText)
   const router = useRouter()
   const { theme } = useUnistyles()
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const parseEmail = useParseEmail()
-  const createEvent = useCreateEvent(tripId)
+  const createEvents = useCreateEvents()
+  const members = useTripMembers(tripId)
+  // Memoized on the query's own data reference: react-query keeps that reference stable across
+  // unrelated re-renders (e.g. a keystroke in the editor above), so this stays a stable prop for
+  // every EventPreviewCard instead of a fresh array (and a compiler cache-miss) every render.
+  const activeMembers = useMemo(
+    () => (members.data ?? []).filter((m) => m.status === 'active' && m.user_id),
+    [members.data],
+  )
 
   const [text, setText] = useState(prefilledText)
-  const [parsed, setParsed] = useState<ParsedEmailEvent | null>(null)
-  const [editedTitle, setEditedTitle] = useState('')
-  // Editable copies of the parsed fields so the user can correct a low-confidence parse before
-  // adding it to the timeline.
-  const [editedStartsAt, setEditedStartsAt] = useState<Date>(() => new Date())
-  const [editedNotes, setEditedNotes] = useState('')
+  // null = nothing parsed yet; [] = parse ran and found nothing (empty state).
+  const [previews, setPreviews] = useState<PreviewEvent[] | null>(null)
   const [clipboardHint, setClipboardHint] = useState<string | null>(null)
   // Snapshot the clipboard once on mount so the banner does not re-appear after
   // the user dismisses or uses it.
@@ -78,54 +103,73 @@ export default function ImportEmailScreen() {
     }
     try {
       const result = await parseEmail.mutateAsync(text)
-      setParsed(result.event)
-      setEditedTitle(result.event.title ?? t('smartImport.defaultTitle'))
-      setEditedStartsAt(result.event.startsAt ? new Date(result.event.startsAt) : new Date())
-      setEditedNotes(result.event.notes ?? '')
+      const memberInputs = activeMembers.map((m) => ({
+        userId: m.user_id,
+        displayName: m.display_name,
+      }))
+      setPreviews(
+        result.events.map((event, index) => ({
+          key: `evt-${index}`,
+          source: event,
+          included: true,
+          title: event.title ?? t('smartImport.defaultTitle'),
+          startsAt: event.startsAt ? new Date(event.startsAt) : new Date(),
+          notes: event.notes ?? '',
+          participantIds: matchParticipants(event.participants, memberInputs),
+        })),
+      )
       haptics.success()
     } catch (error) {
       haptics.error()
-      Alert.alert(
-        t('smartImport.parseErrorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      if (__DEV__) {
+        console.warn('smart-import parse failed', error)
+      }
+      // Never surface a raw error (a ZodError.message is a JSON issues dump) - the
+      // alert is user-facing, the detail goes to the dev console only.
+      Alert.alert(t('smartImport.parseErrorTitle'), t('smartImport.parseErrorBody'))
     }
   }
 
-  async function onConfirm() {
-    if (!parsed) {
+  async function onConfirmAll() {
+    if (!previews) {
       return
     }
-    // Cap to the same limits the manual add-event form enforces (title 120, notes 500).
-    const title = (editedTitle.trim() || parsed.title || t('smartImport.defaultTitle')).slice(
-      0,
-      120,
-    )
-    const startsAt = editedStartsAt.toISOString()
-    // Drop a parsed end date that now precedes the (possibly edited) start.
-    const endsAt =
-      parsed.endsAt && new Date(parsed.endsAt) > editedStartsAt ? parsed.endsAt : undefined
-    try {
-      await createEvent.mutateAsync({
-        tripId,
-        title,
-        type: parsed.type,
-        startsAt,
-        endsAt,
-        notes: editedNotes.slice(0, 500),
-        lat: parsed.location?.lat ?? undefined,
-        lng: parsed.location?.lng ?? undefined,
+    const included = previews.filter((p) => p.included)
+    if (included.length === 0) {
+      return
+    }
+    // Cap to the same limits the manual add-event form enforces (title 120, notes 500,
+    // gate label 40) - the edge caps too, but this write path must not trust its input.
+    const events = included.map((p) => {
+      const gate = p.source.gateLocation
+      return {
+        title: (p.title.trim() || p.source.title || t('smartImport.defaultTitle')).slice(0, 120),
+        type: p.source.type,
+        startsAt: p.startsAt.toISOString(),
+        // Drop a parsed end date that no longer follows the (possibly edited) start.
+        endsAt: p.source.endsAt && new Date(p.source.endsAt) > p.startsAt ? p.source.endsAt : null,
+        notes: p.notes.slice(0, 500) || undefined,
+        lat: p.source.location?.lat ?? null,
+        lng: p.source.location?.lng ?? null,
+        placeId: null,
+        locationName: p.source.location?.name.slice(0, 120) ?? null,
+        endLocation: p.source.endLocation
+          ? {
+              name: p.source.endLocation.name.slice(0, 120),
+              lat: p.source.endLocation.lat,
+              lng: p.source.endLocation.lng,
+            }
+          : null,
         gateLocation:
-          parsed.gateLocation &&
-          typeof parsed.gateLocation.lat === 'number' &&
-          typeof parsed.gateLocation.lng === 'number'
-            ? {
-                label: parsed.gateLocation.label,
-                lat: parsed.gateLocation.lat,
-                lng: parsed.gateLocation.lng,
-              }
+          gate && typeof gate.lat === 'number' && typeof gate.lng === 'number'
+            ? { label: gate.label.slice(0, 40), lat: gate.lat, lng: gate.lng }
             : null,
-      })
+        // [] is the "everyone" sentinel client-side; the server column stores that as null.
+        participants: p.participantIds.length === 0 ? null : p.participantIds,
+      }
+    })
+    try {
+      await createEvents.mutateAsync({ tripId, events })
       haptics.success()
       router.back()
     } catch (error) {
@@ -137,14 +181,23 @@ export default function ImportEmailScreen() {
     }
   }
 
-  const confidencePct = parsed ? Math.round(parsed.confidence * 100) : 0
-  const level = parsed ? confidenceLevel(parsed.confidence) : 'low'
-  const confidenceColor =
-    level === 'high'
-      ? theme.colors.success
-      : level === 'medium'
-        ? theme.colors.primary
-        : theme.colors.destructive
+  // Key-argument handlers hoisted out of the .map: fresh per-card closures made every keystroke
+  // re-render all N cards (the compiler cannot keep an element stable when its props change
+  // identity); stable refs confine a keystroke to the one edited card.
+  function togglePreview(key: string) {
+    setPreviews((prev) =>
+      prev ? prev.map((p) => (p.key === key ? { ...p, included: !p.included } : p)) : prev,
+    )
+  }
+
+  function patchPreview(
+    key: string,
+    patch: Partial<Pick<PreviewEvent, 'title' | 'startsAt' | 'notes' | 'participantIds'>>,
+  ) {
+    setPreviews((prev) => (prev ? prev.map((p) => (p.key === key ? { ...p, ...patch } : p)) : prev))
+  }
+
+  const includedCount = previews?.filter((p) => p.included).length ?? 0
 
   return (
     <Screen title={t('smartImport.title')} showBack scroll>
@@ -189,91 +242,41 @@ export default function ImportEmailScreen() {
 
       {parseEmail.isPending ? <Spinner label={t('smartImport.talking')} /> : null}
 
-      {parsed ? (
+      {previews && previews.length === 0 ? (
         <View style={styles.previewCard}>
-          <View style={styles.previewHead}>
-            <Ionicons name={eventTypeIcon(parsed.type)} size={22} color={theme.colors.primary} />
-            <Text style={styles.previewType}>{t(`smartImport.types.${parsed.type}`)}</Text>
-            <Text style={[styles.confidenceText, { color: confidenceColor }]}>
-              {t('smartImport.confidence', { pct: confidencePct })}
-            </Text>
-          </View>
+          <Text style={styles.previewType}>{t('smartImport.noEventsTitle')}</Text>
+          <Text style={styles.lede}>{t('smartImport.noEventsBody')}</Text>
+        </View>
+      ) : null}
 
-          <View style={styles.meterTrack}>
-            <View
-              style={[
-                styles.meterFill,
-                { flex: parsed.confidence, backgroundColor: confidenceColor },
-              ]}
+      {previews && previews.length > 0 ? (
+        <>
+          {previews.map((preview) => (
+            <EventPreviewCard
+              key={preview.key}
+              preview={preview}
+              activeMembers={activeMembers}
+              onToggle={togglePreview}
+              onPatch={patchPreview}
             />
-            <View style={{ flex: 1 - parsed.confidence }} />
-          </View>
-
-          {level === 'low' ? (
-            <View style={styles.reviewBanner}>
-              <Ionicons name="alert-circle-outline" size={16} color={theme.colors.destructive} />
-              <Text style={styles.reviewText}>{t('smartImport.reviewHint')}</Text>
-            </View>
-          ) : null}
-
-          <TextInput
-            style={styles.titleInput}
-            value={editedTitle}
-            onChangeText={setEditedTitle}
-            placeholder={t('smartImport.titlePlaceholder')}
-            placeholderTextColor={theme.colors.muted}
-          />
-
-          <View style={styles.dateField}>
-            <DateField
-              label={t('smartImport.dateLabel')}
-              value={editedStartsAt}
-              onChange={setEditedStartsAt}
-            />
-          </View>
-          {parsed.endsAt ? (
-            <PreviewRow
-              icon="time-outline"
-              label={t('smartImport.endsAt', {
-                date: formatDateTime(parsed.endsAt, i18n.language),
-              })}
-            />
-          ) : null}
-          {parsed.location?.name ? (
-            <PreviewRow icon="location-outline" label={parsed.location.name} />
-          ) : null}
-          {parsed.gateLocation?.label ? (
-            <PreviewRow icon="airplane-outline" label={parsed.gateLocation.label} />
-          ) : null}
-          {parsed.priceCents != null && parsed.currency ? (
-            <PreviewRow
-              icon="card-outline"
-              label={`${(parsed.priceCents / 100).toFixed(2)} ${parsed.currency}`}
-            />
-          ) : null}
-          <TextInput
-            style={styles.notesInput}
-            value={editedNotes}
-            onChangeText={setEditedNotes}
-            placeholder={t('smartImport.notesPlaceholder')}
-            placeholderTextColor={theme.colors.muted}
-            multiline
-            textAlignVertical="top"
-          />
-
+          ))}
           <Button
-            label={createEvent.isPending ? t('smartImport.adding') : t('smartImport.addToTrip')}
-            onPress={onConfirm}
-            disabled={createEvent.isPending}
+            label={
+              createEvents.isPending
+                ? t('smartImport.adding')
+                : t('smartImport.addToTrip', { count: includedCount })
+            }
+            onPress={onConfirmAll}
+            disabled={createEvents.isPending || includedCount === 0}
           />
           <Pressable
-            onPress={() => setParsed(null)}
+            onPress={() => setPreviews(null)}
             accessibilityRole="button"
             style={styles.discardBtn}
           >
             <Text style={styles.discardText}>{t('smartImport.discard')}</Text>
           </Pressable>
-        </View>
+        </>
       ) : null}
     </Screen>
   )
@@ -297,6 +300,136 @@ function PreviewRow({
         color={muted ? theme.colors.muted : theme.colors.foreground}
       />
       <Text style={[styles.rowText, muted ? styles.muted : null]}>{label}</Text>
+    </View>
+  )
+}
+
+function EventPreviewCard({
+  preview,
+  activeMembers,
+  onPatch,
+  onToggle,
+}: {
+  preview: PreviewEvent
+  activeMembers: TripMember[]
+  onPatch: (
+    key: string,
+    patch: Partial<Pick<PreviewEvent, 'title' | 'startsAt' | 'notes' | 'participantIds'>>,
+  ) => void
+  onToggle: (key: string) => void
+}) {
+  const { theme } = useUnistyles()
+  const { t, i18n } = useTranslation()
+  const { source } = preview
+  // MemberChips wants the resolved profile shape, not the raw trip_members row.
+  const memberChipMembers = activeMembers.map((m) => ({
+    userId: m.user_id,
+    displayName: m.display_name,
+    avatarUrl: m.avatar_url,
+  }))
+
+  const confidencePct = Math.round(source.confidence * 100)
+  const level = confidenceLevel(source.confidence)
+  const confidenceColor =
+    level === 'high'
+      ? theme.colors.success
+      : level === 'medium'
+        ? theme.colors.primary
+        : theme.colors.destructive
+
+  return (
+    <View style={[styles.previewCard, !preview.included ? styles.cardExcluded : null]}>
+      <View style={styles.previewHead}>
+        <Ionicons name={eventTypeIcon(source.type)} size={22} color={theme.colors.primary} />
+        <Text style={styles.previewType}>{t(`smartImport.types.${source.type}`)}</Text>
+        <Text style={[styles.confidenceText, { color: confidenceColor }]}>
+          {t('smartImport.confidence', { pct: confidencePct })}
+        </Text>
+        <Pressable
+          onPress={() => {
+            haptics.selection()
+            onToggle(preview.key)
+          }}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: preview.included }}
+          accessibilityLabel={preview.title || t('smartImport.defaultTitle')}
+        >
+          <Ionicons
+            name={preview.included ? 'checkmark-circle' : 'ellipse-outline'}
+            size={24}
+            color={preview.included ? theme.colors.primary : theme.colors.muted}
+          />
+        </Pressable>
+      </View>
+
+      <View style={styles.meterTrack}>
+        <View
+          style={[styles.meterFill, { flex: source.confidence, backgroundColor: confidenceColor }]}
+        />
+        <View style={{ flex: 1 - source.confidence }} />
+      </View>
+
+      {level === 'low' ? (
+        <View style={styles.reviewBanner}>
+          <Ionicons name="alert-circle-outline" size={16} color={theme.colors.destructive} />
+          <Text style={styles.reviewText}>{t('smartImport.reviewHint')}</Text>
+        </View>
+      ) : null}
+
+      <TextInput
+        style={styles.titleInput}
+        value={preview.title}
+        onChangeText={(title) => onPatch(preview.key, { title })}
+        placeholder={t('smartImport.titlePlaceholder')}
+        placeholderTextColor={theme.colors.muted}
+      />
+
+      <View style={styles.dateField}>
+        <DateField
+          label={t('smartImport.dateLabel')}
+          value={preview.startsAt}
+          onChange={(startsAt) => onPatch(preview.key, { startsAt })}
+        />
+      </View>
+      {source.endsAt ? (
+        <PreviewRow
+          icon="time-outline"
+          label={t('smartImport.endsAt', {
+            date: formatDateTime(source.endsAt, i18n.language),
+          })}
+        />
+      ) : null}
+      {source.location?.name ? (
+        <PreviewRow icon="location-outline" label={source.location.name} />
+      ) : null}
+      {source.endLocation?.name ? (
+        <PreviewRow icon="flag-outline" label={source.endLocation.name} />
+      ) : null}
+      {source.gateLocation?.label ? (
+        <PreviewRow icon="airplane-outline" label={source.gateLocation.label} />
+      ) : null}
+      {source.priceCents != null && source.currency ? (
+        <PreviewRow
+          icon="card-outline"
+          label={`${(source.priceCents / 100).toFixed(2)} ${source.currency}`}
+        />
+      ) : null}
+      <TextInput
+        style={styles.notesInput}
+        value={preview.notes}
+        onChangeText={(notes) => onPatch(preview.key, { notes })}
+        placeholder={t('smartImport.notesPlaceholder')}
+        placeholderTextColor={theme.colors.muted}
+        multiline
+        textAlignVertical="top"
+      />
+
+      <MemberChips
+        members={memberChipMembers}
+        selected={preview.participantIds}
+        onChange={(participantIds) => onPatch(preview.key, { participantIds })}
+        label={t('smartImport.participantsLabel')}
+      />
     </View>
   )
 }
@@ -414,6 +547,9 @@ const styles = StyleSheet.create((theme) => ({
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.card,
+  },
+  cardExcluded: {
+    opacity: 0.45,
   },
   previewHead: {
     flexDirection: 'row',

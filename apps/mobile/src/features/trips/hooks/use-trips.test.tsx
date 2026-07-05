@@ -4,6 +4,7 @@ import { createQueryWrapper } from '@/test-utils/query-wrapper'
 import * as api from '../api/trips.api'
 import {
   tripsQueryKey,
+  useCreateCalendarFeedToken,
   useCreateTrip,
   useDeleteTrip,
   useTrip,
@@ -138,5 +139,23 @@ describe('useDeleteTrip', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(invalidate).toHaveBeenCalledWith({ queryKey: tripsQueryKey })
+  })
+})
+
+describe('useCreateCalendarFeedToken', () => {
+  it('resolves with the raw token and invalidates nothing (tokens are never cached)', async () => {
+    const token = 'a'.repeat(64)
+    jest.mocked(api.createCalendarFeedToken).mockResolvedValue(token)
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useCreateCalendarFeedToken(), { wrapper })
+    result.current.mutate('t1')
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toBe(token)
+    // TanStack Query 5 calls mutationFn(variables, context) - assert on the variable only.
+    expect(jest.mocked(api.createCalendarFeedToken).mock.calls[0]?.[0]).toBe('t1')
+    expect(invalidate).not.toHaveBeenCalled()
   })
 })

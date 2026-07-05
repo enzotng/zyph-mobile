@@ -3,17 +3,36 @@ import { useTranslation } from 'react-i18next'
 import { Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
-import { Eyebrow } from '@/components/ui'
-import type { TripEvent } from '@/features/timeline'
+import { AvatarStack, Eyebrow } from '@/components/ui'
+import {
+  concernsUser,
+  type ParticipantMember,
+  resolveParticipantAvatars,
+  type TripEvent,
+} from '@/features/timeline'
 
 // Text sits on the ink bezel (dark in both themes), so colours stay light/fixed.
 const CREAM = '#F4F1E8'
 const CREAM_MUTED = 'rgba(244, 241, 232, 0.6)'
 const LIVE_GREEN = '#5FB98C'
 
+type RightNowCardProps = {
+  event: TripEvent
+  now: number
+  // Active trip members + the signed-in user id, so a participants subset the user is not part
+  // of dims the card while still showing who it concerns.
+  members?: ParticipantMember[]
+  userId?: string | null
+}
+
 // The "right now" card: the event currently in progress, with an elapsed-progress bar and the
 // time remaining. Rendered only when an event is in progress (the parent decides).
-export function RightNowCard({ event, now: initialNow }: { event: TripEvent; now: number }) {
+export function RightNowCard({
+  event,
+  now: initialNow,
+  members = [],
+  userId = null,
+}: RightNowCardProps) {
   const { t } = useTranslation()
   const { theme } = useUnistyles()
 
@@ -36,11 +55,17 @@ export function RightNowCard({ event, now: initialNow }: { event: TripEvent; now
       ? t('trip.hoursLeft', { hours: Math.floor(minutesLeft / 60), minutes: minutesLeft % 60 })
       : t('trip.minutesLeft', { minutes: minutesLeft })
 
+  const concerns = concernsUser(event.participants, userId)
+  const avatars = resolveParticipantAvatars(event.participants, members)
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, !concerns && styles.cardDimmed]}>
       <View style={styles.head}>
         <Eyebrow style={styles.eyebrow}>{t('trip.rightNow')}</Eyebrow>
-        <Text style={styles.status}>{t('home.inProgress')}</Text>
+        <View style={styles.headRight}>
+          {avatars.length > 0 ? <AvatarStack members={avatars} size={20} max={3} /> : null}
+          <Text style={styles.status}>{t('home.inProgress')}</Text>
+        </View>
       </View>
       <Text style={styles.title} numberOfLines={1}>
         {event.title}
@@ -69,10 +94,18 @@ const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: theme.gap(4.5),
     gap: theme.gap(2.5),
   },
+  cardDimmed: {
+    opacity: 0.55,
+  },
   head: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  headRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(2),
   },
   eyebrow: {
     fontSize: 11,

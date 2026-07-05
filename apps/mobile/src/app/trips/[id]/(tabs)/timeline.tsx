@@ -10,13 +10,17 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { TRIP_TAB_BAR_CLEARANCE } from '@/components/layout/trip-tab-bar'
 import { Screen } from '@/components/screen'
-import { EmptyState, ErrorState, Skeleton } from '@/components/ui'
+import { AvatarStack, EmptyState, ErrorState, Segmented, Skeleton } from '@/components/ui'
+import { useAuth } from '@/features/auth'
+import { useTripMembers } from '@/features/group'
 import {
+  concernsUser,
   type EventStatus,
   eventStatus,
   eventTypeIcon,
   formatCountdown,
   groupEventsByDay,
+  resolveParticipantAvatars,
   type TimelineItem,
   useEvents,
 } from '@/features/timeline'
@@ -61,11 +65,22 @@ export default function TimelineScreen() {
   const { data: trip } = useTrip(tripId)
   const { data: events, isLoading, isError, refetch, isRefetching } = useEvents(tripId)
   const { data: weather } = useTripWeather(trip)
+  const { session } = useAuth()
+  const userId = session?.user.id ?? null
+  const { data: members } = useTripMembers(tripId)
   const { theme } = useUnistyles()
   const router = useRouter()
+  const [filter, setFilter] = useState<'all' | 'mine'>('all')
+  const filteredEvents = useMemo(
+    () =>
+      filter === 'mine'
+        ? (events ?? []).filter((e) => concernsUser(e.participants, userId))
+        : (events ?? []),
+    [events, filter, userId],
+  )
   const items = useMemo(
-    () => groupEventsByDay(events ?? [], i18n.language, t('timeline.noDate')),
-    [events, i18n.language, t],
+    () => groupEventsByDay(filteredEvents, i18n.language, t('timeline.noDate')),
+    [filteredEvents, i18n.language, t],
   )
   const [rainyDismissed, setRainyDismissed] = useState(false)
 
@@ -116,6 +131,8 @@ export default function TimelineScreen() {
       const time = formatEventTime(item.event.starts_at, i18n.language)
       const completed = status.kind === 'completed'
       const inProgress = status.kind === 'in_progress'
+      const concerns = concernsUser(item.event.participants, userId)
+      const avatars = resolveParticipantAvatars(item.event.participants, members ?? [])
 
       const tileColor = completed
         ? withAlpha(theme.colors.foreground, 0.05)
@@ -145,7 +162,11 @@ export default function TimelineScreen() {
           }}
           accessibilityRole="button"
           accessibilityLabel={item.event.title}
-          style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.row,
+            pressed && styles.pressed,
+            !concerns && styles.rowDimmed,
+          ]}
         >
           <View style={styles.rail}>
             <View style={[styles.tile, { backgroundColor: tileColor }]}>
@@ -159,11 +180,14 @@ export default function TimelineScreen() {
               <Text style={[styles.title, completed && styles.titleDone]} numberOfLines={1}>
                 {item.event.title}
               </Text>
-              {badge ? (
-                <Text style={[styles.status, { color: statusColor }]} numberOfLines={1}>
-                  {badge.label}
-                </Text>
-              ) : null}
+              <View style={styles.headRight}>
+                {avatars.length > 0 ? <AvatarStack members={avatars} size={18} max={3} /> : null}
+                {badge ? (
+                  <Text style={[styles.status, { color: statusColor }]} numberOfLines={1}>
+                    {badge.label}
+                  </Text>
+                ) : null}
+              </View>
             </View>
 
             {item.event.notes ? (
@@ -182,7 +206,7 @@ export default function TimelineScreen() {
         </Pressable>
       )
     },
-    [now, router, tripId, theme, t, i18n.language],
+    [now, router, tripId, theme, t, i18n.language, userId, members],
   )
 
   return (
@@ -214,6 +238,17 @@ export default function TimelineScreen() {
     >
       <View style={styles.segment}>
         <PlanSegmented active="timeline" tripId={tripId} />
+      </View>
+
+      <View style={styles.filterSegment}>
+        <Segmented
+          options={[
+            { label: t('timeline.filterAll'), value: 'all' },
+            { label: t('timeline.filterMine'), value: 'mine' },
+          ]}
+          value={filter}
+          onChange={(value) => setFilter(value as 'all' | 'mine')}
+        />
       </View>
 
       {rainyDay !== null && !rainyDismissed ? (
@@ -384,6 +419,9 @@ const styles = StyleSheet.create((theme, rt) => ({
   segment: {
     marginBottom: theme.gap(3),
   },
+  filterSegment: {
+    marginBottom: theme.gap(3),
+  },
   fill: {
     flex: 1,
   },
@@ -422,6 +460,9 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(3),
     paddingBottom: theme.gap(3),
   },
+  rowDimmed: {
+    opacity: 0.55,
+  },
   pressed: {
     opacity: 0.85,
   },
@@ -453,6 +494,11 @@ const styles = StyleSheet.create((theme, rt) => ({
     justifyContent: 'space-between',
     gap: theme.gap(2),
     minHeight: TILE_SIZE,
+  },
+  headRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.gap(1.5),
   },
   title: {
     flexShrink: 1,

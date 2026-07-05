@@ -266,6 +266,8 @@ export const fr: Translations = {
     tooShortTitle: 'Trop court',
     tooShortBody: 'Colle au moins les infos clés de l’e-mail de confirmation.',
     parseErrorTitle: 'Analyse impossible',
+    parseErrorBody:
+      'L’analyse a échoué. Vérifie ta connexion ou réessaie avec un extrait plus propre de l’e-mail.',
     defaultTitle: 'Événement importé',
     confidence: '{{pct}} % de confiance',
     titlePlaceholder: 'Titre',
@@ -274,10 +276,14 @@ export const fr: Translations = {
     dateLabel: 'Date',
     notesPlaceholder: 'Notes',
     endsAt: 'Fin {{date}}',
-    addToTrip: 'Ajouter au voyage',
+    addToTrip_one: 'Ajouter {{count}} événement au voyage',
+    addToTrip_other: 'Ajouter {{count}} événements au voyage',
+    noEventsTitle: 'Aucun événement détecté',
+    noEventsBody: 'Rien d’exploitable dans ce texte. Modifie-le et réessaie.',
     adding: 'Ajout…',
     discard: 'Modifier le texte',
     createErrorTitle: 'Création de l’événement impossible',
+    participantsLabel: 'Qui est concerné',
     types: {
       flight: 'Vol',
       hotel: 'Hôtel',
@@ -472,6 +478,18 @@ export const fr: Translations = {
     endDate: 'Date de fin',
     updateError: 'Mise à jour du voyage impossible',
     preferencesLink: 'Préférences du voyage',
+    calendarRow: 'Calendrier',
+    calendarTitle: 'S’abonner au calendrier du voyage',
+    calendarBody:
+      'Les événements apparaissent dans ton app calendrier et se mettent à jour automatiquement. Quiconque a ce lien voit le planning du voyage.',
+    calendarSubscribe: 'S’abonner',
+    calendarCopy: 'Copier le lien',
+    calendarCopied: 'Lien copié',
+    calendarRegenerate: 'Révoquer et régénérer',
+    calendarRegenerateConfirmTitle: 'Révoquer et régénérer ?',
+    calendarRegenerateConfirmBody:
+      'Le lien actuel cessera de fonctionner immédiatement. Toute personne qui l’utilise devra récupérer le nouveau.',
+    calendarError: 'Impossible de préparer le lien du calendrier. Réessaie.',
   },
   newTrip: {
     title: 'Nouveau voyage',
@@ -968,6 +986,8 @@ export const fr: Translations = {
     noDate: 'Sans date',
     docCount_one: '{{count}} doc',
     docCount_other: '{{count}} docs',
+    filterAll: 'Tous',
+    filterMine: 'Mes événements',
   },
   events: {
     add: {

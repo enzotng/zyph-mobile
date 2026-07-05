@@ -3,12 +3,15 @@ import { Alert } from 'react-native'
 
 import type { Trip } from '@/features/trips'
 
+import { usePoiPhoto } from '../hooks/use-poi-photo'
 import type { Poi } from '../poi.types'
 import { ActivityDetailSheet, mapPoiType } from './activity-detail-sheet'
 
 // Stub usePoiPhoto so no network or query provider is needed (same pattern as
-// itinerary-block.test.tsx / poi-card.test.tsx).
-jest.mock('../hooks/use-poi-photo', () => ({ usePoiPhoto: () => ({ data: null }) }))
+// itinerary-block.test.tsx / poi-card.test.tsx). A jest.fn so we can assert the call signature.
+jest.mock('../hooks/use-poi-photo', () => ({ usePoiPhoto: jest.fn(() => ({ data: null })) }))
+
+const mockUsePoiPhoto = usePoiPhoto as jest.Mock
 
 // Stub supabase so transitive imports from @/features/trips don't need a real client.
 jest.mock('@/lib/supabase')
@@ -88,6 +91,14 @@ describe('ActivityDetailSheet', () => {
     expect(screen.getByText('National Museum')).toBeOnTheScreen()
     expect(screen.getByText('★ 4.7 (12k)')).toBeOnTheScreen()
     expect(screen.getByText('10 Rue de Rivoli, Paris')).toBeOnTheScreen()
+  })
+
+  it('resolves the photo without a width override so it shares the card query key', () => {
+    renderSheet({ poi: { ...POI, photoName: 'places/x/photos/y' } })
+
+    // A single argument (the photoName) and no maxWidthPx: the sheet must reuse the tapped
+    // card's default width, otherwise it forks the cache and refetches the same photo.
+    expect(mockUsePoiPhoto).toHaveBeenLastCalledWith('places/x/photos/y')
   })
 
   it('renders the price level like PoiCard', () => {
