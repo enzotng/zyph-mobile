@@ -472,6 +472,18 @@ export const en = {
     endDate: 'End date',
     updateError: 'Could not update trip',
     preferencesLink: 'Trip preferences',
+    calendarRow: 'Calendar',
+    calendarTitle: 'Subscribe to the trip calendar',
+    calendarBody:
+      'Events appear in your calendar app and refresh automatically. Anyone with this link can see the trip schedule.',
+    calendarSubscribe: 'Subscribe',
+    calendarCopy: 'Copy link',
+    calendarCopied: 'Link copied',
+    calendarRegenerate: 'Revoke and regenerate',
+    calendarRegenerateConfirmTitle: 'Revoke and regenerate?',
+    calendarRegenerateConfirmBody:
+      'The current link will stop working immediately. Anyone using it will need the new one.',
+    calendarError: 'Could not prepare the calendar link. Try again.',
   },
   newTrip: {
     title: 'New trip',

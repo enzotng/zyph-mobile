@@ -478,6 +478,18 @@ export const fr: Translations = {
     endDate: 'Date de fin',
     updateError: 'Mise à jour du voyage impossible',
     preferencesLink: 'Préférences du voyage',
+    calendarRow: 'Calendrier',
+    calendarTitle: 'S’abonner au calendrier du voyage',
+    calendarBody:
+      'Les événements apparaissent dans ton app calendrier et se mettent à jour automatiquement. Quiconque a ce lien voit le planning du voyage.',
+    calendarSubscribe: 'S’abonner',
+    calendarCopy: 'Copier le lien',
+    calendarCopied: 'Lien copié',
+    calendarRegenerate: 'Révoquer et régénérer',
+    calendarRegenerateConfirmTitle: 'Révoquer et régénérer ?',
+    calendarRegenerateConfirmBody:
+      'Le lien actuel cessera de fonctionner immédiatement. Toute personne qui l’utilise devra récupérer le nouveau.',
+    calendarError: 'Impossible de préparer le lien du calendrier. Réessaie.',
   },
   newTrip: {
     title: 'Nouveau voyage',

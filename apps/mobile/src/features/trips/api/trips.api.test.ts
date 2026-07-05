@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
 import {
+  createCalendarFeedToken,
   createTrip,
   deleteTrip,
   fetchTripCover,
@@ -496,5 +497,21 @@ describe('deleteTrip', () => {
     from.mockReturnValue(makeQueryBuilder({ data: null, error: makePostgrestError('del fail') }))
 
     await expect(deleteTrip('t1')).rejects.toThrow('del fail')
+  })
+})
+
+describe('createCalendarFeedToken', () => {
+  it('returns the raw token from the rpc', async () => {
+    const token = 'a'.repeat(64)
+    rpc.mockResolvedValue({ data: token, error: null })
+
+    await expect(createCalendarFeedToken('t1')).resolves.toBe(token)
+    expect(rpc).toHaveBeenCalledWith('create_calendar_feed_token', { _trip_id: 't1' })
+  })
+
+  it('throws when the rpc errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('not an active member') })
+
+    await expect(createCalendarFeedToken('t1')).rejects.toThrow('not an active member')
   })
 })

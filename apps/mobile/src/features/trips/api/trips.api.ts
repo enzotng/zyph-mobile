@@ -265,3 +265,14 @@ export async function deleteTrip(id: string): Promise<void> {
     throw error
   }
 }
+
+// Creates (or regenerates) the signed-in member's calendar feed token for a trip. Returns the
+// RAW bearer token - shown once, never stored client-side beyond component state. Regenerating
+// revokes the previous live token server-side, so a single call covers both create and rotate.
+export async function createCalendarFeedToken(tripId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('create_calendar_feed_token', { _trip_id: tripId })
+  if (error) {
+    throw error
+  }
+  return data
+}
