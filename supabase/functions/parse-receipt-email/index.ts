@@ -34,6 +34,7 @@ Schema:
       "location": { "name": string, "lat": number | null, "lng": number | null } | null,
       "gateLocation": { "label": string, "lat": number | null, "lng": number | null } | null,
       "endLocation": { "name": string, "lat": number | null, "lng": number | null } | null,
+      "participants": string[],
       "notes": string | null,               // additional info (reservation number, terminal, WiFi code, ...)
       "currency": string | null,            // ISO 4217 if a price appears
       "priceCents": integer | null,         // total price in cents
@@ -47,6 +48,7 @@ Rules:
 - For hotels, startsAt = check-in datetime, endsAt = check-out datetime.
 - gateLocation only when terminal/gate is explicit AND lat/lng can be inferred from major airport coordinates (otherwise null).
 - For flights and transport, "location" is the DEPARTURE place and "endLocation" is the ARRIVAL place. ALWAYS provide name AND lat/lng for well-known airports and stations.
+- "participants": the passenger/guest names EXACTLY as written in the email, [] when the email names nobody.
 - If you cannot extract any meaningful event, return { "events": [] }.
 - Never return more than 10 events.
 - ALWAYS include every key of the schema. Use null for anything not present in the email - never omit a key.
@@ -60,6 +62,7 @@ type Event = {
   location: { name: string; lat: number | null; lng: number | null } | null
   gateLocation: { label: string; lat: number | null; lng: number | null } | null
   endLocation: { name: string; lat: number | null; lng: number | null } | null
+  participants: string[]
   notes: string | null
   currency: string | null
   priceCents: number | null
@@ -98,6 +101,14 @@ function asGate(v: unknown): Event["gateLocation"] {
   return o && label ? { label: label.slice(0, 40), lat: asNumber(o.lat), lng: asNumber(o.lng) } : null
 }
 
+function asNames(v: unknown): string[] {
+  if (!Array.isArray(v)) return []
+  return v
+    .filter((n): n is string => typeof n === "string" && n.trim().length > 0)
+    .map((n) => n.trim().slice(0, 80))
+    .slice(0, 6)
+}
+
 function normalizeEvent(raw: unknown): Event {
   const o = asRecord(raw) ?? {}
   const type = EVENT_TYPES.includes(o.type as Event["type"]) ? (o.type as Event["type"]) : "event"
@@ -117,6 +128,7 @@ function normalizeEvent(raw: unknown): Event {
     location: asLocation(o.location),
     gateLocation: asGate(o.gateLocation),
     endLocation: asLocation(o.endLocation),
+    participants: asNames(o.participants),
     notes: asString(o.notes)?.slice(0, 500) ?? null,
     currency: asString(o.currency),
     priceCents: typeof o.priceCents === "number" && Number.isInteger(o.priceCents)

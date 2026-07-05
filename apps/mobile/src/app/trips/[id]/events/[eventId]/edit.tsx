@@ -12,9 +12,11 @@ import { DateField } from '@/components/date-field'
 import { EventTypePicker } from '@/components/event-type-picker'
 import { GateLocationField } from '@/components/gate-location-field'
 import { LocationPicker } from '@/components/location-picker'
+import { MemberChips } from '@/components/member-chips'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { Spinner } from '@/components/ui'
+import { useTripMembers } from '@/features/group'
 import {
   type CreateEventValues,
   createEventSchema,
@@ -32,8 +34,22 @@ export default function EditEventScreen() {
   const { theme } = useUnistyles()
   const { data: event, isLoading } = useEvent(eventId)
   const update = useUpdateEvent(tripId)
+  const members = useTripMembers(tripId)
+  const activeMembers = useMemo(
+    () =>
+      (members.data ?? [])
+        .filter((m) => m.status === 'active' && m.user_id)
+        .map((m) => ({ userId: m.user_id, displayName: m.display_name, avatarUrl: m.avatar_url })),
+    [members.data],
+  )
 
   const [defaultStart] = useState(() => new Date().toISOString())
+  // null = not touched by the user yet, so the selector mirrors the event's current subset
+  // ([] = "everyone"). Once the user taps a chip this holds the edited value instead, so a
+  // background refetch of `event` never clobbers an in-progress edit (same intent as the form's
+  // own `keepDirtyValues` below, but for a field that lives outside react-hook-form).
+  const [touchedParticipants, setTouchedParticipants] = useState<string[] | null>(null)
+  const selected = touchedParticipants ?? event?.participants ?? []
 
   // RHF syncs form values from this object whenever it changes; no useEffect needed.
   const formValues = useMemo<CreateEventValues | undefined>(() => {
@@ -97,6 +113,7 @@ export default function EditEventScreen() {
         lat: values.lat,
         lng: values.lng,
         gateLocation: values.gateLocation ?? null,
+        participants: selected.length === 0 ? null : selected,
       })
       router.back()
     } catch (error) {
@@ -230,6 +247,13 @@ export default function EditEventScreen() {
         render={({ field }) => (
           <GateLocationField value={field.value ?? null} onChange={field.onChange} />
         )}
+      />
+
+      <MemberChips
+        members={activeMembers}
+        selected={selected}
+        onChange={setTouchedParticipants}
+        label={t('smartImport.participantsLabel')}
       />
     </Screen>
   )

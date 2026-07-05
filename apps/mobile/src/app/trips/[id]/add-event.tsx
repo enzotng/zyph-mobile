@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text } from 'react-native'
@@ -12,8 +12,10 @@ import { DateField } from '@/components/date-field'
 import { EventTypePicker } from '@/components/event-type-picker'
 import { GateLocationField } from '@/components/gate-location-field'
 import { LocationPicker } from '@/components/location-picker'
+import { MemberChips } from '@/components/member-chips'
 import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
+import { useTripMembers } from '@/features/group'
 import { type CreateEventValues, createEventSchema, useCreateEvent } from '@/features/timeline'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
@@ -27,8 +29,18 @@ export default function AddEventScreen() {
   const { theme } = useUnistyles()
   const { t } = useTranslation()
   const createEvent = useCreateEvent(tripId)
+  const members = useTripMembers(tripId)
+  const activeMembers = useMemo(
+    () =>
+      (members.data ?? [])
+        .filter((m) => m.status === 'active' && m.user_id)
+        .map((m) => ({ userId: m.user_id, displayName: m.display_name, avatarUrl: m.avatar_url })),
+    [members.data],
+  )
   const [hasEnd, setHasEnd] = useState(false)
   const [initialStartsAt] = useState(() => new Date().toISOString())
+  // [] = everyone (the "all active members" sentinel `createEvent` maps to null).
+  const [selected, setSelected] = useState<string[]>([])
 
   const {
     control,
@@ -69,6 +81,7 @@ export default function AddEventScreen() {
         lat: values.lat,
         lng: values.lng,
         gateLocation: values.gateLocation ?? null,
+        participants: selected.length === 0 ? null : selected,
       })
       haptics.success()
       router.back()
@@ -197,6 +210,13 @@ export default function AddEventScreen() {
         render={({ field }) => (
           <GateLocationField value={field.value ?? null} onChange={field.onChange} />
         )}
+      />
+
+      <MemberChips
+        members={activeMembers}
+        selected={selected}
+        onChange={setSelected}
+        label={t('smartImport.participantsLabel')}
       />
     </Screen>
   )

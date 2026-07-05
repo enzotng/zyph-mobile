@@ -15,6 +15,7 @@ const validEvent = {
   location: { name: 'Charles de Gaulle', lat: 49.0097, lng: 2.5479 },
   gateLocation: { label: 'Gate K12', lat: 49.0097, lng: 2.5479 },
   endLocation: null,
+  participants: [],
   notes: 'Window seat',
   currency: 'EUR',
   priceCents: 12_000,

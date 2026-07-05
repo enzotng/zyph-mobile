@@ -1,16 +1,23 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as Clipboard from 'expo-clipboard'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, TextInput, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { DateField } from '@/components/date-field'
+import { MemberChips } from '@/components/member-chips'
 import { Screen } from '@/components/screen'
 import { Spinner } from '@/components/ui'
-import { confidenceLevel, type ParsedEmailEvent, useParseEmail } from '@/features/smart-import'
+import { type TripMember, useTripMembers } from '@/features/group'
+import {
+  confidenceLevel,
+  matchParticipants,
+  type ParsedEmailEvent,
+  useParseEmail,
+} from '@/features/smart-import'
 import { eventTypeIcon, useCreateEvents } from '@/features/timeline'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
@@ -25,6 +32,9 @@ type PreviewEvent = {
   title: string
   startsAt: Date
   notes: string
+  // Subset of active member ids this event concerns. [] means "everyone" - the same
+  // convention `createEvents`/`trip_events.participants` use server-side.
+  participantIds: string[]
 }
 
 export default function ImportEmailScreen() {
@@ -37,6 +47,14 @@ export default function ImportEmailScreen() {
   const { t } = useTranslation()
   const parseEmail = useParseEmail()
   const createEvents = useCreateEvents()
+  const members = useTripMembers(tripId)
+  // Memoized on the query's own data reference: react-query keeps that reference stable across
+  // unrelated re-renders (e.g. a keystroke in the editor above), so this stays a stable prop for
+  // every EventPreviewCard instead of a fresh array (and a compiler cache-miss) every render.
+  const activeMembers = useMemo(
+    () => (members.data ?? []).filter((m) => m.status === 'active' && m.user_id),
+    [members.data],
+  )
 
   const [text, setText] = useState(prefilledText)
   // null = nothing parsed yet; [] = parse ran and found nothing (empty state).
@@ -85,6 +103,10 @@ export default function ImportEmailScreen() {
     }
     try {
       const result = await parseEmail.mutateAsync(text)
+      const memberInputs = activeMembers.map((m) => ({
+        userId: m.user_id,
+        displayName: m.display_name,
+      }))
       setPreviews(
         result.events.map((event, index) => ({
           key: `evt-${index}`,
@@ -93,6 +115,7 @@ export default function ImportEmailScreen() {
           title: event.title ?? t('smartImport.defaultTitle'),
           startsAt: event.startsAt ? new Date(event.startsAt) : new Date(),
           notes: event.notes ?? '',
+          participantIds: matchParticipants(event.participants, memberInputs),
         })),
       )
       haptics.success()
@@ -141,6 +164,8 @@ export default function ImportEmailScreen() {
           gate && typeof gate.lat === 'number' && typeof gate.lng === 'number'
             ? { label: gate.label.slice(0, 40), lat: gate.lat, lng: gate.lng }
             : null,
+        // [] is the "everyone" sentinel client-side; the server column stores that as null.
+        participants: p.participantIds.length === 0 ? null : p.participantIds,
       }
     })
     try {
@@ -167,7 +192,7 @@ export default function ImportEmailScreen() {
 
   function patchPreview(
     key: string,
-    patch: Partial<Pick<PreviewEvent, 'title' | 'startsAt' | 'notes'>>,
+    patch: Partial<Pick<PreviewEvent, 'title' | 'startsAt' | 'notes' | 'participantIds'>>,
   ) {
     setPreviews((prev) => (prev ? prev.map((p) => (p.key === key ? { ...p, ...patch } : p)) : prev))
   }
@@ -230,6 +255,7 @@ export default function ImportEmailScreen() {
             <EventPreviewCard
               key={preview.key}
               preview={preview}
+              activeMembers={activeMembers}
               onToggle={togglePreview}
               onPatch={patchPreview}
             />
@@ -280,16 +306,27 @@ function PreviewRow({
 
 function EventPreviewCard({
   preview,
+  activeMembers,
   onPatch,
   onToggle,
 }: {
   preview: PreviewEvent
-  onPatch: (key: string, patch: Partial<Pick<PreviewEvent, 'title' | 'startsAt' | 'notes'>>) => void
+  activeMembers: TripMember[]
+  onPatch: (
+    key: string,
+    patch: Partial<Pick<PreviewEvent, 'title' | 'startsAt' | 'notes' | 'participantIds'>>,
+  ) => void
   onToggle: (key: string) => void
 }) {
   const { theme } = useUnistyles()
   const { t, i18n } = useTranslation()
   const { source } = preview
+  // MemberChips wants the resolved profile shape, not the raw trip_members row.
+  const memberChipMembers = activeMembers.map((m) => ({
+    userId: m.user_id,
+    displayName: m.display_name,
+    avatarUrl: m.avatar_url,
+  }))
 
   const confidencePct = Math.round(source.confidence * 100)
   const level = confidenceLevel(source.confidence)
@@ -385,6 +422,13 @@ function EventPreviewCard({
         placeholderTextColor={theme.colors.muted}
         multiline
         textAlignVertical="top"
+      />
+
+      <MemberChips
+        members={memberChipMembers}
+        selected={preview.participantIds}
+        onChange={(participantIds) => onPatch(preview.key, { participantIds })}
+        label={t('smartImport.participantsLabel')}
       />
     </View>
   )

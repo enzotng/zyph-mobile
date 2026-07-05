@@ -101,8 +101,20 @@ describe('createEvent', () => {
       lat: null,
       lng: null,
       gate_location: null,
+      participants: null,
       created_by: 'u1',
     })
+  })
+
+  it('passes through participants when provided', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const builder = makeQueryBuilder({ data: event, error: null })
+    from.mockReturnValue(builder)
+
+    await createEvent({ ...input, participants: ['u1', 'u2'] })
+    expect(builder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ participants: ['u1', 'u2'] }),
+    )
   })
 
   it('passes through coordinates when provided', async () => {
@@ -183,8 +195,19 @@ describe('updateEvent', () => {
       lat: null,
       lng: null,
       gate_location: null,
+      participants: null,
     })
     expect(builder.eq).toHaveBeenCalledWith('id', 'ev1')
+  })
+
+  it('passes through participants when provided', async () => {
+    const builder = makeQueryBuilder({ data: event, error: null })
+    from.mockReturnValue(builder)
+
+    await updateEvent({ ...input, participants: ['u1', 'u2'] })
+    expect(builder.update).toHaveBeenCalledWith(
+      expect.objectContaining({ participants: ['u1', 'u2'] }),
+    )
   })
 
   it('passes through coordinates when provided', async () => {
@@ -258,6 +281,7 @@ describe('createEvents', () => {
     gate_location: null,
     location_name: null,
     end_location: null,
+    participants: null,
     created_by: 'u1',
   }
   const row2 = {
@@ -273,6 +297,7 @@ describe('createEvents', () => {
     gate_location: null,
     location_name: null,
     end_location: null,
+    participants: null,
     created_by: 'u1',
   }
 
@@ -367,6 +392,27 @@ describe('createEvents', () => {
     expect(inserted[0].end_location).toBeNull()
     expect(inserted[0].ends_at).toBeNull()
     expect(inserted[0].gate_location).toBeNull()
+    expect(inserted[0].participants).toBeNull()
+  })
+
+  it('maps a participants subset onto the inserted row', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const builder = makeQueryBuilder({ data: [event], error: null })
+    from.mockReturnValue(builder)
+
+    await createEvents('trip-1', [
+      {
+        title: 'Louvre',
+        type: 'activity',
+        startsAt: '2026-07-27T08:20:00Z',
+        lat: null,
+        lng: null,
+        placeId: null,
+        participants: ['u1', 'u2'],
+      },
+    ])
+    const inserted = builder.insert.mock.calls[0][0]
+    expect(inserted[0].participants).toEqual(['u1', 'u2'])
   })
 })
 

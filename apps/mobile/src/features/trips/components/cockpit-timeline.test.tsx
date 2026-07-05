@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
+import type { ReactTestRendererJSON } from 'react-test-renderer'
 
 import type { TripEvent } from '@/features/timeline'
 
@@ -22,6 +23,38 @@ function makeEvent(overrides: Partial<TripEvent> = {}): TripEvent {
 }
 
 const NOW = new Date('2026-06-15T12:00:00Z').getTime()
+
+const members = [
+  { id: 'm1', user_id: 'u1', display_name: 'Zoe', avatar_url: null },
+  { id: 'm2', user_id: 'u2', display_name: 'Marc', avatar_url: null },
+]
+
+type StyleValue = Record<string, unknown>
+
+function flattenStyle(style: unknown): StyleValue {
+  if (Array.isArray(style)) {
+    return style.reduce<StyleValue>((acc, entry) => ({ ...acc, ...flattenStyle(entry) }), {})
+  }
+  if (style && typeof style === 'object') {
+    return style as StyleValue
+  }
+  return {}
+}
+
+function collectStyles(node: ReactTestRendererJSON | null): StyleValue[] {
+  if (!node) {
+    return []
+  }
+  const own = node.props?.style ? [flattenStyle(node.props.style)] : []
+  const children = node.children ?? []
+  return [...own, ...children.flatMap((c) => (typeof c === 'string' ? [] : collectStyles(c)))]
+}
+
+function hasStyle(match: StyleValue): boolean {
+  return collectStyles(screen.toJSON() as ReactTestRendererJSON | null).some((style) =>
+    Object.entries(match).every(([key, value]) => style[key] === value),
+  )
+}
 
 describe('CockpitTimeline', () => {
   it('renders nothing when there are no events', () => {
@@ -73,5 +106,56 @@ describe('CockpitTimeline', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Dinner' }))
 
     expect(onPressEvent).toHaveBeenCalledWith('e1')
+  })
+
+  it('does not dim the NEXT card when participants is null (everyone)', () => {
+    render(
+      <CockpitTimeline
+        events={[makeEvent()]}
+        now={NOW}
+        onPressEvent={jest.fn()}
+        members={members}
+        userId="u1"
+      />,
+    )
+
+    expect(hasStyle({ opacity: 0.55 })).toBe(false)
+  })
+
+  it('dims the NEXT card and shows the participant avatar stack when the user is outside the subset', () => {
+    render(
+      <CockpitTimeline
+        events={[makeEvent({ participants: ['u2'] })]}
+        now={NOW}
+        onPressEvent={jest.fn()}
+        members={members}
+        userId="u1"
+      />,
+    )
+
+    expect(hasStyle({ opacity: 0.55 })).toBe(true)
+    expect(screen.getByLabelText('Marc')).toBeOnTheScreen()
+  })
+
+  it('dims a following row when the signed-in user is outside its participants subset', () => {
+    render(
+      <CockpitTimeline
+        events={[
+          makeEvent({ id: 'e1', title: 'Dinner' }),
+          makeEvent({
+            id: 'e2',
+            title: 'Fado night',
+            starts_at: '2026-06-15T18:00:00Z',
+            participants: ['u2'],
+          }),
+        ]}
+        now={NOW}
+        onPressEvent={jest.fn()}
+        members={members}
+        userId="u1"
+      />,
+    )
+
+    expect(hasStyle({ opacity: 0.55 })).toBe(true)
   })
 })

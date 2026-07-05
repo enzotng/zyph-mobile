@@ -456,7 +456,12 @@ export default function TripDashboardScreen() {
 
           {inProgressEvent ? (
             <Animated.View entering={enter(1)}>
-              <RightNowCard event={inProgressEvent} now={now} />
+              <RightNowCard
+                event={inProgressEvent}
+                now={now}
+                members={members ?? []}
+                userId={userId ?? null}
+              />
             </Animated.View>
           ) : null}
 
@@ -470,6 +475,8 @@ export default function TripDashboardScreen() {
                   params: { id: tripId, eventId },
                 })
               }
+              members={members ?? []}
+              userId={userId ?? null}
             />
           </Animated.View>
 

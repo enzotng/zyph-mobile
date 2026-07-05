@@ -283,6 +283,7 @@ export const fr: Translations = {
     adding: 'Ajout…',
     discard: 'Modifier le texte',
     createErrorTitle: 'Création de l’événement impossible',
+    participantsLabel: 'Qui est concerné',
     types: {
       flight: 'Vol',
       hotel: 'Hôtel',
@@ -973,6 +974,8 @@ export const fr: Translations = {
     noDate: 'Sans date',
     docCount_one: '{{count}} doc',
     docCount_other: '{{count}} docs',
+    filterAll: 'Tous',
+    filterMine: 'Mes événements',
   },
   events: {
     add: {
