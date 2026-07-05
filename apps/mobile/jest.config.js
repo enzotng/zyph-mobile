@@ -1,6 +1,10 @@
 /** @type {import('jest').Config} */
 module.exports = {
   preset: 'jest-expo',
+  // Discover app tests plus the calendar-feed edge function's colocated ics.test.ts: ics.ts is a
+  // pure module (no Deno-only APIs) that lives outside src/, so it's not found by the default
+  // rootDir-only discovery unless explicitly added here.
+  roots: ['<rootDir>/src', '<rootDir>/../../supabase/functions/calendar-feed'],
   // Unistyles is a native module; load its official mock + the theme config first.
   setupFiles: ['<rootDir>/jest-env.js', 'react-native-unistyles/mocks', '<rootDir>/src/unistyles.ts'],
   setupFilesAfterEnv: ['<rootDir>/jest-setup.ts'],
