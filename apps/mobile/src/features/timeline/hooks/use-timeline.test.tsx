@@ -22,6 +22,8 @@ const event = {
   trip_id: 't1',
   title: 'Eiffel Tower visit',
   type: 'event',
+  category: 'other',
+  subcategory: 'other.event',
   starts_at: '2024-06-01T10:00:00Z',
   ends_at: '2024-06-01T12:00:00Z',
   notes: 'Bring camera',

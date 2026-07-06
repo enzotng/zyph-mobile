@@ -797,6 +797,7 @@ export type Database = {
       }
       trip_events: {
         Row: {
+          category: string
           created_at: string
           created_by: string | null
           end_location: Json | null
@@ -811,12 +812,14 @@ export type Database = {
           participants: string[] | null
           place_id: string | null
           starts_at: string | null
+          subcategory: string | null
           title: string
           trip_id: string
           type: string
           updated_at: string
         }
         Insert: {
+          category?: string
           created_at?: string
           created_by?: string | null
           end_location?: Json | null
@@ -831,12 +834,14 @@ export type Database = {
           participants?: string[] | null
           place_id?: string | null
           starts_at?: string | null
+          subcategory?: string | null
           title: string
           trip_id: string
           type?: string
           updated_at?: string
         }
         Update: {
+          category?: string
           created_at?: string
           created_by?: string | null
           end_location?: Json | null
@@ -851,6 +856,7 @@ export type Database = {
           participants?: string[] | null
           place_id?: string | null
           starts_at?: string | null
+          subcategory?: string | null
           title?: string
           trip_id?: string
           type?: string
