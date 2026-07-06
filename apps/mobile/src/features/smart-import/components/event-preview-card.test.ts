@@ -2,7 +2,8 @@ import type { ParsedEmailEvent } from '../schemas'
 import { type PreviewEvent, parsedToPreview, previewsToEvents } from './event-preview-card'
 
 const baseEvent: ParsedEmailEvent = {
-  type: 'flight',
+  category: 'transport',
+  subcategory: 'transport.flight',
   title: 'Flight ZY123 CDG -> OSL',
   startsAt: '2026-07-10T08:20:00+02:00',
   endsAt: '2026-07-10T10:35:00+02:00',
@@ -64,6 +65,17 @@ describe('parsedToPreview', () => {
 })
 
 describe('previewsToEvents', () => {
+  it('carries the parsed category and subcategory through', () => {
+    const preview = makePreview({
+      source: { ...baseEvent, category: 'lodging', subcategory: 'lodging.hotel' },
+    })
+
+    const [event] = previewsToEvents([preview], DEFAULT_TITLE)
+
+    expect(event.category).toBe('lodging')
+    expect(event.subcategory).toBe('lodging.hotel')
+  })
+
   it('caps title, notes and gate label to the same limits the manual form enforces', () => {
     const preview = makePreview({
       title: 'A'.repeat(200),

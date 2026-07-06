@@ -22,7 +22,7 @@ const DEFAULT_MODEL = "llama-3.3-70b-versatile"
 const DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 
 // --- Groq event parsing ------------------------------------------------------------------------
-// Copied verbatim from parse-receipt-email/index.ts:20-157 (SYSTEM_PROMPT, the Event type, and the
+// Copied verbatim from parse-receipt-email/index.ts:20-180 (SYSTEM_PROMPT, the Event type, and the
 // asString/asNumber/asRecord/asLocation/asGate/asNames/normalizeEvent/normalizeEvents helpers).
 // Deliberate v1 duplication: both edge functions need the exact same Groq contract and there is no
 // shared module yet - a DRY refactor to _shared/parse-events.ts is a follow-up.
@@ -37,7 +37,8 @@ Schema:
 {
   "events": [
     {
-      "type": "flight" | "hotel" | "transport" | "activity" | "event",
+      "category": one of "transport" | "lodging" | "food" | "activity" | "shopping" | "health" | "fees" | "other",
+      "subcategory": a dotted code under the chosen category from the allowlist below, or null,
       "title": string,                      // short human title, e.g. "Flight AF1234 CDG → JFK"
       "startsAt": string | null,            // ISO 8601 timestamp with timezone
       "endsAt": string | null,              // ISO 8601 timestamp with timezone (or null for point events)
@@ -53,6 +54,22 @@ Schema:
   ]
 }
 
+Allowed subcategory codes (pick the most specific that clearly applies, else null):
+transport.flight, transport.train, transport.transit, transport.car, transport.bus, transport.ferry, transport.taxi, transport.bike, transport.fuel
+lodging.hotel, lodging.rental, lodging.hostel, lodging.camping
+food.restaurant, food.bar, food.cafe, food.groceries
+activity.sightseeing, activity.excursion, activity.show, activity.sport, activity.nature, activity.nightlife, activity.wellness, activity.experience
+health.doctor
+other.event, other.meetup, other.reminder
+
+Classification rules:
+- A flight -> category "transport", subcategory "transport.flight". A hotel -> "lodging" / "lodging.hotel".
+- A restaurant/bar/cafe reservation -> "food" with the matching subcategory (this is a first-class category now).
+- A car rental -> "transport" / "transport.car"; a train -> "transport.train".
+- When unsure of the leaf, set subcategory to null but ALWAYS set a category.
+- If nothing fits, use category "other" (subcategory "other.event" for a generic dated booking, else null).
+- TITLE: write a short, specific, human title in the email's language. Flights: include flight number and route ("Vol AF1234 CDG - JFK"). Hotels: the hotel name and city ("Hotel Le Marais, Paris"). Restaurants: venue name. Never a generic "Reservation" or "Event" when a name is present.
+
 Rules:
 - For flights, title MUST include flight number and route.
 - For hotels, startsAt = check-in datetime, endsAt = check-out datetime.
@@ -65,7 +82,8 @@ Rules:
 - Output JSON only. No prose.`
 
 type Event = {
-  type: "flight" | "hotel" | "transport" | "activity" | "event"
+  category: string
+  subcategory: string | null
   title: string | null
   startsAt: string | null
   endsAt: string | null
@@ -79,7 +97,8 @@ type Event = {
   confidence: number
 }
 
-const EVENT_TYPES: readonly Event["type"][] = ["flight", "hotel", "transport", "activity", "event"]
+const CATEGORIES = ["transport", "lodging", "food", "activity", "shopping", "health", "fees", "other"]
+const SUBCATEGORIES = ["transport.flight","transport.train","transport.transit","transport.car","transport.bus","transport.ferry","transport.taxi","transport.bike","transport.fuel","lodging.hotel","lodging.rental","lodging.hostel","lodging.camping","food.restaurant","food.bar","food.cafe","food.groceries","activity.sightseeing","activity.excursion","activity.show","activity.sport","activity.nature","activity.nightlife","activity.wellness","activity.experience","health.doctor","other.event","other.meetup","other.reminder"]
 
 // The model does not reliably follow "use null": it sometimes omits keys or emits
 // wrong-typed values, and the client contract requires EVERY key present (null when
@@ -121,7 +140,10 @@ function asNames(v: unknown): string[] {
 
 function normalizeEvent(raw: unknown): Event {
   const o = asRecord(raw) ?? {}
-  const type = EVENT_TYPES.includes(o.type as Event["type"]) ? (o.type as Event["type"]) : "event"
+  const category = CATEGORIES.includes(o.category as string) ? (o.category as string) : "other"
+  const rawSub = o.subcategory as string | null
+  const subcategory =
+    rawSub && SUBCATEGORIES.includes(rawSub) && rawSub.startsWith(category + ".") ? rawSub : null
   // Mirror the client's coercion: a 0-100 scale is mapped onto 0-1, then clamped.
   const rawConfidence = asNumber(o.confidence) ?? 0
   const confidence = Math.min(
@@ -129,7 +151,8 @@ function normalizeEvent(raw: unknown): Event {
     Math.max(0, rawConfidence > 1 ? rawConfidence / 100 : rawConfidence),
   )
   return {
-    type,
+    category,
+    subcategory,
     // Length caps mirror the manual add-event form's invariants (title 120, notes 500)
     // so the LLM write path can never exceed what the form itself allows.
     title: asString(o.title)?.slice(0, 120) ?? null,
@@ -373,7 +396,8 @@ Deno.serve(async (req: Request) => {
       events.map((e) => ({
         trip_id: tripId,
         title: e.title,
-        type: e.type,
+        category: e.category,
+        subcategory: e.subcategory,
         starts_at: e.startsAt,
         ends_at: e.endsAt,
         notes: e.notes,

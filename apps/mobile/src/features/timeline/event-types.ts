@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons'
 
+// Legacy: retained for the copilot itinerary picker until the Lot 3 copilot upgrade; timeline,
+// forms, and display use src/features/taxonomy.
 // The canonical, user-selectable event types. Order = picker order.
 export const EVENT_TYPES = ['flight', 'lodging', 'transport', 'activity', 'food', 'event'] as const
 

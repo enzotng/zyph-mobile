@@ -6,7 +6,8 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 import { DateField } from '@/components/date-field'
 import { MemberChips } from '@/components/member-chips'
 import type { TripMember } from '@/features/group'
-import { eventTypeIcon, type NewItineraryEvent } from '@/features/timeline'
+import { iconForCode, labelKeyForCode } from '@/features/taxonomy'
+import type { NewItineraryEvent } from '@/features/timeline'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 
@@ -62,7 +63,8 @@ export function previewsToEvents(
     const gate = p.source.gateLocation
     return {
       title: (p.title.trim() || p.source.title || defaultTitle).slice(0, 120),
-      type: p.source.type,
+      category: p.source.category,
+      subcategory: p.source.subcategory,
       startsAt: p.startsAt.toISOString(),
       // Drop a parsed end date that no longer follows the (possibly edited) start.
       endsAt: p.source.endsAt && new Date(p.source.endsAt) > p.startsAt ? p.source.endsAt : null,
@@ -146,8 +148,14 @@ export function EventPreviewCard({
   return (
     <View style={[styles.previewCard, !preview.included ? styles.cardExcluded : null]}>
       <View style={styles.previewHead}>
-        <Ionicons name={eventTypeIcon(source.type)} size={22} color={theme.colors.primary} />
-        <Text style={styles.previewType}>{t(`smartImport.types.${source.type}`)}</Text>
+        <Ionicons
+          name={iconForCode(source.category, source.subcategory)}
+          size={22}
+          color={theme.colors.primary}
+        />
+        <Text style={styles.previewType}>
+          {t(labelKeyForCode(source.subcategory ?? source.category))}
+        </Text>
         <Text style={[styles.confidenceText, { color: confidenceColor }]}>
           {t('smartImport.confidence', { pct: confidencePct })}
         </Text>

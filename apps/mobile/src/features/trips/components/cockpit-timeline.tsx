@@ -4,10 +4,10 @@ import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { AvatarStack } from '@/components/ui'
+import { iconForCode } from '@/features/taxonomy'
 import {
   concernsUser,
   eventStatus,
-  eventTypeIcon,
   formatCountdown,
   type ParticipantMember,
   resolveParticipantAvatars,
@@ -102,7 +102,7 @@ export function CockpitTimeline({
                   ]}
                 >
                   <Ionicons
-                    name={eventTypeIcon(event.type)}
+                    name={iconForCode(event.category, event.subcategory)}
                     size={20}
                     color={theme.colors.primary}
                   />
@@ -135,7 +135,11 @@ export function CockpitTimeline({
                 ]}
               >
                 <View style={styles.rowIconTile}>
-                  <Ionicons name={eventTypeIcon(event.type)} size={18} color={theme.colors.muted} />
+                  <Ionicons
+                    name={iconForCode(event.category, event.subcategory)}
+                    size={18}
+                    color={theme.colors.muted}
+                  />
                 </View>
                 <View style={styles.rowBody}>
                   <Text style={styles.rowTitle} numberOfLines={1}>

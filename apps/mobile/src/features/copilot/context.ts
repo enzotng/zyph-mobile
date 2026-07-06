@@ -64,7 +64,7 @@ export function buildTripContext(input: CopilotContextInput): string {
     const when = event.starts_at ?? 'no date'
     const end = event.ends_at ? ` to ${event.ends_at}` : ''
     const note = event.notes ? ` (${event.notes})` : ''
-    return `- [${event.type}] ${event.title} @ ${when}${end}${note}`
+    return `- [${event.subcategory ?? event.category}] ${event.title} @ ${when}${end}${note}`
   })
 
   const expenseLines = expenses.slice(0, MAX_EXPENSES).map((expense) => {
