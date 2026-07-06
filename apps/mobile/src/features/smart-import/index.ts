@@ -14,5 +14,5 @@ export {
 } from './confidence'
 export { useParseEmail } from './hooks/use-parse-email'
 export { matchParticipants } from './participants'
-export type { ParsedEmailEvent, ParsedEventType } from './schemas'
-export { EVENT_TYPES, parsedEmailEventSchema, parseEmailResponseSchema } from './schemas'
+export type { ParsedEmailEvent } from './schemas'
+export { parsedEmailEventSchema, parseEmailResponseSchema } from './schemas'

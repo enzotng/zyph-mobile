@@ -1,11 +1,10 @@
 import { z } from 'zod'
 
+import { isValidCategory, isValidSubcategory } from '@/features/taxonomy'
+
 // Matches the JSON contract enforced server-side by the parse-receipt-email Edge
 // Function. We re-validate on the client so a hallucinated payload never reaches
 // the UI in an inconsistent shape.
-
-export const EVENT_TYPES = ['flight', 'hotel', 'transport', 'activity', 'event'] as const
-export type ParsedEventType = (typeof EVENT_TYPES)[number]
 
 export const parsedLocationSchema = z
   .object({
@@ -25,12 +24,20 @@ export const parsedGateSchema = z
 
 export const parsedEmailEventSchema = z.object({
   // Lenient on EVERY field the model output can vary on, so one odd field never sinks an
-  // otherwise valid event: unknown type -> 'event', and any missing key (the 8B model
-  // sometimes OMITS keys instead of emitting null despite the prompt), wrong-typed value
-  // or malformed sub-object degrades to null. The edge function normalizes server-side;
-  // this is the defense-in-depth layer. Confidence is coerced (accepts a 0-100 scale)
-  // and clamped to 0-1.
-  type: z.enum(EVENT_TYPES).catch('event'),
+  // otherwise valid event: unknown category -> 'other', unknown subcategory -> null, and any
+  // missing key (the 8B model sometimes OMITS keys instead of emitting null despite the
+  // prompt), wrong-typed value or malformed sub-object degrades to null. The edge function
+  // normalizes server-side; this is the defense-in-depth layer. Confidence is coerced
+  // (accepts a 0-100 scale) and clamped to 0-1.
+  category: z
+    .string()
+    .catch('other')
+    .transform((v) => (isValidCategory(v) ? v : 'other')),
+  subcategory: z
+    .string()
+    .nullable()
+    .catch(null)
+    .transform((v) => (v && isValidSubcategory(v) ? v : null)),
   title: z.string().nullable().catch(null),
   startsAt: z.string().nullable().catch(null),
   endsAt: z.string().nullable().catch(null),

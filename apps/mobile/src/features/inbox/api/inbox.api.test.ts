@@ -17,7 +17,8 @@ const validRow = {
   subject: 'Your booking confirmation',
   events: [
     {
-      type: 'flight',
+      category: 'transport',
+      subcategory: 'transport.flight',
       title: 'Flight ZY123 CDG -> OSL',
       startsAt: '2026-07-10T08:20:00Z',
       endsAt: null,

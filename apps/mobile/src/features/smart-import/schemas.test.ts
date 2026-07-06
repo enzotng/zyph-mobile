@@ -1,7 +1,8 @@
 import { parsedEmailEventSchema, parseEmailResponseSchema } from './schemas'
 
 const base = {
-  type: 'flight',
+  category: 'transport',
+  subcategory: 'transport.flight',
   title: 'AF1234',
   startsAt: '2026-03-15T14:30:00Z',
   endsAt: null,
@@ -18,6 +19,8 @@ describe('parsedEmailEventSchema', () => {
     const result = parsedEmailEventSchema.safeParse(base)
     expect(result.success).toBe(true)
     if (result.success) {
+      expect(result.data.category).toBe('transport')
+      expect(result.data.subcategory).toBe('transport.flight')
       expect(result.data.confidence).toBe(0.9)
       expect(result.data.priceCents).toBe(12000)
     }
@@ -35,8 +38,14 @@ describe('parsedEmailEventSchema', () => {
     expect(parsedEmailEventSchema.parse({ ...base, priceCents: 10.5 }).priceCents).toBeNull()
   })
 
-  it('falls back to "event" for an unknown type', () => {
-    expect(parsedEmailEventSchema.parse({ ...base, type: 'meal' }).type).toBe('event')
+  it('falls back to "other" for an unknown category', () => {
+    expect(parsedEmailEventSchema.parse({ ...base, category: 'meal' }).category).toBe('other')
+  })
+
+  it('falls back to null for an unknown subcategory', () => {
+    expect(
+      parsedEmailEventSchema.parse({ ...base, subcategory: 'meal.snack' }).subcategory,
+    ).toBeNull()
   })
 
   it('accepts an event with missing keys, normalizing them to null', () => {
@@ -53,9 +62,10 @@ describe('parsedEmailEventSchema', () => {
   })
 
   it('accepts a minimal payload where every varying field is absent', () => {
-    const result = parsedEmailEventSchema.safeParse({ type: 'flight', confidence: 0.4 })
+    const result = parsedEmailEventSchema.safeParse({ category: 'transport', confidence: 0.4 })
     expect(result.success).toBe(true)
     if (result.success) {
+      expect(result.data.subcategory).toBeNull()
       expect(result.data.title).toBeNull()
       expect(result.data.startsAt).toBeNull()
       expect(result.data.endsAt).toBeNull()

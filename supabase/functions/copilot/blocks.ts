@@ -6,8 +6,9 @@ export type Chip =
   | { action: "prompt"; prompt: string; label: string }
   | { action: "tool"; tool: string; args: Record<string, unknown>; label: string }
 
-// Must match the client's canonical EVENT_TYPES (features/timeline/event-types.ts) so the
-// inserted trip_events.type resolves to a real timeline icon. food = restaurants, lodging = hotels.
+// Must match the client's canonical EVENT_TYPES (features/timeline/event-types.ts). This legacy
+// `type` is mapped to a category/subcategory pair (LEGACY_TYPE_MAP), which is what the timeline
+// icon actually resolves from. food = restaurants, lodging = hotels.
 const VALID_ITEM_TYPES = [
   "activity",
   "food",

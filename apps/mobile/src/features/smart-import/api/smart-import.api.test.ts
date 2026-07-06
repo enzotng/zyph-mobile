@@ -8,7 +8,8 @@ const invoke = supabase.functions.invoke as jest.Mock
 
 // A fully valid event matching parsedEmailEventSchema, used as the happy-path base.
 const validEvent = {
-  type: 'flight' as const,
+  category: 'transport',
+  subcategory: 'transport.flight',
   title: 'AF1234 Paris -> Rome',
   startsAt: '2026-06-10T08:00:00Z',
   endsAt: '2026-06-10T10:00:00Z',
@@ -50,15 +51,15 @@ describe('parseEmailViaAi', () => {
     await expect(parseEmailViaAi('whatever')).rejects.toThrow('Empty response from the parser.')
   })
 
-  it('falls back to the "event" type when the model returns an unknown type', async () => {
+  it('falls back to the "other" category when the model returns an unknown category', async () => {
     invoke.mockResolvedValue({
-      data: { events: [{ ...validEvent, type: 'spaceship' }] },
+      data: { events: [{ ...validEvent, category: 'spaceship' }] },
       error: null,
     })
 
-    const result = await parseEmailViaAi('weird type')
+    const result = await parseEmailViaAi('weird category')
 
-    expect(result.events[0].type).toBe('event')
+    expect(result.events[0].category).toBe('other')
   })
 
   it('coerces a non-integer price to null at the zod boundary', async () => {
@@ -138,7 +139,7 @@ describe('parseEmailViaAi', () => {
     // had none of them, and the strict schema turned the whole parse into a raw
     // ZodError alert on device.
     invoke.mockResolvedValue({
-      data: { events: [{ type: 'flight', title: 'AF1234', confidence: 0.8 }] },
+      data: { events: [{ category: 'transport', title: 'AF1234', confidence: 0.8 }] },
       error: null,
     })
 
