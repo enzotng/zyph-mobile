@@ -9,7 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { DateField } from '@/components/date-field'
-import { EventTypePicker } from '@/components/event-type-picker'
+import { EventCategoryPicker } from '@/components/event-category-picker'
 import { GateLocationField } from '@/components/gate-location-field'
 import { LocationPicker } from '@/components/location-picker'
 import { MemberChips } from '@/components/member-chips'
@@ -59,7 +59,8 @@ export default function EditEventScreen() {
     const gate = event.gate_location as { label?: string; lat?: number; lng?: number } | null
     return {
       title: event.title,
-      type: event.type,
+      category: event.category,
+      subcategory: event.subcategory,
       startsAt: event.starts_at ?? defaultStart,
       endsAt: event.ends_at ?? '',
       notes: event.notes ?? '',
@@ -83,7 +84,14 @@ export default function EditEventScreen() {
     values: formValues,
     // Keep the user's in-progress edits if the source data refetches mid-edit.
     resetOptions: { keepDirtyValues: true },
-    defaultValues: { title: '', type: 'event', startsAt: defaultStart, endsAt: '', notes: '' },
+    defaultValues: {
+      title: '',
+      category: 'other',
+      subcategory: null,
+      startsAt: defaultStart,
+      endsAt: '',
+      notes: '',
+    },
   })
 
   const lat = useWatch({ control, name: 'lat' })
@@ -106,7 +114,8 @@ export default function EditEventScreen() {
       await update.mutateAsync({
         eventId,
         title: values.title,
-        type: values.type,
+        category: values.category,
+        subcategory: values.subcategory,
         startsAt: values.startsAt,
         endsAt: values.endsAt || undefined,
         notes: values.notes,
@@ -164,12 +173,16 @@ export default function EditEventScreen() {
 
       <Controller
         control={control}
-        name="type"
+        name="category"
         render={({ field }) => (
-          <EventTypePicker
+          <EventCategoryPicker
             label={t('events.form.type')}
-            value={field.value}
-            onChange={field.onChange}
+            category={field.value ?? 'other'}
+            subcategory={getValues('subcategory') ?? null}
+            onChange={({ category, subcategory }) => {
+              field.onChange(category)
+              setValue('subcategory', subcategory)
+            }}
           />
         )}
       />

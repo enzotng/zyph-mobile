@@ -9,7 +9,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { DateField } from '@/components/date-field'
-import { EventTypePicker } from '@/components/event-type-picker'
+import { EventCategoryPicker } from '@/components/event-category-picker'
 import { GateLocationField } from '@/components/gate-location-field'
 import { LocationPicker } from '@/components/location-picker'
 import { MemberChips } from '@/components/member-chips'
@@ -50,7 +50,14 @@ export default function AddEventScreen() {
     formState: { errors },
   } = useForm<CreateEventValues>({
     resolver: zodResolver(createEventSchema),
-    defaultValues: { title: '', type: 'event', startsAt: initialStartsAt, endsAt: '', notes: '' },
+    defaultValues: {
+      title: '',
+      category: 'other',
+      subcategory: null,
+      startsAt: initialStartsAt,
+      endsAt: '',
+      notes: '',
+    },
   })
 
   const lat = useWatch({ control, name: 'lat' })
@@ -74,7 +81,8 @@ export default function AddEventScreen() {
       await createEvent.mutateAsync({
         tripId,
         title: values.title,
-        type: values.type,
+        category: values.category,
+        subcategory: values.subcategory,
         startsAt: values.startsAt,
         endsAt: values.endsAt || undefined,
         notes: values.notes,
@@ -126,12 +134,16 @@ export default function AddEventScreen() {
 
       <Controller
         control={control}
-        name="type"
+        name="category"
         render={({ field }) => (
-          <EventTypePicker
+          <EventCategoryPicker
             label={t('events.form.type')}
-            value={field.value}
-            onChange={field.onChange}
+            category={field.value ?? 'other'}
+            subcategory={getValues('subcategory') ?? null}
+            onChange={({ category, subcategory }) => {
+              field.onChange(category)
+              setValue('subcategory', subcategory)
+            }}
           />
         )}
       />
