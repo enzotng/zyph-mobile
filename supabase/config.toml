@@ -508,3 +508,13 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/calendar-feed/deno.json"
 entrypoint = "./functions/calendar-feed/index.ts"
+
+[functions.receive-booking-email]
+enabled = true
+# Public: Brevo's inbound-parse webhook POSTs here when an email lands at
+# roadtrip-<slug>@zyph.enzotang.fr - it cannot send a Supabase JWT. Auth is a shared bearer secret
+# (BREVO_INBOUND_SECRET) checked inside the function, same idiom as send-push's x-push-secret.
+# Requires a redeploy to take effect on cloud.
+verify_jwt = false
+import_map = "./functions/receive-booking-email/deno.json"
+entrypoint = "./functions/receive-booking-email/index.ts"
