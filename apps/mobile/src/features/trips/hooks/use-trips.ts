@@ -3,10 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createCalendarFeedToken,
   createTrip,
+  createTripInboxAddress,
   deleteTrip,
   getTrip,
+  getTripInboxAddress,
   listTrips,
   resetTripCover,
+  revokeTripInboxAddress,
+  setTripInboxAutoValidate,
   updateTrip,
   updateTripPreferences,
   uploadTripCover,
@@ -102,4 +106,49 @@ export function useResetTripCover() {
 // (and the caller's component state), so there is no query key to invalidate.
 export function useCreateCalendarFeedToken() {
   return useMutation({ mutationFn: createCalendarFeedToken })
+}
+
+// Unlike the calendar token, the inbox address is stable and re-displayable, so it is a real
+// cached query (not fetched into transient component state on open).
+export function tripInboxAddressQueryKey(tripId: string) {
+  return ['trip-inbox-address', tripId] as const
+}
+
+export function useTripInboxAddress(tripId: string) {
+  return useQuery({
+    queryKey: tripInboxAddressQueryKey(tripId),
+    queryFn: () => getTripInboxAddress(tripId),
+    enabled: Boolean(tripId),
+  })
+}
+
+export function useCreateTripInboxAddress() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createTripInboxAddress,
+    onSuccess: (_address, tripId) => {
+      void queryClient.invalidateQueries({ queryKey: tripInboxAddressQueryKey(tripId) })
+    },
+  })
+}
+
+export function useRevokeTripInboxAddress() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: revokeTripInboxAddress,
+    onSuccess: (_void, tripId) => {
+      void queryClient.invalidateQueries({ queryKey: tripInboxAddressQueryKey(tripId) })
+    },
+  })
+}
+
+export function useSetTripInboxAutoValidate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ tripId, on }: { tripId: string; on: boolean }) =>
+      setTripInboxAutoValidate(tripId, on),
+    onSuccess: (_void, { tripId }) => {
+      void queryClient.invalidateQueries({ queryKey: tripInboxAddressQueryKey(tripId) })
+    },
+  })
 }

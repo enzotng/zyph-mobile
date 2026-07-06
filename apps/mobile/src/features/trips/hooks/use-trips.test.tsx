@@ -3,11 +3,16 @@ import { renderHook, waitFor } from '@testing-library/react-native'
 import { createQueryWrapper } from '@/test-utils/query-wrapper'
 import * as api from '../api/trips.api'
 import {
+  tripInboxAddressQueryKey,
   tripsQueryKey,
   useCreateCalendarFeedToken,
   useCreateTrip,
+  useCreateTripInboxAddress,
   useDeleteTrip,
+  useRevokeTripInboxAddress,
+  useSetTripInboxAutoValidate,
   useTrip,
+  useTripInboxAddress,
   useTrips,
   useUpdateTrip,
 } from './use-trips'
@@ -157,5 +162,71 @@ describe('useCreateCalendarFeedToken', () => {
     // TanStack Query 5 calls mutationFn(variables, context) - assert on the variable only.
     expect(jest.mocked(api.createCalendarFeedToken).mock.calls[0]?.[0]).toBe('t1')
     expect(invalidate).not.toHaveBeenCalled()
+  })
+})
+
+const inboxAddress = { address: 'roadtrip-test-a1b2c3@zyph.enzotang.fr', autoValidate: false }
+
+describe('useTripInboxAddress', () => {
+  it('is disabled without a trip id', () => {
+    const { wrapper } = createQueryWrapper()
+
+    const { result } = renderHook(() => useTripInboxAddress(''), { wrapper })
+
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(api.getTripInboxAddress).not.toHaveBeenCalled()
+  })
+
+  it('fetches the cached address for a trip', async () => {
+    jest.mocked(api.getTripInboxAddress).mockResolvedValue(inboxAddress)
+    const { wrapper } = createQueryWrapper()
+
+    const { result } = renderHook(() => useTripInboxAddress('t1'), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toEqual(inboxAddress)
+  })
+})
+
+describe('useCreateTripInboxAddress', () => {
+  it('invalidates the address query for the mutated trip on success', async () => {
+    jest.mocked(api.createTripInboxAddress).mockResolvedValue(inboxAddress.address)
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useCreateTripInboxAddress(), { wrapper })
+    result.current.mutate('t1')
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: tripInboxAddressQueryKey('t1') })
+  })
+})
+
+describe('useRevokeTripInboxAddress', () => {
+  it('invalidates the address query for the mutated trip on success', async () => {
+    jest.mocked(api.revokeTripInboxAddress).mockResolvedValue(undefined)
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useRevokeTripInboxAddress(), { wrapper })
+    result.current.mutate('t1')
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: tripInboxAddressQueryKey('t1') })
+  })
+})
+
+describe('useSetTripInboxAutoValidate', () => {
+  it('calls the api with the trip id and flag, invalidating the address query on success', async () => {
+    jest.mocked(api.setTripInboxAutoValidate).mockResolvedValue(undefined)
+    const { wrapper, queryClient } = createQueryWrapper()
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = renderHook(() => useSetTripInboxAutoValidate(), { wrapper })
+    result.current.mutate({ tripId: 't1', on: true })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(api.setTripInboxAutoValidate).toHaveBeenCalledWith('t1', true)
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: tripInboxAddressQueryKey('t1') })
   })
 })
