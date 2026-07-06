@@ -490,6 +490,25 @@ export const fr: Translations = {
     calendarRegenerateConfirmBody:
       'Le lien actuel cessera de fonctionner immédiatement. Toute personne qui l’utilise devra récupérer le nouveau.',
     calendarError: 'Impossible de préparer le lien du calendrier. Réessaie.',
+    inboxRow: 'Boîte email du voyage',
+    inboxViewRow: 'Voir la boîte de réception',
+    inboxTitle: 'Adresse email du voyage',
+    inboxBody:
+      'Transfère tes emails de réservation à cette adresse : ils apparaissent ici comme des propositions à valider avant de rejoindre le voyage.',
+    inboxGenerate: 'Générer l’adresse',
+    inboxCopy: 'Copier',
+    inboxCopied: 'Copié !',
+    inboxShare: 'Partager',
+    inboxRegenerate: 'Régénérer',
+    inboxRegenerateConfirmTitle: 'Régénérer l’adresse ?',
+    inboxRegenerateConfirmBody:
+      'L’ancienne adresse et les règles de transfert qui pointent vers elle cesseront de fonctionner immédiatement.',
+    inboxAutoValidate: 'Valider automatiquement les imports',
+    inboxAutoValidateHint:
+      'Passe l’étape de vérification : les événements extraits sont ajoutés directement.',
+    inboxPrivacyNote:
+      'Les emails envoyés ici sont analysés par notre service d’import. On ne garde que les événements extraits.',
+    inboxError: 'Une erreur est survenue. Réessaie.',
   },
   newTrip: {
     title: 'Nouveau voyage',
@@ -1135,5 +1154,31 @@ export const fr: Translations = {
       rainyDay:
         'Il va pleuvoir le {{date}} - replanifie cette journée avec des activités en intérieur.',
     },
+  },
+  inbox: {
+    title: 'Boîte de réception',
+    reviewTitle: 'Vérifier la proposition',
+    emptyTitle: 'Rien à valider',
+    emptyBody:
+      'Les emails de réservation transférés apparaissent ici comme des propositions à valider.',
+    noSubject: '(sans objet)',
+    parsing: 'Analyse…',
+    noEvents: 'Rien d’extrait',
+    receivedFrom: 'De {{sender}}',
+    eventCount_one: '{{count}} événement',
+    eventCount_other: '{{count}} événements',
+    notFound: 'Proposition introuvable.',
+    securityTitle: 'Contenu externe',
+    securityBody: 'Vérifie l’expéditeur avant d’agir sur cette proposition.',
+    senderLabel: 'De {{sender}}',
+    validate: 'Ajouter à la timeline',
+    validating: 'Ajout…',
+    validateError: 'Impossible d’ajouter ces événements',
+    reject: 'Rejeter',
+    rejecting: 'Rejet…',
+    rejectConfirmTitle: 'Rejeter cette proposition ?',
+    rejectConfirmBody:
+      'Les événements extraits ne seront pas ajoutés au voyage. Cette action est irréversible.',
+    rejectError: 'Impossible de rejeter cette proposition',
   },
 }
