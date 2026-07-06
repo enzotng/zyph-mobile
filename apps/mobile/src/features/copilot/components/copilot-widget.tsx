@@ -7,7 +7,8 @@ import { Amount, Avatar, Surface } from '@/components/ui'
 import { useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
 import { groupReadiness, usePackingItems } from '@/features/packing'
-import { eventTypeIcon, useEvents } from '@/features/timeline'
+import { iconForCode } from '@/features/taxonomy'
+import { useEvents } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
 import { useTripWeather, WeatherCard } from '@/features/weather'
 import { withAlpha } from '@/lib/color'
@@ -120,7 +121,11 @@ function NextEventsWidget({ tripId }: { tripId: string }) {
       ) : (
         upcoming.map((event) => (
           <View key={event.id} style={styles.row}>
-            <Ionicons name={eventTypeIcon(event.type)} size={18} color={theme.colors.primary} />
+            <Ionicons
+              name={iconForCode(event.category, event.subcategory)}
+              size={18}
+              color={theme.colors.primary}
+            />
             <Text style={styles.rowLabel} numberOfLines={1}>
               {event.title}
             </Text>

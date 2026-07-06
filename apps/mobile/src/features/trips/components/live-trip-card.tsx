@@ -6,7 +6,8 @@ import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { AvatarStack, Badge, CityImage } from '@/components/ui'
-import { eventStatus, eventTypeIcon, formatCountdown, useEvents } from '@/features/timeline'
+import { iconForCode } from '@/features/taxonomy'
+import { eventStatus, formatCountdown, useEvents } from '@/features/timeline'
 import { PHOTO_CREAM, PHOTO_CREAM_MUTED } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 
@@ -159,7 +160,11 @@ export function LiveTripCard({ trip, now: initialNow, onPress }: LiveTripCardPro
             {showNextEvent && nextEvent ? (
               <>
                 <View style={styles.nextIcon}>
-                  <Ionicons name={eventTypeIcon(nextEvent.type)} size={16} color={PHOTO_CREAM} />
+                  <Ionicons
+                    name={iconForCode(nextEvent.category, nextEvent.subcategory)}
+                    size={16}
+                    color={PHOTO_CREAM}
+                  />
                 </View>
                 <View style={styles.nextText}>
                   <Text style={styles.nextEyebrow} numberOfLines={1}>
