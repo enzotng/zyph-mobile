@@ -20,7 +20,8 @@
         "jest-setup.ts",
         "jest/**",
         "package.json",
-        "$TURBO_ROOT$/supabase/functions/calendar-feed/**"
+        "$TURBO_ROOT$/supabase/functions/calendar-feed/**",
+        "$TURBO_ROOT$/supabase/functions/receive-booking-email/**"
       ],
       "outputs": []
     }
