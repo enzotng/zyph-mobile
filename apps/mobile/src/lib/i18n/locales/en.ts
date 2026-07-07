@@ -102,12 +102,6 @@ export const en = {
     yourShare: 'Your share {{amount}}',
   },
   categories: {
-    food: 'Food',
-    transport: 'Transport',
-    lodging: 'Lodging',
-    activity: 'Activity',
-    shopping: 'Shopping',
-    other: 'Other',
     none: 'None',
   },
   taxonomy: {

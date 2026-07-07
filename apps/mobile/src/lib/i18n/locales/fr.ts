@@ -105,12 +105,6 @@ export const fr: Translations = {
     yourShare: 'Ta part {{amount}}',
   },
   categories: {
-    food: 'Restauration',
-    transport: 'Transport',
-    lodging: 'Hébergement',
-    activity: 'Activité',
-    shopping: 'Achats',
-    other: 'Autre',
     none: 'Aucune',
   },
   taxonomy: {
