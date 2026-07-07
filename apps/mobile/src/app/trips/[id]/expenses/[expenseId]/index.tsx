@@ -10,8 +10,6 @@ import { Screen } from '@/components/screen'
 import { Avatar, Badge, Card, SectionTitle, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
-  CATEGORY_ICON,
-  type ExpenseCategory,
   formatAmount,
   groupMembersByItemId,
   useDeleteExpense,
@@ -22,6 +20,7 @@ import {
   useExpenseSplits,
 } from '@/features/expenses'
 import { memberLabel, useTripMemberNames } from '@/features/group'
+import { iconForCode, labelKeyForCode } from '@/features/taxonomy'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
@@ -101,7 +100,8 @@ export default function ExpenseDetailScreen() {
     )
   }
 
-  const category = (expense.category as ExpenseCategory | null) ?? null
+  const category = expense.category ?? null
+  const subcategory = expense.subcategory ?? null
   const isForeign = expense.currency !== trip.currency
   // Several payers -> list them; otherwise the single primary payer.
   const paidByName =
@@ -141,7 +141,7 @@ export default function ExpenseDetailScreen() {
             style={styles.headTile}
           >
             <Ionicons
-              name={category ? CATEGORY_ICON[category] : 'pricetag'}
+              name={iconForCode(category, subcategory)}
               size={23}
               color={theme.colors.primary}
             />
@@ -162,9 +162,9 @@ export default function ExpenseDetailScreen() {
             {category ? (
               <View style={styles.badgeWrap}>
                 <Badge
-                  label={t(`categories.${category}`)}
+                  label={t(labelKeyForCode(subcategory ?? category))}
                   tone="muted"
-                  icon={CATEGORY_ICON[category]}
+                  icon={iconForCode(category, subcategory)}
                 />
               </View>
             ) : null}

@@ -12,6 +12,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
+import { TaxonomyCategoryPicker } from '@/components/taxonomy-category-picker'
 import { TextField } from '@/components/text-field'
 import { Avatar, BottomSheet, Spinner, Surface } from '@/components/ui'
 import { initialOf } from '@/components/ui/avatar'
@@ -39,6 +40,7 @@ import {
 } from '@/features/expenses'
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
 import { memberLabel, useTripMembers } from '@/features/group'
+import { isValidCategory } from '@/features/taxonomy'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
@@ -61,6 +63,8 @@ type EditorProps = {
   initialDescription: string
   // position → member ids already assigned (pre-fill when re-editing).
   initialAssignmentsByPosition: Record<number, string[]>
+  initialCategory: string | null
+  initialSubcategory: string | null
 }
 
 // Resolves the attribution editor inputs from one of two sources:
@@ -136,6 +140,8 @@ export default function AttributeExpenseScreen() {
         expenseCurrency={expense.currency}
         initialDescription={expense.description}
         initialAssignmentsByPosition={buildAssignmentsByPosition(normalizedRows, assignmentRows)}
+        initialCategory={isValidCategory(expense.category) ? expense.category : null}
+        initialSubcategory={expense.subcategory}
       />
     )
   }
@@ -156,6 +162,8 @@ export default function AttributeExpenseScreen() {
       expenseCurrency={paramString(params.currency) || 'EUR'}
       initialDescription={paramString(params.description) || t('smartSplit.defaultDescription')}
       initialAssignmentsByPosition={{}}
+      initialCategory={null}
+      initialSubcategory={null}
     />
   )
 }
@@ -170,6 +178,8 @@ function AttributionEditor({
   expenseCurrency,
   initialDescription,
   initialAssignmentsByPosition,
+  initialCategory,
+  initialSubcategory,
 }: EditorProps) {
   const { t } = useTranslation()
   const router = useRouter()
@@ -201,6 +211,8 @@ function AttributionEditor({
     },
   )
   const [description, setDescription] = useState(initialDescription)
+  const [category, setCategory] = useState<string | null>(initialCategory)
+  const [subcategory, setSubcategory] = useState<string | null>(initialSubcategory)
   // Editable line items (label + decimal-string amount). The saved expense total is the
   // sum of these lines, so an OCR receipt whose lines do not match the printed total is
   // always saveable once the user has corrected or added lines. `id` is a stable React key
@@ -395,6 +407,8 @@ function AttributionEditor({
           fxRate,
           items: editedItems,
           assignments,
+          category,
+          subcategory,
         })
         haptics.success()
         router.back()
@@ -419,6 +433,8 @@ function AttributionEditor({
         fxRate,
         items: editedItems,
         assignments,
+        category,
+        subcategory,
       })
       haptics.success()
       router.replace({ pathname: '/trips/[id]/expenses', params: { id: tripId } })
@@ -468,6 +484,20 @@ function AttributionEditor({
               value={description}
               onChangeText={setDescription}
               placeholder={t('smartSplit.descriptionPlaceholder')}
+            />
+          </View>
+
+          <View style={styles.categoryField}>
+            <TaxonomyCategoryPicker
+              label={t('expenseForm.category')}
+              flag="expenses"
+              allowNone
+              category={category}
+              subcategory={subcategory}
+              onChange={({ category: nextCategory, subcategory: nextSubcategory }) => {
+                setCategory(nextCategory)
+                setSubcategory(nextSubcategory)
+              }}
             />
           </View>
 
@@ -772,6 +802,9 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingBottom: theme.gap(8),
   },
   descriptionField: {
+    paddingBottom: theme.gap(3),
+  },
+  categoryField: {
     paddingBottom: theme.gap(3),
   },
   reconcile: {

@@ -54,6 +54,8 @@ export type UpsertExpenseWithItemsInput = {
   fxRate: number
   items: SmartSplitItem[]
   assignments: SmartSplitAssignment[]
+  category?: string | null
+  subcategory?: string | null
 }
 
 export type CreateExpenseWithItemsInput = {
@@ -65,6 +67,8 @@ export type CreateExpenseWithItemsInput = {
   fxRate: number
   items: SmartSplitItem[]
   assignments: SmartSplitAssignment[]
+  category?: string | null
+  subcategory?: string | null
 }
 
 // Atomic Smart Split create: one RPC inserts the expense + items + assignments + splits, replacing
@@ -78,6 +82,8 @@ export async function createExpenseWithItems({
   fxRate,
   items,
   assignments,
+  category,
+  subcategory,
 }: CreateExpenseWithItemsInput) {
   const { data, error } = await supabase.rpc('create_expense_with_items', {
     _trip_id: tripId,
@@ -96,6 +102,8 @@ export async function createExpenseWithItems({
       member_id: assignment.memberId,
       share: assignment.share,
     })),
+    _category: category ?? undefined,
+    _subcategory: subcategory ?? undefined,
   })
   if (error) {
     throw error
@@ -112,6 +120,8 @@ export async function upsertExpenseWithItems({
   fxRate,
   items,
   assignments,
+  category,
+  subcategory,
 }: UpsertExpenseWithItemsInput) {
   const { data, error } = await supabase.rpc('upsert_expense_with_items', {
     _expense_id: expenseId,
@@ -130,6 +140,8 @@ export async function upsertExpenseWithItems({
       member_id: assignment.memberId,
       share: assignment.share,
     })),
+    _category: category ?? undefined,
+    _subcategory: subcategory ?? undefined,
   })
   if (error) {
     throw error

@@ -7,17 +7,15 @@ import { Alert, Pressable, Text, View } from 'react-native'
 import { StyleSheet } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
-import { CategoryPicker } from '@/components/category-picker'
 import { CurrencyPicker } from '@/components/currency-picker'
 import { Screen } from '@/components/screen'
+import { TaxonomyCategoryPicker } from '@/components/taxonomy-category-picker'
 import { TextField } from '@/components/text-field'
 import { Spinner } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
   createExpenseSchema,
-  EXPENSE_CATEGORIES,
-  type ExpenseCategory,
   toCents,
   useExpense,
   useExpensePayers,
@@ -32,6 +30,7 @@ import { SplitMemberRow } from '@/features/expenses/components/split-member-row'
 import { SplitModeSelector } from '@/features/expenses/components/split-mode-selector'
 import { convertCents, crossRate, useFxRates } from '@/features/fx'
 import { useTripMembers } from '@/features/group'
+import { isValidCategory } from '@/features/taxonomy'
 import { useTrip } from '@/features/trips'
 import { formatAmount } from '@/lib/money'
 import { paramString } from '@/lib/routing'
@@ -60,15 +59,13 @@ export default function EditExpenseScreen() {
   const currency = picked ?? expense?.currency ?? tripCurrency
 
   // Same lazy pattern as currency: picked overrides the loaded value when the user changes it.
-  const [pickedCategory, setPickedCategory] = useState<ExpenseCategory | null | undefined>(
-    undefined,
-  )
-  const expenseCategory = (EXPENSE_CATEGORIES as readonly string[]).includes(
-    expense?.category ?? '',
-  )
-    ? (expense?.category as ExpenseCategory)
-    : null
+  const [pickedCategory, setPickedCategory] = useState<string | null | undefined>(undefined)
+  const expenseCategory = isValidCategory(expense?.category) ? (expense?.category ?? null) : null
   const category = pickedCategory === undefined ? expenseCategory : pickedCategory
+
+  const [pickedSubcategory, setPickedSubcategory] = useState<string | null | undefined>(undefined)
+  const subcategory =
+    pickedSubcategory === undefined ? (expense?.subcategory ?? null) : pickedSubcategory
 
   // Payer falls back to the loaded paid_by then the current user; the editor seeds from the stored
   // payer rows (more than one opens it in multiple mode).
@@ -188,6 +185,7 @@ export default function EditExpenseScreen() {
         fxRate,
         splits: splitInputs,
         category,
+        subcategory,
         paidBy,
         payers: resolvedPayers,
       })
@@ -281,8 +279,17 @@ export default function EditExpenseScreen() {
             />
           </View>
           <View style={styles.col}>
-            <Text style={styles.fieldLabel}>{t('expenseForm.category')}</Text>
-            <CategoryPicker value={category} onChange={setPickedCategory} />
+            <TaxonomyCategoryPicker
+              label={t('expenseForm.category')}
+              flag="expenses"
+              allowNone
+              category={category}
+              subcategory={subcategory}
+              onChange={({ category, subcategory }) => {
+                setPickedCategory(category)
+                setPickedSubcategory(subcategory)
+              }}
+            />
           </View>
         </View>
 

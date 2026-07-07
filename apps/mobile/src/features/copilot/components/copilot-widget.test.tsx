@@ -82,22 +82,19 @@ describe('CopilotWidget spend_by_category', () => {
   it('renders each category label', () => {
     render(<CopilotWidget type="spend_by_category" tripId="t1" />)
 
-    // i18n translates known keys (food -> "Food", transport -> "Transport");
-    // unknown keys fall back to the key string.
-    expect(screen.getByText('Food')).toBeTruthy()
+    // Labels come from the taxonomy root label keys (food -> "Food & drink",
+    // transport -> "Transport"); a code with no matching taxonomy root falls back to the
+    // raw i18n key ("accommodation" is not a taxonomy root code).
+    expect(screen.getByText('Food & drink')).toBeTruthy()
     expect(screen.getByText('Transport')).toBeTruthy()
-    // "accommodation" key may or may not be translated depending on the test i18n fixture -
-    // assert the text node exists by querying either form.
-    const accommodationLabel =
-      screen.queryByText('Accommodation') ?? screen.queryByText('categories.accommodation')
-    expect(accommodationLabel).toBeTruthy()
+    expect(screen.getByText('taxonomy.accommodation._root')).toBeTruthy()
   })
 
   it('renders the top (largest) category with its formatted amount', () => {
     render(<CopilotWidget type="spend_by_category" tripId="t1" />)
 
     // Food is the top category (8000 + 2000 = 10000 cents). Assert both its label and amount.
-    expect(screen.getByText('Food')).toBeTruthy()
+    expect(screen.getByText('Food & drink')).toBeTruthy()
     // Amount renders as "100.00 EUR" under the test locale.
     expect(screen.getByText('100.00 EUR')).toBeTruthy()
   })

@@ -26,17 +26,6 @@ export async function listExpenses(tripId: string): Promise<Expense[]> {
   return data
 }
 
-export const EXPENSE_CATEGORIES = [
-  'food',
-  'transport',
-  'lodging',
-  'activity',
-  'shopping',
-  'other',
-] as const
-
-export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
-
 export type CreateExpenseInput = {
   tripId: string
   description: string
@@ -50,7 +39,9 @@ export type CreateExpenseInput = {
   // Per-member shares (in trip currency); must sum to baseAmountCents. The server
   // validates membership + the sum.
   splits: ExpenseSplit[]
-  category?: ExpenseCategory | null
+  // Taxonomy root code.
+  category?: string | null
+  subcategory?: string | null
   // Trip-member id of the payer; defaults to the caller server-side when omitted.
   paidBy?: string | null
   // Multi-payer breakdown (trip-currency cents, must sum to baseAmountCents). When omitted the
@@ -69,6 +60,7 @@ export async function createExpense({
   fxRate,
   splits,
   category,
+  subcategory,
   paidBy,
   payers,
 }: CreateExpenseInput): Promise<Expense> {
@@ -86,6 +78,7 @@ export async function createExpense({
     _fx_rate: fxRate,
     _splits: splits.map((s) => ({ member_id: s.memberId, share_cents: s.shareCents })),
     _category: category ?? undefined,
+    _subcategory: subcategory ?? undefined,
     _paid_by: paidBy ?? undefined,
     _payers: payers
       ? payers.map((p) => ({ member_id: p.memberId, paid_cents: p.paidCents }))
@@ -162,7 +155,8 @@ export type UpdateExpenseInput = {
   baseAmountCents: number
   fxRate: number
   splits: ExpenseSplit[]
-  category?: ExpenseCategory | null
+  category?: string | null
+  subcategory?: string | null
   // Trip-member id of the payer; keeps the existing payer server-side when omitted.
   paidBy?: string | null
   // Multi-payer breakdown (trip-currency cents, must sum to baseAmountCents). When omitted the
@@ -179,6 +173,7 @@ export async function updateExpense({
   fxRate,
   splits,
   category,
+  subcategory,
   paidBy,
   payers,
 }: UpdateExpenseInput): Promise<Expense> {
@@ -191,6 +186,7 @@ export async function updateExpense({
     _fx_rate: fxRate,
     _splits: splits.map((s) => ({ member_id: s.memberId, share_cents: s.shareCents })),
     _category: category ?? undefined,
+    _subcategory: subcategory ?? undefined,
     _paid_by: paidBy ?? undefined,
     _payers: payers
       ? payers.map((p) => ({ member_id: p.memberId, paid_cents: p.paidCents }))

@@ -14,10 +14,7 @@ import { TextField } from '@/components/text-field'
 import { Amount, Chip, EmptyState, ErrorState, Eyebrow, Skeleton, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
-  CATEGORY_ICON,
-  EXPENSE_CATEGORIES,
   type Expense,
-  type ExpenseCategory,
   expensesToCsv,
   filterExpenses,
   formatAmount,
@@ -26,6 +23,7 @@ import {
   useTripBalances,
 } from '@/features/expenses'
 import { memberLabel, useTripMembers } from '@/features/group'
+import { categoriesForFlag, iconForCode, labelKeyForCode } from '@/features/taxonomy'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
@@ -105,7 +103,10 @@ export default function TripExpensesScreen() {
   const { data: members } = useTripMembers(tripId)
 
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<ExpenseCategory | null>(null)
+  const [category, setCategory] = useState<string | null>(null)
+
+  // Root taxonomy nodes visible to the expense filter chips - stable across renders.
+  const expenseCategories = useMemo(() => categoriesForFlag('expenses'), [])
 
   const filtered = useMemo(
     () => filterExpenses(expenses ?? [], { query, category }),
@@ -204,7 +205,7 @@ export default function TripExpensesScreen() {
           tripAmount: t('expenses.csv.tripAmount', { currency: tripCurrency }),
           paidBy: t('expenses.csv.paidBy'),
         },
-        categoryLabel: (c) => (c ? t(`categories.${c as ExpenseCategory}`) : ''),
+        categoryLabel: (c) => (c ? t(labelKeyForCode(c)) : ''),
         payerName,
       })
       if (Platform.OS === 'ios') {
@@ -286,7 +287,7 @@ export default function TripExpensesScreen() {
               style={styles.rowTile}
             >
               <Ionicons
-                name={CATEGORY_ICON[expense.category as ExpenseCategory] ?? 'pricetag'}
+                name={iconForCode(expense.category, expense.subcategory)}
                 size={19}
                 color={theme.colors.primary}
               />
@@ -429,13 +430,13 @@ export default function TripExpensesScreen() {
                       selected={category === null}
                       onPress={() => setCategory(null)}
                     />
-                    {EXPENSE_CATEGORIES.map((key) => (
+                    {expenseCategories.map((root) => (
                       <Chip
-                        key={key}
-                        label={t(`categories.${key}`)}
-                        icon={CATEGORY_ICON[key]}
-                        selected={category === key}
-                        onPress={() => setCategory(key)}
+                        key={root.code}
+                        label={t(labelKeyForCode(root.code))}
+                        icon={iconForCode(root.code, null)}
+                        selected={category === root.code}
+                        onPress={() => setCategory(root.code)}
                       />
                     ))}
                   </ScrollView>

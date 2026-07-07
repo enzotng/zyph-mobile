@@ -12,6 +12,7 @@ const make = (overrides: { id: string; description: string; category?: string | 
   paid_by: 'm1',
   deleted_at: null,
   category: overrides.category ?? null,
+  subcategory: null,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
   version: 1,
