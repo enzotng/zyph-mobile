@@ -188,6 +188,10 @@ export default function TripExpensesScreen() {
     router.push({ pathname: '/trips/[id]/balances', params: { id: tripId } })
   }
 
+  function goAnalytics() {
+    router.push({ pathname: '/trips/[id]/analytics', params: { id: tripId } })
+  }
+
   // Write the expense list to a CSV in the cache dir and hand it to the native share sheet
   // (save to Files, email, AirDrop on iOS). Android shares the CSV text as a fallback.
   const onExport = useCallback(async () => {
@@ -321,6 +325,18 @@ export default function TripExpensesScreen() {
       showBack
       right={
         <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => {
+              haptics.light()
+              goAnalytics()
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t('analytics.title')}
+            hitSlop={8}
+            style={({ pressed }) => [pressed && styles.pressed]}
+          >
+            <Ionicons name="pie-chart-outline" size={22} color={theme.colors.foreground} />
+          </Pressable>
           {hasExpenses ? (
             <Pressable
               onPress={() => {
