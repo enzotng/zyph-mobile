@@ -1,29 +1,22 @@
-import { isValidCategory, isValidSubcategory, LEGACY_TYPE_MAP } from '@/features/taxonomy'
+import { isValidCategory, isValidSubcategory } from '@/features/taxonomy'
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
 
 export type TripEvent = Database['public']['Tables']['trip_events']['Row']
 
-// Resolves the taxonomy code a write should use: prefer the caller's category/subcategory, and
-// fall back to mapping their legacy type (see LEGACY_TYPE_MAP) so old callers still land on the
-// right code without ever writing the deprecated `type` column themselves.
+// Resolves the taxonomy code a write should use, defaulting to 'other' / null when the caller
+// omits or supplies an invalid category or subcategory.
 function resolveCode(
   category: string | undefined,
   subcategory: string | null | undefined,
-  type: string | undefined,
 ): { category: string; subcategory: string | null } {
-  const legacy = LEGACY_TYPE_MAP[type ?? 'event'] ?? { category: 'other', subcategory: null }
-  const resolvedCategory = category ?? legacy.category
-  const resolvedSubcategory = subcategory !== undefined ? subcategory : legacy.subcategory
   // Defense in depth: the two event forms validate the pair via zod, but other callers build the
   // input directly and bypass it, and the DB only CHECKs `category` (not `subcategory`). Re-validate
   // here so a bad or mismatched code never reaches the row, regardless of caller.
-  const safeCategory = isValidCategory(resolvedCategory) ? resolvedCategory : 'other'
+  const safeCategory = category && isValidCategory(category) ? category : 'other'
   const safeSubcategory =
-    resolvedSubcategory &&
-    isValidSubcategory(resolvedSubcategory) &&
-    resolvedSubcategory.startsWith(`${safeCategory}.`)
-      ? resolvedSubcategory
+    subcategory && isValidSubcategory(subcategory) && subcategory.startsWith(`${safeCategory}.`)
+      ? subcategory
       : null
   return { category: safeCategory, subcategory: safeSubcategory }
 }
@@ -61,7 +54,6 @@ export type GateLocation = {
 export type CreateEventInput = {
   tripId: string
   title: string
-  type?: string
   category?: string
   subcategory?: string | null
   startsAt: string
@@ -76,7 +68,6 @@ export type CreateEventInput = {
 export async function createEvent({
   tripId,
   title,
-  type,
   category,
   subcategory,
   startsAt,
@@ -93,7 +84,7 @@ export async function createEvent({
     throw new Error('You must be signed in.')
   }
 
-  const code = resolveCode(category, subcategory, type)
+  const code = resolveCode(category, subcategory)
   const { data, error } = await supabase
     .from('trip_events')
     .insert({
@@ -122,7 +113,6 @@ export async function createEvent({
 export type UpdateEventInput = {
   eventId: string
   title: string
-  type?: string
   category?: string
   subcategory?: string | null
   startsAt: string
@@ -137,7 +127,6 @@ export type UpdateEventInput = {
 export async function updateEvent({
   eventId,
   title,
-  type,
   category,
   subcategory,
   startsAt,
@@ -148,9 +137,8 @@ export async function updateEvent({
   gateLocation,
   participants,
 }: UpdateEventInput): Promise<TripEvent> {
-  const hasClassification =
-    category !== undefined || subcategory !== undefined || type !== undefined
-  const code = hasClassification ? resolveCode(category, subcategory, type) : null
+  const hasClassification = category !== undefined || subcategory !== undefined
+  const code = hasClassification ? resolveCode(category, subcategory) : null
   const { data, error } = await supabase
     .from('trip_events')
     .update({
@@ -176,7 +164,6 @@ export async function updateEvent({
 
 export type NewItineraryEvent = {
   title: string
-  type?: string
   category?: string
   subcategory?: string | null
   startsAt: string
@@ -210,7 +197,7 @@ export async function createEvents(
     throw new Error('You must be signed in.')
   }
   const rows = events.map((e) => {
-    const code = resolveCode(e.category, e.subcategory, e.type)
+    const code = resolveCode(e.category, e.subcategory)
     return {
       trip_id: tripId,
       title: e.title,

@@ -1087,14 +1087,6 @@ export const fr: Translations = {
       subcategory: 'Sous-catégorie',
       subcategoryNone: 'Aucune sous-catégorie',
     },
-    types: {
-      flight: 'Vol',
-      lodging: 'Hébergement',
-      transport: 'Transport',
-      activity: 'Activité',
-      food: 'Repas',
-      event: 'Événement',
-    },
     detail: {
       title: 'Événement',
       notFound: 'Événement introuvable.',

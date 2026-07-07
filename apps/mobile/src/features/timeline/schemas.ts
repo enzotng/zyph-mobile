@@ -14,10 +14,10 @@ export const createEventSchema = z
   .object({
     title: z.string().trim().min(1, 'Title is required').max(120),
     // Unified taxonomy: a root category and an optional dotted subcategory, both validated
-    // against the closed set so a legacy/hallucinated code never reaches the write path. No
+    // against the closed set so a hallucinated code never reaches the write path. No
     // zod .default() here (see trips/schemas.ts): it would make the output type require the
     // field, breaking the react-hook-form resolver for callers that omit it - the API layer
-    // (timeline.api.ts resolveCode) falls back to 'other' via LEGACY_TYPE_MAP instead.
+    // (timeline.api.ts resolveCode) falls back to 'other' instead.
     category: z
       .string()
       .optional()

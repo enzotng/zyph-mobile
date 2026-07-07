@@ -95,7 +95,7 @@ describe('createEvent', () => {
       trip_id: 't1',
       title: 'Eiffel Tower visit',
       category: 'other',
-      subcategory: 'other.event',
+      subcategory: null,
       starts_at: '2024-06-01T10:00:00Z',
       ends_at: '2024-06-01T12:00:00Z',
       notes: 'Bring camera',
@@ -129,28 +129,12 @@ describe('createEvent', () => {
     )
   })
 
-  it('resolves category/subcategory from the legacy type, defaulting to other', async () => {
+  it('uses an explicit category/subcategory as-is when valid', async () => {
     getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
     const builder = makeQueryBuilder({ data: event, error: null })
     from.mockReturnValue(builder)
 
-    await createEvent({ ...input, type: 'flight' })
-    expect(builder.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ category: 'transport', subcategory: 'transport.flight' }),
-    )
-
-    await createEvent(input)
-    expect(builder.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ category: 'other', subcategory: 'other.event' }),
-    )
-  })
-
-  it('prefers an explicit category/subcategory over the legacy type mapping', async () => {
-    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
-    const builder = makeQueryBuilder({ data: event, error: null })
-    from.mockReturnValue(builder)
-
-    await createEvent({ ...input, type: 'flight', category: 'food', subcategory: 'food.bar' })
+    await createEvent({ ...input, category: 'food', subcategory: 'food.bar' })
     expect(builder.insert).toHaveBeenCalledWith(
       expect.objectContaining({ category: 'food', subcategory: 'food.bar' }),
     )
@@ -173,6 +157,17 @@ describe('createEvent', () => {
     from.mockReturnValue(builder)
 
     await createEvent({ ...input, category: 'food', subcategory: 'transport.flight' })
+    expect(builder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ category: 'food', subcategory: null }),
+    )
+  })
+
+  it('drops a subcategory that is not a real taxonomy leaf even when correctly prefixed', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const builder = makeQueryBuilder({ data: event, error: null })
+    from.mockReturnValue(builder)
+
+    await createEvent({ ...input, category: 'food', subcategory: 'food.nonexistent' })
     expect(builder.insert).toHaveBeenCalledWith(
       expect.objectContaining({ category: 'food', subcategory: null }),
     )
@@ -258,17 +253,17 @@ describe('updateEvent', () => {
     )
   })
 
-  it('resolves category/subcategory from the provided type', async () => {
+  it('resolves category/subcategory from the provided category', async () => {
     const builder = makeQueryBuilder({ data: event, error: null })
     from.mockReturnValue(builder)
 
-    await updateEvent({ ...input, type: 'lodging' })
+    await updateEvent({ ...input, category: 'lodging' })
     expect(builder.update).toHaveBeenCalledWith(
       expect.objectContaining({ category: 'lodging', subcategory: null }),
     )
   })
 
-  it('does not write category/subcategory when none of category, subcategory or type is provided', async () => {
+  it('does not write category/subcategory when neither is provided', async () => {
     const builder = makeQueryBuilder({ data: event, error: null })
     from.mockReturnValue(builder)
 
@@ -298,16 +293,6 @@ describe('updateEvent', () => {
     )
   })
 
-  it('prefers an explicit category/subcategory over the legacy type mapping', async () => {
-    const builder = makeQueryBuilder({ data: event, error: null })
-    from.mockReturnValue(builder)
-
-    await updateEvent({ ...input, type: 'lodging', category: 'food', subcategory: 'food.cafe' })
-    expect(builder.update).toHaveBeenCalledWith(
-      expect.objectContaining({ category: 'food', subcategory: 'food.cafe' }),
-    )
-  })
-
   it('sets nullable fields to null when empty', async () => {
     const builder = makeQueryBuilder({ data: event, error: null })
     from.mockReturnValue(builder)
@@ -328,7 +313,7 @@ describe('updateEvent', () => {
 describe('createEvents', () => {
   const e1 = {
     title: 'Eiffel Tower',
-    type: 'activity',
+    category: 'activity',
     startsAt: '2024-06-01T10:00:00Z',
     lat: 48.8584,
     lng: 2.2945,
@@ -337,7 +322,7 @@ describe('createEvents', () => {
   }
   const e2 = {
     title: 'Louvre',
-    type: 'activity',
+    category: 'activity',
     startsAt: '2024-06-01T14:00:00Z',
     lat: 48.8606,
     lng: 2.3376,
@@ -413,7 +398,8 @@ describe('createEvents', () => {
     await createEvents('trip-1', [
       {
         title: 'Flight ZY123',
-        type: 'flight',
+        category: 'transport',
+        subcategory: 'transport.flight',
         startsAt: '2026-07-10T08:20:00+02:00',
         endsAt: '2026-07-10T10:35:00+02:00',
         lat: 49.45,
@@ -435,7 +421,8 @@ describe('createEvents', () => {
     await createEvents('trip-1', [
       {
         title: 'Flight ZY123',
-        type: 'flight',
+        category: 'transport',
+        subcategory: 'transport.flight',
         startsAt: '2026-07-10T08:20:00+02:00',
         lat: 49.0097,
         lng: 2.5479,
@@ -457,7 +444,7 @@ describe('createEvents', () => {
     await createEvents('trip-1', [
       {
         title: 'X',
-        type: 'activity',
+        category: 'activity',
         startsAt: '2026-07-27T08:20:00Z',
         lat: null,
         lng: null,
@@ -480,7 +467,7 @@ describe('createEvents', () => {
     await createEvents('trip-1', [
       {
         title: 'Louvre',
-        type: 'activity',
+        category: 'activity',
         startsAt: '2026-07-27T08:20:00Z',
         lat: null,
         lng: null,
@@ -490,6 +477,27 @@ describe('createEvents', () => {
     ])
     const inserted = builder.insert.mock.calls[0][0]
     expect(inserted[0].participants).toEqual(['u1', 'u2'])
+  })
+
+  it('falls back to other and drops the subcategory for a batch event with an invalid category', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } })
+    const builder = makeQueryBuilder({ data: [event], error: null })
+    from.mockReturnValue(builder)
+
+    await createEvents('trip-1', [
+      {
+        title: 'Mystery stop',
+        category: 'bogus',
+        subcategory: 'bogus.thing',
+        startsAt: '2026-07-27T08:20:00Z',
+        lat: null,
+        lng: null,
+        placeId: null,
+      },
+    ])
+    const inserted = builder.insert.mock.calls[0][0]
+    expect(inserted[0].category).toBe('other')
+    expect(inserted[0].subcategory).toBeNull()
   })
 })
 

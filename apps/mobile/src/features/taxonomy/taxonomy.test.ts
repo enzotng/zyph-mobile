@@ -3,7 +3,6 @@ import {
   iconForCode,
   isValidCategory,
   isValidSubcategory,
-  LEGACY_TYPE_MAP,
   labelKeyForCode,
   ROOT_CODES,
   rootOf,
@@ -79,20 +78,5 @@ describe('taxonomy', () => {
     const transportSubs = subcategoriesForFlag('transport', 'events').map((s) => s.code)
     expect(transportSubs).not.toContain('transport.parking')
     expect(transportSubs).toContain('transport.flight')
-  })
-
-  it('maps every legacy event type losslessly', () => {
-    expect(LEGACY_TYPE_MAP.flight).toEqual({
-      category: 'transport',
-      subcategory: 'transport.flight',
-    })
-    expect(LEGACY_TYPE_MAP.event).toEqual({ category: 'other', subcategory: 'other.event' })
-    expect(LEGACY_TYPE_MAP.food).toEqual({ category: 'food', subcategory: null })
-    for (const v of Object.values(LEGACY_TYPE_MAP)) {
-      expect(isValidCategory(v.category)).toBe(true)
-      if (v.subcategory) {
-        expect(isValidSubcategory(v.subcategory)).toBe(true)
-      }
-    }
   })
 })
