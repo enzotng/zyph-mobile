@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
@@ -13,29 +13,37 @@ import {
 } from '@/features/taxonomy'
 import { withAlpha } from '@/lib/color'
 
-type EventCategoryPickerProps = {
+type TaxonomyCategoryPickerProps = {
   label: string
-  category: string
+  flag: 'events' | 'expenses'
+  category: string | null
   subcategory: string | null
-  onChange: (next: { category: string; subcategory: string | null }) => void
+  onChange: (next: { category: string | null; subcategory: string | null }) => void
+  allowNone?: boolean
 }
 
-const EVENT_ROOTS = categoriesForFlag('events')
+const NONE_ICON = 'close-circle-outline'
 
-// Root chips (one per events-flagged root) + an optional subcategory bottom sheet. Picking a new
-// root clears the subcategory (a leaf must always belong to the selected root); the sheet lets the
-// user refine or reset to "None".
-export function EventCategoryPicker({
+// Root chips (one per flag-visible root, optionally led by a "None" chip when `allowNone`) + an
+// optional subcategory bottom sheet. Picking a new root clears the subcategory (a leaf must
+// always belong to the selected root); the sheet lets the user refine or reset to "None".
+export function TaxonomyCategoryPicker({
   label,
+  flag,
   category,
   subcategory,
   onChange,
-}: EventCategoryPickerProps) {
+  allowNone = false,
+}: TaxonomyCategoryPickerProps) {
   const { theme } = useUnistyles()
   const { t } = useTranslation()
   const [sheetOpen, setSheetOpen] = useState(false)
 
-  const subs = subcategoriesForFlag(category, 'events')
+  const roots = useMemo(() => categoriesForFlag(flag), [flag])
+  const subs = useMemo(
+    () => (category ? subcategoriesForFlag(category, flag) : []),
+    [category, flag],
+  )
 
   const check = (selected: boolean) => (
     <View style={styles.check}>
@@ -47,7 +55,32 @@ export function EventCategoryPicker({
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.row}>
-        {EVENT_ROOTS.map((root) => {
+        {allowNone ? (
+          <Pressable
+            onPress={() => onChange({ category: null, subcategory: null })}
+            accessibilityRole="button"
+            accessibilityState={{ selected: category === null }}
+            style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+          >
+            <Surface
+              radius={theme.radius.md}
+              color={category === null ? withAlpha(theme.colors.primary, 0.12) : theme.colors.card}
+              borderColor={category === null ? theme.colors.primary : theme.colors.border}
+              borderWidth={1.5}
+              style={styles.chip}
+            >
+              <Ionicons
+                name={NONE_ICON}
+                size={18}
+                color={category === null ? theme.colors.primary : theme.colors.muted}
+              />
+              <Text style={[styles.chipLabel, category === null && styles.chipLabelActive]}>
+                {t('categories.none')}
+              </Text>
+            </Surface>
+          </Pressable>
+        ) : null}
+        {roots.map((root) => {
           const selected = root.code === category
           return (
             <Pressable
@@ -78,7 +111,7 @@ export function EventCategoryPicker({
         })}
       </View>
 
-      {subs.length > 0 ? (
+      {category !== null && subs.length > 0 ? (
         <Pressable
           onPress={() => setSheetOpen(true)}
           accessibilityRole="button"
@@ -105,37 +138,39 @@ export function EventCategoryPicker({
         </Pressable>
       ) : null}
 
-      <BottomSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        title={t('events.form.subcategory')}
-      >
-        <ListRow
-          title={t('events.form.subcategoryNone')}
-          right={check(subcategory === null)}
-          onPress={() => {
-            onChange({ category, subcategory: null })
-            setSheetOpen(false)
-          }}
-          accessibilityRole="radio"
-          accessibilityState={{ selected: subcategory === null }}
-        />
-        {subs.map((leaf, index) => (
+      {category !== null ? (
+        <BottomSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          title={t('events.form.subcategory')}
+        >
           <ListRow
-            key={leaf.code}
-            icon={leaf.icon}
-            title={t(labelKeyForCode(leaf.code))}
-            right={check(subcategory === leaf.code)}
+            title={t('events.form.subcategoryNone')}
+            right={check(subcategory === null)}
             onPress={() => {
-              onChange({ category, subcategory: leaf.code })
+              onChange({ category, subcategory: null })
               setSheetOpen(false)
             }}
-            last={index === subs.length - 1}
             accessibilityRole="radio"
-            accessibilityState={{ selected: subcategory === leaf.code }}
+            accessibilityState={{ selected: subcategory === null }}
           />
-        ))}
-      </BottomSheet>
+          {subs.map((leaf, index) => (
+            <ListRow
+              key={leaf.code}
+              icon={leaf.icon}
+              title={t(labelKeyForCode(leaf.code))}
+              right={check(subcategory === leaf.code)}
+              onPress={() => {
+                onChange({ category, subcategory: leaf.code })
+                setSheetOpen(false)
+              }}
+              last={index === subs.length - 1}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: subcategory === leaf.code }}
+            />
+          ))}
+        </BottomSheet>
+      ) : null}
     </View>
   )
 }
