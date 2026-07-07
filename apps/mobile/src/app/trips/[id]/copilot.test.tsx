@@ -60,8 +60,6 @@ jest.mock('@/features/trips', () => ({
 jest.mock('@/features/timeline', () => ({
   useEvents: () => ({ data: [], isError: false, refetch: jest.fn() }),
   useCreateEvents: () => ({ mutateAsync: jest.fn(), isPending: false }),
-  eventTypeIcon: () => 'calendar',
-  EVENT_TYPES: [],
 }))
 jest.mock('@/features/expenses', () => ({
   useExpenses: () => ({ data: [], isError: false, refetch: jest.fn() }),

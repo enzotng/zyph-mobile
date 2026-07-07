@@ -187,15 +187,3 @@ export function subcategoriesForFlag(rootCode: string, flag: 'events' | 'expense
   }
   return root.subcategories.filter((s) => s.flag === 'both' || s.flag === flag)
 }
-
-// Maps every legacy trip_events.type value to a new (category, subcategory) pair. Used by the
-// migration backfill, and at read time by the copilot/legacy consumers that still emit old types.
-export const LEGACY_TYPE_MAP: Record<string, { category: string; subcategory: string | null }> = {
-  flight: { category: 'transport', subcategory: 'transport.flight' },
-  hotel: { category: 'lodging', subcategory: 'lodging.hotel' },
-  lodging: { category: 'lodging', subcategory: null },
-  transport: { category: 'transport', subcategory: null },
-  activity: { category: 'activity', subcategory: null },
-  food: { category: 'food', subcategory: null },
-  event: { category: 'other', subcategory: 'other.event' },
-}

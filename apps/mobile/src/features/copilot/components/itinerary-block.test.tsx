@@ -11,17 +11,26 @@ jest.mock('@/features/places', () => ({
   usePoiPhoto: () => ({ data: null }),
 }))
 
-// Stub supabase so transitive imports from timeline/event-types don't need a real client.
-jest.mock('@/lib/supabase')
-
 const BLOCK: ItineraryBlockData = {
   kind: 'itinerary',
   days: [
     {
       date: '2025-12-01',
       items: [
-        { placeId: 'place-1', title: 'Visit the museum', type: 'activity', time: '10:00' },
-        { placeId: 'place-2', title: 'Dinner at the market', type: 'food', time: '19:00' },
+        {
+          placeId: 'place-1',
+          title: 'Visit the museum',
+          category: 'activity',
+          subcategory: 'activity.sightseeing',
+          time: '10:00',
+        },
+        {
+          placeId: 'place-2',
+          title: 'Dinner at the market',
+          category: 'food',
+          subcategory: null,
+          time: '19:00',
+        },
       ],
     },
   ],
@@ -109,11 +118,27 @@ describe('ItineraryBlock', () => {
     expect(events[0].lat).toBe(48.1)
     expect(events[0].lng).toBe(2.1)
     expect(events[0].startsAt).toBe(new Date('2025-12-01T10:00:00').toISOString())
+    expect(events[0].category).toBe('activity')
+    expect(events[0].subcategory).toBe('activity.sightseeing')
 
     expect(events[1].placeId).toBe('place-2')
     expect(events[1].lat).toBe(48.2)
     expect(events[1].lng).toBe(2.2)
     expect(events[1].startsAt).toBe(new Date('2025-12-01T19:00:00').toISOString())
+    expect(events[1].category).toBe('food')
+    expect(events[1].subcategory).toBeNull()
+  })
+
+  it('changing item 1 category via the taxonomy picker forwards the new category and clears the subcategory', () => {
+    const { onAdd } = renderBlock()
+
+    fireEvent.press(screen.getAllByText('Food & drink')[0])
+    fireEvent.press(screen.getByText('Add to timeline'))
+
+    expect(onAdd).toHaveBeenCalledTimes(1)
+    const events: NewItineraryEvent[] = onAdd.mock.calls[0][0]
+    expect(events[0].category).toBe('food')
+    expect(events[0].subcategory).toBeNull()
   })
 
   it('toggling item 1 off then Add calls onAdd with only item 2', () => {
@@ -156,7 +181,15 @@ describe('ItineraryBlock', () => {
       days: [
         {
           date: '2025-12-05',
-          items: [{ placeId: 'place-1', title: 'Old museum', type: 'activity', time: '09:00' }],
+          items: [
+            {
+              placeId: 'place-1',
+              title: 'Old museum',
+              category: 'activity',
+              subcategory: null,
+              time: '09:00',
+            },
+          ],
         },
       ],
     }

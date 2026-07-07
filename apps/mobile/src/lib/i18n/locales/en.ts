@@ -1075,14 +1075,6 @@ export const en = {
       subcategory: 'Subcategory',
       subcategoryNone: 'No subcategory',
     },
-    types: {
-      flight: 'Flight',
-      lodging: 'Lodging',
-      transport: 'Transport',
-      activity: 'Activity',
-      food: 'Food',
-      event: 'Event',
-    },
     detail: {
       title: 'Event',
       notFound: 'Event not found.',

@@ -117,7 +117,7 @@ describe('useCreateEvents', () => {
       events: [
         {
           title: 'Eiffel Tower',
-          type: 'activity',
+          category: 'activity',
           startsAt: '2024-06-01T10:00:00Z',
           lat: 48.8584,
           lng: 2.2945,

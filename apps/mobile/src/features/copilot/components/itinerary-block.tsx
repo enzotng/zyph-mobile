@@ -6,7 +6,7 @@ import { Pressable, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
-import { EventTypePicker } from '@/components/event-type-picker'
+import { TaxonomyCategoryPicker } from '@/components/taxonomy-category-picker'
 import { TextField } from '@/components/text-field'
 import { Surface } from '@/components/ui'
 import { type Poi, usePoiPhoto } from '@/features/places'
@@ -25,7 +25,8 @@ type EditItem = {
   included: boolean
   title: string
   time: string
-  type: string
+  category: string
+  subcategory: string | null
   placeId: string
   notes: string
 }
@@ -47,7 +48,9 @@ type ItemCardProps = {
   item: EditItem
   poi: Poi | undefined
   onToggle: () => void
-  onChange: (patch: Partial<Pick<EditItem, 'title' | 'time' | 'type' | 'notes'>>) => void
+  onChange: (
+    patch: Partial<Pick<EditItem, 'title' | 'time' | 'category' | 'subcategory' | 'notes'>>,
+  ) => void
 }
 
 function ItineraryItemCard({ item, poi, onToggle, onChange }: ItemCardProps) {
@@ -101,10 +104,14 @@ function ItineraryItemCard({ item, poi, onToggle, onChange }: ItemCardProps) {
               maxLength={5}
               onChangeText={(v) => onChange({ time: v })}
             />
-            <EventTypePicker
+            <TaxonomyCategoryPicker
               label={t('itinerary.typeLabel')}
-              value={item.type}
-              onChange={(v) => onChange({ type: v })}
+              flag="events"
+              category={item.category}
+              subcategory={item.subcategory}
+              onChange={({ category, subcategory }) =>
+                onChange({ category: category ?? 'other', subcategory })
+              }
             />
 
             {/* Meta row: rating, price level, open/closed (all conditional on poi + field) */}
@@ -155,7 +162,8 @@ export function ItineraryBlock({
         included: true,
         title: it.title,
         time: it.time ?? '12:00',
-        type: it.type,
+        category: it.category,
+        subcategory: it.subcategory,
         placeId: it.placeId,
         notes: it.notes ?? '',
       })),
@@ -170,7 +178,7 @@ export function ItineraryBlock({
 
   const patchItem = (
     id: string,
-    patch: Partial<Pick<EditItem, 'title' | 'time' | 'type' | 'notes'>>,
+    patch: Partial<Pick<EditItem, 'title' | 'time' | 'category' | 'subcategory' | 'notes'>>,
   ) => {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)))
   }
@@ -196,7 +204,8 @@ export function ItineraryBlock({
       .filter((i) => i.included)
       .map((i) => ({
         title: i.title,
-        type: i.type,
+        category: i.category,
+        subcategory: i.subcategory,
         startsAt: new Date(`${i.date}T${i.time || '12:00'}:00`).toISOString(),
         lat: poiById.get(i.placeId)?.lat ?? null,
         lng: poiById.get(i.placeId)?.lng ?? null,

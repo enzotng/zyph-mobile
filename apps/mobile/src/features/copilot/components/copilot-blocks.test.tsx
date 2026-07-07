@@ -80,7 +80,10 @@ describe('CopilotBlocks', () => {
       {
         kind: 'itinerary',
         days: [
-          { date: '2025-12-01', items: [{ placeId: 'p1', title: 'Museum', type: 'activity' }] },
+          {
+            date: '2025-12-01',
+            items: [{ placeId: 'p1', title: 'Museum', category: 'activity', subcategory: null }],
+          },
         ],
       },
     ]

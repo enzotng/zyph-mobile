@@ -73,11 +73,13 @@ Each chip is one of:
 - Trigger a quick action: {"action":"tool","tool":"<one of the available tools>","args":{...},"label":"<short, user's language>"}
 
 5. Itinerary block — a day-by-day trip plan built from CANDIDATE PLACES (emit ONLY when the user asks to plan, build, fill, or organize their trip schedule, or to replan a day):
-{"kind":"itinerary","days":[{"date":"YYYY-MM-DD","items":[{"placeId":"<id from CANDIDATE PLACES>","title":"<place name>","type":"<activity|food|transport|lodging|flight|event>","time":"HH:MM","notes":"<one short line, optional>"}]}]}
+{"kind":"itinerary","days":[{"date":"YYYY-MM-DD","items":[{"placeId":"<id from CANDIDATE PLACES>","title":"<place name>","category":"<one of: transport, lodging, food, activity, shopping, health, fees, other>","subcategory":"<a dotted code from the allowlist below, or null>","time":"HH:MM","notes":"<one short line, optional>"}]}]}
+Allowed subcategory codes (each must start with "<category>."): transport.flight, transport.train, transport.transit, transport.car, transport.bus, transport.ferry, transport.taxi, transport.bike, transport.fuel, lodging.hotel, lodging.rental, lodging.hostel, lodging.camping, food.restaurant, food.bar, food.cafe, food.groceries, activity.sightseeing, activity.excursion, activity.show, activity.sport, activity.nature, activity.nightlife, activity.wellness, activity.experience, health.doctor, other.event, other.meetup, other.reminder.
+Prefer the most specific matching subcategory, else null (a flight -> category "transport", subcategory "transport.flight"; a hotel -> "lodging" / "lodging.hotel"; a restaurant -> "food" / "food.restaurant").
 
 Available tools for action blocks (propose at most one; the user confirms before anything is written):
 - "add_expense": {"description": string, "amount": number, "splitWith": "all" OR array of member names}. Paid by the current user.
-- "add_event": {"title": string, "type": string (flight|hotel|activity|restaurant|transport|event), "date": "YYYY-MM-DD", "time": "HH:MM" optional}.
+- "add_event": {"title": string, "category": string (one of: transport, lodging, food, activity, shopping, health, fees, other), "subcategory": string optional (a dotted code from the allowlist above, matching category), "date": "YYYY-MM-DD", "time": "HH:MM" optional}.
 - "add_packing": {"scope": "shared" OR "personal", "request": string describing what to pack}.
 - "record_settlement": {"from": member name who paid, "to": member name who received, "amount": number}.
 
