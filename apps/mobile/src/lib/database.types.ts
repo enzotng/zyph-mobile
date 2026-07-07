@@ -328,6 +328,7 @@ export type Database = {
           fx_rate: number
           id: string
           paid_by: string | null
+          subcategory: string | null
           trip_id: string
           updated_at: string
           version: number
@@ -344,6 +345,7 @@ export type Database = {
           fx_rate?: number
           id?: string
           paid_by?: string | null
+          subcategory?: string | null
           trip_id: string
           updated_at?: string
           version?: number
@@ -360,6 +362,7 @@ export type Database = {
           fx_rate?: number
           id?: string
           paid_by?: string | null
+          subcategory?: string | null
           trip_id?: string
           updated_at?: string
           version?: number
@@ -1148,10 +1151,12 @@ export type Database = {
           _amount_cents: number
           _assignments: Json
           _base_amount_cents: number
+          _category?: string
           _currency: string
           _description: string
           _fx_rate: number
           _items: Json
+          _subcategory?: string
           _trip_id: string
         }
         Returns: {
@@ -1166,6 +1171,7 @@ export type Database = {
           fx_rate: number
           id: string
           paid_by: string | null
+          subcategory: string | null
           trip_id: string
           updated_at: string
           version: number
@@ -1188,6 +1194,7 @@ export type Database = {
           _paid_by?: string
           _payers?: Json
           _splits: Json
+          _subcategory?: string
           _trip_id: string
         }
         Returns: {
@@ -1202,6 +1209,7 @@ export type Database = {
           fx_rate: number
           id: string
           paid_by: string | null
+          subcategory: string | null
           trip_id: string
           updated_at: string
           version: number
@@ -1233,6 +1241,7 @@ export type Database = {
           fx_rate: number
           id: string
           paid_by: string | null
+          subcategory: string | null
           trip_id: string
           updated_at: string
           version: number
@@ -1378,6 +1387,7 @@ export type Database = {
           _paid_by?: string
           _payers?: Json
           _splits: Json
+          _subcategory?: string
         }
         Returns: {
           amount_cents: number
@@ -1391,6 +1401,7 @@ export type Database = {
           fx_rate: number
           id: string
           paid_by: string | null
+          subcategory: string | null
           trip_id: string
           updated_at: string
           version: number
@@ -1407,11 +1418,13 @@ export type Database = {
           _amount_cents: number
           _assignments: Json
           _base_amount_cents: number
+          _category?: string
           _currency: string
           _description: string
           _expense_id: string
           _fx_rate: number
           _items: Json
+          _subcategory?: string
         }
         Returns: {
           amount_cents: number
@@ -1425,6 +1438,7 @@ export type Database = {
           fx_rate: number
           id: string
           paid_by: string | null
+          subcategory: string | null
           trip_id: string
           updated_at: string
           version: number
