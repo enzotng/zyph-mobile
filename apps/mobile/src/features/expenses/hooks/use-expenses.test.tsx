@@ -32,6 +32,7 @@ const expense = {
   paid_by: 'm1',
   deleted_at: null,
   category: null,
+  subcategory: null,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
   version: 1,

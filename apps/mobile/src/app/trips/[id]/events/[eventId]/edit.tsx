@@ -9,11 +9,11 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { DateField } from '@/components/date-field'
-import { EventCategoryPicker } from '@/components/event-category-picker'
 import { GateLocationField } from '@/components/gate-location-field'
 import { LocationPicker } from '@/components/location-picker'
 import { MemberChips } from '@/components/member-chips'
 import { Screen } from '@/components/screen'
+import { TaxonomyCategoryPicker } from '@/components/taxonomy-category-picker'
 import { TextField } from '@/components/text-field'
 import { Spinner } from '@/components/ui'
 import { useTripMembers } from '@/features/group'
@@ -175,12 +175,13 @@ export default function EditEventScreen() {
         control={control}
         name="category"
         render={({ field }) => (
-          <EventCategoryPicker
+          <TaxonomyCategoryPicker
             label={t('events.form.type')}
+            flag="events"
             category={field.value ?? 'other'}
             subcategory={getValues('subcategory') ?? null}
             onChange={({ category, subcategory }) => {
-              field.onChange(category)
+              field.onChange(category ?? 'other')
               setValue('subcategory', subcategory)
             }}
           />

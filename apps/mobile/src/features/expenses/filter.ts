@@ -1,8 +1,10 @@
-import type { Expense, ExpenseCategory } from './api/expenses.api'
+import { rootOf } from '@/features/taxonomy'
+
+import type { Expense } from './api/expenses.api'
 
 export type ExpenseFilter = {
   query?: string
-  category?: ExpenseCategory | null
+  category?: string | null
 }
 
 export function filterExpenses(expenses: Expense[], filter: ExpenseFilter): Expense[] {
@@ -17,7 +19,7 @@ export function filterExpenses(expenses: Expense[], filter: ExpenseFilter): Expe
     if (q && !expense.description.toLowerCase().includes(q)) {
       return false
     }
-    if (category && expense.category !== category) {
+    if (category && rootOf(expense.category ?? '') !== category) {
       return false
     }
     return true

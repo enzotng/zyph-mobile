@@ -7,7 +7,7 @@ import { Amount, Avatar, Surface } from '@/components/ui'
 import { useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
 import { groupReadiness, usePackingItems } from '@/features/packing'
-import { iconForCode } from '@/features/taxonomy'
+import { iconForCode, labelKeyForCode } from '@/features/taxonomy'
 import { useEvents } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
 import { useTripWeather, WeatherCard } from '@/features/weather'
@@ -178,7 +178,7 @@ function ExpensesWidget({ tripId }: { tripId: string }) {
       {rows.map((row) => (
         <View key={row.category ?? 'uncategorized'} style={styles.row}>
           <Text style={styles.rowLabel} numberOfLines={1}>
-            {row.category ? t(`categories.${row.category}`) : t('copilot.widget.uncategorized')}
+            {row.category ? t(labelKeyForCode(row.category)) : t('copilot.widget.uncategorized')}
           </Text>
           <Amount cents={row.cents} currency={trip.data.currency} size={14} neutral />
         </View>
@@ -210,7 +210,7 @@ function SpendByCategoryWidget({ tripId }: { tripId: string }) {
         return (
           <View key={row.category ?? 'uncategorized'} style={styles.barRow}>
             <Text style={styles.barLabel} numberOfLines={1}>
-              {row.category ? t(`categories.${row.category}`) : t('copilot.widget.uncategorized')}
+              {row.category ? t(labelKeyForCode(row.category)) : t('copilot.widget.uncategorized')}
             </Text>
             <View style={styles.barTrack}>
               <View
