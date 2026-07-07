@@ -4,7 +4,7 @@ import { Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Amount, Avatar, Surface } from '@/components/ui'
-import { useExpenses, useTripBalances } from '@/features/expenses'
+import { expensesByCategory, useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
 import { groupReadiness, usePackingItems } from '@/features/packing'
 import { iconForCode, labelKeyForCode } from '@/features/taxonomy'
@@ -14,7 +14,6 @@ import { useTripWeather, WeatherCard } from '@/features/weather'
 import { withAlpha } from '@/lib/color'
 
 import type { CopilotWidgetType } from '../schemas'
-import { expensesByCategory } from '../widgets'
 
 // Renders the trip card the copilot chose to attach to its answer. The model only picks the type;
 // every figure here is read from the screen's own cached query data, so it is always real and

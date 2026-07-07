@@ -1,3 +1,4 @@
+export * from './analytics'
 export * from './api/expense-items.api'
 export * from './api/expenses.api'
 export * from './csv-export'
