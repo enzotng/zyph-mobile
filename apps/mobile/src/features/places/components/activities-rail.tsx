@@ -27,9 +27,10 @@ export type ActivitiesRailProps = {
   trip: Trip
 }
 
-// Sliver of the next card kept visible past the current card's right edge, so the rail always
-// reads as scrollable. Kept in sync with the width formula in ActivitiesRail below.
-const PEEK = 36
+// Total peek kept visible past the active card, split evenly on both sides so the active card is
+// centered with the previous + next cards peeking left and right. Kept in sync with the width
+// formula + the list's paddingHorizontal (PEEK/2) in ActivitiesRail below.
+const PEEK = 72
 // Keeps the teaser short - the full list lives behind "See all".
 const MAX_POIS = 10
 
@@ -229,6 +230,8 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(3),
     paddingTop: theme.gap(3),
     paddingBottom: theme.gap(1),
+    // Center the active card: half the peek on each side so prev + next peek symmetrically.
+    paddingHorizontal: PEEK / 2,
   },
   dots: {
     flexDirection: 'row',

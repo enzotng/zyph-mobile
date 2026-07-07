@@ -261,6 +261,7 @@ export default function TimelineScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.chipsRow}
         contentContainerStyle={styles.chips}
       >
         <Chip
@@ -453,6 +454,11 @@ const styles = StyleSheet.create((theme, rt) => ({
   chips: {
     gap: theme.gap(2),
     paddingBottom: theme.gap(3),
+  },
+  // Hug the chips' content height: a horizontal ScrollView defaults to flexGrow:1, which would
+  // balloon inside the flex-column screen body and push the event list down to the bottom.
+  chipsRow: {
+    flexGrow: 0,
   },
   fill: {
     flex: 1,
