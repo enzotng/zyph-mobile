@@ -1,5 +1,7 @@
 import type { Ionicons } from '@expo/vector-icons'
 
+import { CATEGORICAL_TINTS } from '@/lib/color'
+
 type IoniconName = keyof typeof Ionicons.glyphMap
 
 export type TaxonomyFlag = 'events' | 'expenses' | 'both'
@@ -186,4 +188,26 @@ export function subcategoriesForFlag(rootCode: string, flag: 'events' | 'expense
     return []
   }
   return root.subcategories.filter((s) => s.flag === 'both' || s.flag === flag)
+}
+
+// One color per root category, reusing the vetted categorical palette (which deliberately avoids
+// money green/red). Shared by the analytics donut and category bars so color reads consistently.
+const UNCATEGORIZED_COLOR = '#8A8178'
+
+export const CATEGORY_COLORS: Record<string, string> = {
+  transport: CATEGORICAL_TINTS[0],
+  lodging: CATEGORICAL_TINTS[1],
+  food: CATEGORICAL_TINTS[2],
+  activity: CATEGORICAL_TINTS[3],
+  shopping: CATEGORICAL_TINTS[4],
+  health: CATEGORICAL_TINTS[5],
+  fees: CATEGORICAL_TINTS[6],
+  other: CATEGORICAL_TINTS[7],
+}
+
+export function categoryColor(code: string | null | undefined): string {
+  if (!code) {
+    return UNCATEGORIZED_COLOR
+  }
+  return CATEGORY_COLORS[rootOf(code)] ?? UNCATEGORIZED_COLOR
 }
