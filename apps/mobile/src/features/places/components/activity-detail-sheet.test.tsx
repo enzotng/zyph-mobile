@@ -249,7 +249,7 @@ describe('ActivityDetailSheet', () => {
       events: [
         {
           title: 'National Museum',
-          type: 'activity',
+          category: 'activity',
           startsAt: new Date('2026-07-10T12:00:00').toISOString(),
           lat: 48.1,
           lng: 2.1,
@@ -272,14 +272,14 @@ describe('ActivityDetailSheet', () => {
     )
   })
 
-  it('maps the event type through mapPoiType (museum -> activity)', async () => {
+  it('maps the event category through mapPoiType (museum -> activity)', async () => {
     mockCreateEventsMutateAsync.mockResolvedValue([])
     renderSheet({ poi: { ...POI, types: ['restaurant'] } })
 
     fireEvent.press(screen.getByText('Add to timeline'))
 
     await waitFor(() => expect(mockCreateEventsMutateAsync).toHaveBeenCalledTimes(1))
-    expect(mockCreateEventsMutateAsync.mock.calls[0][0].events[0].type).toBe('food')
+    expect(mockCreateEventsMutateAsync.mock.calls[0][0].events[0].category).toBe('food')
   })
 
   it('uses "now" for startsAt when the trip has no dates', async () => {

@@ -32,7 +32,7 @@ const WAYPOINT_ICON = 'pin'
 // The day chip row is capped so a long trip never turns into an unusable horizontal scroll.
 const MAX_TRIP_DAYS = 21
 
-// Buckets a Google Places type list into a canonical timeline event type. Pure + exported so
+// Buckets a Google Places type list into a canonical timeline category. Pure + exported so
 // the next task's screen (and this file's tests) can reuse it.
 export function mapPoiType(types: string[]): 'food' | 'lodging' | 'activity' {
   if (types.some((type) => ['restaurant', 'cafe', 'bar', 'bakery', 'food'].includes(type))) {
@@ -124,7 +124,7 @@ export function ActivityDetailSheet({
     }
     const event: NewItineraryEvent = {
       title: activePoi.name,
-      type: mapPoiType(activePoi.types),
+      category: mapPoiType(activePoi.types),
       startsAt: startsAtFor(selectedDay),
       lat: activePoi.lat,
       lng: activePoi.lng,
