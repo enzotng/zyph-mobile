@@ -1,5 +1,7 @@
 import {
+  CATEGORY_COLORS,
   categoriesForFlag,
+  categoryColor,
   iconForCode,
   isValidCategory,
   isValidSubcategory,
@@ -78,5 +80,21 @@ describe('taxonomy', () => {
     const transportSubs = subcategoriesForFlag('transport', 'events').map((s) => s.code)
     expect(transportSubs).not.toContain('transport.parking')
     expect(transportSubs).toContain('transport.flight')
+  })
+})
+
+describe('category colors', () => {
+  it('defines a color for every root code', () => {
+    for (const code of ROOT_CODES) {
+      expect(typeof CATEGORY_COLORS[code]).toBe('string')
+      expect(CATEGORY_COLORS[code]).toMatch(/^#/)
+    }
+  })
+  it('resolves a dotted subcategory to its root color', () => {
+    expect(categoryColor('food.restaurant')).toBe(CATEGORY_COLORS.food)
+  })
+  it('returns a stable neutral for null / unknown', () => {
+    expect(categoryColor(null)).toBe(categoryColor(undefined))
+    expect(typeof categoryColor('not-a-real-root')).toBe('string')
   })
 })

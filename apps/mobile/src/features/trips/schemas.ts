@@ -2,7 +2,9 @@ import { z } from 'zod'
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 // Decimal money string entered by the user ('12', '12.5', '12,50'); '' means "not set".
-const MONEY = /^\d+([.,]\d{1,2})?$/
+// Exported so any other budget/amount input (e.g. the analytics quick-set field) can validate
+// against the same rule before converting to cents, instead of trusting toCents() with raw input.
+export const MONEY = /^\d+([.,]\d{1,2})?$/
 
 // Allowed values for the per-trip profile. Scalars are mirrored 1:1 by the DB CHECK
 // constraints (migration 20260628004209_trip_profile); interests/dietary are validated
