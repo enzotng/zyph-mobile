@@ -24,7 +24,7 @@ import {
 } from '@/features/expenses'
 import { SpendSegmented, type SpendTab } from '@/features/expenses/components/spend-segmented'
 import { StatsView } from '@/features/expenses/components/stats-view'
-import { memberLabel, useTripMembers } from '@/features/group'
+import { memberLabel, useTripMemberNames, useTripMembers } from '@/features/group'
 import { BalancesView } from '@/features/settlements/components/balances-view'
 import { categoriesForFlag, iconForCode, labelKeyForCode } from '@/features/taxonomy'
 import { useTrip } from '@/features/trips'
@@ -104,6 +104,9 @@ export default function TripExpensesScreen() {
   const { data: expenses, isLoading, isError, refetch, isRefetching } = useExpenses(tripId)
   const { data: balances } = useTripBalances(tripId)
   const { data: members } = useTripMembers(tripId)
+  // Warm the member-name cache the Balances and Stats segments both read: they render in place
+  // here, so without this their names would land cold and pop in after a generic fallback.
+  useTripMemberNames(tripId)
 
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string | null>(null)
