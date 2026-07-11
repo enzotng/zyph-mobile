@@ -22,3 +22,20 @@ export function expensesByCategory(expenses: Expense[]): CategoryTotal[] {
     .map(([category, cents]) => ({ category, cents }))
     .sort((a, b) => b.cents - a.cents)
 }
+
+// Sums ONE root's expenses by their full dotted subcategory code, in base currency, sorted by
+// spend descending. Expenses filed under the root with no subcategory collect under a null bucket
+// (rendered as "Other" by the caller). Used by the category drill-down.
+export function spendBySubcategory(expenses: Expense[], root: string): CategoryTotal[] {
+  const totals = new Map<string | null, number>()
+  for (const expense of expenses) {
+    if (!expense.category || rootOf(expense.category) !== root) {
+      continue
+    }
+    const key = expense.subcategory ?? null
+    totals.set(key, (totals.get(key) ?? 0) + expense.base_amount_cents)
+  }
+  return [...totals.entries()]
+    .map(([category, cents]) => ({ category, cents }))
+    .sort((a, b) => b.cents - a.cents)
+}

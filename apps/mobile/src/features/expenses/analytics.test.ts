@@ -1,4 +1,4 @@
-import { expensesByCategory, totalSpentCents } from './analytics'
+import { expensesByCategory, spendBySubcategory, totalSpentCents } from './analytics'
 import type { Expense } from './api/expenses.api'
 
 function make(over: Partial<Expense> & { base_amount_cents: number }): Expense {
@@ -49,5 +49,35 @@ describe('expensesByCategory', () => {
   it('groups uncategorized under a null bucket', () => {
     const rows = [make({ base_amount_cents: 300, category: null })]
     expect(expensesByCategory(rows)).toEqual([{ category: null, cents: 300 }])
+  })
+})
+
+describe('spendBySubcategory', () => {
+  it('groups one root by its dotted subcategory codes, sorted desc', () => {
+    const rows = [
+      make({ base_amount_cents: 100, category: 'food', subcategory: 'food.restaurant' }),
+      make({ base_amount_cents: 400, category: 'food', subcategory: 'food.bar' }),
+      make({ base_amount_cents: 250, category: 'food', subcategory: 'food.restaurant' }),
+      make({ base_amount_cents: 900, category: 'transport', subcategory: 'transport.taxi' }),
+    ]
+    expect(spendBySubcategory(rows, 'food')).toEqual([
+      { category: 'food.bar', cents: 400 },
+      { category: 'food.restaurant', cents: 350 },
+    ])
+  })
+  it('buckets root-only expenses (no subcategory) under null', () => {
+    const rows = [
+      make({ base_amount_cents: 300, category: 'food', subcategory: null }),
+      make({ base_amount_cents: 100, category: 'food', subcategory: 'food.cafe' }),
+    ]
+    expect(spendBySubcategory(rows, 'food')).toEqual([
+      { category: null, cents: 300 },
+      { category: 'food.cafe', cents: 100 },
+    ])
+  })
+  it('is empty for a root with no expenses', () => {
+    expect(
+      spendBySubcategory([make({ base_amount_cents: 100, category: 'food' })], 'transport'),
+    ).toEqual([])
   })
 })
