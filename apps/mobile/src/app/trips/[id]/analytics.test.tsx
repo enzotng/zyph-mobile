@@ -133,8 +133,32 @@ it('renders a category bar with its label and amount', () => {
     refetch: jest.fn(),
   })
   render(<AnalyticsScreen />)
-  expect(screen.getByText('Food & drink')).toBeTruthy()
+  // The category label now also renders once in the donut legend, so there are two matches
+  // ("Food & drink" chip in the legend + the bar row itself).
+  expect(screen.getAllByText('Food & drink').length).toBeGreaterThan(0)
   expect(screen.getByText('15.00 EUR')).toBeTruthy()
+})
+
+it('reveals subcategory spend when a category row is pressed', () => {
+  mockUseExpenses.mockReturnValue({
+    data: [
+      expense({ base_amount_cents: 1000, category: 'food', subcategory: 'food.restaurant' }),
+      expense({ base_amount_cents: 500, category: 'food', subcategory: 'food.bar' }),
+    ],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })
+  render(<AnalyticsScreen />)
+
+  expect(screen.queryByText('Restaurant')).toBeNull()
+
+  fireEvent.press(screen.getByLabelText('Food & drink'))
+
+  expect(screen.getByText('Restaurant')).toBeTruthy()
+  expect(screen.getByText('10.00 EUR')).toBeTruthy()
+  expect(screen.getByText('Bar')).toBeTruthy()
+  expect(screen.getByText('5.00 EUR')).toBeTruthy()
 })
 
 it('shows the set-budget CTA when no budget is set', () => {

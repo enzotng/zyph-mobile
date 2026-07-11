@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
+import Animated, { LinearTransition } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -12,10 +13,12 @@ import { useAuth } from '@/features/auth'
 import {
   expensesByCategory,
   formatAmount,
+  spendBySubcategory,
   toCents,
   totalSpentCents,
   useExpenses,
 } from '@/features/expenses'
+import { CategoryDonut } from '@/features/expenses/components/category-donut'
 import { categoryColor, iconForCode, labelKeyForCode } from '@/features/taxonomy'
 import {
   type BudgetLevel,
@@ -35,6 +38,7 @@ import { haptics } from '@/lib/haptics'
 // dropped into both the Spend tab's in-place segment and the `/analytics` route wrapper.
 export function StatsView({ tripId }: { tripId: string }) {
   const { t } = useTranslation()
+  const { theme } = useUnistyles()
 
   const expensesQuery = useExpenses(tripId)
   const tripQuery = useTrip(tripId)
@@ -47,6 +51,10 @@ export function StatsView({ tripId }: { tripId: string }) {
   const categories = expensesByCategory(expenses)
   const maxCents = categories[0]?.cents ?? 0
   const total = totalSpentCents(expenses)
+
+  // The category whose subcategory breakdown is expanded, if any. The uncategorized bucket
+  // (null category) has no subcategories, so it never opens.
+  const [openCategory, setOpenCategory] = useState<string | null>(null)
 
   return (
     <ScrollView
@@ -82,10 +90,28 @@ export function StatsView({ tripId }: { tripId: string }) {
       ) : (
         <>
           <View style={styles.hero}>
-            <Text style={styles.total}>{formatAmount(total, currency)}</Text>
-            <Text style={styles.totalSub}>
+            <CategoryDonut segments={categories}>
+              {/* One line, auto-shrinking: a five- or six-figure total must not wrap inside the hole. */}
+              <Text style={styles.total} numberOfLines={1} adjustsFontSizeToFit>
+                {formatAmount(total, currency)}
+              </Text>
+              <Text style={styles.totalSub}>{t('analytics.spentLabel')}</Text>
+            </CategoryDonut>
+            <Text style={styles.heroSub}>
               {t('analytics.subtitle', { count: expenses.length })}
             </Text>
+            <View style={styles.legend}>
+              {categories.map((row) => (
+                <View key={row.category ?? 'uncategorized'} style={styles.legendItem}>
+                  <View
+                    style={[styles.legendDot, { backgroundColor: categoryColor(row.category) }]}
+                  />
+                  <Text style={styles.legendLabel} numberOfLines={1}>
+                    {row.category ? t(labelKeyForCode(row.category)) : t('analytics.uncategorized')}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
           {tripQuery.data ? <BudgetCard trip={tripQuery.data} spentCents={total} /> : null}
           <View style={styles.section}>
@@ -97,29 +123,89 @@ export function StatsView({ tripId }: { tripId: string }) {
               const label = row.category
                 ? t(labelKeyForCode(row.category))
                 : t('analytics.uncategorized')
+              // Narrowed once here so the subcategory branch below (and its callback closures)
+              // can rely on `category` being a plain string rather than `string | null`.
+              const category = row.category
               return (
-                <View key={row.category ?? 'uncategorized'} style={styles.barRow}>
-                  <View style={[styles.iconChip, { backgroundColor: withAlpha(color, 0.18) }]}>
-                    <Ionicons name={iconForCode(row.category)} size={15} color={color} />
-                  </View>
-                  <View style={styles.barBody}>
-                    <View style={styles.barHead}>
-                      <Text style={styles.barLabel} numberOfLines={1}>
-                        {label}
-                      </Text>
-                      <Text style={styles.barShare}>{share}%</Text>
+                <Animated.View
+                  key={category ?? 'uncategorized'}
+                  layout={LinearTransition}
+                  style={styles.categoryBlock}
+                >
+                  <Pressable
+                    onPress={
+                      category
+                        ? () => setOpenCategory((prev) => (prev === category ? null : category))
+                        : undefined
+                    }
+                    disabled={!category}
+                    style={styles.barRow}
+                    accessibilityRole={category ? 'button' : undefined}
+                    accessibilityLabel={category ? label : undefined}
+                    accessibilityState={
+                      category ? { expanded: openCategory === category } : undefined
+                    }
+                  >
+                    <View style={[styles.iconChip, { backgroundColor: withAlpha(color, 0.18) }]}>
+                      <Ionicons name={iconForCode(row.category)} size={15} color={color} />
                     </View>
-                    <View style={styles.barTrack}>
-                      <View
-                        style={[
-                          styles.barFill,
-                          { width: `${fillPercent}%`, backgroundColor: color },
-                        ]}
+                    <View style={styles.barBody}>
+                      <View style={styles.barHead}>
+                        <Text style={styles.barLabel} numberOfLines={1}>
+                          {label}
+                        </Text>
+                        <Text style={styles.barShare}>{share}%</Text>
+                      </View>
+                      <View style={styles.barTrack}>
+                        <View
+                          style={[
+                            styles.barFill,
+                            { width: `${fillPercent}%`, backgroundColor: color },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                    <Amount cents={row.cents} currency={currency} size={13} neutral />
+                    {category ? (
+                      <Ionicons
+                        name={openCategory === category ? 'chevron-up' : 'chevron-down'}
+                        size={16}
+                        color={theme.colors.muted}
                       />
+                    ) : null}
+                  </Pressable>
+                  {category != null && openCategory === category ? (
+                    <View style={styles.subList}>
+                      {spendBySubcategory(expenses, category).map((sub) => {
+                        const subShare =
+                          row.cents > 0 ? Math.round((sub.cents / row.cents) * 100) : 0
+                        return (
+                          <View key={sub.category ?? `${category}-other`} style={styles.subRow}>
+                            <Ionicons
+                              name={iconForCode(category, sub.category)}
+                              size={13}
+                              color={color}
+                            />
+                            <Text style={styles.subLabel} numberOfLines={1}>
+                              {sub.category
+                                ? t(labelKeyForCode(sub.category))
+                                : t('analytics.uncategorized')}
+                            </Text>
+                            <View style={styles.subTrack}>
+                              <View
+                                style={[
+                                  styles.subFill,
+                                  { width: `${subShare}%`, backgroundColor: color },
+                                ]}
+                              />
+                            </View>
+                            <Amount cents={sub.cents} currency={currency} size={12} neutral />
+                          </View>
+                        )
+                      })}
                     </View>
-                  </View>
-                  <Amount cents={row.cents} currency={currency} size={13} neutral />
-                </View>
+                  ) : null}
+                </Animated.View>
               )
             })}
           </View>
@@ -310,12 +396,12 @@ const styles = StyleSheet.create((theme, rt) => ({
   section: { gap: theme.gap(4) },
   hero: {
     alignItems: 'center',
-    gap: theme.gap(1),
+    gap: theme.gap(3),
     paddingVertical: theme.gap(6),
   },
   total: {
     fontFamily: theme.fonts.display.bold,
-    fontSize: theme.fontSize.xxl,
+    fontSize: theme.fontSize.lg,
     color: theme.colors.foreground,
   },
   totalSub: {
@@ -323,6 +409,25 @@ const styles = StyleSheet.create((theme, rt) => ({
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
   },
+  heroSub: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.muted,
+  },
+  legend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: theme.gap(2),
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: theme.gap(1) },
+  legendDot: { width: 8, height: 8, borderRadius: theme.radius.sm },
+  legendLabel: {
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
+  },
+  categoryBlock: { gap: theme.gap(1) },
   barRow: { flexDirection: 'row', alignItems: 'center', gap: theme.gap(2.5) },
   iconChip: {
     width: 30,
@@ -351,6 +456,22 @@ const styles = StyleSheet.create((theme, rt) => ({
     overflow: 'hidden',
   },
   barFill: { height: 6, borderRadius: theme.radius.full },
+  subList: { gap: theme.gap(1.5), paddingLeft: theme.gap(9), paddingTop: theme.gap(1) },
+  subRow: { flexDirection: 'row', alignItems: 'center', gap: theme.gap(2) },
+  subLabel: {
+    flex: 1,
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
+  },
+  subTrack: {
+    width: 56,
+    height: 4,
+    borderRadius: theme.radius.full,
+    backgroundColor: withAlpha(theme.colors.border, 0.6),
+    overflow: 'hidden',
+  },
+  subFill: { height: 4, borderRadius: theme.radius.full },
   budgetCard: {
     gap: theme.gap(3),
     padding: theme.gap(4),
