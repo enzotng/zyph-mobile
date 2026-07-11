@@ -732,6 +732,7 @@ export const en = {
   },
   analytics: {
     title: 'Trip stats',
+    tab: 'Stats',
     spentLabel: 'spent',
     total: 'Total spent',
     subtitle: '{{count}} expenses',

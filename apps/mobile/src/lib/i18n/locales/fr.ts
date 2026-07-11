@@ -739,6 +739,7 @@ export const fr: Translations = {
   },
   analytics: {
     title: 'Stats du voyage',
+    tab: 'Stats',
     spentLabel: 'dépensé',
     total: 'Total dépensé',
     subtitle: '{{count}} dépenses',
