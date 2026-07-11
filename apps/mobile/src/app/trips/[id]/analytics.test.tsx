@@ -6,6 +6,8 @@ import AnalyticsScreen from './analytics'
 const mockUseExpenses = jest.fn()
 const mockUseTrip = jest.fn()
 const mockUseAuth = jest.fn()
+const mockUseTripBalances = jest.fn()
+const mockUseTripMemberNames = jest.fn()
 const mockUpdateTripPreferences = jest.fn().mockResolvedValue(undefined)
 
 // In-memory MMKV (shared across createMMKV calls) so any MMKV-backed store used by the app
@@ -41,6 +43,10 @@ jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }))
 jest.mock('@/features/expenses', () => ({
   ...jest.requireActual('@/features/expenses'),
   useExpenses: (id: string) => mockUseExpenses(id),
+  useTripBalances: (id: string) => mockUseTripBalances(id),
+}))
+jest.mock('@/features/group', () => ({
+  useTripMemberNames: (id: string) => mockUseTripMemberNames(id),
 }))
 jest.mock('@/features/trips', () => ({
   ...jest.requireActual('@/features/trips'),
@@ -84,6 +90,10 @@ beforeEach(() => {
     isLoading: false,
     isError: false,
   })
+  // Default: no balances/members, so the "by person" section stays hidden for tests that don't
+  // care about it (spend totals, category bars, budget flows...).
+  mockUseTripBalances.mockReturnValue({ data: [], isLoading: false, isError: false })
+  mockUseTripMemberNames.mockReturnValue({ data: [], isLoading: false, isError: false })
 })
 
 it('shows the trip total spend', () => {
@@ -159,6 +169,61 @@ it('reveals subcategory spend when a category row is pressed', () => {
   expect(screen.getByText('10.00 EUR')).toBeTruthy()
   expect(screen.getByText('Bar')).toBeTruthy()
   expect(screen.getByText('5.00 EUR')).toBeTruthy()
+})
+
+it('shows what each member paid and their actual share', () => {
+  mockUseExpenses.mockReturnValue({
+    data: [expense({ base_amount_cents: 1000 })],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })
+  mockUseTripBalances.mockReturnValue({
+    data: [
+      { member_id: 'm1', user_id: 'u1', paid_cents: 5000, owed_cents: 3000, balance_cents: 2000 },
+    ],
+    isLoading: false,
+    isError: false,
+  })
+  mockUseTripMemberNames.mockReturnValue({
+    data: [{ id: 'm1', user_id: 'u1', display_name: 'Marie' }],
+    isLoading: false,
+    isError: false,
+  })
+  render(<AnalyticsScreen />)
+
+  expect(screen.getByText('Marie')).toBeTruthy()
+  expect(screen.getByText('50.00 EUR')).toBeTruthy()
+  expect(screen.getByText('30.00 EUR')).toBeTruthy()
+})
+
+it('shows the daily spend bars with the average caption', () => {
+  mockUseExpenses.mockReturnValue({
+    data: [
+      expense({ base_amount_cents: 1000, created_at: '2026-07-01T10:00:00Z' }),
+      expense({ base_amount_cents: 3000, created_at: '2026-07-02T10:00:00Z' }),
+    ],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })
+  mockUseTrip.mockReturnValue({
+    data: {
+      id: 't1',
+      currency: 'EUR',
+      owner_id: 'u1',
+      budget_total_cents: null,
+      start_date: '2026-07-01',
+      end_date: '2026-07-02',
+    },
+    isLoading: false,
+    isError: false,
+  })
+  render(<AnalyticsScreen />)
+
+  expect(screen.getByText('By day')).toBeTruthy()
+  // Average of the two days (10.00 + 30.00) / 2 = 20.00 EUR.
+  expect(screen.getByText('20.00 EUR a day on average')).toBeTruthy()
 })
 
 it('shows the set-budget CTA when no budget is set', () => {
