@@ -129,7 +129,11 @@ function PoiDetailSheet({ poi, tripId }: { poi: TripPoi; tripId: string }) {
   }
 
   function openInMap() {
-    router.navigate({
+    // The map now sits BELOW this screen in the stack, so returning to it must pop, not push -
+    // `dismissTo` degrades gracefully (verified in expo-router's StackRouter POP_TO handler) when
+    // no map instance is underneath (e.g. a deep link straight to a place detail): it swaps the
+    // current screen for the map instead of throwing or no-oping, so no guard is needed here.
+    router.dismissTo({
       pathname: '/trips/[id]/pois',
       params: { id: tripId, focus: `poi:${poi.id}` },
     })

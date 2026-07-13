@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons'
 import { AppleMaps } from 'expo-maps'
 import { useRouter } from 'expo-router'
 import {
@@ -38,28 +37,29 @@ const MAP_UI_SETTINGS = {
 // Per-day route colours (cycled), from the shared categorical palette so routes never reuse the
 // reserved money green/red.
 const DAY_COLORS = CATEGORICAL_TINTS
-// Approx width the bottom-right cluster occupies, reserved as day-bar right padding.
-const CLUSTER_FOOTPRINT = 56
 
 type Coords = { latitude: number; longitude: number }
 type DayGroup = { key: string; label: string; targets: WayfinderTarget[] }
 
-// Imperative handle so a parent (the Map tab's Nearby sheet) can frame + open a specific target
-// without owning the camera/marker state, which stays inside the canvas.
+// Imperative handle so a parent (the Map screen's own control column + Nearby sheet) can drive
+// the camera/marker/add-place/layers state without owning any of it, which stays inside the canvas.
 export type TripMapCanvasHandle = {
   focusTarget: (id: string) => void
   recenter: () => void
   // Enter add-place mode: the next tap on the map opens the new-POI form at that point.
   startAddPlace: () => void
+  // Leave add-place mode without dropping a pin (e.g. the screen's own Cancel control).
+  cancelAddPlace: () => void
+  openLayers: () => void
 }
 
 type TripMapCanvasProps = {
   tripId: string
-  // The canvas owns the map + its overlays; the top app bar is opt-out so the Map tab can draw
-  // its own back tile + search bar instead while reusing everything else.
-  showAppBar?: boolean
-  // Extra top offset for the bottom-right controls cluster (so a tab's own header has room).
+  // Top offset (safe-area + the screen's own header) so the add-mode hint pill clears it.
   topInset: number
+  // Fires whenever add-place mode arms or disarms - including when the canvas disarms it itself
+  // (a marker tap, or the tap that drops the pin), so the screen's Cancel control never lingers.
+  onAddModeChange?: (active: boolean) => void
 }
 
 function dayColor(index: number): string {
@@ -118,11 +118,11 @@ function isEventKind(kind: WayfinderTargetKind): boolean {
   return kind === 'event' || kind === 'gate'
 }
 
-// The full-bleed AppleMaps canvas: pins, per-day routes, the recenter/add controls, the day
-// filter bar, the layers sheet and the marker-detail sheet. Reused by the standalone map route
-// and by the place-first Map tab (which hides the app bar and drives focusTarget via the ref).
+// The full-bleed AppleMaps canvas: pins, per-day routes, the add-place hint, the layers sheet
+// (map style, layer toggles, day filter) and the marker-detail sheet. Rendered by the
+// place-first Map screen, which drives focusTarget/recenter/add-place/cancel/layers via the ref.
 export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>(
-  function TripMapCanvas({ tripId, showAppBar = true, topInset }, ref) {
+  function TripMapCanvas({ tripId, topInset, onAddModeChange }, ref) {
     const router = useRouter()
     const { t, i18n } = useTranslation()
     const { theme, rt } = useUnistyles()
@@ -138,7 +138,6 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
     const [showApplePois, setShowApplePois] = useState(false)
     const [addMode, setAddMode] = useState(false)
     const [layersOpen, setLayersOpen] = useState(false)
-    const [dayBarHeight, setDayBarHeight] = useState(48)
 
     const mapRef = useRef<AppleMaps.MapView>(null)
     const { targets } = useWayfinderTargets(tripId, visible.member)
@@ -327,9 +326,25 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
       [targets],
     )
 
+    // Notify from a single place so every add-mode transition reaches the parent - including the
+    // ones the canvas triggers itself (a marker tap, or the map tap that drops the pin) - not just
+    // the ones armed/cancelled through the imperative handle.
+    useEffect(() => {
+      onAddModeChange?.(addMode)
+    }, [addMode, onAddModeChange])
+
     useImperativeHandle(
       ref,
-      () => ({ focusTarget, recenter: refit, startAddPlace: () => setAddMode(true) }),
+      () => ({
+        focusTarget,
+        recenter: refit,
+        startAddPlace: () => setAddMode(true),
+        cancelAddPlace: () => setAddMode(false),
+        openLayers: () => {
+          setSelectedId(null)
+          setLayersOpen(true)
+        },
+      }),
       [focusTarget, refit],
     )
 
@@ -357,9 +372,6 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
       void Linking.openURL(`http://maps.apple.com/?daddr=${target.lat},${target.lng}`)
     }
 
-    const clusterBottom =
-      rt.insets.bottom + theme.gap(6) + (dayGroups.length > 0 ? dayBarHeight + theme.gap(3) : 0)
-
     return (
       <View style={styles.root}>
         <AppleMaps.View
@@ -375,20 +387,6 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
           onCameraMove={handleCameraMove}
         />
 
-        {showAppBar ? (
-          <View style={[styles.appBar, { top: topInset }]} pointerEvents="box-none">
-            <MapButton icon="chevron-back" label={t('common.back')} onPress={() => router.back()} />
-            <MapButton
-              icon="layers-outline"
-              label={t('map.layers.title')}
-              onPress={() => {
-                setSelectedId(null)
-                setLayersOpen(true)
-              }}
-            />
-          </View>
-        ) : null}
-
         {addMode ? (
           <View style={[styles.hint, { top: topInset + theme.gap(12) }]} pointerEvents="none">
             <Surface
@@ -399,47 +397,6 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
             >
               <Text style={styles.hintText}>{t('map.addHint')}</Text>
             </Surface>
-          </View>
-        ) : null}
-
-        {showAppBar ? (
-          <View style={[styles.cluster, { bottom: clusterBottom }]} pointerEvents="box-none">
-            <MapButton icon="scan-outline" label={t('map.recenter')} onPress={refit} />
-            <MapButton
-              icon="add-outline"
-              label={t('map.addPlace')}
-              active={addMode}
-              onPress={() => setAddMode((prev) => !prev)}
-            />
-          </View>
-        ) : null}
-
-        {showAppBar && dayGroups.length > 0 ? (
-          <View
-            style={[styles.dayBar, { bottom: rt.insets.bottom + theme.gap(6) }]}
-            pointerEvents="box-none"
-            onLayout={(event) => setDayBarHeight(event.nativeEvent.layout.height)}
-          >
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.dayRow}
-            >
-              <DayChip
-                active={selectedDay === null}
-                label={t('map.allDays')}
-                onPress={() => selectDay(null)}
-              />
-              {dayGroups.map((group, index) => (
-                <DayChip
-                  key={group.key}
-                  active={selectedDay === group.key}
-                  label={group.label}
-                  color={dayColor(index)}
-                  onPress={() => selectDay(group.key)}
-                />
-              ))}
-            </ScrollView>
           </View>
         ) : null}
 
@@ -502,6 +459,33 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
                 ))}
               </View>
             </View>
+
+            {dayGroups.length > 0 ? (
+              <View style={styles.layersSection}>
+                <Text style={styles.sectionLabel}>{t('map.days')}</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.dayScroll}
+                  contentContainerStyle={styles.dayRow}
+                >
+                  <DayChip
+                    active={selectedDay === null}
+                    label={t('map.allDays')}
+                    onPress={() => selectDay(null)}
+                  />
+                  {dayGroups.map((group, index) => (
+                    <DayChip
+                      key={group.key}
+                      active={selectedDay === group.key}
+                      label={group.label}
+                      color={dayColor(index)}
+                      onPress={() => selectDay(group.key)}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
           </View>
         </BottomSheet>
 
@@ -549,46 +533,6 @@ export const TripMapCanvas = forwardRef<TripMapCanvasHandle, TripMapCanvasProps>
   },
 )
 
-function MapButton({
-  icon,
-  label,
-  onPress,
-  active = false,
-}: {
-  icon: keyof typeof Ionicons.glyphMap
-  label: string
-  onPress: () => void
-  active?: boolean
-}) {
-  const { theme } = useUnistyles()
-  return (
-    <Pressable
-      onPress={() => {
-        haptics.selection()
-        onPress()
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={8}
-      style={({ pressed }) => (pressed ? styles.pressed : undefined)}
-    >
-      <Surface
-        radius={theme.radius.full}
-        color={active ? theme.colors.primary : theme.colors.background}
-        borderColor={active ? theme.colors.primary : theme.colors.border}
-        borderWidth={1}
-        style={styles.mapButton}
-      >
-        <Ionicons
-          name={icon}
-          size={20}
-          color={active ? theme.colors.primaryForeground : theme.colors.foreground}
-        />
-      </Surface>
-    </Pressable>
-  )
-}
-
 function DayChip({
   active,
   label,
@@ -632,38 +576,17 @@ const styles = StyleSheet.create((theme) => ({
     flex: 1,
     backgroundColor: '#000',
   },
-  appBar: {
-    position: 'absolute',
-    left: theme.gap(3),
-    right: theme.gap(3),
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  cluster: {
-    position: 'absolute',
-    right: theme.gap(3),
-    gap: theme.gap(2),
-  },
-  mapButton: {
-    width: theme.gap(11),
-    height: theme.gap(11),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   dot: {
     width: 10,
     height: 10,
     borderRadius: 5,
   },
-  dayBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
+  // A horizontal ScrollView defaults to flexGrow: 1 and balloons inside the sheet, pushing the
+  // rest of the layers content out of view - flexGrow: 0 keeps it sized to its own content.
+  dayScroll: {
+    flexGrow: 0,
   },
   dayRow: {
-    paddingLeft: theme.gap(3),
-    paddingRight: theme.gap(3) + CLUSTER_FOOTPRINT,
     gap: theme.gap(2),
   },
   dayChip: {

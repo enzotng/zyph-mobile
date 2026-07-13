@@ -669,6 +669,7 @@ export const en = {
     },
     directions: 'Directions',
     viewEvent: 'View event',
+    days: 'Days',
     allDays: 'All',
     satellite: 'Satellite',
     recenter: 'Recenter',

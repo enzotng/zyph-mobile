@@ -676,6 +676,7 @@ export const fr: Translations = {
     },
     directions: 'Itinéraire',
     viewEvent: 'Voir l’événement',
+    days: 'Jours',
     allDays: 'Tout',
     satellite: 'Satellite',
     recenter: 'Recentrer',

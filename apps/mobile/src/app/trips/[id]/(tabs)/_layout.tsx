@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
-import { Tabs, useGlobalSearchParams } from 'expo-router'
+import { Tabs, useGlobalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Platform } from 'react-native'
@@ -12,12 +12,13 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: 'albums',
   timeline: 'calendar-outline',
   expenses: 'wallet-outline',
-  pois: 'map-outline',
 }
 
-// Cockpit, Plan, Spend, Map - the four tab buttons. The centre Add is a separate action and
-// `packing` is folded into Plan, so neither is a tab here. expo-router would otherwise sort routes.
-const TAB_ORDER = ['index', 'timeline', 'expenses', 'pois'] as const
+// Cockpit, Plan, Spend - the three real tabs. Map is a tab-bar BUTTON, not a tab: it pushes the
+// immersive map over the whole stack (so the bar is absent, not hidden). The centre Add is likewise
+// an action, and `packing` is folded into Plan.
+const TAB_ORDER = ['index', 'timeline', 'expenses'] as const
+const MAP_ITEM = 'map'
 
 export const unstable_settings = {
   initialRouteName: 'index',
@@ -27,6 +28,7 @@ export default function TripTabsLayout() {
   const { t } = useTranslation()
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
+  const router = useRouter()
   const [addOpen, setAddOpen] = useState(false)
 
   return (
@@ -52,6 +54,11 @@ export default function TripTabsLayout() {
               },
             ]
           })
+          tabs.push({
+            name: MAP_ITEM,
+            label: Platform.OS === 'ios' ? t('tabs.map') : t('tabs.places'),
+            icon: 'map-outline',
+          })
           return (
             <TripTabBar
               tabs={tabs}
@@ -59,6 +66,10 @@ export default function TripTabsLayout() {
               addLabel={t('trip.addSheetTitle')}
               onAdd={() => setAddOpen(true)}
               onSelect={(name) => {
+                if (name === MAP_ITEM) {
+                  router.push({ pathname: '/trips/[id]/pois', params: { id: tripId } })
+                  return
+                }
                 const route = props.state.routes.find((r) => r.name === name)
                 if (!route) {
                   return
@@ -79,10 +90,6 @@ export default function TripTabsLayout() {
         <Tabs.Screen name="index" options={{ title: t('tabs.cockpit') }} />
         <Tabs.Screen name="timeline" options={{ title: t('tabs.plan') }} />
         <Tabs.Screen name="expenses" options={{ title: t('tabs.spend') }} />
-        <Tabs.Screen
-          name="pois"
-          options={{ title: Platform.OS === 'ios' ? t('tabs.map') : t('tabs.places') }}
-        />
         <Tabs.Screen name="packing" options={{ title: t('tabs.packing') }} />
       </Tabs>
       <TripAddSheet open={addOpen} onClose={() => setAddOpen(false)} tripId={tripId} />
