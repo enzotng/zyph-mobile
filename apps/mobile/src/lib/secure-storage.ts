@@ -2,8 +2,10 @@ import * as Crypto from 'expo-crypto'
 import * as SecureStore from 'expo-secure-store'
 import { createMMKV, type MMKV } from 'react-native-mmkv'
 
-// The MMKV store is encrypted at rest; its AES key lives in the device keychain
-// (SecureStore), so the session payload is never readable from the app sandbox.
+// The MMKV store is encrypted at rest with its AES key in the device keychain (SecureStore).
+// MMKV's AESCrypt silently truncates the 64-char hex key to its first 32 chars, so the
+// effective strength is 128 bits, not 256. Do not regenerate or re-encode the key: the
+// stored session would become undecryptable and every user would be signed out.
 const ENCRYPTION_KEY_ALIAS = 'zyph.mmkv.encryptionKey'
 
 let storagePromise: Promise<MMKV> | null = null
