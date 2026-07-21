@@ -3,10 +3,10 @@ import type { PersistedClient } from '@tanstack/react-query-persist-client'
 
 import { mmkvQueryPersister, queryPersistOptions } from './query-persister'
 
-jest.mock('react-native-mmkv', () => {
+jest.mock('./storage-encryption', () => {
   const store = new Map<string, string>()
   return {
-    createMMKV: () => ({
+    openEncryptedMMKV: () => ({
       set: (key: string, value: string) => store.set(key, value),
       getString: (key: string) => store.get(key),
       remove: (key: string) => store.delete(key),

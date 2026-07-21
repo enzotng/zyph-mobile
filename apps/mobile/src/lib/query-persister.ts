@@ -3,14 +3,14 @@ import type {
   Persister,
   PersistQueryClientOptions,
 } from '@tanstack/react-query-persist-client'
-import { createMMKV } from 'react-native-mmkv'
 
 import { persistDehydrateOptions } from './query-persist-filter'
+import { openEncryptedMMKV } from './storage-encryption'
 
 // Synchronous MMKV-backed persister for the react-query cache: the last-known trip data
 // (trips, events, balances, members) is restored instantly on launch, so the app is usable
 // with no network. MMKV is synchronous, so there is no async I/O on the hot path.
-const storage = createMMKV({ id: 'zyph-query-cache' })
+const storage = openEncryptedMMKV('zyph-query-cache', { discardExisting: true })
 const CACHE_KEY = 'react-query'
 
 export const mmkvQueryPersister: Persister = {

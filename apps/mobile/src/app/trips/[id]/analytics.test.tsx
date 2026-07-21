@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
-import { createMMKV } from 'react-native-mmkv'
+
+import { openEncryptedMMKV } from '@/lib/storage-encryption'
 
 import AnalyticsScreen from './analytics'
 
@@ -10,12 +11,12 @@ const mockUseTripBalances = jest.fn()
 const mockUseTripMemberNames = jest.fn()
 const mockUpdateTripPreferences = jest.fn().mockResolvedValue(undefined)
 
-// In-memory MMKV (shared across createMMKV calls) so any MMKV-backed store used by the app
-// shell has a working implementation under test, mirroring the copilot screen harness.
-jest.mock('react-native-mmkv', () => {
+// In-memory store (shared across openEncryptedMMKV calls) so any MMKV-backed store used by
+// the app shell has a working implementation under test, mirroring the copilot screen harness.
+jest.mock('@/lib/storage-encryption', () => {
   const store = new Map<string, string>()
   return {
-    createMMKV: () => ({
+    openEncryptedMMKV: () => ({
       getString: (key: string) => store.get(key),
       set: (key: string, value: string) => {
         store.set(key, value)
@@ -57,7 +58,7 @@ jest.mock('@/features/auth', () => ({
   useAuth: () => mockUseAuth(),
 }))
 
-const mockStore = createMMKV({ id: 'test' }) as unknown as { clearAll: () => void }
+const mockStore = openEncryptedMMKV('test') as unknown as { clearAll: () => void }
 
 const expense = (over: object) => ({
   id: 'e',
