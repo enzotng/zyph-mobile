@@ -1,6 +1,5 @@
-import { createMMKV } from 'react-native-mmkv'
-
 import type { Poi } from '@/features/places'
+import { openEncryptedMMKV } from '@/lib/storage-encryption'
 
 import {
   type ChatMessage,
@@ -15,12 +14,13 @@ import {
   saveCopilotHistory,
 } from './history'
 
-// In-memory MMKV so the round-trip is deterministic without the native module. All createMMKV
-// calls share one store (declared inside the factory), so the test can reset it between cases.
-jest.mock('react-native-mmkv', () => {
+// In-memory store so the round-trip is deterministic without the native module. All
+// openEncryptedMMKV calls share one store (declared inside the factory), so the test can
+// reset it between cases.
+jest.mock('@/lib/storage-encryption', () => {
   const store = new Map<string, string>()
   return {
-    createMMKV: () => ({
+    openEncryptedMMKV: () => ({
       getString: (key: string) => store.get(key),
       set: (key: string, value: string) => {
         store.set(key, value)
@@ -35,7 +35,7 @@ jest.mock('react-native-mmkv', () => {
   }
 })
 
-const mockStore = createMMKV({ id: 'test' }) as unknown as {
+const mockStore = openEncryptedMMKV('test') as unknown as {
   clearAll: () => void
   set: (k: string, v: string) => void
 }

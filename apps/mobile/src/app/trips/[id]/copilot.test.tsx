@@ -1,8 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
-import { createMMKV } from 'react-native-mmkv'
 
 import { type ChatMessage, saveCopilotHistory } from '@/features/copilot'
 import type { Poi } from '@/features/places'
+import { openEncryptedMMKV } from '@/lib/storage-encryption'
 
 import CopilotScreen from './copilot'
 
@@ -12,11 +12,12 @@ const mockSearchPois = jest.fn<Promise<Poi[]>, [unknown]>()
 // The copilot mutation is stubbed so no network runs and the turn count is directly assertable.
 const mockAskMutate = jest.fn()
 
-// In-memory MMKV (shared across createMMKV calls) so loadCopilotHistory can be seeded per test.
-jest.mock('react-native-mmkv', () => {
+// In-memory store (shared across openEncryptedMMKV calls) so loadCopilotHistory can be seeded
+// per test.
+jest.mock('@/lib/storage-encryption', () => {
   const store = new Map<string, string>()
   return {
-    createMMKV: () => ({
+    openEncryptedMMKV: () => ({
       getString: (key: string) => store.get(key),
       set: (key: string, value: string) => {
         store.set(key, value)
@@ -96,7 +97,7 @@ jest.mock('@/features/copilot', () => {
   }
 })
 
-const mockStore = createMMKV({ id: 'test' }) as unknown as { clearAll: () => void }
+const mockStore = openEncryptedMMKV('test') as unknown as { clearAll: () => void }
 
 // An assistant turn carrying a prompt chip: tapping it calls send() WITHOUT going through the
 // composer (which disables itself while busy), reproducing the real double-send vectors (a prompt

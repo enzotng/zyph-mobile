@@ -1,4 +1,4 @@
-// preferences.ts calls createMMKV at module scope. Because unistyles.ts (in
+// preferences.ts opens an MMKV store at module scope. Because unistyles.ts (in
 // setupFiles) imports preferences.ts, the module is already cached before this
 // test file runs. We therefore use jest.isolateModules to get a fresh module
 // instance with our mocks in effect.
@@ -19,8 +19,8 @@ const mockMmkv = {
   set: jest.fn<void, [string, unknown]>(),
 }
 
-jest.mock('react-native-mmkv', () => ({
-  createMMKV: jest.fn(() => mockMmkv),
+jest.mock('./storage-encryption', () => ({
+  openEncryptedMMKV: jest.fn(() => mockMmkv),
 }))
 
 type PreferencesModule = typeof import('./preferences')

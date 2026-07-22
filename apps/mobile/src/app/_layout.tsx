@@ -26,7 +26,7 @@ import {
   setPendingInvite,
 } from '@/lib/preferences'
 import { queryClient } from '@/lib/query-client'
-import { mmkvQueryPersister } from '@/lib/query-persister'
+import { queryPersistOptions } from '@/lib/query-persister'
 import { paramString } from '@/lib/routing'
 
 function useProtectedRoute(session: Session | null, isLoading: boolean, recovering: boolean) {
@@ -156,15 +156,7 @@ export default function RootLayout() {
           <ShareIntentProvider
             options={{ debug: false, resetOnBackground: true, disabled: Platform.OS === 'web' }}
           >
-            <PersistQueryClientProvider
-              client={queryClient}
-              persistOptions={{
-                persister: mmkvQueryPersister,
-                // Drop cached data older than 7 days; bump the buster to invalidate on a shape change.
-                maxAge: 1000 * 60 * 60 * 24 * 7,
-                buster: 'v1',
-              }}
-            >
+            <PersistQueryClientProvider client={queryClient} persistOptions={queryPersistOptions}>
               <AuthProvider>
                 <RootNavigator />
                 <OfflineBanner />
