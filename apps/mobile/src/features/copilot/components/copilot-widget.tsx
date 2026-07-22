@@ -4,16 +4,16 @@ import { Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Amount, Avatar, Surface } from '@/components/ui'
-import { useExpenses, useTripBalances } from '@/features/expenses'
+import { expensesByCategory, useExpenses, useTripBalances } from '@/features/expenses'
 import { useTripMembers } from '@/features/group'
 import { groupReadiness, usePackingItems } from '@/features/packing'
-import { eventTypeIcon, useEvents } from '@/features/timeline'
+import { iconForCode, labelKeyForCode } from '@/features/taxonomy'
+import { useEvents } from '@/features/timeline'
 import { useTrip } from '@/features/trips'
 import { useTripWeather, WeatherCard } from '@/features/weather'
 import { withAlpha } from '@/lib/color'
 
 import type { CopilotWidgetType } from '../schemas'
-import { expensesByCategory } from '../widgets'
 
 // Renders the trip card the copilot chose to attach to its answer. The model only picks the type;
 // every figure here is read from the screen's own cached query data, so it is always real and
@@ -120,7 +120,11 @@ function NextEventsWidget({ tripId }: { tripId: string }) {
       ) : (
         upcoming.map((event) => (
           <View key={event.id} style={styles.row}>
-            <Ionicons name={eventTypeIcon(event.type)} size={18} color={theme.colors.primary} />
+            <Ionicons
+              name={iconForCode(event.category, event.subcategory)}
+              size={18}
+              color={theme.colors.primary}
+            />
             <Text style={styles.rowLabel} numberOfLines={1}>
               {event.title}
             </Text>
@@ -173,7 +177,7 @@ function ExpensesWidget({ tripId }: { tripId: string }) {
       {rows.map((row) => (
         <View key={row.category ?? 'uncategorized'} style={styles.row}>
           <Text style={styles.rowLabel} numberOfLines={1}>
-            {row.category ? t(`categories.${row.category}`) : t('copilot.widget.uncategorized')}
+            {row.category ? t(labelKeyForCode(row.category)) : t('copilot.widget.uncategorized')}
           </Text>
           <Amount cents={row.cents} currency={trip.data.currency} size={14} neutral />
         </View>
@@ -205,7 +209,7 @@ function SpendByCategoryWidget({ tripId }: { tripId: string }) {
         return (
           <View key={row.category ?? 'uncategorized'} style={styles.barRow}>
             <Text style={styles.barLabel} numberOfLines={1}>
-              {row.category ? t(`categories.${row.category}`) : t('copilot.widget.uncategorized')}
+              {row.category ? t(labelKeyForCode(row.category)) : t('copilot.widget.uncategorized')}
             </Text>
             <View style={styles.barTrack}>
               <View

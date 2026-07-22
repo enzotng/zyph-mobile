@@ -8,6 +8,7 @@ import {
   type PackingCategory,
 } from '@/features/packing'
 import { recordSettlement } from '@/features/settlements'
+import { isValidCategory, isValidSubcategory } from '@/features/taxonomy'
 import { createEvent } from '@/features/timeline'
 import type { Trip } from '@/features/trips'
 
@@ -74,8 +75,15 @@ async function executeAction(tripId: string, vars: ExecuteActionVars): Promise<v
     const time = typeof args.time === 'string' && TIME_RE.test(args.time) ? args.time : '12:00'
     const parsed = date ? new Date(`${date}T${time}:00`) : new Date()
     const startsAt = (Number.isNaN(parsed.getTime()) ? new Date() : parsed).toISOString()
-    const type = typeof args.type === 'string' && args.type.trim() ? args.type.trim() : 'event'
-    await createEvent({ tripId, title, type, startsAt, notes: '' })
+    const category =
+      typeof args.category === 'string' && isValidCategory(args.category) ? args.category : 'other'
+    const subcategory =
+      typeof args.subcategory === 'string' &&
+      isValidSubcategory(args.subcategory) &&
+      args.subcategory.startsWith(`${category}.`)
+        ? args.subcategory
+        : null
+    await createEvent({ tripId, title, category, subcategory, startsAt, notes: '' })
     return
   }
 

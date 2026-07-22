@@ -5,6 +5,7 @@ import { Stack, useGlobalSearchParams, useRouter, useSegments } from 'expo-route
 import { ShareIntentProvider } from 'expo-share-intent'
 import { useEffect } from 'react'
 import { Platform, View } from 'react-native'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { KeyboardProvider, KeyboardToolbar } from 'react-native-keyboard-controller'
 import { StyleSheet } from 'react-native-unistyles'
 
@@ -25,7 +26,7 @@ import {
   setPendingInvite,
 } from '@/lib/preferences'
 import { queryClient } from '@/lib/query-client'
-import { mmkvQueryPersister } from '@/lib/query-persister'
+import { queryPersistOptions } from '@/lib/query-persister'
 import { paramString } from '@/lib/routing'
 
 function useProtectedRoute(session: Session | null, isLoading: boolean, recovering: boolean) {
@@ -150,26 +151,20 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      <KeyboardProvider>
-        <ShareIntentProvider
-          options={{ debug: false, resetOnBackground: true, disabled: Platform.OS === 'web' }}
-        >
-          <PersistQueryClientProvider
-            client={queryClient}
-            persistOptions={{
-              persister: mmkvQueryPersister,
-              // Drop cached data older than 7 days; bump the buster to invalidate on a shape change.
-              maxAge: 1000 * 60 * 60 * 24 * 7,
-              buster: 'v1',
-            }}
+      <GestureHandlerRootView style={styles.root}>
+        <KeyboardProvider>
+          <ShareIntentProvider
+            options={{ debug: false, resetOnBackground: true, disabled: Platform.OS === 'web' }}
           >
-            <AuthProvider>
-              <RootNavigator />
-              <OfflineBanner />
-            </AuthProvider>
-          </PersistQueryClientProvider>
-        </ShareIntentProvider>
-      </KeyboardProvider>
+            <PersistQueryClientProvider client={queryClient} persistOptions={queryPersistOptions}>
+              <AuthProvider>
+                <RootNavigator />
+                <OfflineBanner />
+              </AuthProvider>
+            </PersistQueryClientProvider>
+          </ShareIntentProvider>
+        </KeyboardProvider>
+      </GestureHandlerRootView>
     </ErrorBoundary>
   )
 }
@@ -180,5 +175,8 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.background,
+  },
+  root: {
+    flex: 1,
   },
 }))

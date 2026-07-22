@@ -2,7 +2,6 @@ import { createEventSchema } from './schemas'
 
 const base = {
   title: 'Museum visit',
-  type: 'event',
   startsAt: '2026-05-22T10:00:00.000Z',
   endsAt: '',
   notes: '',
@@ -13,8 +12,21 @@ describe('createEventSchema', () => {
     expect(createEventSchema.safeParse(base).success).toBe(true)
   })
 
-  it('requires a non-empty type', () => {
-    expect(createEventSchema.safeParse({ ...base, type: '' }).success).toBe(false)
+  it('requires a valid category and accepts a null subcategory', () => {
+    expect(
+      createEventSchema.safeParse({ ...base, category: 'food', subcategory: null }).success,
+    ).toBe(true)
+    expect(
+      createEventSchema.safeParse({ ...base, category: 'food', subcategory: 'food.restaurant' })
+        .success,
+    ).toBe(true)
+    expect(
+      createEventSchema.safeParse({ ...base, category: 'nope', subcategory: null }).success,
+    ).toBe(false)
+    expect(
+      createEventSchema.safeParse({ ...base, category: 'food', subcategory: 'transport.flight' })
+        .success,
+    ).toBe(false)
   })
 
   it('accepts an end time after the start', () => {

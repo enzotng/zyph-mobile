@@ -1,8 +1,8 @@
-import { createMMKV } from 'react-native-mmkv'
 import { UnistylesRuntime } from 'react-native-unistyles'
 
-// Plain (non-encrypted) store for non-sensitive app preferences.
-const storage = createMMKV({ id: 'zyph-preferences' })
+import { openEncryptedMMKV } from './storage-encryption'
+
+const storage = openEncryptedMMKV('zyph-preferences')
 
 export type ThemePreference = 'system' | 'light' | 'dark'
 export type LanguagePreference = 'system' | 'en' | 'fr'

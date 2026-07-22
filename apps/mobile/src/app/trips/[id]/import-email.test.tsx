@@ -33,8 +33,11 @@ jest.mock('@/features/smart-import', () => {
   return { ...actual, useParseEmail: () => ({ mutateAsync: mockParse, isPending: false }) }
 })
 jest.mock('@/features/timeline', () => ({
-  eventTypeIcon: () => 'calendar',
   useCreateEvents: () => ({ mutateAsync: mockCreateEvents, isPending: false }),
+}))
+jest.mock('@/features/taxonomy', () => ({
+  ...jest.requireActual('@/features/taxonomy'),
+  iconForCode: () => 'calendar',
 }))
 
 // Two fictional active members plus one removed member that must never render as a chip - proves
@@ -73,7 +76,8 @@ jest.mock('@/features/group', () => ({
 // A fictional round-trip (two legs, distinct realistic datetimes) matching the API regression
 // same base fields, distinct titles + real dates.
 const validEvent: ParsedEmailEvent = {
-  type: 'flight',
+  category: 'transport',
+  subcategory: 'transport.flight',
   title: 'AF1234 Paris -> Rome',
   startsAt: '2026-06-10T08:00:00Z',
   endsAt: '2026-06-10T10:00:00Z',

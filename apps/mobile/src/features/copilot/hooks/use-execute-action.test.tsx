@@ -102,12 +102,47 @@ describe('useExecuteCopilotAction', () => {
     jest.mocked(createEvent).mockResolvedValue({} as never)
     const result = run({
       tool: 'add_event',
-      args: { title: 'Flight', type: 'flight', date: '2026-06-20', time: '09:00' },
+      args: {
+        title: 'Flight',
+        category: 'transport',
+        subcategory: 'transport.flight',
+        date: '2026-06-20',
+        time: '09:00',
+      },
       text: '',
     })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(createEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ tripId: 't1', title: 'Flight', type: 'flight' }),
+      expect.objectContaining({
+        tripId: 't1',
+        title: 'Flight',
+        category: 'transport',
+        subcategory: 'transport.flight',
+      }),
+    )
+  })
+
+  it('add_event: falls back to category "other" and clears a mismatched subcategory', async () => {
+    jest.mocked(createEvent).mockResolvedValue({} as never)
+    const result = run({
+      tool: 'add_event',
+      args: {
+        title: 'Mystery stop',
+        category: 'not-a-real-category',
+        subcategory: 'transport.flight',
+        date: '2026-06-20',
+        time: '09:00',
+      },
+      text: '',
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tripId: 't1',
+        title: 'Mystery stop',
+        category: 'other',
+        subcategory: null,
+      }),
     )
   })
 

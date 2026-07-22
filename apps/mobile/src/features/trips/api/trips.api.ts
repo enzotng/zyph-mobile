@@ -276,3 +276,47 @@ export async function createCalendarFeedToken(tripId: string): Promise<string> {
   }
   return data
 }
+
+export type TripInboxAddress = { address: string; autoValidate: boolean }
+
+// Creates (or regenerates) the trip's shared inbound email address. Returns the full address -
+// unlike the calendar token this is re-displayable, not shown-once, but the RPC still revokes
+// any previous live address server-side, so a single call covers both create and regenerate.
+export async function createTripInboxAddress(tripId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('create_trip_inbox_address', { _trip_id: tripId })
+  if (error) {
+    throw error
+  }
+  return data
+}
+
+// Reads the trip's live inbound address and its auto-validate flag, or null if none was
+// generated yet. The RPC returns a TABLE (0 or 1 row) rather than a scalar.
+export async function getTripInboxAddress(tripId: string): Promise<TripInboxAddress | null> {
+  const { data, error } = await supabase.rpc('get_trip_inbox_address', { _trip_id: tripId })
+  if (error) {
+    throw error
+  }
+  const row = data?.[0]
+  if (!row) {
+    return null
+  }
+  return { address: row.address, autoValidate: row.auto_validate }
+}
+
+export async function revokeTripInboxAddress(tripId: string): Promise<void> {
+  const { error } = await supabase.rpc('revoke_trip_inbox_address', { _trip_id: tripId })
+  if (error) {
+    throw error
+  }
+}
+
+export async function setTripInboxAutoValidate(tripId: string, on: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_trip_inbox_autovalidate', {
+    _trip_id: tripId,
+    _on: on,
+  })
+  if (error) {
+    throw error
+  }
+}

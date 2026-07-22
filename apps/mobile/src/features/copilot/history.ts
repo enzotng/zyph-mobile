@@ -1,12 +1,10 @@
-import { createMMKV } from 'react-native-mmkv'
-
 import { type Poi, poiSchema } from '@/features/places'
+import { openEncryptedMMKV } from '@/lib/storage-encryption'
 
 import type { Block, CopilotTool, CopilotWidgetType } from './schemas'
 import { blockSchema } from './schemas'
 
-// One chat turn shown in the copilot screen. Persisted per trip (plain MMKV, same durability as
-// the react-query cache that already holds this trip's data) so the conversation survives
+// One chat turn shown in the copilot screen. Persisted per trip so the conversation survives
 // navigating away from Zo or restarting the app.
 export type ChatMessage = {
   id: string
@@ -22,7 +20,7 @@ export type ChatMessage = {
 // re-sent history at 30 messages anyway, so older turns add nothing).
 const MAX_STORED = 50
 
-const storage = createMMKV({ id: 'zyph-copilot' })
+const storage = openEncryptedMMKV('zyph-copilot')
 
 // Versioned key - bump on shape change so old keys are ignored (not deleted, not crashing).
 function key(tripId: string): string {

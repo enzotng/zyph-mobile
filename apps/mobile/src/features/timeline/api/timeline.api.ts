@@ -1,7 +1,25 @@
+import { isValidCategory, isValidSubcategory } from '@/features/taxonomy'
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
 
 export type TripEvent = Database['public']['Tables']['trip_events']['Row']
+
+// Resolves the taxonomy code a write should use, defaulting to 'other' / null when the caller
+// omits or supplies an invalid category or subcategory.
+function resolveCode(
+  category: string | undefined,
+  subcategory: string | null | undefined,
+): { category: string; subcategory: string | null } {
+  // Defense in depth: the two event forms validate the pair via zod, but other callers build the
+  // input directly and bypass it, and the DB only CHECKs `category` (not `subcategory`). Re-validate
+  // here so a bad or mismatched code never reaches the row, regardless of caller.
+  const safeCategory = category && isValidCategory(category) ? category : 'other'
+  const safeSubcategory =
+    subcategory && isValidSubcategory(subcategory) && subcategory.startsWith(`${safeCategory}.`)
+      ? subcategory
+      : null
+  return { category: safeCategory, subcategory: safeSubcategory }
+}
 
 export async function listEvents(tripId: string): Promise<TripEvent[]> {
   const { data, error } = await supabase
@@ -36,7 +54,8 @@ export type GateLocation = {
 export type CreateEventInput = {
   tripId: string
   title: string
-  type?: string
+  category?: string
+  subcategory?: string | null
   startsAt: string
   endsAt?: string
   notes: string
@@ -49,7 +68,8 @@ export type CreateEventInput = {
 export async function createEvent({
   tripId,
   title,
-  type,
+  category,
+  subcategory,
   startsAt,
   endsAt,
   notes,
@@ -64,12 +84,14 @@ export async function createEvent({
     throw new Error('You must be signed in.')
   }
 
+  const code = resolveCode(category, subcategory)
   const { data, error } = await supabase
     .from('trip_events')
     .insert({
       trip_id: tripId,
       title,
-      type: type || 'event',
+      category: code.category,
+      subcategory: code.subcategory,
       starts_at: startsAt,
       ends_at: endsAt || null,
       notes: notes || null,
@@ -91,7 +113,8 @@ export async function createEvent({
 export type UpdateEventInput = {
   eventId: string
   title: string
-  type?: string
+  category?: string
+  subcategory?: string | null
   startsAt: string
   endsAt?: string
   notes: string
@@ -104,7 +127,8 @@ export type UpdateEventInput = {
 export async function updateEvent({
   eventId,
   title,
-  type,
+  category,
+  subcategory,
   startsAt,
   endsAt,
   notes,
@@ -113,12 +137,13 @@ export async function updateEvent({
   gateLocation,
   participants,
 }: UpdateEventInput): Promise<TripEvent> {
+  const hasClassification = category !== undefined || subcategory !== undefined
+  const code = hasClassification ? resolveCode(category, subcategory) : null
   const { data, error } = await supabase
     .from('trip_events')
     .update({
       title,
-      // Only touch type when the caller supplies it, so a typeless update never wipes it.
-      ...(type !== undefined ? { type } : {}),
+      ...(code ? { category: code.category, subcategory: code.subcategory } : {}),
       starts_at: startsAt,
       ends_at: endsAt || null,
       notes: notes || null,
@@ -139,7 +164,8 @@ export async function updateEvent({
 
 export type NewItineraryEvent = {
   title: string
-  type: string
+  category?: string
+  subcategory?: string | null
   startsAt: string
   endsAt?: string | null
   lat: number | null
@@ -170,22 +196,26 @@ export async function createEvents(
   if (!userId) {
     throw new Error('You must be signed in.')
   }
-  const rows = events.map((e) => ({
-    trip_id: tripId,
-    title: e.title,
-    type: e.type || 'activity',
-    starts_at: e.startsAt,
-    ends_at: e.endsAt ?? null,
-    notes: e.notes || null,
-    lat: e.lat,
-    lng: e.lng,
-    place_id: e.placeId,
-    gate_location: e.gateLocation ?? null,
-    location_name: e.locationName ?? null,
-    end_location: e.endLocation ?? null,
-    participants: e.participants ?? null,
-    created_by: userId,
-  }))
+  const rows = events.map((e) => {
+    const code = resolveCode(e.category, e.subcategory)
+    return {
+      trip_id: tripId,
+      title: e.title,
+      category: code.category,
+      subcategory: code.subcategory,
+      starts_at: e.startsAt,
+      ends_at: e.endsAt ?? null,
+      notes: e.notes || null,
+      lat: e.lat,
+      lng: e.lng,
+      place_id: e.placeId,
+      gate_location: e.gateLocation ?? null,
+      location_name: e.locationName ?? null,
+      end_location: e.endLocation ?? null,
+      participants: e.participants ?? null,
+      created_by: userId,
+    }
+  })
   const { data, error } = await supabase.from('trip_events').insert(rows).select()
   if (error) {
     throw error

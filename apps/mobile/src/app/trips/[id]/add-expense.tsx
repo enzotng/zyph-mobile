@@ -9,17 +9,16 @@ import Animated, { FadeInDown } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
-import { CategoryPicker } from '@/components/category-picker'
 import { CurrencyPicker } from '@/components/currency-picker'
 import { ReceiptScanner } from '@/components/receipt-scanner'
 import { Screen } from '@/components/screen'
+import { TaxonomyCategoryPicker } from '@/components/taxonomy-category-picker'
 import { TextField } from '@/components/text-field'
 import { Spinner } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
   type CreateExpenseValues,
   createExpenseSchema,
-  type ExpenseCategory,
   type ParsedReceiptItems,
   toCents,
   useCreateExpense,
@@ -62,7 +61,8 @@ export default function AddExpenseScreen() {
   const ownMemberId = members?.find((m) => m.user_id === userId)?.id ?? null
 
   const [scannerOpen, setScannerOpen] = useState(false)
-  const [category, setCategory] = useState<ExpenseCategory | null>(null)
+  const [category, setCategory] = useState<string | null>(null)
+  const [subcategory, setSubcategory] = useState<string | null>(null)
 
   const {
     control,
@@ -216,6 +216,7 @@ export default function AddExpenseScreen() {
         fxRate,
         splits,
         category,
+        subcategory,
         paidBy,
         payers,
       })
@@ -343,8 +344,17 @@ export default function AddExpenseScreen() {
             />
           </View>
           <View style={styles.col}>
-            <Text style={styles.fieldLabel}>{t('expenseForm.category')}</Text>
-            <CategoryPicker value={category} onChange={setCategory} />
+            <TaxonomyCategoryPicker
+              label={t('expenseForm.category')}
+              flag="expenses"
+              allowNone
+              category={category}
+              subcategory={subcategory}
+              onChange={({ category, subcategory }) => {
+                setCategory(category)
+                setSubcategory(subcategory)
+              }}
+            />
           </View>
         </Animated.View>
 

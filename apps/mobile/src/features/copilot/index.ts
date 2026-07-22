@@ -1,3 +1,4 @@
+export { type CategoryTotal, expensesByCategory } from '@/features/expenses'
 export {
   amountToCents,
   type ExpenseSplit,
@@ -33,4 +34,3 @@ export {
   copilotActionSchema,
   copilotResponseSchema,
 } from './schemas'
-export { type CategoryTotal, expensesByCategory } from './widgets'

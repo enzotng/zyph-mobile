@@ -381,7 +381,7 @@ export default function PackingScreen() {
     () =>
       (events ?? [])
         .slice(0, 20)
-        .map((e) => `- [${e.type}] ${e.title}`)
+        .map((e) => `- [${e.subcategory ?? e.category}] ${e.title}`)
         .join('\n'),
     [events],
   )

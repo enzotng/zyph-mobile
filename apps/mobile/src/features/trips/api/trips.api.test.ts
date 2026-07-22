@@ -3,11 +3,15 @@ import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock
 import {
   createCalendarFeedToken,
   createTrip,
+  createTripInboxAddress,
   deleteTrip,
   fetchTripCover,
   getTrip,
+  getTripInboxAddress,
   listTrips,
   resetTripCover,
+  revokeTripInboxAddress,
+  setTripInboxAutoValidate,
   updateTrip,
   updateTripPreferences,
   uploadTripCover,
@@ -513,5 +517,80 @@ describe('createCalendarFeedToken', () => {
     rpc.mockResolvedValue({ data: null, error: makePostgrestError('not an active member') })
 
     await expect(createCalendarFeedToken('t1')).rejects.toThrow('not an active member')
+  })
+})
+
+// Fictional address matching create_trip_inbox_address's real shape (slug + zyph domain).
+const INBOX_ADDRESS = 'roadtrip-test-a1b2c3@zyph.enzotang.fr'
+
+describe('createTripInboxAddress', () => {
+  it('returns the full address from the rpc', async () => {
+    rpc.mockResolvedValue({ data: INBOX_ADDRESS, error: null })
+
+    await expect(createTripInboxAddress('t1')).resolves.toBe(INBOX_ADDRESS)
+    expect(rpc).toHaveBeenCalledWith('create_trip_inbox_address', { _trip_id: 't1' })
+  })
+
+  it('throws when the rpc errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('not an active member') })
+
+    await expect(createTripInboxAddress('t1')).rejects.toThrow('not an active member')
+  })
+})
+
+describe('getTripInboxAddress', () => {
+  it('maps the single row to address + autoValidate', async () => {
+    rpc.mockResolvedValue({
+      data: [{ address: INBOX_ADDRESS, auto_validate: true }],
+      error: null,
+    })
+
+    await expect(getTripInboxAddress('t1')).resolves.toEqual({
+      address: INBOX_ADDRESS,
+      autoValidate: true,
+    })
+    expect(rpc).toHaveBeenCalledWith('get_trip_inbox_address', { _trip_id: 't1' })
+  })
+
+  it('returns null when no address exists yet', async () => {
+    rpc.mockResolvedValue({ data: [], error: null })
+
+    await expect(getTripInboxAddress('t1')).resolves.toBeNull()
+  })
+
+  it('throws when the rpc errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('not an active member') })
+
+    await expect(getTripInboxAddress('t1')).rejects.toThrow('not an active member')
+  })
+})
+
+describe('revokeTripInboxAddress', () => {
+  it('calls the rpc with the trip id', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(revokeTripInboxAddress('t1')).resolves.toBeUndefined()
+    expect(rpc).toHaveBeenCalledWith('revoke_trip_inbox_address', { _trip_id: 't1' })
+  })
+
+  it('throws when the rpc errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('not an active member') })
+
+    await expect(revokeTripInboxAddress('t1')).rejects.toThrow('not an active member')
+  })
+})
+
+describe('setTripInboxAutoValidate', () => {
+  it('calls the rpc with the trip id and flag', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(setTripInboxAutoValidate('t1', true)).resolves.toBeUndefined()
+    expect(rpc).toHaveBeenCalledWith('set_trip_inbox_autovalidate', { _trip_id: 't1', _on: true })
+  })
+
+  it('throws when the rpc errors', async () => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('not an active member') })
+
+    await expect(setTripInboxAutoValidate('t1', false)).rejects.toThrow('not an active member')
   })
 })

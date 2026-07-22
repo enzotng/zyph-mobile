@@ -4,20 +4,20 @@ import { Link, useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-rou
 import type { TFunction } from 'i18next'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, ScrollView, Text, View } from 'react-native'
 import Animated, { FadeIn } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { TRIP_TAB_BAR_CLEARANCE } from '@/components/layout/trip-tab-bar'
 import { Screen } from '@/components/screen'
-import { AvatarStack, EmptyState, ErrorState, Segmented, Skeleton } from '@/components/ui'
+import { AvatarStack, Chip, EmptyState, ErrorState, Segmented, Skeleton } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import { useTripMembers } from '@/features/group'
+import { categoriesForFlag, iconForCode, labelKeyForCode, rootOf } from '@/features/taxonomy'
 import {
   concernsUser,
   type EventStatus,
   eventStatus,
-  eventTypeIcon,
   formatCountdown,
   groupEventsByDay,
   resolveParticipantAvatars,
@@ -71,12 +71,15 @@ export default function TimelineScreen() {
   const { theme } = useUnistyles()
   const router = useRouter()
   const [filter, setFilter] = useState<'all' | 'mine'>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+  const categoryRoots = useMemo(() => categoriesForFlag('events'), [])
   const filteredEvents = useMemo(
     () =>
-      filter === 'mine'
+      (filter === 'mine'
         ? (events ?? []).filter((e) => concernsUser(e.participants, userId))
-        : (events ?? []),
-    [events, filter, userId],
+        : (events ?? [])
+      ).filter((e) => categoryFilter === null || rootOf(e.category) === categoryFilter),
+    [events, filter, userId, categoryFilter],
   )
   const items = useMemo(
     () => groupEventsByDay(filteredEvents, i18n.language, t('timeline.noDate')),
@@ -170,7 +173,11 @@ export default function TimelineScreen() {
         >
           <View style={styles.rail}>
             <View style={[styles.tile, { backgroundColor: tileColor }]}>
-              <Ionicons name={eventTypeIcon(item.event.type)} size={18} color={iconColor} />
+              <Ionicons
+                name={iconForCode(item.event.category, item.event.subcategory)}
+                size={18}
+                color={iconColor}
+              />
             </View>
             <View style={styles.connector} />
           </View>
@@ -250,6 +257,28 @@ export default function TimelineScreen() {
           onChange={(value) => setFilter(value as 'all' | 'mine')}
         />
       </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipsRow}
+        contentContainerStyle={styles.chips}
+      >
+        <Chip
+          label={t('trip.all')}
+          selected={categoryFilter === null}
+          onPress={() => setCategoryFilter(null)}
+        />
+        {categoryRoots.map((root) => (
+          <Chip
+            key={root.code}
+            label={t(labelKeyForCode(root.code))}
+            icon={iconForCode(root.code, null)}
+            selected={categoryFilter === root.code}
+            onPress={() => setCategoryFilter(root.code)}
+          />
+        ))}
+      </ScrollView>
 
       {rainyDay !== null && !rainyDismissed ? (
         <View
@@ -421,6 +450,15 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   filterSegment: {
     marginBottom: theme.gap(3),
+  },
+  chips: {
+    gap: theme.gap(2),
+    paddingBottom: theme.gap(3),
+  },
+  // Hug the chips' content height: a horizontal ScrollView defaults to flexGrow:1, which would
+  // balloon inside the flex-column screen body and push the event list down to the bottom.
+  chipsRow: {
+    flexGrow: 0,
   },
   fill: {
     flex: 1,

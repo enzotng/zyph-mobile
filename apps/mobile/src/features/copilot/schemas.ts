@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { isValidCategory, isValidSubcategory } from '@/features/taxonomy'
+
 // The copilot edge function returns either a text answer or a PROPOSED action (never executed
 // server-side). Validate the envelope at the boundary before it reaches the UI.
 export const copilotActionSchema = z.object({
@@ -93,7 +95,15 @@ export const chipsBlockSchema = z.object({
 const itineraryItemSchema = z.object({
   placeId: z.string().min(1),
   title: z.string().min(1),
-  type: z.string().min(1),
+  category: z
+    .string()
+    .catch('activity')
+    .transform((v) => (isValidCategory(v) ? v : 'activity')),
+  subcategory: z
+    .string()
+    .nullable()
+    .catch(null)
+    .transform((v) => (v && isValidSubcategory(v) ? v : null)),
   time: z
     .string()
     .regex(/^\d{2}:\d{2}$/)

@@ -16,7 +16,8 @@ beforeEach(() => {
 const parsedResult: ParseEmailResult = {
   events: [
     {
-      type: 'flight',
+      category: 'transport',
+      subcategory: 'transport.flight',
       title: 'AF1234 Paris -> Rome',
       startsAt: '2026-06-10T08:00:00Z',
       endsAt: '2026-06-10T10:00:00Z',

@@ -31,7 +31,7 @@ export function useWayfinderTargets(tripId: string, includeMembers: boolean) {
           id: `event:${event.id}`,
           kind: 'event',
           label: event.title,
-          icon: event.type === 'flight' ? 'gate' : 'pin',
+          icon: event.subcategory === 'transport.flight' ? 'gate' : 'pin',
           lat: event.lat,
           lng: event.lng,
           startsAt: event.starts_at,

@@ -14,10 +14,7 @@ import { TextField } from '@/components/text-field'
 import { Amount, Chip, EmptyState, ErrorState, Eyebrow, Skeleton, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
-  CATEGORY_ICON,
-  EXPENSE_CATEGORIES,
   type Expense,
-  type ExpenseCategory,
   expensesToCsv,
   filterExpenses,
   formatAmount,
@@ -25,7 +22,11 @@ import {
   useMyExpenseShares,
   useTripBalances,
 } from '@/features/expenses'
-import { memberLabel, useTripMembers } from '@/features/group'
+import { SpendSegmented, type SpendTab } from '@/features/expenses/components/spend-segmented'
+import { StatsView } from '@/features/expenses/components/stats-view'
+import { memberLabel, useTripMemberNames, useTripMembers } from '@/features/group'
+import { BalancesView } from '@/features/settlements/components/balances-view'
+import { categoriesForFlag, iconForCode, labelKeyForCode } from '@/features/taxonomy'
 import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
@@ -103,9 +104,16 @@ export default function TripExpensesScreen() {
   const { data: expenses, isLoading, isError, refetch, isRefetching } = useExpenses(tripId)
   const { data: balances } = useTripBalances(tripId)
   const { data: members } = useTripMembers(tripId)
+  // Warm the member-name cache the Balances and Stats segments both read: they render in place
+  // here, so without this their names would land cold and pop in after a generic fallback.
+  useTripMemberNames(tripId)
 
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<ExpenseCategory | null>(null)
+  const [category, setCategory] = useState<string | null>(null)
+  const [segment, setSegment] = useState<SpendTab>('expenses')
+
+  // Root taxonomy nodes visible to the expense filter chips - stable across renders.
+  const expenseCategories = useMemo(() => categoriesForFlag('expenses'), [])
 
   const filtered = useMemo(
     () => filterExpenses(expenses ?? [], { query, category }),
@@ -183,10 +191,6 @@ export default function TripExpensesScreen() {
     router.push({ pathname: '/trips/[id]/add-expense', params: { id: tripId } })
   }
 
-  function goBalances() {
-    router.push({ pathname: '/trips/[id]/balances', params: { id: tripId } })
-  }
-
   // Write the expense list to a CSV in the cache dir and hand it to the native share sheet
   // (save to Files, email, AirDrop on iOS). Android shares the CSV text as a fallback.
   const onExport = useCallback(async () => {
@@ -204,7 +208,7 @@ export default function TripExpensesScreen() {
           tripAmount: t('expenses.csv.tripAmount', { currency: tripCurrency }),
           paidBy: t('expenses.csv.paidBy'),
         },
-        categoryLabel: (c) => (c ? t(`categories.${c as ExpenseCategory}`) : ''),
+        categoryLabel: (c) => (c ? t(labelKeyForCode(c)) : ''),
         payerName,
       })
       if (Platform.OS === 'ios') {
@@ -286,7 +290,7 @@ export default function TripExpensesScreen() {
               style={styles.rowTile}
             >
               <Ionicons
-                name={CATEGORY_ICON[expense.category as ExpenseCategory] ?? 'pricetag'}
+                name={iconForCode(expense.category, expense.subcategory)}
                 size={19}
                 color={theme.colors.primary}
               />
@@ -319,138 +323,22 @@ export default function TripExpensesScreen() {
       title={t('tabs.expenses')}
       showBack
       right={
-        <View style={styles.headerActions}>
-          {hasExpenses ? (
-            <Pressable
-              onPress={() => {
-                haptics.light()
-                void onExport()
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={t('expenses.export')}
-              hitSlop={8}
-              style={({ pressed }) => [pressed && styles.pressed]}
-            >
-              <Ionicons name="share-outline" size={22} color={theme.colors.foreground} />
-            </Pressable>
-          ) : null}
-          <Pressable
-            onPress={() => {
-              haptics.light()
-              goAdd()
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={t('trip.newExpense')}
-            hitSlop={8}
-            style={({ pressed }) => [pressed && styles.pressed]}
-          >
-            <Ionicons name="add" size={26} color={theme.colors.primary} />
-          </Pressable>
-        </View>
-      }
-    >
-      {isLoading ? (
-        <ExpensesSkeleton />
-      ) : isError ? (
-        <ErrorState
-          title={t('errors.title')}
-          body={t('errors.body')}
-          retryLabel={t('common.retry')}
-          onRetry={() => void refetch()}
-        />
-      ) : !hasExpenses ? (
-        <EmptyState
-          icon="card-outline"
-          title={t('trip.noExpenses')}
-          body={t('trip.noExpensesBody')}
-          cta={t('trip.newExpense')}
-          onCta={goAdd}
-        />
-      ) : (
-        <View style={styles.fill}>
-          <FlashList
-            data={feed}
-            keyExtractor={(item) => item.key}
-            getItemType={(item) => item.kind}
-            contentContainerStyle={styles.list}
-            refreshing={isRefetching}
-            onRefresh={() => void refetch()}
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              <View style={styles.header}>
-                <Animated.View entering={FadeInDown.duration(320)}>
-                  <Pressable
-                    onPress={() => {
-                      haptics.light()
-                      goBalances()
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('trip.viewBalances')}
-                    style={({ pressed }) => [pressed && styles.pressed]}
-                  >
-                    <View style={styles.balanceCard}>
-                      <Eyebrow style={styles.balanceLabel}>{t('trip.balanceLabel')}</Eyebrow>
-                      <Text style={[styles.balanceAmount, { color: balanceColor }]}>
-                        {formatAmount(Math.abs(myBalance), tripCurrency)}
-                      </Text>
-                      <Text style={styles.balanceSub} numberOfLines={1}>
-                        {balanceSub}
-                      </Text>
-                      <View
-                        style={styles.settleButton}
-                        importantForAccessibility="no-hide-descendants"
-                      >
-                        <Ionicons name="git-compare-outline" size={16} color={theme.colors.bezel} />
-                        <Text style={styles.settleButtonLabel}>{t('expenses.settleUp')}</Text>
-                      </View>
-                    </View>
-                  </Pressable>
-                </Animated.View>
-
-                <Animated.View
-                  entering={FadeInDown.delay(60).duration(320)}
-                  style={styles.headerControls}
-                >
-                  <TextField
-                    placeholder={t('trip.searchExpenses')}
-                    value={query}
-                    onChangeText={setQuery}
-                    autoCorrect={false}
-                    autoCapitalize="none"
-                  />
-
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.chips}
-                  >
-                    <Chip
-                      label={t('trip.all')}
-                      selected={category === null}
-                      onPress={() => setCategory(null)}
-                    />
-                    {EXPENSE_CATEGORIES.map((key) => (
-                      <Chip
-                        key={key}
-                        label={t(`categories.${key}`)}
-                        icon={CATEGORY_ICON[key]}
-                        selected={category === key}
-                        onPress={() => setCategory(key)}
-                      />
-                    ))}
-                  </ScrollView>
-                </Animated.View>
-              </View>
-            }
-            ListEmptyComponent={<Text style={styles.noResults}>{t('trip.noResults')}</Text>}
-            renderItem={renderItem}
-          />
-
-          <Animated.View
-            entering={FadeInDown.delay(120).duration(320)}
-            style={styles.fab}
-            pointerEvents="box-none"
-          >
+        segment === 'expenses' ? (
+          <View style={styles.headerActions}>
+            {hasExpenses ? (
+              <Pressable
+                onPress={() => {
+                  haptics.light()
+                  void onExport()
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={t('expenses.export')}
+                hitSlop={8}
+                style={({ pressed }) => [pressed && styles.pressed]}
+              >
+                <Ionicons name="share-outline" size={22} color={theme.colors.foreground} />
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={() => {
                 haptics.light()
@@ -458,13 +346,145 @@ export default function TripExpensesScreen() {
               }}
               accessibilityRole="button"
               accessibilityLabel={t('trip.newExpense')}
-              style={({ pressed }) => [styles.fabButton, pressed && styles.pressed]}
+              hitSlop={8}
+              style={({ pressed }) => [pressed && styles.pressed]}
             >
-              <Ionicons name="add" size={20} color={theme.colors.primaryForeground} />
-              <Text style={styles.fabLabel}>{t('trip.expense')}</Text>
+              <Ionicons name="add" size={26} color={theme.colors.primary} />
             </Pressable>
-          </Animated.View>
-        </View>
+          </View>
+        ) : undefined
+      }
+    >
+      <View style={styles.segment}>
+        <SpendSegmented value={segment} onChange={setSegment} />
+      </View>
+
+      {segment === 'expenses' ? (
+        isLoading ? (
+          <ExpensesSkeleton />
+        ) : isError ? (
+          <ErrorState
+            title={t('errors.title')}
+            body={t('errors.body')}
+            retryLabel={t('common.retry')}
+            onRetry={() => void refetch()}
+          />
+        ) : !hasExpenses ? (
+          <EmptyState
+            icon="card-outline"
+            title={t('trip.noExpenses')}
+            body={t('trip.noExpensesBody')}
+            cta={t('trip.newExpense')}
+            onCta={goAdd}
+          />
+        ) : (
+          <View style={styles.fill}>
+            <FlashList
+              data={feed}
+              keyExtractor={(item) => item.key}
+              getItemType={(item) => item.kind}
+              contentContainerStyle={styles.list}
+              refreshing={isRefetching}
+              onRefresh={() => void refetch()}
+              showsVerticalScrollIndicator={false}
+              ListHeaderComponent={
+                <View style={styles.header}>
+                  <Animated.View entering={FadeInDown.duration(320)}>
+                    <Pressable
+                      onPress={() => {
+                        haptics.light()
+                        setSegment('balances')
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('trip.viewBalances')}
+                      style={({ pressed }) => [pressed && styles.pressed]}
+                    >
+                      <View style={styles.balanceCard}>
+                        <Eyebrow style={styles.balanceLabel}>{t('trip.balanceLabel')}</Eyebrow>
+                        <Text style={[styles.balanceAmount, { color: balanceColor }]}>
+                          {formatAmount(Math.abs(myBalance), tripCurrency)}
+                        </Text>
+                        <Text style={styles.balanceSub} numberOfLines={1}>
+                          {balanceSub}
+                        </Text>
+                        <View
+                          style={styles.settleButton}
+                          importantForAccessibility="no-hide-descendants"
+                        >
+                          <Ionicons
+                            name="git-compare-outline"
+                            size={16}
+                            color={theme.colors.bezel}
+                          />
+                          <Text style={styles.settleButtonLabel}>{t('expenses.settleUp')}</Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  </Animated.View>
+
+                  <Animated.View
+                    entering={FadeInDown.delay(60).duration(320)}
+                    style={styles.headerControls}
+                  >
+                    <TextField
+                      placeholder={t('trip.searchExpenses')}
+                      value={query}
+                      onChangeText={setQuery}
+                      autoCorrect={false}
+                      autoCapitalize="none"
+                    />
+
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.chips}
+                    >
+                      <Chip
+                        label={t('trip.all')}
+                        selected={category === null}
+                        onPress={() => setCategory(null)}
+                      />
+                      {expenseCategories.map((root) => (
+                        <Chip
+                          key={root.code}
+                          label={t(labelKeyForCode(root.code))}
+                          icon={iconForCode(root.code, null)}
+                          selected={category === root.code}
+                          onPress={() => setCategory(root.code)}
+                        />
+                      ))}
+                    </ScrollView>
+                  </Animated.View>
+                </View>
+              }
+              ListEmptyComponent={<Text style={styles.noResults}>{t('trip.noResults')}</Text>}
+              renderItem={renderItem}
+            />
+
+            <Animated.View
+              entering={FadeInDown.delay(120).duration(320)}
+              style={styles.fab}
+              pointerEvents="box-none"
+            >
+              <Pressable
+                onPress={() => {
+                  haptics.light()
+                  goAdd()
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={t('trip.newExpense')}
+                style={({ pressed }) => [styles.fabButton, pressed && styles.pressed]}
+              >
+                <Ionicons name="add" size={20} color={theme.colors.primaryForeground} />
+                <Text style={styles.fabLabel}>{t('trip.expense')}</Text>
+              </Pressable>
+            </Animated.View>
+          </View>
+        )
+      ) : segment === 'balances' ? (
+        <BalancesView tripId={tripId} />
+      ) : (
+        <StatsView tripId={tripId} />
       )}
     </Screen>
   )
@@ -495,6 +515,9 @@ function ExpensesSkeleton() {
 }
 
 const styles = StyleSheet.create((theme, rt) => ({
+  segment: {
+    marginBottom: theme.gap(3),
+  },
   fill: {
     flex: 1,
   },

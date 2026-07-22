@@ -6,23 +6,135 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: '14.5'
   }
-  graphql_public: {
+  private: {
     Tables: {
-      [_ in never]: never
+      calendar_feed_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          revoked_at: string | null
+          token_hash: string
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          revoked_at?: string | null
+          token_hash: string
+          trip_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          revoked_at?: string | null
+          token_hash?: string
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      places_cache: {
+        Row: {
+          fetched_at: string
+          payload: Json
+          query_hash: string
+        }
+        Insert: {
+          fetched_at?: string
+          payload: Json
+          query_hash: string
+        }
+        Update: {
+          fetched_at?: string
+          payload?: Json
+          query_hash?: string
+        }
+        Relationships: []
+      }
+      processed_inbound_webhooks: {
+        Row: {
+          provider_email_id: string
+          received_at: string
+        }
+        Insert: {
+          provider_email_id: string
+          received_at?: string
+        }
+        Update: {
+          provider_email_id?: string
+          received_at?: string
+        }
+        Relationships: []
+      }
+      rate_limits: {
+        Row: {
+          bucket: string
+          count: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          count?: number
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          bucket?: string
+          count?: number
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      trip_inbox_addresses: {
+        Row: {
+          auto_validate: boolean
+          created_at: string
+          id: string
+          revoked_at: string | null
+          slug_normalized: string
+          trip_id: string
+        }
+        Insert: {
+          auto_validate?: boolean
+          created_at?: string
+          id?: string
+          revoked_at?: string | null
+          slug_normalized: string
+          trip_id: string
+        }
+        Update: {
+          auto_validate?: boolean
+          created_at?: string
+          id?: string
+          revoked_at?: string | null
+          slug_normalized?: string
+          trip_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      graphql: {
+      humanize_email_name: { Args: { _email: string }; Returns: string }
+      is_trip_member: { Args: { _trip_id: string }; Returns: boolean }
+      notify: {
         Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
+          _actor: string
+          _payload?: Json
+          _recipients: string[]
+          _trip_id: string
+          _type: string
         }
-        Returns: Json
+        Returns: undefined
       }
+      send_packing_reminders: { Args: never; Returns: undefined }
+      shares_active_trip: { Args: { _other: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
@@ -33,6 +145,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      _spike_payloads: {
+        Row: {
+          body: Json | null
+          headers: Json | null
+          id: number
+          received_at: string
+        }
+        Insert: {
+          body?: Json | null
+          headers?: Json | null
+          id?: never
+          received_at?: string
+        }
+        Update: {
+          body?: Json | null
+          headers?: Json | null
+          id?: never
+          received_at?: string
+        }
+        Relationships: []
+      }
       expense_item_assignments: {
         Row: {
           id: string
@@ -195,6 +328,7 @@ export type Database = {
           fx_rate: number
           id: string
           paid_by: string | null
+          subcategory: string | null
           trip_id: string
           updated_at: string
           version: number
@@ -211,6 +345,7 @@ export type Database = {
           fx_rate?: number
           id?: string
           paid_by?: string | null
+          subcategory?: string | null
           trip_id: string
           updated_at?: string
           version?: number
@@ -227,6 +362,7 @@ export type Database = {
           fx_rate?: number
           id?: string
           paid_by?: string | null
+          subcategory?: string | null
           trip_id?: string
           updated_at?: string
           version?: number
@@ -251,6 +387,82 @@ export type Database = {
             columns: ['trip_id']
             isOneToOne: false
             referencedRelation: 'trips'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      import_proposals: {
+        Row: {
+          created_at: string
+          events: Json | null
+          expires_at: string | null
+          id: string
+          provider_email_id: string | null
+          received_at: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          sender_email: string | null
+          source: string
+          status: string
+          subject: string | null
+          trip_id: string
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          events?: Json | null
+          expires_at?: string | null
+          id?: string
+          provider_email_id?: string | null
+          received_at?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          sender_email?: string | null
+          source: string
+          status: string
+          subject?: string | null
+          trip_id: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          events?: Json | null
+          expires_at?: string | null
+          id?: string
+          provider_email_id?: string | null
+          received_at?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          sender_email?: string | null
+          source?: string
+          status?: string
+          subject?: string | null
+          trip_id?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'import_proposals_rejected_by_fkey'
+            columns: ['rejected_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'import_proposals_trip_id_fkey'
+            columns: ['trip_id']
+            isOneToOne: false
+            referencedRelation: 'trips'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'import_proposals_validated_by_fkey'
+            columns: ['validated_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
         ]
@@ -588,6 +800,7 @@ export type Database = {
       }
       trip_events: {
         Row: {
+          category: string
           created_at: string
           created_by: string | null
           end_location: Json | null
@@ -602,12 +815,14 @@ export type Database = {
           participants: string[] | null
           place_id: string | null
           starts_at: string | null
+          subcategory: string | null
           title: string
           trip_id: string
           type: string
           updated_at: string
         }
         Insert: {
+          category?: string
           created_at?: string
           created_by?: string | null
           end_location?: Json | null
@@ -622,12 +837,14 @@ export type Database = {
           participants?: string[] | null
           place_id?: string | null
           starts_at?: string | null
+          subcategory?: string | null
           title: string
           trip_id: string
           type?: string
           updated_at?: string
         }
         Update: {
+          category?: string
           created_at?: string
           created_by?: string | null
           end_location?: Json | null
@@ -642,6 +859,7 @@ export type Database = {
           participants?: string[] | null
           place_id?: string | null
           starts_at?: string | null
+          subcategory?: string | null
           title?: string
           trip_id?: string
           type?: string
@@ -918,6 +1136,10 @@ export type Database = {
         Args: { _bucket: string; _limit: number; _window_seconds: number }
         Returns: boolean
       }
+      claim_inbound_webhook: {
+        Args: { _provider_email_id: string }
+        Returns: boolean
+      }
       claim_packing_item: { Args: { _item_id: string }; Returns: undefined }
       clear_member_location: { Args: { _trip_id: string }; Returns: undefined }
       create_calendar_feed_token: {
@@ -929,10 +1151,12 @@ export type Database = {
           _amount_cents: number
           _assignments: Json
           _base_amount_cents: number
+          _category?: string
           _currency: string
           _description: string
           _fx_rate: number
           _items: Json
+          _subcategory?: string
           _trip_id: string
         }
         Returns: {
@@ -947,6 +1171,7 @@ export type Database = {
           fx_rate: number
           id: string
           paid_by: string | null
+          subcategory: string | null
           trip_id: string
           updated_at: string
           version: number
@@ -969,6 +1194,7 @@ export type Database = {
           _paid_by?: string
           _payers?: Json
           _splits: Json
+          _subcategory?: string
           _trip_id: string
         }
         Returns: {
@@ -983,6 +1209,7 @@ export type Database = {
           fx_rate: number
           id: string
           paid_by: string | null
+          subcategory: string | null
           trip_id: string
           updated_at: string
           version: number
@@ -994,6 +1221,11 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_share_proposal: {
+        Args: { _events: Json; _subject: string; _trip_id: string }
+        Returns: string
+      }
+      create_trip_inbox_address: { Args: { _trip_id: string }; Returns: string }
       delete_my_account: { Args: { _user_id: string }; Returns: boolean }
       expense_packing_item: {
         Args: { _amount_cents: number; _item_id: string; _member_ids: string[] }
@@ -1009,6 +1241,7 @@ export type Database = {
           fx_rate: number
           id: string
           paid_by: string | null
+          subcategory: string | null
           trip_id: string
           updated_at: string
           version: number
@@ -1035,6 +1268,13 @@ export type Database = {
           owed_cents: number
           paid_cents: number
           user_id: string
+        }[]
+      }
+      get_trip_inbox_address: {
+        Args: { _trip_id: string }
+        Returns: {
+          address: string
+          auto_validate: boolean
         }[]
       }
       join_trip_by_code: { Args: { _code: string }; Returns: string }
@@ -1073,10 +1313,22 @@ export type Database = {
         Args: { _locale?: string; _platform: string; _token: string }
         Returns: undefined
       }
+      reject_import_proposal: {
+        Args: { _proposal_id: string }
+        Returns: undefined
+      }
       remove_trip_member: { Args: { _member_id: string }; Returns: undefined }
       resolve_calendar_feed: {
         Args: { _limit?: number; _token: string; _window_seconds?: number }
         Returns: {
+          rate_limited: boolean
+          trip_id: string
+        }[]
+      }
+      resolve_trip_inbox: {
+        Args: { _limit?: number; _recipient: string; _window_seconds?: number }
+        Returns: {
+          auto_validate: boolean
           rate_limited: boolean
           trip_id: string
         }[]
@@ -1106,6 +1358,14 @@ export type Database = {
         Args: { _trip_id: string }
         Returns: undefined
       }
+      revoke_trip_inbox_address: {
+        Args: { _trip_id: string }
+        Returns: undefined
+      }
+      set_trip_inbox_autovalidate: {
+        Args: { _on: boolean; _trip_id: string }
+        Returns: undefined
+      }
       soft_delete_expense: { Args: { _expense_id: string }; Returns: undefined }
       trip_member_names: {
         Args: { _trip_id: string }
@@ -1127,6 +1387,7 @@ export type Database = {
           _paid_by?: string
           _payers?: Json
           _splits: Json
+          _subcategory?: string
         }
         Returns: {
           amount_cents: number
@@ -1140,6 +1401,7 @@ export type Database = {
           fx_rate: number
           id: string
           paid_by: string | null
+          subcategory: string | null
           trip_id: string
           updated_at: string
           version: number
@@ -1156,11 +1418,13 @@ export type Database = {
           _amount_cents: number
           _assignments: Json
           _base_amount_cents: number
+          _category?: string
           _currency: string
           _description: string
           _expense_id: string
           _fx_rate: number
           _items: Json
+          _subcategory?: string
         }
         Returns: {
           amount_cents: number
@@ -1174,6 +1438,7 @@ export type Database = {
           fx_rate: number
           id: string
           paid_by: string | null
+          subcategory: string | null
           trip_id: string
           updated_at: string
           version: number
@@ -1193,6 +1458,10 @@ export type Database = {
           _lng: number
           _trip_id: string
         }
+        Returns: undefined
+      }
+      validate_import_proposal: {
+        Args: { _events: Json; _proposal_id: string }
         Returns: undefined
       }
     }
@@ -1323,7 +1592,7 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
+  private: {
     Enums: {},
   },
   public: {

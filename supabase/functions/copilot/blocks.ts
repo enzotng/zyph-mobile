@@ -6,22 +6,18 @@ export type Chip =
   | { action: "prompt"; prompt: string; label: string }
   | { action: "tool"; tool: string; args: Record<string, unknown>; label: string }
 
-// Must match the client's canonical EVENT_TYPES (features/timeline/event-types.ts) so the
-// inserted trip_events.type resolves to a real timeline icon. food = restaurants, lodging = hotels.
-const VALID_ITEM_TYPES = [
-  "activity",
-  "food",
-  "transport",
-  "lodging",
-  "flight",
-  "event",
-] as const
-type ItineraryItemType = (typeof VALID_ITEM_TYPES)[number]
+// Itinerary items emit the same app-wide category/subcategory taxonomy as timeline events
+// (apps/mobile/src/features/taxonomy/taxonomy.ts), restricted to the events-relevant closed set.
+// Same allowlist as parse-receipt-email's CATEGORIES/SUBCATEGORIES (kept in sync manually - no
+// shared module between Deno edge functions).
+const CATEGORIES = ["transport", "lodging", "food", "activity", "shopping", "health", "fees", "other"]
+const SUBCATEGORIES = ["transport.flight","transport.train","transport.transit","transport.car","transport.bus","transport.ferry","transport.taxi","transport.bike","transport.fuel","lodging.hotel","lodging.rental","lodging.hostel","lodging.camping","food.restaurant","food.bar","food.cafe","food.groceries","activity.sightseeing","activity.excursion","activity.show","activity.sport","activity.nature","activity.nightlife","activity.wellness","activity.experience","health.doctor","other.event","other.meetup","other.reminder"]
 
 export type ItineraryItem = {
   placeId: string
   title: string
-  type: ItineraryItemType
+  category: string
+  subcategory: string | null
   time?: string
   notes?: string
 }
@@ -156,10 +152,19 @@ export function validateBlocks(
             continue
           }
 
-          const rawType = (item as { type?: unknown }).type
-          const type: ItineraryItemType = VALID_ITEM_TYPES.includes(rawType as ItineraryItemType)
-            ? (rawType as ItineraryItemType)
-            : "activity"
+          const rawCategory = (item as { category?: unknown }).category
+          const category =
+            typeof rawCategory === "string" && CATEGORIES.includes(rawCategory)
+              ? rawCategory
+              : "activity"
+
+          const rawSubcategory = (item as { subcategory?: unknown }).subcategory
+          const subcategory =
+            typeof rawSubcategory === "string" &&
+            SUBCATEGORIES.includes(rawSubcategory) &&
+            rawSubcategory.startsWith(category + ".")
+              ? rawSubcategory
+              : null
 
           const rawTime = (item as { time?: unknown }).time
           const time =
@@ -174,7 +179,8 @@ export function validateBlocks(
           validItems.push({
             placeId,
             title,
-            type,
+            category,
+            subcategory,
             ...(time !== undefined ? { time } : {}),
             ...(notes !== undefined ? { notes } : {}),
           })

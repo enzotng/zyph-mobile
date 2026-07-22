@@ -14,6 +14,7 @@ import { TripDatesField } from '@/components/trip-dates-field'
 import { Spinner } from '@/components/ui'
 import { type CreateTripValues, createTripSchema, useTrip, useUpdateTrip } from '@/features/trips'
 import { CalendarFeedSheet } from '@/features/trips/components/calendar-feed-sheet'
+import { TripInboxSheet } from '@/features/trips/components/trip-inbox-sheet'
 import { paramString } from '@/lib/routing'
 
 export default function EditTripScreen() {
@@ -24,6 +25,7 @@ export default function EditTripScreen() {
   const { data: trip, isLoading } = useTrip(tripId)
   const updateTrip = useUpdateTrip()
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [inboxOpen, setInboxOpen] = useState(false)
   const {
     control,
     handleSubmit,
@@ -182,11 +184,27 @@ export default function EditTripScreen() {
         onPress={() => setCalendarOpen(true)}
       />
 
+      <Button
+        label={t('tripForm.inboxRow')}
+        variant="secondary"
+        icon="mail-outline"
+        onPress={() => setInboxOpen(true)}
+      />
+
+      <Button
+        label={t('tripForm.inboxViewRow')}
+        variant="secondary"
+        icon="file-tray-full-outline"
+        onPress={() => router.push({ pathname: '/trips/[id]/inbox', params: { id: tripId } })}
+      />
+
       <CalendarFeedSheet
         open={calendarOpen}
         onClose={() => setCalendarOpen(false)}
         tripId={tripId}
       />
+
+      <TripInboxSheet open={inboxOpen} onClose={() => setInboxOpen(false)} tripId={tripId} />
     </Screen>
   )
 }
