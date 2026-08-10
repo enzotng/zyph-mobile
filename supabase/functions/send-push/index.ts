@@ -6,10 +6,13 @@
 // notification with a service-role client, re-checks the recipient's push opt-out, fans the push
 // out to all of the recipient's registered device tokens through Expo's push service.
 //
-// Copy is rendered per device in French or English from the push_tokens.locale column (set at
-// register time from the app's active language), defaulting to French when locale is unset.
+// Copy is rendered per device in French or English from the push_tokens.locale column, which the
+// app writes on register and refreshes whenever the active language changes. See lang.ts for the
+// fallback, which mirrors the app's.
 
 import { createClient } from "@supabase/supabase-js"
+
+import { type Lang, toLang } from "./lang.ts"
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 
@@ -27,14 +30,6 @@ type Payload = Record<string, unknown>
 
 function str(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null
-}
-
-type Lang = "en" | "fr"
-
-// Maps a stored device locale (e.g. "en", "en-US", "fr") to a supported push language. Defaults
-// to French (the app's default locale) for anything unset or unsupported.
-function toLang(locale: string | null | undefined): Lang {
-  return typeof locale === "string" && locale.toLowerCase().startsWith("en") ? "en" : "fr"
 }
 
 // Localized push copy per notification type, mirroring the in-app feed. settlement.created splits

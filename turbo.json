@@ -21,7 +21,8 @@
         "jest/**",
         "package.json",
         "$TURBO_ROOT$/supabase/functions/calendar-feed/**",
-        "$TURBO_ROOT$/supabase/functions/receive-booking-email/**"
+        "$TURBO_ROOT$/supabase/functions/receive-booking-email/**",
+        "$TURBO_ROOT$/supabase/functions/send-push/**"
       ],
       "outputs": []
     }
