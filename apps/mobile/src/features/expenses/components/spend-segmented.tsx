@@ -4,9 +4,6 @@ import { Segmented } from '@/components/ui'
 
 export type SpendTab = 'expenses' | 'balances' | 'stats'
 
-// Controlled segmented for the Spend tab: switching segments swaps the active body in place (no
-// navigation, unlike PlanSegmented which pushes a route). The active tab lives in the host
-// screen's state, so this component stays a pure controlled Segmented wrapper.
 export function SpendSegmented({
   value,
   onChange,

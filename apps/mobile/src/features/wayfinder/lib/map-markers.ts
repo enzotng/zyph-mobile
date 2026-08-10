@@ -9,7 +9,6 @@ export function layerOf(kind: WayfinderTargetKind): MapLayer {
 
 type LayerColors = { primary: string; accent: string; success: string }
 
-// Tint per layer: events/gates use primary (indigo), places use accent (sky), members success (green).
 export function mapTintFor(colors: LayerColors, kind: WayfinderTargetKind): string {
   const layer = layerOf(kind)
   if (layer === 'poi') {

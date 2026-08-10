@@ -65,7 +65,8 @@ export async function createExpense({
   payers,
 }: CreateExpenseInput): Promise<Expense> {
   // Atomic server-side: inserts the expense + the provided splits, enforces membership,
-  // resolves the payer from auth.uid(). One round trip, one transaction.
+  // resolves the payer (largest of payers, else paidBy, else the caller). One round trip,
+  // one transaction.
   // The server trusts the client-computed baseAmountCents/fxRate (it only validates
   // sign): acceptable because trip members are mutually trusted and balances are
   // informational (no money movement). Membership + the split sum are server-enforced.

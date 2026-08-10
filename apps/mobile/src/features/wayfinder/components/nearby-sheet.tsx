@@ -243,8 +243,6 @@ export function NearbySheet({
   )
 }
 
-// ----- Moved verbatim from (tabs)/pois.tsx (Task 7 deletes that file) -----
-
 function NearbySegmented({
   active,
   onChange,
