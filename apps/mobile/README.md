@@ -2,8 +2,7 @@
 
 The ZYPH Expo app - the only workspace in this monorepo.
 
-Run everything from the repo root: see the [root README](../../README.md) for setup, and
-`CLAUDE.md` for the architecture and conventions.
+Run everything from the repo root: see the [root README](../../README.md) for setup.
 
 ```sh
 pnpm mobile start          # expo start
