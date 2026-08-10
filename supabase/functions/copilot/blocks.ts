@@ -1,5 +1,5 @@
 // Block types emitted by the copilot edge function.
-// The client zod (Task 1) mirrors these shapes; keep both in sync.
+// Mirrored by apps/mobile/src/features/copilot/schemas.ts - keep both in sync.
 
 export type Chip =
   | { action: "navigate"; to: string; label: string }
@@ -34,11 +34,8 @@ export type Block =
   | { kind: "chips"; chips: Chip[] }
   | { kind: "itinerary"; days: ItineraryDay[] }
 
-/**
- * Validates the raw object returned by the model and produces a typed Block array.
- * Any block that fails shape/allowlist checks is silently dropped (defense-in-depth;
- * the primary safety net is client-side zod validation from Task 1).
- */
+// A block that fails its shape/allowlist check is dropped, never thrown on: one bad block must
+// not lose the whole turn. The client re-validates with zod on receipt.
 export function validateBlocks(
   parsed: unknown,
   allow: {

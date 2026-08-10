@@ -26,9 +26,7 @@ type ImmersiveMapProps = {
 
 // The place-first immersive Map: a full-bleed AppleMaps canvas, a floating search row, a
 // right-hand control stack (recenter / layers / AR) and a draggable Nearby sheet docked at the
-// bottom. Lifted from the old `(tabs)/pois.tsx` MapTab (a later task deletes that file), now
-// driven by the extracted TripMapCanvas + NearbySheet components instead of owning that state
-// inline.
+// bottom.
 export function ImmersiveMap({ tripId, focusId }: ImmersiveMapProps) {
   const router = useRouter()
   const { t, i18n } = useTranslation()

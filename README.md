@@ -4,7 +4,7 @@ Offline-first travel super-app (React Native + Expo).
 
 ## Stack
 
-Expo SDK 52 - React Native 0.76 (New Architecture) - React 19 - TypeScript 5.7 strict - Expo Router v4 - Unistyles 3 - Zustand 5 - TanStack Query 5 - PowerSync - Drizzle ORM - Supabase (self-hosted) - Mapbox v11 - Sentry - EAS - Turborepo
+Expo SDK 56 - React Native 0.85 (New Architecture) - React 19.2 (React Compiler) - TypeScript 6 strict - Expo Router - Unistyles 3 - TanStack Query 5 - MMKV - Supabase (Postgres, Auth, Storage, Edge Functions) - expo-maps - EAS - Turborepo + pnpm
 
 ## Requirements
 
@@ -19,8 +19,11 @@ Expo SDK 52 - React Native 0.76 (New Architecture) - React 19 - TypeScript 5.7 s
 ```sh
 nvm use
 pnpm install
-pnpm dev
+pnpm mobile start
 ```
+
+Other common commands: `pnpm mobile ios` / `pnpm mobile android` to run on a simulator or device,
+and `pnpm lint`, `pnpm typecheck`, `pnpm test` from the repo root.
 
 ## Documentation
 

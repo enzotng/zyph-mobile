@@ -1,8 +1,10 @@
 import type { DehydrateOptions, QueryKey } from '@tanstack/react-query'
 import { defaultShouldDehydrateQuery } from '@tanstack/react-query'
 
-// The persisted cache is plaintext on disk. Matched by exact index, never `includes`:
-// key[0] is 'trips' for 13 other families, and place-search's key[2] is user-typed text.
+// These families never reach disk at all - a stronger guarantee than the at-rest encryption
+// underneath, since query-persister's trim() is not a secure erase and residual blocks survive
+// until the filesystem reuses them. Matched by exact index, never `includes`: key[0] is 'trips'
+// for 13 other families, and place-search's key[2] is user-typed text.
 export function isSensitiveQueryKey(queryKey: QueryKey): boolean {
   return (
     queryKey[0] === 'place-search' ||
@@ -14,8 +16,7 @@ export function isSensitiveQueryKey(queryKey: QueryKey): boolean {
 export const persistDehydrateOptions: DehydrateOptions = {
   shouldDehydrateQuery: (query) =>
     defaultShouldDehydrateQuery(query) && !isSensitiveQueryKey(query.queryKey),
-  // Defensive, and a no-op today: mutations dehydrate only while isPaused, which never
-  // happens under networkMode 'offlineFirst' with retry 0. Giving mutations a retry would
-  // silently start writing their variables - which carry raw GPS - to the plaintext store.
+  // Unconditional on purpose: mutation variables carry raw GPS and must stay off disk whatever
+  // retry setting the client is given. Do not relax this to a condition on the current config.
   shouldDehydrateMutation: () => false,
 }

@@ -18,8 +18,8 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   // Collected only when --coverage is passed (gated to main/nightly in CI).
-  // Screens/routing (app/**) are validated by E2E (Maestro, TECH-008), not unit tests;
-  // generated types and barrel files carry no logic.
+  // app/** is excluded from the threshold, not from testing - several route screens do have unit
+  // tests; generated types and barrel files carry no logic.
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
@@ -30,9 +30,9 @@ module.exports = {
     '!src/lib/supabase.ts',
     '!src/test-utils/**',
     '!src/unistyles.ts',
-    // Native-bridge code validated on-device / by E2E (like app/** above), not in unit
-    // tests: device sensors (magnetometer/accelerometer/GPS), the camera scanner, and the
-    // sensor-driven AR wayfinder overlay + live-location sharing.
+    // Native-bridge code validated on-device / by E2E, not in unit tests: device sensors
+    // (magnetometer/accelerometer/GPS), the camera scanner, and the sensor-driven AR
+    // wayfinder overlay + live-location sharing.
     '!src/lib/sensors/**',
     '!src/components/receipt-scanner.tsx',
     // Native "Sign in with Apple" button (AppleAuthenticationButton) - validated on-device.
@@ -41,8 +41,8 @@ module.exports = {
     '!src/features/wayfinder/hooks/use-share-location.ts',
     '!src/features/wayfinder/hooks/use-wayfinder.ts',
   ],
-  // Enforce coverage on business logic (features/lib/components). Screens/routing are
-  // covered by E2E (Maestro, TECH-008) and excluded above via collectCoverageFrom.
+  // Enforce coverage on business logic (features/lib/components); everything excluded above is
+  // out of the threshold, not out of testing.
   coverageThreshold: {
     global: {
       statements: 90,

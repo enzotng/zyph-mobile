@@ -36,8 +36,7 @@ async function getMyTripBalances(): Promise<Map<string, number>> {
   return new Map((data ?? []).map((row) => [row.trip_id, row.balance_cents]))
 }
 
-// Asks the trip-cover Edge Function for an Unsplash cover for a destination.
-// Best-effort: returns nulls when the function or Unsplash is unavailable.
+// Best-effort: returns nulls when the edge function or its providers are unavailable.
 export async function fetchTripCover(destination: string): Promise<TripCover> {
   try {
     const { data, error } = await supabase.functions.invoke<TripCover>('trip-cover', {
@@ -52,8 +51,8 @@ export async function fetchTripCover(destination: string): Promise<TripCover> {
   }
 }
 
-// Backfills an Unsplash cover when a trip has a destination but no cover yet.
-// Never overwrites an existing cover, so editing a trip keeps its photo.
+// Backfills the automatic cover (Google Places, else Unsplash) when a trip has a destination
+// but no cover yet. Never overwrites an existing cover, so editing a trip keeps its photo.
 async function withCover(trip: Trip): Promise<Trip> {
   if (!trip.destination || trip.cover_photo_url) {
     return trip

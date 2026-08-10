@@ -19,9 +19,9 @@ function normalizeTitlePrefix(title: string): string {
     .slice(0, TITLE_PREFIX_LENGTH)
 }
 
-// Fuzzy signature to flag likely duplicates (two members forwarding the same email, or a
-// re-forward). There is no structured flight-number field, so this is intentionally fuzzy: trip +
-// day + a normalized title prefix.
+// NOT WIRED YET: nothing calls this. Intended to flag likely duplicates (two members forwarding
+// the same email, or a re-forward). There is no structured flight-number field, so the signature
+// is intentionally fuzzy: trip + day + a normalized title prefix.
 export function dedupSignature(tripId: string, event: { startsAt: string; title: string }): string {
   const day = event.startsAt.slice(0, 10)
   const titlePrefix = normalizeTitlePrefix(event.title)

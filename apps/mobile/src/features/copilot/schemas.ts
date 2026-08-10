@@ -2,8 +2,8 @@ import { z } from 'zod'
 
 import { isValidCategory, isValidSubcategory } from '@/features/taxonomy'
 
-// The copilot edge function returns either a text answer or a PROPOSED action (never executed
-// server-side). Validate the envelope at the boundary before it reaches the UI.
+// An action block is a PROPOSAL: the edge function never executes it server-side, the user
+// confirms first. Validate it at the boundary before it reaches the UI.
 export const copilotActionSchema = z.object({
   tool: z.enum(['add_expense', 'add_event', 'add_packing', 'record_settlement']),
   args: z.record(z.string(), z.unknown()),
