@@ -8,6 +8,7 @@ module.exports = {
     '<rootDir>/src',
     '<rootDir>/../../supabase/functions/calendar-feed',
     '<rootDir>/../../supabase/functions/receive-booking-email',
+    '<rootDir>/../../supabase/functions/send-push',
   ],
   // Unistyles is a native module; load its official mock + the theme config first.
   setupFiles: ['<rootDir>/jest-env.js', 'react-native-unistyles/mocks', '<rootDir>/src/unistyles.ts'],
