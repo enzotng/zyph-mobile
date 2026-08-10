@@ -1,10 +1,10 @@
 import type { DehydrateOptions, QueryKey } from '@tanstack/react-query'
 import { defaultShouldDehydrateQuery } from '@tanstack/react-query'
 
-// These families never reach disk. That is the real guarantee, not the at-rest encryption
-// underneath it: query-persister's trim() is not a secure erase, so anything once written stays
-// recoverable. Matched by exact index, never `includes`: key[0] is 'trips' for 13 other
-// families, and place-search's key[2] is user-typed text.
+// These families never reach disk at all - a stronger guarantee than the at-rest encryption
+// underneath, since query-persister's trim() is not a secure erase and residual blocks survive
+// until the filesystem reuses them. Matched by exact index, never `includes`: key[0] is 'trips'
+// for 13 other families, and place-search's key[2] is user-typed text.
 export function isSensitiveQueryKey(queryKey: QueryKey): boolean {
   return (
     queryKey[0] === 'place-search' ||
