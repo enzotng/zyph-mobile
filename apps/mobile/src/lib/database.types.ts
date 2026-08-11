@@ -145,27 +145,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _spike_payloads: {
-        Row: {
-          body: Json | null
-          headers: Json | null
-          id: number
-          received_at: string
-        }
-        Insert: {
-          body?: Json | null
-          headers?: Json | null
-          id?: never
-          received_at?: string
-        }
-        Update: {
-          body?: Json | null
-          headers?: Json | null
-          id?: never
-          received_at?: string
-        }
-        Relationships: []
-      }
       expense_item_assignments: {
         Row: {
           id: string
@@ -884,28 +863,34 @@ export type Database = {
       }
       trip_members: {
         Row: {
+          claimed_at: string | null
+          display_name: string | null
           id: string
           joined_at: string
           role: Database['public']['Enums']['trip_role']
           status: Database['public']['Enums']['member_status']
           trip_id: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
+          claimed_at?: string | null
+          display_name?: string | null
           id?: string
           joined_at?: string
           role?: Database['public']['Enums']['trip_role']
           status?: Database['public']['Enums']['member_status']
           trip_id: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
+          claimed_at?: string | null
+          display_name?: string | null
           id?: string
           joined_at?: string
           role?: Database['public']['Enums']['trip_role']
           status?: Database['public']['Enums']['member_status']
           trip_id?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1128,6 +1113,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_ghost_member: {
+        Args: { _name: string; _trip_id: string }
+        Returns: string
+      }
       assign_packing_item: {
         Args: { _item_id: string; _member_id?: string }
         Returns: undefined
@@ -1141,6 +1130,10 @@ export type Database = {
         Returns: boolean
       }
       claim_packing_item: { Args: { _item_id: string }; Returns: undefined }
+      claim_trip_slot: {
+        Args: { _code: string; _slot_id?: string }
+        Returns: string
+      }
       clear_member_location: { Args: { _trip_id: string }; Returns: undefined }
       create_calendar_feed_token: {
         Args: { _trip_id: string }
@@ -1227,6 +1220,7 @@ export type Database = {
       }
       create_trip_inbox_address: { Args: { _trip_id: string }; Returns: string }
       delete_my_account: { Args: { _user_id: string }; Returns: boolean }
+      detach_trip_member: { Args: { _member_id: string }; Returns: undefined }
       expense_packing_item: {
         Args: { _amount_cents: number; _item_id: string; _member_ids: string[] }
         Returns: {
@@ -1270,6 +1264,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_trip_claim_options: { Args: { _code: string }; Returns: Json }
       get_trip_inbox_address: {
         Args: { _trip_id: string }
         Returns: {
@@ -1318,6 +1313,10 @@ export type Database = {
         Returns: undefined
       }
       remove_trip_member: { Args: { _member_id: string }; Returns: undefined }
+      rename_ghost_member: {
+        Args: { _member_id: string; _name: string }
+        Returns: undefined
+      }
       resolve_calendar_feed: {
         Args: { _limit?: number; _token: string; _window_seconds?: number }
         Returns: {

@@ -8,7 +8,7 @@ export type Trip = Database['public']['Tables']['trips']['Row']
 
 export type TripMemberLite = {
   id: string
-  user_id: string
+  user_id: string | null
   display_name: string | null
   avatar_url: string | null
   role: string
