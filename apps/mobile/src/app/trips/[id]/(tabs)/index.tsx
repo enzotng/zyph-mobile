@@ -15,16 +15,10 @@ import { Screen } from '@/components/screen'
 import { AvatarStack, BottomSheet, CityImage, ErrorState, Skeleton } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import { useTripBalances } from '@/features/expenses'
-import { useLeaveTrip, useRegenerateInviteCode, useTripMembers } from '@/features/group'
+import { useTripAdminActions, useTripMembers } from '@/features/group'
 import { ActivitiesRail } from '@/features/places'
 import { eventStatus, useEvents } from '@/features/timeline'
-import {
-  formatTripDates,
-  useDeleteTrip,
-  useResetTripCover,
-  useTrip,
-  useUploadTripCover,
-} from '@/features/trips'
+import { formatTripDates, useResetTripCover, useTrip, useUploadTripCover } from '@/features/trips'
 import { CockpitTimeline } from '@/features/trips/components/cockpit-timeline'
 import { RightNowCard } from '@/features/trips/components/right-now-card'
 import { TripBalanceStrip } from '@/features/trips/components/trip-balance-strip'
@@ -142,9 +136,7 @@ export default function TripDashboardScreen() {
   }, [refetchTrip, refetchEvents, refetchBalances, refetchWeather])
 
   const [actionsOpen, setActionsOpen] = useState(false)
-  const regenerate = useRegenerateInviteCode(tripId)
-  const deleteTripMutation = useDeleteTrip()
-  const leaveTripMutation = useLeaveTrip()
+  const { confirmRegenerate, confirmDelete, confirmLeave } = useTripAdminActions(tripId)
   const uploadCover = useUploadTripCover()
   const resetCover = useResetTripCover()
 
@@ -295,80 +287,6 @@ export default function TripDashboardScreen() {
         error instanceof Error ? error.message : t('common.tryAgain'),
       )
     }
-  }
-
-  function confirmRegenerate() {
-    Alert.alert(
-      'Régénérer le code d’invitation',
-      'Le code actuel cessera de fonctionner. Les personnes déjà inscrites conservent leur accès.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('group.regenerate'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await regenerate.mutateAsync()
-            } catch (error) {
-              Alert.alert(
-                'Régénération impossible',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
-        },
-      ],
-    )
-  }
-
-  function confirmDelete() {
-    Alert.alert(
-      t('group.deleteTrip'),
-      'Cette action supprime définitivement le voyage et toutes ses données.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteTripMutation.mutateAsync(tripId)
-              router.replace('/')
-            } catch (error) {
-              Alert.alert(
-                'Suppression impossible',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
-        },
-      ],
-    )
-  }
-
-  function confirmLeave() {
-    Alert.alert(
-      t('group.leaveTrip'),
-      'Tu ne verras plus ce voyage ni ses dépenses. Les dépenses passées que tu as payées ou que tu dois restent comptabilisées.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: 'Quitter',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await leaveTripMutation.mutateAsync(tripId)
-              router.replace('/')
-            } catch (error) {
-              Alert.alert(
-                'Impossible de quitter',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
-        },
-      ],
-    )
   }
 
   // Full-bleed cover: its corners trace the device's screen radius exactly (no inset to

@@ -11,13 +11,8 @@ import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
 import { Avatar, Card, EmptyState, ErrorState, Eyebrow, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
-import {
-  useLeaveTrip,
-  useRegenerateInviteCode,
-  useRemoveTripMember,
-  useTripMembers,
-} from '@/features/group'
-import { useDeleteTrip, useTrip } from '@/features/trips'
+import { useRemoveTripMember, useTripAdminActions, useTripMembers } from '@/features/group'
+import { useTrip } from '@/features/trips'
 import { useShareLocation } from '@/features/wayfinder'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
@@ -44,9 +39,8 @@ export default function TripGroupScreen() {
   const userId = session?.user.id
   const router = useRouter()
   const { t } = useTranslation()
-  const deleteTrip = useDeleteTrip()
-  const regenerate = useRegenerateInviteCode(tripId)
-  const leaveTripMutation = useLeaveTrip()
+  const { confirmRegenerate, confirmDelete, confirmLeave, isRegenerating, isDeleting, isLeaving } =
+    useTripAdminActions(tripId)
   const removeMember = useRemoveTripMember(tripId)
   const { theme } = useUnistyles()
 
@@ -140,72 +134,7 @@ export default function TripGroupScreen() {
     copiedTimer.current = setTimeout(() => setCopied(false), 1600)
   }
 
-  function confirmRegenerate() {
-    haptics.warning()
-    Alert.alert(t('group.confirmRegenerateTitle'), t('group.confirmRegenerateBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('group.regenerate'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await regenerate.mutateAsync()
-          } catch (error) {
-            Alert.alert(
-              t('group.regenerateFailedTitle'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
-          }
-        },
-      },
-    ])
-  }
-
   const isOwner = trip.owner_id === userId
-
-  function confirmDelete() {
-    haptics.warning()
-    Alert.alert(t('group.deleteTrip'), t('group.confirmDeleteBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteTrip.mutateAsync(tripId)
-            router.replace('/')
-          } catch (error) {
-            Alert.alert(
-              t('group.deleteFailedTitle'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
-          }
-        },
-      },
-    ])
-  }
-
-  function confirmLeave() {
-    haptics.warning()
-    Alert.alert(t('group.leaveTrip'), t('group.confirmLeaveBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('group.leave'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await leaveTripMutation.mutateAsync(tripId)
-            router.replace('/')
-          } catch (error) {
-            Alert.alert(
-              t('group.leaveFailedTitle'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
-          }
-        },
-      },
-    ])
-  }
 
   function confirmRemove(memberId: string, name: string) {
     haptics.warning()
@@ -436,10 +365,10 @@ export default function TripGroupScreen() {
       {/* Regenerate code - bordered full-width action (owner only) */}
       {isOwner ? (
         <Button
-          label={regenerate.isPending ? t('group.regenerating') : t('trip.regenerateCode')}
+          label={isRegenerating ? t('group.regenerating') : t('trip.regenerateCode')}
           icon="refresh-outline"
           variant="secondary"
-          disabled={regenerate.isPending}
+          disabled={isRegenerating}
           onPress={confirmRegenerate}
         />
       ) : null}
@@ -448,27 +377,27 @@ export default function TripGroupScreen() {
       {isOwner ? (
         <Pressable
           onPress={confirmDelete}
-          disabled={deleteTrip.isPending}
+          disabled={isDeleting}
           accessibilityRole="button"
           accessibilityLabel={t('group.deleteTrip')}
-          accessibilityState={{ disabled: deleteTrip.isPending }}
+          accessibilityState={{ disabled: isDeleting }}
           style={({ pressed }) => [styles.dangerBtn, pressed && styles.pressed]}
         >
           <Text style={styles.dangerText} numberOfLines={1}>
-            {deleteTrip.isPending ? t('group.deleting') : t('group.deleteTrip')}
+            {isDeleting ? t('group.deleting') : t('group.deleteTrip')}
           </Text>
         </Pressable>
       ) : (
         <Pressable
           onPress={confirmLeave}
-          disabled={leaveTripMutation.isPending}
+          disabled={isLeaving}
           accessibilityRole="button"
           accessibilityLabel={t('group.leaveTrip')}
-          accessibilityState={{ disabled: leaveTripMutation.isPending }}
+          accessibilityState={{ disabled: isLeaving }}
           style={({ pressed }) => [styles.dangerBtn, pressed && styles.pressed]}
         >
           <Text style={styles.dangerText} numberOfLines={1}>
-            {leaveTripMutation.isPending ? t('group.leaving') : t('group.leaveTrip')}
+            {isLeaving ? t('group.leaving') : t('group.leaveTrip')}
           </Text>
         </Pressable>
       )}
