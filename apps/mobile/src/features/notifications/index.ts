@@ -23,6 +23,7 @@ export { routeToNotification } from './route'
 export {
   categoryForType,
   groupNotificationsByDay,
+  isDetachedRecipient,
   NOTIFICATION_CATEGORIES,
   NOTIFICATION_TYPES,
   type Notification,
@@ -34,4 +35,5 @@ export {
   notificationContext,
   notificationIcon,
   notificationMessageKey,
+  notificationMessageValues,
 } from './schemas'

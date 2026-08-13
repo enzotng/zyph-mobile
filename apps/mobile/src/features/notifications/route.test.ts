@@ -75,6 +75,18 @@ describe('routeToNotification', () => {
     expect(calls).toEqual([])
   })
 
+  it('does not route the detached account to a trip it can no longer read', () => {
+    const { router, calls } = makeRouter()
+    routeToNotification(router, 'member.detached', 'trip-1', { detachedUserId: 'u1' }, 'u1')
+    expect(calls).toEqual([])
+  })
+
+  it('still routes the rest of the group after a detach', () => {
+    const { router, calls } = makeRouter()
+    routeToNotification(router, 'member.detached', 'trip-1', { detachedUserId: 'u2' }, 'u1')
+    expect(calls).toEqual([{ pathname: '/trips/[id]/group', params: { id: 'trip-1' } }])
+  })
+
   it('does not route when the trip id is missing', () => {
     const { router, calls } = makeRouter()
     routeToNotification(router, 'expense.added', null, { expenseId: 'exp-1' })

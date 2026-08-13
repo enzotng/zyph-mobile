@@ -1,11 +1,13 @@
 import {
   categoryForType,
   groupNotificationsByDay,
+  isDetachedRecipient,
   NOTIFICATION_TYPES,
   type Notification,
   notificationContext,
   notificationIcon,
   notificationMessageKey,
+  notificationMessageValues,
 } from './schemas'
 
 function at(iso: string): Notification {
@@ -94,6 +96,108 @@ describe('notificationMessageKey', () => {
   it('falls back to a generic key for unknown types', () => {
     expect(notificationMessageKey('weird.thing', {})).toBe('notifications.types.generic')
   })
+
+  it('gives the detached account its own key', () => {
+    expect(notificationMessageKey('member.detached', { detachedUserId: 'u1' }, 'u1')).toBe(
+      'notifications.types.memberDetachedSelf',
+    )
+  })
+
+  it('keeps the group copy for every other recipient of a detach', () => {
+    expect(notificationMessageKey('member.detached', { detachedUserId: 'u2' }, 'u1')).toBe(
+      'notifications.types.memberDetached',
+    )
+    expect(notificationMessageKey('member.detached', {}, 'u1')).toBe(
+      'notifications.types.memberDetached',
+    )
+    expect(notificationMessageKey('member.detached', { detachedUserId: 'u1' })).toBe(
+      'notifications.types.memberDetached',
+    )
+  })
+})
+
+describe('isDetachedRecipient', () => {
+  it('is true only for the detached account on a detach notification', () => {
+    expect(isDetachedRecipient('member.detached', { detachedUserId: 'u1' }, 'u1')).toBe(true)
+    expect(isDetachedRecipient('member.detached', { detachedUserId: 'u2' }, 'u1')).toBe(false)
+    expect(isDetachedRecipient('member.removed', { detachedUserId: 'u1' }, 'u1')).toBe(false)
+  })
+
+  it('is false without an identity on either side', () => {
+    expect(isDetachedRecipient('member.detached', { detachedUserId: 'u1' }, null)).toBe(false)
+    expect(isDetachedRecipient('member.detached', {}, 'u1')).toBe(false)
+    expect(isDetachedRecipient('member.detached', null, 'u1')).toBe(false)
+  })
+})
+
+describe('notificationMessageValues', () => {
+  it('reads the actor and the place name from a member payload', () => {
+    expect(notificationMessageValues({ actorName: 'Marco', name: 'Léa' })).toEqual({
+      actor: 'Marco',
+      name: 'Léa',
+    })
+  })
+
+  it('accepts slotName as the place name', () => {
+    expect(notificationMessageValues({ actorName: 'Marco', slotName: 'Léa' })).toEqual({
+      actor: 'Marco',
+      name: 'Léa',
+    })
+  })
+
+  it('returns nulls for a payload that carries neither', () => {
+    expect(notificationMessageValues({})).toEqual({ actor: null, name: null })
+    expect(notificationMessageValues(null)).toEqual({ actor: null, name: null })
+    expect(notificationMessageValues({ actorName: '  ', name: '' })).toEqual({
+      actor: null,
+      name: null,
+    })
+  })
+
+  // A profile name of one zero-width space is not empty to String.trim, so a bare emptiness test
+  // would render a nominative headline that names nobody. The screen's "someone" fallback only
+  // takes over if this returns null.
+  it('treats a name built only from invisible characters as absent', () => {
+    expect(notificationMessageValues({ actorName: '\u200B', name: '\uFEFF\u200D' })).toEqual({
+      actor: null,
+      name: null,
+    })
+    expect(notificationMessageValues({ actorName: '\u202E\u2066', slotName: '\u00AD' })).toEqual({
+      actor: null,
+      name: null,
+    })
+  })
+
+  // Blank-rendering rather than zero-width: whitespace to neither btrim nor String.trim, so the
+  // first version of this filter let them through and the headline named nobody.
+  it('treats a name built only from blank-rendering characters as absent', () => {
+    expect(
+      notificationMessageValues({ actorName: '\u2800\u2800\u2800', name: '\u3164\u3164' }),
+    ).toEqual({
+      actor: null,
+      name: null,
+    })
+    expect(notificationMessageValues({ actorName: ' \u3000 ', slotName: '\uFFA0\u1160' })).toEqual({
+      actor: null,
+      name: null,
+    })
+  })
+
+  it('keeps a blank-rendering character that separates two real words', () => {
+    expect(
+      notificationMessageValues({ actorName: 'Jean\u00A0Pierre', name: 'Marco\u2800Léa' }),
+    ).toEqual({
+      actor: 'Jean Pierre',
+      name: 'Marco Léa',
+    })
+  })
+
+  it('strips invisible characters from a name that has real content', () => {
+    expect(notificationMessageValues({ actorName: 'M\u200Barco', name: '\u202ELéa' })).toEqual({
+      actor: 'Marco',
+      name: 'Léa',
+    })
+  })
 })
 
 describe('notificationIcon', () => {
@@ -119,9 +223,9 @@ describe('notificationContext', () => {
     expect(notificationContext({ description: '   ' })).toBeNull()
   })
 
-  it('returns the place name of a member payload', () => {
-    expect(notificationContext({ memberId: 'm1', name: 'Léa' })).toBe('Léa')
-    expect(notificationContext({ memberId: 'm1', slotName: 'Marco' })).toBe('Marco')
+  it('leaves the place name of a member payload to the title', () => {
+    expect(notificationContext({ memberId: 'm1', name: 'Léa' })).toBeNull()
+    expect(notificationContext({ memberId: 'm1', slotName: 'Marco' })).toBeNull()
   })
 
   it('renders a rename as old -> new', () => {
