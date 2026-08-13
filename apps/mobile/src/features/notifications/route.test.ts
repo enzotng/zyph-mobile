@@ -39,6 +39,20 @@ describe('routeToNotification', () => {
     expect(calls).toEqual([{ pathname: '/trips/[id]/group', params: { id: 'trip-1' } }])
   })
 
+  it('routes the ghost-place member notifications to the group screen', () => {
+    const { router, calls } = makeRouter()
+    routeToNotification(router, 'member.added', 'trip-1', { memberId: 'm1' } as never)
+    routeToNotification(router, 'member.claimed', 'trip-1', { memberId: 'm1' } as never)
+    routeToNotification(router, 'member.renamed', 'trip-1', { memberId: 'm1' } as never)
+    routeToNotification(router, 'member.detached', 'trip-1', { memberId: 'm1' } as never)
+    expect(calls).toEqual(
+      Array.from({ length: 4 }, () => ({
+        pathname: '/trips/[id]/group',
+        params: { id: 'trip-1' },
+      })),
+    )
+  })
+
   it('falls back to the trip overview for settlements and packing', () => {
     const { router, calls } = makeRouter()
     routeToNotification(router, 'settlement.created', 'trip-1', { role: 'to' } as never)

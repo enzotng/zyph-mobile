@@ -28,6 +28,13 @@ describe('categoryForType', () => {
     }
   })
 
+  it('covers the ghost-place member types', () => {
+    for (const type of ['member.added', 'member.claimed', 'member.renamed', 'member.detached']) {
+      expect(NOTIFICATION_TYPES).toContain(type)
+      expect(categoryForType(type)).toBe('members')
+    }
+  })
+
   it('maps each prefix to the matching category', () => {
     expect(categoryForType('member.added')).toBe('members')
     expect(categoryForType('expense.updated')).toBe('expenses')
@@ -77,6 +84,13 @@ describe('notificationMessageKey', () => {
     )
   })
 
+  it('maps the ghost-place member types to their keys', () => {
+    expect(notificationMessageKey('member.added', {})).toBe('notifications.types.memberAdded')
+    expect(notificationMessageKey('member.claimed', {})).toBe('notifications.types.memberClaimed')
+    expect(notificationMessageKey('member.renamed', {})).toBe('notifications.types.memberRenamed')
+    expect(notificationMessageKey('member.detached', {})).toBe('notifications.types.memberDetached')
+  })
+
   it('falls back to a generic key for unknown types', () => {
     expect(notificationMessageKey('weird.thing', {})).toBe('notifications.types.generic')
   })
@@ -103,6 +117,21 @@ describe('notificationContext', () => {
     expect(notificationContext({})).toBeNull()
     expect(notificationContext(null)).toBeNull()
     expect(notificationContext({ description: '   ' })).toBeNull()
+  })
+
+  it('returns the place name of a member payload', () => {
+    expect(notificationContext({ memberId: 'm1', name: 'Léa' })).toBe('Léa')
+    expect(notificationContext({ memberId: 'm1', slotName: 'Marco' })).toBe('Marco')
+  })
+
+  it('renders a rename as old -> new', () => {
+    expect(notificationContext({ memberId: 'm1', oldName: 'Léa', newName: 'Marco' })).toBe(
+      'Léa -> Marco',
+    )
+  })
+
+  it('falls back to the new name when the old one is missing', () => {
+    expect(notificationContext({ memberId: 'm1', oldName: '  ', newName: 'Marco' })).toBe('Marco')
   })
 })
 

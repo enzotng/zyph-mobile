@@ -10,6 +10,10 @@ export const NOTIFICATION_TYPES = [
   'member.joined',
   'member.left',
   'member.removed',
+  'member.added',
+  'member.claimed',
+  'member.renamed',
+  'member.detached',
   'expense.added',
   'expense.updated',
   'settlement.created',
@@ -65,6 +69,10 @@ export function notificationMessageKey(type: string, payload: unknown): string {
     'member.joined': 'notifications.types.memberJoined',
     'member.left': 'notifications.types.memberLeft',
     'member.removed': 'notifications.types.memberRemoved',
+    'member.added': 'notifications.types.memberAdded',
+    'member.claimed': 'notifications.types.memberClaimed',
+    'member.renamed': 'notifications.types.memberRenamed',
+    'member.detached': 'notifications.types.memberDetached',
     'expense.added': 'notifications.types.expenseAdded',
     'expense.updated': 'notifications.types.expenseUpdated',
     'event.added': 'notifications.types.eventAdded',
@@ -93,11 +101,33 @@ export function notificationIcon(type: string): string {
   }
 }
 
-// Optional secondary line drawn from the payload (an expense description or event title).
-export function notificationContext(payload: unknown): string | null {
-  const p = payload as { description?: unknown; title?: unknown } | null
-  const value = p?.description ?? p?.title
+function payloadText(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value : null
+}
+
+// Optional secondary line drawn from the payload (an expense description, an event title, or the
+// place name the member.* types carry - a rename showing both sides of the change).
+export function notificationContext(payload: unknown): string | null {
+  const p = payload as {
+    description?: unknown
+    title?: unknown
+    name?: unknown
+    slotName?: unknown
+    oldName?: unknown
+    newName?: unknown
+  } | null
+  const oldName = payloadText(p?.oldName)
+  const newName = payloadText(p?.newName)
+  if (oldName && newName) {
+    return `${oldName} -> ${newName}`
+  }
+  return (
+    payloadText(p?.description) ??
+    payloadText(p?.title) ??
+    payloadText(p?.name) ??
+    payloadText(p?.slotName) ??
+    newName
+  )
 }
 
 export type NotificationDayBucket = 'today' | 'yesterday' | 'earlier'
