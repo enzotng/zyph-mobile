@@ -527,6 +527,7 @@ export const fr: Translations = {
     titlePlaceholder: 'Week-end à Lisbonne',
     destination: 'Destination',
     destinationPlaceholder: 'Lisbonne, Portugal',
+    geoHint: 'Repasse par une suggestion pour géolocaliser.',
     currency: 'Devise',
     addDates: 'Ajouter des dates',
     startDate: 'Date de début',

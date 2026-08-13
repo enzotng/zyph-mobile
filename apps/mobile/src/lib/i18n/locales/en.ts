@@ -521,6 +521,7 @@ export const en = {
     titlePlaceholder: 'Weekend in Lisbon',
     destination: 'Destination',
     destinationPlaceholder: 'Lisbon, Portugal',
+    geoHint: 'Pick a suggestion again to locate it.',
     currency: 'Currency',
     addDates: 'Add travel dates',
     startDate: 'Start date',

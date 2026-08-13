@@ -80,6 +80,8 @@ export default function NewTripScreen() {
   const startDate = useWatch({ control, name: 'startDate' })
   const endDate = useWatch({ control, name: 'endDate' })
   const destination = useWatch({ control, name: 'destination' })
+  const latitude = useWatch({ control, name: 'latitude' })
+  const longitude = useWatch({ control, name: 'longitude' })
 
   const tripTypeOptions = useMemo(
     () =>
@@ -159,6 +161,7 @@ export default function NewTripScreen() {
                 label={t('tripForm.destination')}
                 value={destination}
                 error={errors.destination?.message}
+                hasCoordinates={latitude !== null && longitude !== null}
                 onChangeText={(text) => {
                   setValue('destination', text, { shouldValidate: true })
                   setValue('latitude', null)
