@@ -156,6 +156,18 @@ function payloadText(value: unknown): string | null {
   return cleaned === '' ? null : cleaned
 }
 
+// Interpolated in place of the actor so the rendered sentence can be split back apart, letting
+// the screen bound the untrusted half in its own node. Safe as a marker because it is stripped
+// from every payload value by the pass above, and Postgres text cannot carry it at all.
+export const ACTOR_MARK = '\u0000'
+
+// The words the app wrote, with the actor lifted out - or null when the locale does not lead with
+// the actor, in which case the caller renders the line whole rather than risk dropping text.
+export function withoutActor(rendered: string): string | null {
+  const parts = rendered.split(ACTOR_MARK)
+  return parts.length === 2 && parts[0] === '' ? parts[1] : null
+}
+
 // Interpolation values for the headline: who acted, and the place they acted on. Both are null on
 // rows written before the payloads carried them, and the caller supplies the wording of that gap.
 export function notificationMessageValues(payload: unknown): {

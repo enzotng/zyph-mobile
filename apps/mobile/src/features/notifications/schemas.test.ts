@@ -1,4 +1,5 @@
 import {
+  ACTOR_MARK,
   categoryForType,
   groupNotificationsByDay,
   isDetachedRecipient,
@@ -8,6 +9,7 @@ import {
   notificationIcon,
   notificationMessageKey,
   notificationMessageValues,
+  withoutActor,
 } from './schemas'
 
 function at(iso: string): Notification {
@@ -197,6 +199,20 @@ describe('notificationMessageValues', () => {
       actor: 'Marco',
       name: 'Léa',
     })
+  })
+})
+
+describe('withoutActor', () => {
+  it('lifts the actor out of a sentence that leads with it', () => {
+    expect(withoutActor(`${ACTOR_MARK} joined the trip`)).toBe(' joined the trip')
+    expect(withoutActor(`${ACTOR_MARK} a rejoint le voyage`)).toBe(' a rejoint le voyage')
+  })
+
+  // Losing words would be worse than a merged line, so anything unexpected renders whole.
+  it('declines to split when the actor is not the first thing said', () => {
+    expect(withoutActor(`On ${ACTOR_MARK} joined`)).toBeNull()
+    expect(withoutActor('You were removed from a trip')).toBeNull()
+    expect(withoutActor(`${ACTOR_MARK} and ${ACTOR_MARK}`)).toBeNull()
   })
 })
 

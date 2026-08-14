@@ -11,6 +11,7 @@ import { Screen } from '@/components/screen'
 import { EmptyState, ListRow, SectionTitle, Spinner, Surface } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
+  ACTOR_MARK,
   groupNotificationsByDay,
   type Notification,
   type NotificationGroup,
@@ -22,6 +23,7 @@ import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
+  withoutActor,
 } from '@/features/notifications'
 import { haptics } from '@/lib/haptics'
 
@@ -84,15 +86,19 @@ export default function NotificationsScreen() {
             const unread = n.read_at === null
             const context = notificationContext(n.payload)
             const { actor, name } = notificationMessageValues(n.payload)
+            const key = notificationMessageKey(n.type, n.payload, userId)
+            // The actor is a name its owner chose, and this line is the group's only evidence of
+            // who acted (spec D2). Rendering it as its own node keeps a name shaped like the
+            // sentence itself - "Marco joined the trip. Lea" - from truncating into a line that
+            // reads as an attribution to someone else.
+            const rest = withoutActor(t(key, { actor: ACTOR_MARK, name: name ?? someone }))
             return (
               <ListRow
                 key={n.id}
                 icon={notificationIcon(n.type) as Glyph}
                 iconColor={unread ? theme.colors.primary : theme.colors.muted}
-                title={t(notificationMessageKey(n.type, n.payload, userId), {
-                  actor: actor ?? someone,
-                  name: name ?? someone,
-                })}
+                titleActor={rest === null ? undefined : `${actor ?? someone} `}
+                title={rest ?? t(key, { actor: actor ?? someone, name: name ?? someone })}
                 subtitle={context ?? undefined}
                 detail={new Date(n.created_at).toLocaleTimeString(i18n.language, {
                   hour: '2-digit',

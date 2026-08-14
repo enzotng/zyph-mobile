@@ -58,3 +58,20 @@ describe('ListRow', () => {
     expect(screen.getByText('Version')).toBeOnTheScreen()
   })
 })
+
+// An untrusted leading word must not be able to borrow the row's own words: it gets its own node,
+// and it is the only one allowed to shrink.
+describe('ListRow titleActor', () => {
+  it('renders the actor and the rest as separate nodes', () => {
+    render(<ListRow titleActor="Marco " title="joined the trip" />)
+
+    expect(screen.getByText('Marco')).toBeOnTheScreen()
+    expect(screen.getByText('joined the trip')).toBeOnTheScreen()
+  })
+
+  it('keeps a single node when no actor is given', () => {
+    render(<ListRow title="A member left the trip" />)
+
+    expect(screen.getByText('A member left the trip')).toBeOnTheScreen()
+  })
+})
