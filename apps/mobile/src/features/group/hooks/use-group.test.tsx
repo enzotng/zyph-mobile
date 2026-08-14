@@ -11,7 +11,6 @@ import {
   useClaimOptions,
   useClaimSlot,
   useDetachTripMember,
-  useJoinTrip,
   useLeaveTrip,
   useRegenerateInviteCode,
   useRemoveTripMember,
@@ -60,20 +59,6 @@ describe('useTripMembers', () => {
 
     expect(result.current.fetchStatus).toBe('idle')
     expect(api.listTripMembers).not.toHaveBeenCalled()
-  })
-})
-
-describe('useJoinTrip', () => {
-  it('invalidates trips on success', async () => {
-    jest.mocked(api.joinTripByCode).mockResolvedValue('t1')
-    const { wrapper, queryClient } = createQueryWrapper()
-    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
-
-    const { result } = renderHook(() => useJoinTrip(), { wrapper })
-    result.current.mutate('ABCD1234')
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips'] })
   })
 })
 

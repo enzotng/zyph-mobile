@@ -6,7 +6,6 @@ import {
   claimTripSlot,
   detachTripMember,
   getTripClaimOptions,
-  joinTripByCode,
   leaveTrip,
   listTripMemberNames,
   listTripMembers,
@@ -38,16 +37,6 @@ export function useTripMemberNames(tripId: string) {
     queryKey: tripMemberNamesQueryKey(tripId),
     queryFn: () => listTripMemberNames(tripId),
     enabled: Boolean(tripId),
-  })
-}
-
-export function useJoinTrip() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: joinTripByCode,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['trips'] })
-    },
   })
 }
 
@@ -96,6 +85,11 @@ export function useClaimOptions(code: string) {
     // An invalid code and a rate-limit refusal are final answers, not transient failures: the
     // default retry would spend three of the caller's 30 hourly attempts on every typo.
     retry: false,
+    // Never answer from a previous visit. myStatus decides whether named places may be offered,
+    // and claim_trip_slot reactivates an existing row without ever reading the slot id - so a
+    // stale 'not a member' would let a dormant member tap a name and silently rebind their old
+    // place instead.
+    gcTime: 0,
   })
 }
 
@@ -131,6 +125,31 @@ export function useAddGhostMember(tripId: string) {
   return useMutation({
     mutationFn: (name: string) => addGhostMember(tripId, name),
     onSuccess: () => {
+      invalidateMemberQueries(queryClient, tripId)
+    },
+  })
+}
+
+// Seeding the places of a trip that does not exist yet, so the trip id arrives with the mutation
+// rather than with the hook. Sequential on purpose: add_ghost_member is rate limited per trip and
+// counts against a 50-place cap, and the order the names were typed is the order they appear in.
+// Resolves with the names that failed instead of throwing - losing a place the group can re-add in
+// two taps must not cost them the trip they just created (spec 4.8).
+export function useAddGhostMembers() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ tripId, names }: { tripId: string; names: string[] }) => {
+      const failed: string[] = []
+      for (const name of names) {
+        try {
+          await addGhostMember(tripId, name)
+        } catch {
+          failed.push(name)
+        }
+      }
+      return failed
+    },
+    onSuccess: (_failed, { tripId }) => {
       invalidateMemberQueries(queryClient, tripId)
     },
   })

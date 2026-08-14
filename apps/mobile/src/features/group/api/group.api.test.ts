@@ -6,7 +6,6 @@ import {
   claimTripSlot,
   detachTripMember,
   getTripClaimOptions,
-  joinTripByCode,
   leaveTrip,
   listTripMemberNames,
   listTripMembers,
@@ -133,21 +132,6 @@ describe('listTripMemberNames', () => {
     rpc.mockResolvedValue({ data: null, error: makePostgrestError('names fail') })
 
     await expect(listTripMemberNames('t1')).rejects.toThrow('names fail')
-  })
-})
-
-describe('joinTripByCode', () => {
-  it('calls rpc join_trip_by_code and returns the trip id', async () => {
-    rpc.mockResolvedValue({ data: 't1', error: null })
-
-    await expect(joinTripByCode('ABCD1234')).resolves.toBe('t1')
-    expect(rpc).toHaveBeenCalledWith('join_trip_by_code', { _code: 'ABCD1234' })
-  })
-
-  it('throws when rpc errors', async () => {
-    rpc.mockResolvedValue({ data: null, error: makePostgrestError('invalid code') })
-
-    await expect(joinTripByCode('WRONG')).rejects.toThrow('invalid code')
   })
 })
 

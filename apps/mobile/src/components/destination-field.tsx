@@ -13,6 +13,9 @@ type DestinationFieldProps = {
   value: string
   error?: string
   hasCoordinates: boolean
+  // Seeds the latch below. A caller that unmounts this field between steps has to remember for
+  // it, otherwise a destination whose coordinates were dropped comes back looking untouched.
+  everGeolocated?: boolean
   // Free-text typing: the caller stores the text and clears any saved coordinates.
   onChangeText: (text: string) => void
   // A suggestion was picked: the caller stores the canonical label + coordinates.
@@ -27,6 +30,7 @@ export function DestinationField({
   value,
   error,
   hasCoordinates,
+  everGeolocated = false,
   onChangeText,
   onSelectPlace,
 }: DestinationFieldProps) {
@@ -36,7 +40,7 @@ export function DestinationField({
   const [debounced, setDebounced] = useState('')
   // The caller drops the coordinates on every keystroke, so `hasCoordinates` alone cannot tell a
   // destination that was never geolocated from one that just lost its geolocation - hence the latch.
-  const [wasGeolocated, setWasGeolocated] = useState(false)
+  const [wasGeolocated, setWasGeolocated] = useState(everGeolocated)
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(query), 300)
