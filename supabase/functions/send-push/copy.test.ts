@@ -331,6 +331,19 @@ describe('str', () => {
     expect(str('Marco\u2800Léa')).toBe('Marco Léa')
   })
 
+  // str() keeps these - they are not blank - so only the legibility gate on the name path can
+  // reject them. Without it a lock screen reads "... added ...", naming nobody.
+  it('refuses a name that survives cleaning but names nobody', () => {
+    expect(str('...')).toBe('...')
+    expect(enCopy('member.added', { actorName: '...', name: 'Léa' }).body).toBe('Someone added Léa')
+    expect(enCopy('member.added', { actorName: 'Marco', name: '---' }).body).toBe(
+      'Marco added a participant',
+    )
+    expect(frCopy('member.claimed', { actorName: '!!!', slotName: 'Léa' }).body).toBe(
+      'Quelqu’un a rejoint en tant que Léa',
+    )
+  })
+
   it('leaves the anonymous fallback in charge once nothing legible survives', () => {
     expect(enCopy('member.joined', { actorName: '\u200B' }).body).toBe('Someone joined the trip')
     expect(frCopy('member.claimed', { actorName: '\u200B', slotName: 'Léa' }).body).toBe(

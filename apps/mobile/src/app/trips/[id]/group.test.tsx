@@ -68,6 +68,15 @@ const CLAIMED = {
   role: 'member',
   avatar_url: null,
 }
+// A second claimed member, so the non-owner assertions below have a row that is neither the
+// viewer's own (which renders as "You") nor a ghost.
+const NINA = {
+  id: 'm-nina',
+  user_id: 'u-nina',
+  display_name: 'Nina',
+  role: 'member',
+  avatar_url: null,
+}
 const GHOST = {
   id: 'm-ghost',
   user_id: null,
@@ -100,7 +109,7 @@ beforeEach(() => {
     refetch: jest.fn(),
   })
   mockUseTripMembers.mockReturnValue({
-    data: [OWNER, CLAIMED, GHOST],
+    data: [OWNER, CLAIMED, NINA, GHOST],
     isLoading: false,
     isError: false,
     refetch: jest.fn(),
@@ -127,7 +136,7 @@ describe('TripGroupScreen - telling places from people', () => {
   it('counts places and people alike', () => {
     render(<TripGroupScreen />)
 
-    expect(screen.getByText('3')).toBeOnTheScreen()
+    expect(screen.getByText('4')).toBeOnTheScreen()
   })
 })
 
@@ -160,6 +169,22 @@ describe('TripGroupScreen - managing a place', () => {
     })
 
     expect(mockAddGhost).toHaveBeenCalledWith('Léo')
+  })
+
+  it('says so when a rename is refused, rather than looking like it landed', async () => {
+    mockRenameGhost.mockRejectedValue(new Error('not a renamable ghost'))
+    render(<TripGroupScreen />)
+
+    fireEvent.press(screen.getByLabelText('Manage Papa'))
+    await act(async () => {
+      pressAlertButton('Rename')
+    })
+    fireEvent.changeText(screen.getByPlaceholderText('First name'), 'Papy')
+    await act(async () => {
+      fireEvent.press(screen.getByText('Save'))
+    })
+
+    expect(Alert.alert).toHaveBeenCalledWith('Could not rename', 'not a renamable ghost')
   })
 
   it('offers to remind through the share sheet', () => {
@@ -224,10 +249,33 @@ describe('TripGroupScreen - detaching a claimed place', () => {
     expect(mockRemove).not.toHaveBeenCalled()
   })
 
-  it('gives a non-owner no management affordance at all', () => {
+  it('gives a non-owner no hold over a claimed place, including their own', () => {
     mockUseAuth.mockReturnValue({ session: { user: { id: 'u-lea' } } })
     render(<TripGroupScreen />)
 
-    expect(screen.queryByLabelText('Manage Léa')).toBeNull()
+    // Nina's row is the load-bearing one: Léa's own row renders as "You", so asserting on it
+    // would hold under any implementation.
+    expect(screen.queryByLabelText('Manage Nina')).toBeNull()
+    expect(screen.queryByLabelText('Manage You')).toBeNull()
+    expect(screen.queryByLabelText('Manage Marco')).toBeNull()
+  })
+
+  // D8: a place nobody holds belongs to the whole trip, not to the owner. Removing it does not.
+  it('lets a non-owner tend a ghost place but not remove it', () => {
+    mockUseAuth.mockReturnValue({ session: { user: { id: 'u-lea' } } })
+    render(<TripGroupScreen />)
+
+    fireEvent.press(screen.getByLabelText('Manage Papa'))
+
+    const buttons = jest.mocked(Alert.alert).mock.calls[0][2] as { text?: string }[]
+    const labels = buttons.map((b) => b.text)
+    expect(labels).toEqual(expect.arrayContaining(['Remind', 'Rename']))
+    expect(labels).not.toContain('Remove')
+  })
+
+  it('never offers the owner a hold over their own row', () => {
+    render(<TripGroupScreen />)
+
+    expect(screen.queryByLabelText('Manage You')).toBeNull()
   })
 })

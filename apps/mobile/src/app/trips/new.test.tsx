@@ -64,7 +64,8 @@ describe('NewTripScreen - the CTA is never mute (spec 7.1)', () => {
       fireEvent.press(screen.getByText('Continue'))
     })
 
-    // Still on step 1, with the reason now visible rather than a dead button.
+    // The two halves the title claims: the button was pressable, and the press said why.
+    expect(screen.getByText('Title is required')).toBeOnTheScreen()
     expect(screen.getByPlaceholderText(TITLE_PLACEHOLDER)).toBeOnTheScreen()
     expect(mockCreateTrip).not.toHaveBeenCalled()
     expect(screen.queryByText('Who is going?')).toBeNull()
@@ -108,6 +109,11 @@ describe('NewTripScreen - who is going', () => {
 
     expect(screen.getByText('Two people share this name.')).toBeOnTheScreen()
     expect(screen.getAllByText('Léa')).toHaveLength(2)
+
+    // A third, distinct name must not clear a warning that is still true.
+    fireEvent.changeText(input, 'Marco')
+    fireEvent.press(screen.getByText('Add'))
+    expect(screen.getByText('Two people share this name.')).toBeOnTheScreen()
   })
 
   // Step 2 lives in local state, so a header pop would leave the screen entirely and take the
@@ -194,6 +200,20 @@ describe('NewTripScreen - submitting', () => {
     })
 
     expect(mockAddGhostMembers).toHaveBeenCalledWith({ tripId: 't1', names: ['Léa'] })
+  })
+
+  it('does not navigate when the trip itself could not be created', async () => {
+    mockCreateTrip.mockRejectedValue(new Error('nope'))
+    render(<NewTripScreen />)
+    await goToPeopleStep()
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Create the trip'))
+    })
+
+    expect(Alert.alert).toHaveBeenCalledWith('Could not create', 'nope')
+    expect(mockReplace).not.toHaveBeenCalled()
+    expect(mockAddGhostMembers).not.toHaveBeenCalled()
   })
 
   // A place the group can re-add in two taps must never cost them the trip they just created.

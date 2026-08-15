@@ -93,6 +93,32 @@ describe('confirmRegenerate', () => {
     expect(alertSpy).toHaveBeenLastCalledWith('Could not regenerate', 'rate limited')
   })
 
+  // The discrimination is on SQLSTATE, and both existing tests reject plain Errors with no code -
+  // so neither could tell the branch from `error.message` alone.
+  it('hides a Postgres error that talks about the schema', async () => {
+    jest.mocked(api.regenerateInviteCode).mockRejectedValue({
+      code: '23505',
+      message: 'duplicate key value violates unique constraint "trip_members_trip_id_user_id_key"',
+    })
+    const { result } = renderActions()
+
+    act(() => result.current.confirmRegenerate())
+    await pressDestructive()
+
+    expect(alertSpy).toHaveBeenLastCalledWith('Could not regenerate', 'Please try again.')
+  })
+
+  it('shows a raise the RPC wrote for the user', async () => {
+    const raised = Object.assign(new Error('owner cannot leave'), { code: 'P0001' })
+    jest.mocked(api.regenerateInviteCode).mockRejectedValue(raised)
+    const { result } = renderActions()
+
+    act(() => result.current.confirmRegenerate())
+    await pressDestructive()
+
+    expect(alertSpy).toHaveBeenLastCalledWith('Could not regenerate', 'owner cannot leave')
+  })
+
   it('falls back to the generic retry copy for a non-Error rejection', async () => {
     jest.mocked(api.regenerateInviteCode).mockRejectedValue('boom')
     const { result } = renderActions()

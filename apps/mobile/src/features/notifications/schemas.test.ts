@@ -194,6 +194,16 @@ describe('notificationMessageValues', () => {
     })
   })
 
+  // Not blank, so the cleaning pass keeps them; only the legibility gate can reject them.
+  it('refuses a name that survives cleaning but names nobody', () => {
+    expect(notificationMessageValues({ actorName: '...', name: '---' })).toEqual({
+      actor: null,
+      name: null,
+    })
+    // Free text is deliberately NOT gated: an expense described as "!!!" must still render.
+    expect(notificationContext({ description: '!!!' })).toBe('!!!')
+  })
+
   it('strips invisible characters from a name that has real content', () => {
     expect(notificationMessageValues({ actorName: 'M\u200Barco', name: '\u202ELéa' })).toEqual({
       actor: 'Marco',
