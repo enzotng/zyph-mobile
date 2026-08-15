@@ -62,8 +62,7 @@ export default function TripGroupScreen() {
   const detachMember = useDetachTripMember(tripId)
   const addGhost = useAddGhostMember(tripId)
   const renameGhost = useRenameGhostMember(tripId)
-  // One sheet serves both naming actions: same field, same validation, one place to keep them
-  // consistent. Alert.prompt would have been shorter and is iOS-only.
+  // Alert.prompt would be shorter, and is iOS-only.
   const [editor, setEditor] = useState<
     { mode: 'add' } | { mode: 'rename'; memberId: string; name: string } | null
   >(null)

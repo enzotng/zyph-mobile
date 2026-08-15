@@ -54,7 +54,6 @@ export default function JoinTripScreen() {
   const data = options.data
   const alreadyIn = data?.myStatus === 'active'
 
-  // An active member has nothing to choose: the code just takes them to the trip.
   useEffect(() => {
     if (alreadyIn && data) {
       router.replace({ pathname: '/trips/[id]', params: { id: data.tripId } })
@@ -91,8 +90,7 @@ export default function JoinTripScreen() {
     }
   }
 
-  // No code yet, or the backend refused it and we have nothing to show. A failed REFETCH keeps
-  // the data it already had, and that list is still the right screen.
+  // A failed REFETCH keeps the data it already had, and that list is still the right screen.
   if (!submittedCode || (options.error && !data)) {
     return (
       <Screen

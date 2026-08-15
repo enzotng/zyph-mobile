@@ -87,10 +87,6 @@ export default function NotificationsScreen() {
             const context = notificationContext(n.payload)
             const { actor, name } = notificationMessageValues(n.payload)
             const key = notificationMessageKey(n.type, n.payload, userId)
-            // The actor is a name its owner chose, and this line is the group's only evidence of
-            // who acted (spec D2). Rendering it as its own node keeps a name shaped like the
-            // sentence itself - "Marco joined the trip. Lea" - from truncating into a line that
-            // reads as an attribution to someone else.
             const rest = withoutActor(t(key, { actor: ACTOR_MARK, name: name ?? someone }))
             return (
               <ListRow

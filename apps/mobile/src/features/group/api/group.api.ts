@@ -84,7 +84,7 @@ export async function getTripClaimOptions(code: string): Promise<ClaimOptions> {
 }
 
 // Binds the caller's account to a free place, or to a brand new one when slotId is null ("I am not
-// in the list"). Returns the trip id.
+// in the list").
 export async function claimTripSlot(code: string, slotId: string | null): Promise<string> {
   const { data, error } = await supabase.rpc('claim_trip_slot', {
     _code: code,

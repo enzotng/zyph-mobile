@@ -53,14 +53,12 @@ export default function NewTripScreen() {
   const [step, setStep] = useState<'details' | 'people'>('details')
   const [names, setNames] = useState<string[]>([])
   const [pendingName, setPendingName] = useState('')
-  // Derived, not stored: a stored flag described the last add rather than the list, so it
-  // disappeared as soon as a third distinct name followed two identical ones.
   const duplicate = useMemo(() => {
     const lower = names.map((n) => n.toLowerCase())
     return new Set(lower).size !== lower.length
   }, [names])
   // Held here, not in DestinationField: step 1 unmounts while step 2 is up, and the geocode-loss
-  // hint must survive the round trip (edd76bf).
+  // hint must survive the round trip.
   const [everLocated, setEverLocated] = useState(false)
   const { data: fx } = useFxRates()
   // Offer every currency the ECB feed provides (all are guaranteed convertible), anchored on EUR.
@@ -119,8 +117,6 @@ export default function NewTripScreen() {
   async function onSubmit(values: NewTripValues, withNames: string[]) {
     try {
       const trip = await createTrip.mutateAsync(values)
-      // The places are seeded after the trip exists and never block it: a failure here is a name
-      // the group re-adds in two taps, not a reason to lose the trip they just filled in.
       const failed =
         withNames.length > 0
           ? await addGhosts.mutateAsync({ tripId: trip.id, names: withNames })
@@ -142,8 +138,6 @@ export default function NewTripScreen() {
     }
   }
 
-  // A name typed but not yet added is still a name the user meant. Dropping it because they
-  // pressed Create instead of Add would be silent data loss on the most natural gesture.
   function withPending() {
     const pending = pendingName.trim()
     return pending ? [...names, pending] : names

@@ -653,12 +653,9 @@ export const fr: Translations = {
     title: 'Rejoindre',
     heading: 'Rejoindre un voyage',
     subtitle: 'Saisis le code partagé par l’organisateur du voyage.',
-    submit: 'Rejoindre',
     continue: 'Continuer',
     submitting: 'Connexion…',
     joiningTitle: 'Connexion au voyage…',
-    joiningBody: 'Un instant, on t’ajoute grâce à ton lien d’invitation.',
-    errorTitle: 'Impossible de rejoindre',
     errorBody: 'Vérifie le code et réessaie.',
     rateLimited: 'Trop de tentatives. Réessaie un peu plus tard.',
     whoAreYou: 'Qui es-tu ?',
@@ -1235,7 +1232,6 @@ export const fr: Translations = {
     confirmRemoveBody:
       '{{name}} perdra l’accès à ce voyage. Les dépenses passées payées ou dues restent comptabilisées.',
     removeFailedTitle: 'Retrait impossible',
-    removeMemberLabel: 'Retirer {{name}}',
     editTripLabel: 'Modifier le voyage',
     shareLocationTitle: 'Partager ta position',
     shareLocationBody:

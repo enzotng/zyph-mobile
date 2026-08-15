@@ -38,7 +38,6 @@ function nameOf(value: unknown): string | null {
   return cleaned !== null && LEGIBLE.test(cleaned) ? cleaned : null
 }
 
-// Same legibility gate as private.clean_name, for the fields that name a person. str() stays
 // Wording of notifications.someone in apps/mobile/src/lib/i18n: rows written before the member.*
 // payloads became nominative carry no actorName at all.
 function actorOf(payload: Payload, en: boolean): string {

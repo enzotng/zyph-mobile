@@ -646,12 +646,9 @@ export const en = {
     title: 'Join',
     heading: 'Join a trip',
     subtitle: 'Enter the code shared by the trip organizer.',
-    submit: 'Join',
     continue: 'Continue',
     submitting: 'Connecting…',
     joiningTitle: 'Joining the trip…',
-    joiningBody: 'Hang tight, we are adding you with your invite link.',
-    errorTitle: 'Could not join',
     errorBody: 'Check the code and try again.',
     rateLimited: 'Too many attempts. Try again a bit later.',
     whoAreYou: 'Who are you?',
@@ -1222,7 +1219,6 @@ export const en = {
     confirmRemoveBody:
       '{{name}} will lose access to this trip. Past expenses paid or owed are still counted.',
     removeFailedTitle: 'Could not remove',
-    removeMemberLabel: 'Remove {{name}}',
     editTripLabel: 'Edit trip',
     shareLocationTitle: 'Share your location',
     shareLocationBody:
