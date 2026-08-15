@@ -21,8 +21,10 @@ export {
 export { usePushNotificationResponder } from './hooks/use-push-responder'
 export { routeToNotification } from './route'
 export {
+  ACTOR_MARK,
   categoryForType,
   groupNotificationsByDay,
+  isDetachedRecipient,
   NOTIFICATION_CATEGORIES,
   NOTIFICATION_TYPES,
   type Notification,
@@ -34,4 +36,6 @@ export {
   notificationContext,
   notificationIcon,
   notificationMessageKey,
+  notificationMessageValues,
+  withoutActor,
 } from './schemas'

@@ -130,11 +130,11 @@ export function EventPreviewCard({
   const { t, i18n } = useTranslation()
   const { source } = preview
   // MemberChips wants the resolved profile shape, not the raw trip_members row.
-  const memberChipMembers = activeMembers.map((m) => ({
-    userId: m.user_id,
-    displayName: m.display_name,
-    avatarUrl: m.avatar_url,
-  }))
+  const memberChipMembers = activeMembers.flatMap((m) =>
+    m.user_id != null
+      ? [{ userId: m.user_id, displayName: m.display_name, avatarUrl: m.avatar_url }]
+      : [],
+  )
 
   const confidencePct = Math.round(source.confidence * 100)
   const level = confidenceLevel(source.confidence)

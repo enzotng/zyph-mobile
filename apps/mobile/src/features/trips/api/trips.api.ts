@@ -8,7 +8,7 @@ export type Trip = Database['public']['Tables']['trips']['Row']
 
 export type TripMemberLite = {
   id: string
-  user_id: string
+  user_id: string | null
   display_name: string | null
   avatar_url: string | null
   role: string
@@ -124,7 +124,9 @@ export async function listTrips(): Promise<TripCard[]> {
   const [tripsResult, balanceByTrip] = await Promise.all([
     supabase
       .from('trips')
-      .select('*, trip_members(id, user_id, role, status, profiles(display_name, avatar_url))')
+      .select(
+        '*, trip_members(id, user_id, role, status, display_name, profiles(display_name, avatar_url))',
+      )
       .order('created_at', { ascending: false }),
     getMyTripBalances(),
   ])
@@ -140,7 +142,9 @@ export async function listTrips(): Promise<TripCard[]> {
         user_id: member.user_id,
         role: member.role,
         status: member.status,
-        display_name: member.profiles?.display_name ?? null,
+        // Same cascade as listTripMembers: profile name first, then the place alias, so a ghost
+        // is named on the trip card instead of rendering as an anonymous member.
+        display_name: member.profiles?.display_name ?? member.display_name ?? null,
         avatar_url: member.profiles?.avatar_url ?? null,
       }))
     return { ...trip, members, myBalanceCents: balanceByTrip.get(trip.id) ?? 0 }

@@ -4,20 +4,32 @@ import * as Linking from 'expo-linking'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, Pressable, Share, Text, View } from 'react-native'
+import { Alert, Platform, Pressable, Share, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
 import { Screen } from '@/components/screen'
-import { Avatar, Card, EmptyState, ErrorState, Eyebrow, Spinner, Surface } from '@/components/ui'
+import { TextField } from '@/components/text-field'
+import {
+  Avatar,
+  BottomSheet,
+  Card,
+  EmptyState,
+  ErrorState,
+  Eyebrow,
+  Spinner,
+  Surface,
+} from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import {
-  useLeaveTrip,
-  useRegenerateInviteCode,
+  useAddGhostMember,
+  useDetachTripMember,
   useRemoveTripMember,
+  useRenameGhostMember,
+  useTripAdminActions,
   useTripMembers,
 } from '@/features/group'
-import { useDeleteTrip, useTrip } from '@/features/trips'
+import { useTrip } from '@/features/trips'
 import { useShareLocation } from '@/features/wayfinder'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
@@ -44,10 +56,17 @@ export default function TripGroupScreen() {
   const userId = session?.user.id
   const router = useRouter()
   const { t } = useTranslation()
-  const deleteTrip = useDeleteTrip()
-  const regenerate = useRegenerateInviteCode(tripId)
-  const leaveTripMutation = useLeaveTrip()
+  const { confirmRegenerate, confirmDelete, confirmLeave, isRegenerating, isDeleting, isLeaving } =
+    useTripAdminActions(tripId)
   const removeMember = useRemoveTripMember(tripId)
+  const detachMember = useDetachTripMember(tripId)
+  const addGhost = useAddGhostMember(tripId)
+  const renameGhost = useRenameGhostMember(tripId)
+  // Alert.prompt would be shorter, and is iOS-only.
+  const [editor, setEditor] = useState<
+    { mode: 'add' } | { mode: 'rename'; memberId: string; name: string } | null
+  >(null)
+  const [editorName, setEditorName] = useState('')
   const { theme } = useUnistyles()
 
   const [sharing, setSharing] = useState(() => getShareLocation(tripId))
@@ -119,8 +138,8 @@ export default function TripGroupScreen() {
       return
     }
     // Deep link expo-router resolves automatically (scheme "zyph"): tapping it opens the join
-    // screen, which auto-joins from the ?code param. The code stays in the message as a fallback
-    // for anyone without the app installed.
+    // screen, which asks which place is theirs. The code stays in the message as a fallback for
+    // anyone without the app installed.
     const url = Linking.createURL('/trips/join', { queryParams: { code: trip.invite_code } })
     await Share.share({
       message: t('group.shareInvite', { title: trip.title, code: trip.invite_code, url }),
@@ -140,71 +159,17 @@ export default function TripGroupScreen() {
     copiedTimer.current = setTimeout(() => setCopied(false), 1600)
   }
 
-  function confirmRegenerate() {
-    haptics.warning()
-    Alert.alert(t('group.confirmRegenerateTitle'), t('group.confirmRegenerateBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('group.regenerate'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await regenerate.mutateAsync()
-          } catch (error) {
-            Alert.alert(
-              t('group.regenerateFailedTitle'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
-          }
-        },
-      },
-    ])
-  }
-
   const isOwner = trip.owner_id === userId
 
-  function confirmDelete() {
-    haptics.warning()
-    Alert.alert(t('group.deleteTrip'), t('group.confirmDeleteBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteTrip.mutateAsync(tripId)
-            router.replace('/')
-          } catch (error) {
-            Alert.alert(
-              t('group.deleteFailedTitle'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
-          }
-        },
-      },
-    ])
-  }
-
-  function confirmLeave() {
-    haptics.warning()
-    Alert.alert(t('group.leaveTrip'), t('group.confirmLeaveBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('group.leave'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await leaveTripMutation.mutateAsync(tripId)
-            router.replace('/')
-          } catch (error) {
-            Alert.alert(
-              t('group.leaveFailedTitle'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
-          }
-        },
-      },
-    ])
+  async function removeNow(memberId: string) {
+    try {
+      await removeMember.mutateAsync(memberId)
+    } catch (error) {
+      Alert.alert(
+        t('group.removeFailedTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
+    }
   }
 
   function confirmRemove(memberId: string, name: string) {
@@ -214,18 +179,105 @@ export default function TripGroupScreen() {
       {
         text: t('group.remove'),
         style: 'destructive',
+        onPress: () => void removeNow(memberId),
+      },
+    ])
+  }
+
+  async function remindGhost(name: string) {
+    if (!trip) {
+      return
+    }
+    const url = Linking.createURL('/trips/join', { queryParams: { code: trip.invite_code } })
+    await Share.share({
+      message: t('group.remindMessage', { name, title: trip.title, url }),
+      url,
+    })
+  }
+
+  function confirmDetach(memberId: string, name: string) {
+    haptics.warning()
+    Alert.alert(t('group.confirmDetachTitle'), t('group.confirmDetachBody', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('group.detach'),
         onPress: async () => {
           try {
-            await removeMember.mutateAsync(memberId)
+            await detachMember.mutateAsync(memberId)
           } catch (error) {
-            Alert.alert(
-              t('group.removeFailedTitle'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
+            const message = error instanceof Error ? error.message : ''
+            // The tenure guard is the only authority on whether a place can go back on the list -
+            // nothing is pre-computed here, so this reads its refusal and offers the way out the
+            // spec prescribes (4.6). Any other failure is reported as-is, with no false hope.
+            if (message.includes('place has ledger activity since claim')) {
+              Alert.alert(t('group.detachBlockedTitle'), t('group.detachBlockedBody', { name }), [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                  text: t('group.remove'),
+                  style: 'destructive',
+                  onPress: () => void removeNow(memberId),
+                },
+              ])
+              return
+            }
+            Alert.alert(t('group.detachFailedTitle'), message || t('common.tryAgain'))
           }
         },
       },
     ])
+  }
+
+  function openMemberMenu(memberId: string, name: string, isGhost: boolean) {
+    haptics.selection()
+    const actions: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = []
+    if (isGhost) {
+      actions.push({ text: t('group.remind'), onPress: () => void remindGhost(name) })
+      actions.push({
+        text: t('group.renameMember'),
+        onPress: () => {
+          setEditorName(name)
+          setEditor({ mode: 'rename', memberId, name })
+        },
+      })
+    } else {
+      actions.push({ text: t('group.detach'), onPress: () => confirmDetach(memberId, name) })
+    }
+    if (isOwner) {
+      actions.push({
+        text: t('group.remove'),
+        style: 'destructive',
+        onPress: () => confirmRemove(memberId, name),
+      })
+    }
+    // Android keeps only the last three buttons: a fourth would drop Cancel AND promote the
+    // destructive action to the primary slot. There, dismissal comes from cancelable instead.
+    if (Platform.OS === 'ios') {
+      actions.push({ text: t('common.cancel'), style: 'cancel' })
+    }
+    Alert.alert(name, undefined, actions, { cancelable: true })
+  }
+
+  async function submitEditor() {
+    const value = editorName.trim()
+    if (!editor || !value) {
+      return
+    }
+    const current = editor
+    setEditor(null)
+    try {
+      if (current.mode === 'add') {
+        await addGhost.mutateAsync(value)
+      } else {
+        await renameGhost.mutateAsync({ memberId: current.memberId, name: value })
+      }
+    } catch (error) {
+      Alert.alert(
+        current.mode === 'add'
+          ? t('group.addParticipantFailedTitle')
+          : t('group.renameFailedTitle'),
+        error instanceof Error ? error.message : t('common.tryAgain'),
+      )
+    }
   }
 
   const hasMembers = members != null && members.length > 0
@@ -348,30 +400,42 @@ export default function TripGroupScreen() {
                   ? t('common.you')
                   : (member.display_name ?? t('common.member'))
               const isMemberOwner = member.role === 'owner'
-              const canRemove = isOwner && !isMemberOwner && member.user_id !== userId
+              // A place nobody holds: anyone on the trip can rename or chase it. A place an
+              // account holds is the owner's business only, since detach and remove are owner-only
+              // server-side and a menu that raises on every press is worse than no menu.
+              const isGhost = member.user_id === null
+              const canManage =
+                !isMemberOwner && (isGhost || (isOwner && member.user_id !== userId))
               return (
                 <View
                   key={member.id}
                   style={[styles.memberRow, index === members.length - 1 && styles.memberRowLast]}
                 >
                   <Avatar name={name} imageUrl={member.avatar_url} size={40} />
-                  <Text style={styles.memberName} numberOfLines={1}>
-                    {name}
-                  </Text>
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName} numberOfLines={1}>
+                      {name}
+                    </Text>
+                    {isGhost ? (
+                      <View style={styles.ghostPill}>
+                        <Text style={styles.ghostPillLabel}>{t('group.notJoined')}</Text>
+                      </View>
+                    ) : null}
+                  </View>
                   {isMemberOwner ? (
                     <View style={styles.ownerPill}>
                       <Text style={styles.ownerPillLabel}>{t('group.owner')}</Text>
                     </View>
-                  ) : canRemove ? (
+                  ) : canManage ? (
                     <Pressable
-                      onPress={() => confirmRemove(member.id, name)}
-                      disabled={removeMember.isPending}
+                      onPress={() => openMemberMenu(member.id, name, isGhost)}
+                      disabled={removeMember.isPending || detachMember.isPending}
                       accessibilityRole="button"
-                      accessibilityLabel={t('group.removeMemberLabel', { name })}
+                      accessibilityLabel={t('group.manageMember', { name })}
                       hitSlop={6}
                       style={({ pressed }) => (pressed ? styles.pressed : undefined)}
                     >
-                      <Text style={styles.removeText}>{t('group.remove')}</Text>
+                      <Ionicons name="ellipsis-horizontal" size={20} color={theme.colors.muted} />
                     </Pressable>
                   ) : (
                     <Text style={styles.memberRole}>{t('group.memberRole')}</Text>
@@ -381,6 +445,19 @@ export default function TripGroupScreen() {
             })}
           </Surface>
         )}
+
+        {hasMembers ? (
+          <Pressable
+            onPress={() => {
+              setEditorName('')
+              setEditor({ mode: 'add' })
+            }}
+            accessibilityRole="button"
+            style={({ pressed }) => (pressed ? styles.pressed : undefined)}
+          >
+            <Text style={styles.addParticipant}>{t('group.addParticipant')}</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Share location */}
@@ -436,10 +513,10 @@ export default function TripGroupScreen() {
       {/* Regenerate code - bordered full-width action (owner only) */}
       {isOwner ? (
         <Button
-          label={regenerate.isPending ? t('group.regenerating') : t('trip.regenerateCode')}
+          label={isRegenerating ? t('group.regenerating') : t('trip.regenerateCode')}
           icon="refresh-outline"
           variant="secondary"
-          disabled={regenerate.isPending}
+          disabled={isRegenerating}
           onPress={confirmRegenerate}
         />
       ) : null}
@@ -448,30 +525,55 @@ export default function TripGroupScreen() {
       {isOwner ? (
         <Pressable
           onPress={confirmDelete}
-          disabled={deleteTrip.isPending}
+          disabled={isDeleting}
           accessibilityRole="button"
           accessibilityLabel={t('group.deleteTrip')}
-          accessibilityState={{ disabled: deleteTrip.isPending }}
+          accessibilityState={{ disabled: isDeleting }}
           style={({ pressed }) => [styles.dangerBtn, pressed && styles.pressed]}
         >
           <Text style={styles.dangerText} numberOfLines={1}>
-            {deleteTrip.isPending ? t('group.deleting') : t('group.deleteTrip')}
+            {isDeleting ? t('group.deleting') : t('group.deleteTrip')}
           </Text>
         </Pressable>
       ) : (
         <Pressable
           onPress={confirmLeave}
-          disabled={leaveTripMutation.isPending}
+          disabled={isLeaving}
           accessibilityRole="button"
           accessibilityLabel={t('group.leaveTrip')}
-          accessibilityState={{ disabled: leaveTripMutation.isPending }}
+          accessibilityState={{ disabled: isLeaving }}
           style={({ pressed }) => [styles.dangerBtn, pressed && styles.pressed]}
         >
           <Text style={styles.dangerText} numberOfLines={1}>
-            {leaveTripMutation.isPending ? t('group.leaving') : t('group.leaveTrip')}
+            {isLeaving ? t('group.leaving') : t('group.leaveTrip')}
           </Text>
         </Pressable>
       )}
+
+      <BottomSheet
+        open={editor !== null}
+        onClose={() => setEditor(null)}
+        title={
+          editor?.mode === 'rename' ? t('group.renamePromptTitle') : t('group.addParticipantTitle')
+        }
+      >
+        <View style={styles.editor}>
+          <TextField
+            placeholder={t('newTrip.addNamePlaceholder')}
+            value={editorName}
+            onChangeText={setEditorName}
+            onSubmitEditing={() => void submitEditor()}
+            autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="done"
+          />
+          <Button
+            label={t('common.save')}
+            onPress={() => void submitEditor()}
+            disabled={editorName.trim().length === 0 || addGhost.isPending || renameGhost.isPending}
+          />
+        </View>
+      </BottomSheet>
     </Screen>
   )
 }
@@ -602,8 +704,36 @@ const styles = StyleSheet.create((theme) => ({
   memberRowLast: {
     borderBottomWidth: 0,
   },
-  memberName: {
+  memberInfo: {
     flex: 1,
+    minWidth: 0,
+    gap: theme.gap(0.5),
+    alignItems: 'flex-start',
+  },
+  ghostPill: {
+    borderRadius: theme.radius.full,
+    paddingVertical: 2,
+    paddingHorizontal: theme.gap(2),
+    backgroundColor: withAlpha(theme.colors.muted, 0.14),
+  },
+  ghostPillLabel: {
+    fontFamily: theme.fonts.sans.medium,
+    fontWeight: '500',
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
+  },
+  addParticipant: {
+    fontFamily: theme.fonts.sans.semibold,
+    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
+    paddingVertical: theme.gap(2),
+  },
+  editor: {
+    gap: theme.gap(3),
+  },
+  memberName: {
+    alignSelf: 'stretch',
     minWidth: 0,
     fontFamily: theme.fonts.sans.medium,
     fontWeight: '500',
@@ -628,12 +758,6 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: '500',
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
-  },
-  removeText: {
-    fontFamily: theme.fonts.sans.semibold,
-    fontWeight: '600',
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.destructive,
   },
   dangerBtn: {
     alignSelf: 'flex-start',

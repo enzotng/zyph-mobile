@@ -1,4 +1,5 @@
 export * from './api/group.api'
 export * from './hooks/use-group'
+export * from './hooks/use-trip-admin-actions'
 export * from './member-label'
 export * from './schemas'

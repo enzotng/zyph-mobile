@@ -60,6 +60,8 @@ export default function EditTripScreen() {
   const startDate = useWatch({ control, name: 'startDate' })
   const endDate = useWatch({ control, name: 'endDate' })
   const destination = useWatch({ control, name: 'destination' })
+  const latitude = useWatch({ control, name: 'latitude' })
+  const longitude = useWatch({ control, name: 'longitude' })
 
   // Keyboard "next"/"done" chaining: title hands focus to currency, currency submits the form.
   const currencyRef = useRef<TextInput>(null)
@@ -129,6 +131,7 @@ export default function EditTripScreen() {
         label={t('tripForm.destination')}
         value={destination}
         error={errors.destination?.message}
+        hasCoordinates={latitude !== null && longitude !== null}
         onChangeText={(text) => {
           setValue('destination', text, { shouldValidate: true })
           setValue('latitude', null)

@@ -85,3 +85,35 @@ describe('syncSystemLanguageOnForeground', () => {
     expect(changeLanguage).not.toHaveBeenCalled()
   })
 })
+
+// The member.* headlines are the group's only defence against a wrongful claim (spec D2), so the
+// actor has to survive interpolation - and lead in both languages, since the row truncates.
+describe('nominative member notifications', () => {
+  it('names the actor first in English', async () => {
+    await i18n.changeLanguage('en')
+    expect(i18n.t('notifications.types.memberClaimed', { actor: 'Marco', name: 'Léa' })).toBe(
+      'Marco joined as Léa',
+    )
+    expect(i18n.t('notifications.types.memberAdded', { actor: 'Marco', name: 'Léa' })).toBe(
+      'Marco added Léa',
+    )
+  })
+
+  it('names the actor first in French', async () => {
+    await i18n.changeLanguage('fr')
+    expect(i18n.t('notifications.types.memberClaimed', { actor: 'Marco', name: 'Léa' })).toBe(
+      'Marco a rejoint en tant que Léa',
+    )
+    expect(i18n.t('notifications.types.memberAdded', { actor: 'Marco', name: 'Léa' })).toBe(
+      'Marco a ajouté Léa',
+    )
+  })
+
+  it('reads as the pre-existing anonymous copy when the actor is unknown', async () => {
+    await i18n.changeLanguage('fr')
+    const someone = i18n.t('notifications.someone')
+    expect(i18n.t('notifications.types.memberClaimed', { actor: someone, name: 'Léa' })).toBe(
+      'Quelqu’un a rejoint en tant que Léa',
+    )
+  })
+})

@@ -45,10 +45,9 @@ export default function InboxProposalScreen() {
   const [builtForId, setBuiltForId] = useState<string | null>(null)
   if (proposal && members.data && builtForId !== proposal.id) {
     setBuiltForId(proposal.id)
-    const memberInputs = activeMembers.map((m) => ({
-      userId: m.user_id,
-      displayName: m.display_name,
-    }))
+    const memberInputs = activeMembers.flatMap((m) =>
+      m.user_id != null ? [{ userId: m.user_id, displayName: m.display_name }] : [],
+    )
     setPreviews(
       (proposal.events ?? []).map((event, index) =>
         parsedToPreview(event, index, memberInputs, t('smartImport.defaultTitle')),

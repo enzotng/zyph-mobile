@@ -12,7 +12,8 @@
 
 import { createClient } from "@supabase/supabase-js"
 
-import { type Lang, toLang } from "./lang.ts"
+import { type Payload, pushCopy, str } from "./copy.ts"
+import { toLang } from "./lang.ts"
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 
@@ -24,71 +25,6 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { "Content-Type": "application/json" },
   })
-}
-
-type Payload = Record<string, unknown>
-
-function str(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null
-}
-
-// Localized push copy per notification type, mirroring the in-app feed. settlement.created splits
-// on the payload role (payer vs payee). Falls back to a generic line for any unknown type.
-function pushCopy(type: string, payload: Payload, lang: Lang): { title: string; body: string } {
-  const description = str(payload.description)
-  const title = str(payload.title)
-  const en = lang === "en"
-  switch (type) {
-    case "member.joined":
-      return {
-        title: "ZYPH",
-        body: en ? "A new member joined the trip" : "Un nouveau membre a rejoint le voyage",
-      }
-    case "member.left":
-      return { title: "ZYPH", body: en ? "A member left the trip" : "Un membre a quitté le voyage" }
-    case "member.removed":
-      return { title: "ZYPH", body: en ? "You were removed from a trip" : "Tu as été retiré d’un voyage" }
-    case "expense.added":
-      return {
-        title: en ? "New expense" : "Nouvelle dépense",
-        body: description ?? (en ? "An expense was added" : "Une dépense a été ajoutée"),
-      }
-    case "expense.updated":
-      return {
-        title: en ? "Expense updated" : "Dépense modifiée",
-        body: description ?? (en ? "An expense was updated" : "Une dépense a été mise à jour"),
-      }
-    case "settlement.created":
-      return payload.role === "to"
-        ? { title: "ZYPH", body: en ? "You received a payment" : "Tu as reçu un paiement" }
-        : { title: "ZYPH", body: en ? "Your payment was recorded" : "Ton paiement a été enregistré" }
-    case "settlement.reversed":
-      return { title: "ZYPH", body: en ? "A payment was reversed" : "Un paiement a été annulé" }
-    case "event.added":
-      return {
-        title: en ? "New event" : "Nouvel événement",
-        body: title ?? (en ? "An event was added" : "Un événement a été ajouté"),
-      }
-    case "packing.assigned":
-      return {
-        title: en ? "Packing" : "Bagages",
-        body: en ? "A packing item was assigned to you" : "Un article de bagage t’a été attribué",
-      }
-    case "packing.nudged":
-      return {
-        title: en ? "Packing" : "Bagages",
-        body: en ? "Reminder: an item to prepare" : "Rappel : un article à préparer",
-      }
-    case "packing.reminder":
-      return {
-        title: en ? "Packing" : "Bagages",
-        body: en
-          ? "Remember to prepare the shared trip gear"
-          : "Pense à préparer le matériel partagé du voyage",
-      }
-    default:
-      return { title: "ZYPH", body: en ? "New activity" : "Nouvelle activité" }
-  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -160,10 +96,18 @@ Deno.serve(async (req: Request) => {
     tripId: notification.trip_id,
     expenseId: str(payload.expenseId),
     eventId: str(payload.eventId),
+    // The tap handler keeps the detached recipient out of a trip RLS now hides from it, and this
+    // is its only way to tell that recipient apart from the rest of the group.
+    detachedUserId: str(payload.detachedUserId),
   }
   // One message per device, each rendered in that device's own language.
   const messages = tokens.map((t: { token: string; locale: string | null }) => {
-    const { title, body: bodyText } = pushCopy(notification.type, payload, toLang(t.locale))
+    const { title, body: bodyText } = pushCopy(
+      notification.type,
+      payload,
+      toLang(t.locale),
+      notification.recipient_id,
+    )
     return { to: t.token, sound: "default", title, body: bodyText, data }
   })
 

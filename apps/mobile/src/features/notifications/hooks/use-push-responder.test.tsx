@@ -26,10 +26,10 @@ beforeEach(() => {
 })
 
 describe('usePushNotificationResponder', () => {
-  it('does nothing when disabled, even with a pending cold-start response', async () => {
+  it('does nothing when signed out, even with a pending cold-start response', async () => {
     getLast.mockResolvedValue(response({ type: 'expense.added', tripId: 't1', expenseId: 'e1' }))
 
-    renderHook(() => usePushNotificationResponder(false))
+    renderHook(() => usePushNotificationResponder(null))
     await Promise.resolve()
 
     expect(addListener).not.toHaveBeenCalled()
@@ -40,9 +40,9 @@ describe('usePushNotificationResponder', () => {
   it('routes a cold-start tap once and does not re-route on re-render', async () => {
     getLast.mockResolvedValue(response({ type: 'expense.added', tripId: 't1', expenseId: 'e1' }))
 
-    const { rerender } = renderHook<void, { enabled: boolean }>(
-      ({ enabled }) => usePushNotificationResponder(enabled),
-      { initialProps: { enabled: true } },
+    const { rerender } = renderHook<void, { userId: string | null }>(
+      ({ userId }) => usePushNotificationResponder(userId),
+      { initialProps: { userId: 'u1' } },
     )
 
     await waitFor(() => expect(mockRouter.push).toHaveBeenCalledTimes(1))
@@ -51,13 +51,13 @@ describe('usePushNotificationResponder', () => {
       params: { id: 't1', expenseId: 'e1' },
     })
 
-    rerender({ enabled: true })
+    rerender({ userId: 'u1' })
     await Promise.resolve()
     expect(mockRouter.push).toHaveBeenCalledTimes(1)
   })
 
   it('routes a warm tap through the response listener', async () => {
-    renderHook(() => usePushNotificationResponder(true))
+    renderHook(() => usePushNotificationResponder('u1'))
     await waitFor(() => expect(addListener).toHaveBeenCalled())
 
     const onResponse = addListener.mock.calls[0][0]
@@ -70,7 +70,7 @@ describe('usePushNotificationResponder', () => {
   })
 
   it('ignores a push payload without a type', async () => {
-    renderHook(() => usePushNotificationResponder(true))
+    renderHook(() => usePushNotificationResponder('u1'))
     await waitFor(() => expect(addListener).toHaveBeenCalled())
 
     addListener.mock.calls[0][0](response({ tripId: 't1' }))
@@ -78,11 +78,36 @@ describe('usePushNotificationResponder', () => {
     expect(mockRouter.push).not.toHaveBeenCalled()
   })
 
+  it('does not route the detached account on a detach push', async () => {
+    renderHook(() => usePushNotificationResponder('u1'))
+    await waitFor(() => expect(addListener).toHaveBeenCalled())
+
+    addListener.mock.calls[0][0](
+      response({ type: 'member.detached', tripId: 't1', detachedUserId: 'u1' }),
+    )
+
+    expect(mockRouter.push).not.toHaveBeenCalled()
+  })
+
+  it('routes a detach push for another member to the group screen', async () => {
+    renderHook(() => usePushNotificationResponder('u1'))
+    await waitFor(() => expect(addListener).toHaveBeenCalled())
+
+    addListener.mock.calls[0][0](
+      response({ type: 'member.detached', tripId: 't1', detachedUserId: 'u2' }),
+    )
+
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/trips/[id]/group',
+      params: { id: 't1' },
+    })
+  })
+
   it('removes the subscription on unmount', async () => {
     const remove = jest.fn()
     addListener.mockReturnValue({ remove } as unknown as Sub)
 
-    const { unmount } = renderHook(() => usePushNotificationResponder(true))
+    const { unmount } = renderHook(() => usePushNotificationResponder('u1'))
     await waitFor(() => expect(addListener).toHaveBeenCalled())
     unmount()
 

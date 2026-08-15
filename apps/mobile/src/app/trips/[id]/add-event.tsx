@@ -32,9 +32,11 @@ export default function AddEventScreen() {
   const members = useTripMembers(tripId)
   const activeMembers = useMemo(
     () =>
-      (members.data ?? [])
-        .filter((m) => m.status === 'active' && m.user_id)
-        .map((m) => ({ userId: m.user_id, displayName: m.display_name, avatarUrl: m.avatar_url })),
+      (members.data ?? []).flatMap((m) =>
+        m.status === 'active' && m.user_id != null
+          ? [{ userId: m.user_id, displayName: m.display_name, avatarUrl: m.avatar_url }]
+          : [],
+      ),
     [members.data],
   )
   const [hasEnd, setHasEnd] = useState(false)
