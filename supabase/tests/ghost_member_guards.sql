@@ -35,7 +35,9 @@ values
   ('22222222-2222-2222-2222-222222222222', '00000000-0000-0000-0000-000000000000',
    'authenticated', 'authenticated', 'outsider@guards.test', '', now(), now(), now()),
   ('33333333-3333-3333-3333-333333333333', '00000000-0000-0000-0000-000000000000',
-   'authenticated', 'authenticated', 'claimer@guards.test', '', now(), now(), now());
+   'authenticated', 'authenticated', 'claimer@guards.test', '', now(), now(), now()),
+  ('44444444-4444-4444-4444-444444444444', '00000000-0000-0000-0000-000000000000',
+   'authenticated', 'authenticated', 'leaver@guards.test', '', now(), now(), now());
 
 update public.profiles set display_name = 'Marco'
   where id = '11111111-1111-1111-1111-111111111111';
@@ -51,7 +53,11 @@ values
   ('aaaaaaaa-0000-0000-0000-00000000000b', '11111111-1111-1111-1111-111111111111', 'B', 'guardb', 'EUR'),
   ('aaaaaaaa-0000-0000-0000-00000000000c', '11111111-1111-1111-1111-111111111111', 'C', 'guardc', 'EUR'),
   ('aaaaaaaa-0000-0000-0000-00000000000d', '11111111-1111-1111-1111-111111111111', 'D', 'guardd', 'EUR'),
-  ('aaaaaaaa-0000-0000-0000-00000000000e', '11111111-1111-1111-1111-111111111111', 'E', 'guarde', 'EUR');
+  ('aaaaaaaa-0000-0000-0000-00000000000e', '11111111-1111-1111-1111-111111111111', 'E', 'guarde', 'EUR'),
+  ('aaaaaaaa-0000-0000-0000-00000000000f', '11111111-1111-1111-1111-111111111111', 'F', 'guardf', 'EUR'),
+  ('aaaaaaaa-0000-0000-0000-000000000010', '11111111-1111-1111-1111-111111111111', 'G', 'guardg', 'EUR'),
+  ('aaaaaaaa-0000-0000-0000-000000000011', '11111111-1111-1111-1111-111111111111', 'H', 'guardh', 'EUR'),
+  ('aaaaaaaa-0000-0000-0000-000000000012', '11111111-1111-1111-1111-111111111111', 'I', 'guardi', 'EUR');
 
 set local role authenticated;
 
@@ -262,6 +268,307 @@ begin
       and claimed_at is not null
   ) then
     perform pg_temp.fail('claim binds', 'the offered place is not bound and dated');
+  end if;
+end $$;
+
+-- 11. The limiter's window and ceiling come from the server: arguments a caller passes are ignored,
+--     and a bucket with no policy is refused rather than left unlimited.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222"}';
+
+do $$
+declare i int;
+begin
+  for i in 1..20 loop
+    if not public.check_rate_limit('copilot') then
+      perform pg_temp.fail('limiter policy', 'call ' || i || ' of 20 was refused');
+    end if;
+  end loop;
+  if public.check_rate_limit('copilot') then
+    perform pg_temp.fail('limiter policy', 'the 21st call was allowed');
+  end if;
+  if public.check_rate_limit('copilot', 1000, -1) then
+    perform pg_temp.fail('limiter policy', 'arguments passed by the caller reopened the window');
+  end if;
+  if public.check_rate_limit('no-such-bucket') then
+    perform pg_temp.fail('limiter policy', 'a bucket with no policy was allowed');
+  end if;
+end $$;
+
+-- 12. A wrong invite code costs an attempt like a right one. It must answer rather than raise: a raise
+--     rolls the counter back with it.
+do $$
+declare i int; _err text := null;
+begin
+  for i in 1..15 loop
+    if public.get_trip_claim_options('guardzz') is distinct from '{"error":"invalid_code"}'::jsonb then
+      perform pg_temp.fail('invite attempts', 'a wrong code did not answer invalid_code');
+    end if;
+    if public.claim_trip_slot('guardzz', gen_random_uuid()) is not null then
+      perform pg_temp.fail('invite attempts', 'a wrong code returned a place');
+    end if;
+  end loop;
+  begin
+    perform public.get_trip_claim_options('guardzz');
+  exception when others then
+    _err := sqlerrm;
+  end;
+  if _err is distinct from 'rate limited' then
+    perform pg_temp.fail('invite attempts', coalesce(_err, 'the 31st attempt was allowed'));
+  end if;
+end $$;
+
+-- 13. A position is only shown for the current tenure: a row older than the claim belongs to whoever
+--     held the place before, or to nobody.
+reset role;
+insert into public.trip_members (trip_id, user_id, role, status, display_name, claimed_at)
+values ('aaaaaaaa-0000-0000-0000-00000000000f', '33333333-3333-3333-3333-333333333333',
+        'member', 'active', 'Lea', now() - interval '1 day');
+
+insert into public.member_locations (trip_member_id, lat, lng, updated_at)
+select id, 38.72, -9.14, claimed_at - interval '1 minute'
+from public.trip_members
+where trip_id = 'aaaaaaaa-0000-0000-0000-00000000000f'
+  and user_id = '33333333-3333-3333-3333-333333333333';
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+
+do $$
+begin
+  if exists (select 1 from public.member_locations l
+             join public.trip_members m on m.id = l.trip_member_id
+             where m.trip_id = 'aaaaaaaa-0000-0000-0000-00000000000f') then
+    perform pg_temp.fail('tenure position', 'a position older than the claim was readable');
+  end if;
+end $$;
+
+reset role;
+update public.member_locations set updated_at = now()
+where trip_member_id in (select id from public.trip_members
+                         where trip_id = 'aaaaaaaa-0000-0000-0000-00000000000f');
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+
+do $$
+begin
+  if not exists (select 1 from public.member_locations l
+                 join public.trip_members m on m.id = l.trip_member_id
+                 where m.trip_id = 'aaaaaaaa-0000-0000-0000-00000000000f') then
+    perform pg_temp.fail('tenure position', 'a position from the current tenure was hidden');
+  end if;
+end $$;
+
+-- 14. Removing a member drops their position.
+do $$
+declare _member uuid;
+begin
+  select id into _member from public.trip_members
+  where trip_id = 'aaaaaaaa-0000-0000-0000-00000000000f'
+    and user_id = '33333333-3333-3333-3333-333333333333';
+  perform public.remove_trip_member(_member);
+exception when others then
+  perform pg_temp.fail('remove drops position', sqlerrm);
+end $$;
+
+reset role;
+do $$
+begin
+  if exists (
+    select 1 from public.member_locations l
+    join public.trip_members m on m.id = l.trip_member_id
+    where m.trip_id = 'aaaaaaaa-0000-0000-0000-00000000000f'
+  ) then
+    perform pg_temp.fail('remove drops position', 'the removed member''s position survived');
+  end if;
+end $$;
+
+-- 15. Leaving drops your position. Shared through the RPC first, which is also its happy path.
+insert into public.trip_members (trip_id, user_id, role, status, display_name, claimed_at)
+values ('aaaaaaaa-0000-0000-0000-000000000010', '33333333-3333-3333-3333-333333333333',
+        'member', 'active', 'Lea', now() - interval '1 day');
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333"}';
+
+do $$
+begin
+  perform public.upsert_member_location('aaaaaaaa-0000-0000-0000-000000000010', 38.72, -9.14);
+exception when others then
+  perform pg_temp.fail('leave drops position', sqlerrm);
+end $$;
+
+reset role;
+do $$
+begin
+  if not exists (
+    select 1 from public.member_locations l
+    join public.trip_members m on m.id = l.trip_member_id
+    where m.trip_id = 'aaaaaaaa-0000-0000-0000-000000000010'
+  ) then
+    perform pg_temp.fail('leave drops position', 'upsert_member_location wrote nothing');
+  end if;
+end $$;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333"}';
+
+do $$
+begin
+  perform public.leave_trip('aaaaaaaa-0000-0000-0000-000000000010');
+exception when others then
+  perform pg_temp.fail('leave drops position', sqlerrm);
+end $$;
+
+reset role;
+do $$
+begin
+  if exists (
+    select 1 from public.member_locations l
+    join public.trip_members m on m.id = l.trip_member_id
+    where m.trip_id = 'aaaaaaaa-0000-0000-0000-000000000010'
+  ) then
+    perform pg_temp.fail('leave drops position', 'the leaver''s position survived');
+  end if;
+end $$;
+
+-- 16. Deleting an account drops its positions on the trips it shared.
+insert into public.trip_members (trip_id, user_id, role, status, display_name, claimed_at)
+values ('aaaaaaaa-0000-0000-0000-000000000011', '44444444-4444-4444-4444-444444444444',
+        'member', 'active', 'Sam', now() - interval '1 day');
+
+insert into public.member_locations (trip_member_id, lat, lng)
+select id, 38.72, -9.14
+from public.trip_members
+where trip_id = 'aaaaaaaa-0000-0000-0000-000000000011'
+  and user_id = '44444444-4444-4444-4444-444444444444';
+
+do $$
+begin
+  perform public.delete_my_account('44444444-4444-4444-4444-444444444444');
+  if exists (
+    select 1 from public.member_locations l
+    join public.trip_members m on m.id = l.trip_member_id
+    where m.trip_id = 'aaaaaaaa-0000-0000-0000-000000000011'
+  ) then
+    perform pg_temp.fail('account deletion drops position', 'the deleted account''s position survived');
+  end if;
+end $$;
+
+-- 17. Positions are written through the RPC only, which checks membership under a row lock. A direct
+--     write is checked against a snapshot, so it can still land on a place freed in the meantime.
+insert into public.trip_members (trip_id, user_id, role, status, display_name, claimed_at)
+values ('aaaaaaaa-0000-0000-0000-000000000012', '33333333-3333-3333-3333-333333333333',
+        'member', 'active', 'Lea', now() - interval '1 day');
+
+do $$
+declare _member uuid;
+begin
+  select id into _member from public.trip_members
+  where trip_id = 'aaaaaaaa-0000-0000-0000-000000000012'
+    and user_id = '33333333-3333-3333-3333-333333333333';
+  perform set_config('guards.direct_member', _member::text, true);
+end $$;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333"}';
+
+do $$
+begin
+  insert into public.member_locations (trip_member_id, lat, lng)
+  values (current_setting('guards.direct_member')::uuid, 38.72, -9.14);
+  perform pg_temp.fail('direct write', 'a member wrote a position without the RPC');
+exception when insufficient_privilege then
+  if sqlerrm not like 'permission denied%' then
+    perform pg_temp.fail('direct write', sqlerrm);
+  end if;
+end $$;
+
+-- 18. Tripwire, since one session cannot race two: the RPC must take the place row FOR SHARE so a
+--     write in flight waits for a concurrent detach or removal and then sees the place is no longer
+--     the caller's.
+reset role;
+do $$
+begin
+  if pg_get_functiondef('public.upsert_member_location(uuid, double precision, double precision, real, real)'::regprocedure)
+     not ilike '%for share%' then
+    perform pg_temp.fail('location row lock', 'upsert_member_location no longer locks the place row');
+  end if;
+end $$;
+
+-- 19. The invite code is not writable by a client: a unique column answers whether a value is taken,
+--     so letting a client choose one turns every insert or update into a lookup.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+
+do $$
+declare _err text;
+begin
+  begin
+    update public.trips set invite_code = 'guardb' where id = 'aaaaaaaa-0000-0000-0000-00000000000a';
+  exception when others then
+    _err := sqlerrm;
+  end;
+  if _err is distinct from 'invite code is not writable' then
+    perform pg_temp.fail('invite code write', coalesce(_err, 'an owner set their trip''s code'));
+  end if;
+end $$;
+
+do $$
+begin
+  insert into public.trips (id, owner_id, title, invite_code, currency)
+  values ('aaaaaaaa-0000-0000-0000-000000000013', '11111111-1111-1111-1111-111111111111', 'J',
+          'guarda', 'EUR');
+  perform public.regenerate_invite_code('aaaaaaaa-0000-0000-0000-00000000000b');
+exception when others then
+  perform pg_temp.fail('invite code write', sqlerrm);
+end $$;
+
+reset role;
+do $$
+begin
+  if (select invite_code from public.trips where id = 'aaaaaaaa-0000-0000-0000-000000000013') = 'guarda' then
+    perform pg_temp.fail('invite code write', 'an insert kept the code its client chose');
+  end if;
+  if (select invite_code from public.trips where id = 'aaaaaaaa-0000-0000-0000-00000000000b') = 'guardb' then
+    perform pg_temp.fail('invite code write', 'regenerate_invite_code no longer changes the code');
+  end if;
+end $$;
+
+-- 20. Renaming a free place goes through: a missing limiter policy would refuse every call, and no
+--     other check reaches the limiter of rename_ghost_member on a successful path.
+do $$
+declare _ghost uuid;
+begin
+  select id into _ghost from public.trip_members
+  where trip_id = 'aaaaaaaa-0000-0000-0000-00000000000c' and user_id is null
+  limit 1;
+  perform set_config('guards.rename_target', _ghost::text, true);
+end $$;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+
+do $$
+begin
+  perform public.rename_ghost_member(current_setting('guards.rename_target')::uuid, 'Renamed');
+exception when others then
+  perform pg_temp.fail('rename happy path', sqlerrm);
+end $$;
+
+-- 21. Every bucket the code names has a policy: without one the limiter refuses, and an edge
+--     function answers 429 to everyone while CI stays green.
+reset role;
+do $$
+declare _missing text;
+begin
+  select string_agg(b, ', ') into _missing
+  from unnest(array['copilot', 'poi-search', 'poi-photo', 'place-search', 'parse-receipt-email',
+                    'generate-packing', 'upload-avatar', 'upload-trip-cover', 'trip-cover',
+                    'claim-options', 'add-ghost', 'rename-ghost']) as b
+  where not exists (select 1 from private.rate_limit_policies p where p.bucket = b);
+  if _missing is not null then
+    perform pg_temp.fail('limiter policies', 'no policy for ' || _missing);
   end if;
 end $$;
 
