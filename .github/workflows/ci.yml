@@ -52,3 +52,24 @@ jobs:
       # TODO: add `--affected` once packages/* exist to skip unchanged packages.
       - name: Lint · Typecheck · Test
         run: pnpm exec turbo run lint typecheck test --cache-dir=.turbo
+
+  # Jest mocks Supabase, so no client test can observe a SQL guard - this asserts them against every
+  # migration applied to a real Postgres.
+  db-guards:
+    name: Database guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.118.0
+
+      - name: Start Postgres with every migration
+        run: supabase db start
+
+      - name: Assert the ghost-place guards
+        run: docker exec -i supabase_db_zyph-mobile psql -U postgres -d postgres -q < supabase/tests/ghost_member_guards.sql
