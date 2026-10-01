@@ -11,10 +11,10 @@
 --   * a check must reject the SPECIFIC error, never "anything but success" - the first version of
 --     check 3 accepted 'rate limited' too, so deleting the legibility guard would have kept it green.
 --
--- Run against a local stack:
---   supabase db reset
---   docker exec -i supabase_db_<project> psql -U postgres -d postgres -f supabase/tests/ghost_member_guards.sql
--- Every check raises on failure, so a clean run means every guard held. Not wired into CI.
+-- Run against a local stack - `supabase db start`, or `supabase db reset` if one is already up:
+--   docker exec -i supabase_db_zyph-mobile psql -U postgres -d postgres -q < supabase/tests/ghost_member_guards.sql
+-- Every check raises on failure, so a clean run means every guard held. CI runs it on every pull
+-- request and on pushes to develop and main.
 
 \set ON_ERROR_STOP on
 
@@ -44,13 +44,14 @@ update public.profiles set display_name = 'Outsider'
 update public.profiles set display_name = 'Lea'
   where id = '33333333-3333-3333-3333-333333333333';
 
--- One trip per rate-limit-sensitive check.
+-- One trip per check that could disturb another's.
 insert into public.trips (id, owner_id, title, invite_code, currency)
 values
   ('aaaaaaaa-0000-0000-0000-00000000000a', '11111111-1111-1111-1111-111111111111', 'A', 'guarda', 'EUR'),
   ('aaaaaaaa-0000-0000-0000-00000000000b', '11111111-1111-1111-1111-111111111111', 'B', 'guardb', 'EUR'),
   ('aaaaaaaa-0000-0000-0000-00000000000c', '11111111-1111-1111-1111-111111111111', 'C', 'guardc', 'EUR'),
-  ('aaaaaaaa-0000-0000-0000-00000000000d', '11111111-1111-1111-1111-111111111111', 'D', 'guardd', 'EUR');
+  ('aaaaaaaa-0000-0000-0000-00000000000d', '11111111-1111-1111-1111-111111111111', 'D', 'guardd', 'EUR'),
+  ('aaaaaaaa-0000-0000-0000-00000000000e', '11111111-1111-1111-1111-111111111111', 'E', 'guarde', 'EUR');
 
 set local role authenticated;
 
@@ -163,7 +164,111 @@ exception when others then
   end if;
 end $$;
 
--- 7. Rate limit: 30 per hour per trip. Last, because it spends its trip's budget.
+-- 7. Detaching drops the place's live position. The row is keyed to the place, not the account, so
+--    left behind it stays readable by co-members and shows under whoever claims the place next.
+reset role;
+insert into public.trip_members (trip_id, user_id, role, status, display_name, claimed_at)
+values ('aaaaaaaa-0000-0000-0000-00000000000e', '33333333-3333-3333-3333-333333333333',
+        'member', 'active', 'Lea', now() - interval '1 day');
+
+insert into public.member_locations (trip_member_id, lat, lng)
+select id, 38.72, -9.14
+from public.trip_members
+where trip_id = 'aaaaaaaa-0000-0000-0000-00000000000e'
+  and user_id = '33333333-3333-3333-3333-333333333333';
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+
+do $$
+declare _member uuid;
+begin
+  select id into _member from public.trip_members
+  where trip_id = 'aaaaaaaa-0000-0000-0000-00000000000e'
+    and user_id = '33333333-3333-3333-3333-333333333333';
+  perform public.detach_trip_member(_member);
+exception when others then
+  perform pg_temp.fail('detach drops position', sqlerrm);
+end $$;
+
+-- Read back as postgres: under RLS, a surviving row hidden from the owner would pass.
+reset role;
+do $$
+begin
+  if exists (
+    select 1 from public.member_locations l
+    join public.trip_members m on m.id = l.trip_member_id
+    where m.trip_id = 'aaaaaaaa-0000-0000-0000-00000000000e'
+  ) then
+    perform pg_temp.fail('detach drops position', 'the previous holder''s position survived');
+  end if;
+end $$;
+
+-- 8. claimed_at is set exactly when an account holds the place. The tenure guard compares against
+--    it, and `created_at >= null` matches nothing, so a bound row without one detaches unguarded.
+do $$
+declare _constraint text;
+begin
+  insert into public.trip_members (trip_id, user_id, role, status, display_name)
+  values ('aaaaaaaa-0000-0000-0000-00000000000e', '22222222-2222-2222-2222-222222222222',
+          'member', 'active', 'Outsider');
+  perform pg_temp.fail('tenure invariant', 'a bound row was stored without claimed_at');
+exception when check_violation then
+  get stacked diagnostics _constraint = constraint_name;
+  if _constraint <> 'trip_members_claimed_iff_bound' then
+    perform pg_temp.fail('tenure invariant', _constraint);
+  end if;
+end $$;
+
+do $$
+declare _constraint text;
+begin
+  insert into public.trip_members (trip_id, user_id, role, status, display_name, claimed_at)
+  values ('aaaaaaaa-0000-0000-0000-00000000000e', null, 'member', 'active', 'Nobody', now());
+  perform pg_temp.fail('tenure invariant', 'a ghost was stored with a claimed_at');
+exception when check_violation then
+  get stacked diagnostics _constraint = constraint_name;
+  if _constraint <> 'trip_members_claimed_iff_bound' then
+    perform pg_temp.fail('tenure invariant', _constraint);
+  end if;
+end $$;
+
+-- 9. Claiming a free place binds the account and dates the tenure in the same write.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333"}';
+
+-- A null slot would still succeed through the "I am not in the list" branch, which inserts a fresh
+-- row - so the read-back targets the offered place by id, never "any row of this account".
+do $$
+declare _slot uuid;
+begin
+  _slot := (public.get_trip_claim_options('guarda') -> 'slots' -> 0 ->> 'slotId')::uuid;
+  if _slot is null then
+    raise exception 'no free place was offered';
+  end if;
+  perform set_config('guards.slot', _slot::text, true);
+  perform public.claim_trip_slot('guarda', _slot);
+exception when others then
+  perform pg_temp.fail('claim binds', sqlerrm);
+end $$;
+
+reset role;
+do $$
+begin
+  if not exists (
+    select 1 from public.trip_members
+    where id = current_setting('guards.slot')::uuid
+      and user_id = '33333333-3333-3333-3333-333333333333'
+      and claimed_at is not null
+  ) then
+    perform pg_temp.fail('claim binds', 'the offered place is not bound and dated');
+  end if;
+end $$;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+
+-- 10. Rate limit: 30 per hour per trip. Last, because it spends its trip's budget.
 do $$
 declare i int; _err text := null;
 begin
