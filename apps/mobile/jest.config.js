@@ -1,11 +1,11 @@
 /** @type {import('jest').Config} */
 module.exports = {
   preset: 'jest-expo',
-  // Discover app tests plus the calendar-feed and receive-booking-email edge functions' colocated
-  // *.test.ts: those modules are pure (no Deno-only APIs) and live outside src/, so they're not
-  // found by the default rootDir-only discovery unless explicitly added here.
+  // Discover app tests plus the colocated *.test.ts of edge-function modules that are pure (no
+  // Deno-only APIs): they live outside src/, so the default rootDir-only discovery misses them.
   roots: [
     '<rootDir>/src',
+    '<rootDir>/../../supabase/functions/_shared',
     '<rootDir>/../../supabase/functions/calendar-feed',
     '<rootDir>/../../supabase/functions/receive-booking-email',
     '<rootDir>/../../supabase/functions/send-push',
