@@ -1,8 +1,12 @@
+import { QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react-native'
+import type { ReactNode } from 'react'
 import { Alert, type AlertButton } from 'react-native'
 
+import { tripInboxAddressQueryKey } from '@/features/trips'
 import * as tripsApi from '@/features/trips/api/trips.api'
 import { haptics } from '@/lib/haptics'
+import { queryClient as appQueryClient } from '@/lib/query-client'
 import { createQueryWrapper } from '@/test-utils/query-wrapper'
 
 import * as api from '../api/group.api'
@@ -233,10 +237,22 @@ describe('confirmLeave', () => {
 })
 
 describe('offerNewInviteLink', () => {
-  it('names who can still come back, and keeps the link unless asked', () => {
+  const INBOX = 'lisbonne-x7k2@zyph.enzotang.fr'
+
+  beforeEach(() => {
+    jest.mocked(tripsApi.getTripInboxAddress).mockResolvedValue(null)
+  })
+
+  async function offer(result: { current: ReturnType<typeof useTripAdminActions> }) {
+    await act(async () => {
+      await result.current.offerNewInviteLink('Léa')
+    })
+  }
+
+  it('names who can still come back, and keeps the link unless asked', async () => {
     const { result } = renderActions()
 
-    act(() => result.current.offerNewInviteLink('Léa'))
+    await offer(result)
 
     expect(alertSpy).toHaveBeenCalledWith(
       'Change the invite link too?',
@@ -252,9 +268,116 @@ describe('offerNewInviteLink', () => {
     jest.mocked(api.regenerateInviteCode).mockResolvedValue('newcode123456')
     const { result } = renderActions()
 
-    act(() => result.current.offerNewInviteLink('Léa'))
+    await offer(result)
     await pressDestructive()
 
     expect(api.regenerateInviteCode).toHaveBeenCalledWith('t1')
+    expect(tripsApi.createTripInboxAddress).not.toHaveBeenCalled()
+  })
+
+  // The trip email is a second way in: whoever knew it can keep sending bookings to the trip.
+  it('offers to change the trip email too when the trip has one', async () => {
+    jest
+      .mocked(tripsApi.getTripInboxAddress)
+      .mockResolvedValue({ address: INBOX, autoValidate: false })
+    jest.mocked(api.regenerateInviteCode).mockResolvedValue('newcode123456')
+    jest.mocked(tripsApi.createTripInboxAddress).mockResolvedValue('lisbonne-q9w4@zyph.enzotang.fr')
+    const { result } = renderActions()
+
+    await offer(result)
+
+    expect(alertSpy.mock.calls[0]?.[0]).toBe('Change the invite link and the trip email?')
+    const buttons = alertSpy.mock.calls[0]?.[2] as AlertButton[]
+    expect(buttons.map((button) => button.text)).toEqual(['Keep them', 'Change both'])
+
+    await pressDestructive()
+
+    expect(api.regenerateInviteCode).toHaveBeenCalledWith('t1')
+    expect(jest.mocked(tripsApi.createTripInboxAddress).mock.calls[0]?.[0]).toBe('t1')
+    expect(alertSpy).toHaveBeenLastCalledWith(
+      'New trip email',
+      'lisbonne-q9w4@zyph.enzotang.fr',
+      expect.arrayContaining([expect.objectContaining({ text: 'Share' })]),
+    )
+  })
+
+  // A new address starts with auto-validation off; rotating it must not change the group's setting.
+  it('keeps auto-validation on for the new address', async () => {
+    jest
+      .mocked(tripsApi.getTripInboxAddress)
+      .mockResolvedValue({ address: INBOX, autoValidate: true })
+    jest.mocked(api.regenerateInviteCode).mockResolvedValue('newcode123456')
+    jest.mocked(tripsApi.createTripInboxAddress).mockResolvedValue('lisbonne-q9w4@zyph.enzotang.fr')
+    jest.mocked(tripsApi.setTripInboxAutoValidate).mockResolvedValue()
+    const { result } = renderActions()
+
+    await offer(result)
+    await pressDestructive()
+
+    expect(tripsApi.setTripInboxAutoValidate).toHaveBeenCalledWith('t1', true)
+  })
+
+  it('says plainly when the link changed but the trip email did not', async () => {
+    jest
+      .mocked(tripsApi.getTripInboxAddress)
+      .mockResolvedValue({ address: INBOX, autoValidate: false })
+    jest.mocked(api.regenerateInviteCode).mockResolvedValue('newcode123456')
+    jest.mocked(tripsApi.createTripInboxAddress).mockRejectedValue(new Error('network'))
+    const { result } = renderActions()
+
+    await offer(result)
+    await pressDestructive()
+
+    expect(alertSpy).toHaveBeenLastCalledWith(
+      'Could not regenerate',
+      "The invite link changed, but the trip email did not. Change it from the trip's inbox settings.",
+    )
+  })
+
+  it('says the trip email could not be checked when reading it fails', async () => {
+    jest.mocked(tripsApi.getTripInboxAddress).mockRejectedValue(new Error('network'))
+    const { result } = renderActions()
+
+    await offer(result)
+
+    expect(alertSpy.mock.calls[0]?.[0]).toBe('Change the invite link too?')
+    expect(alertSpy.mock.calls[0]?.[1]).toContain('The trip email could not be checked')
+  })
+
+  // Under the app's own query defaults - retries and a 30 s staleTime - rather than the test
+  // wrapper's, which would hide both.
+  describe('with the app query client', () => {
+    function renderWithAppClient() {
+      function wrapper({ children }: { children: ReactNode }) {
+        return <QueryClientProvider client={appQueryClient}>{children}</QueryClientProvider>
+      }
+      return renderHook(() => useTripAdminActions('t1'), { wrapper })
+    }
+
+    afterEach(() => {
+      appQueryClient.clear()
+    })
+
+    it('reads the trip email once, so a failure does not hold the offer back', async () => {
+      jest.mocked(tripsApi.getTripInboxAddress).mockRejectedValue(new Error('network'))
+      const { result } = renderWithAppClient()
+
+      await offer(result)
+
+      expect(tripsApi.getTripInboxAddress).toHaveBeenCalledTimes(1)
+      expect(alertSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('reads the trip email fresh rather than trusting a cached answer', async () => {
+      appQueryClient.setQueryData(tripInboxAddressQueryKey('t1'), null)
+      jest
+        .mocked(tripsApi.getTripInboxAddress)
+        .mockResolvedValue({ address: INBOX, autoValidate: false })
+      const { result } = renderWithAppClient()
+
+      await offer(result)
+
+      expect(alertSpy.mock.calls[0]?.[0]).toBe('Change the invite link and the trip email?')
+    })
   })
 })

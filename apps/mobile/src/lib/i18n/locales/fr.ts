@@ -550,7 +550,7 @@ export const fr: Translations = {
     inboxViewRow: 'Voir la boîte de réception',
     inboxTitle: 'Adresse email du voyage',
     inboxBody:
-      'Transfère tes emails de réservation à cette adresse : ils apparaissent ici comme des propositions à valider avant de rejoindre le voyage.',
+      'Transfère tes emails de réservation à cette adresse : ils apparaissent ici comme des propositions à valider avant de rejoindre le voyage. Toutes les personnes passées par le voyage la connaissent : régénère-la quand quelqu’un s’en va.',
     inboxGenerate: 'Générer l’adresse',
     inboxCopy: 'Copier',
     inboxCopied: 'Copié !',
@@ -1225,6 +1225,16 @@ export const fr: Translations = {
       '{{name}} peut encore revenir avec le lien actuel. Un nouveau lien l’en empêche, mais il faudra le renvoyer aux personnes qui n’ont pas encore rejoint.',
     keepLink: 'Garder ce lien',
     changeLink: 'Changer le lien',
+    offerNewLinkInboxUncheckedBody:
+      '{{name}} peut encore revenir avec le lien actuel. Un nouveau lien l’en empêche, mais il faudra le renvoyer aux personnes qui n’ont pas encore rejoint. L’adresse e-mail du voyage n’a pas pu être vérifiée : si le voyage en a une, change-la aussi depuis les réglages de l’Inbox.',
+    offerNewLinkAndInboxTitle: 'Changer le lien d’invitation et l’adresse e-mail du voyage ?',
+    offerNewLinkAndInboxBody:
+      '{{name}} peut encore revenir avec le lien actuel et connaît l’adresse e-mail du voyage. En changer l’en empêche, mais il faudra renvoyer le lien aux personnes qui n’ont pas encore rejoint, et transférer les réservations à la nouvelle adresse.',
+    keepBoth: 'Les garder',
+    changeBoth: 'Changer les deux',
+    newInboxTitle: 'Nouvelle adresse du voyage',
+    inboxRotateFailedBody:
+      'Le lien d’invitation a changé, mais pas l’adresse e-mail du voyage. Change-la depuis les réglages de l’Inbox du voyage.',
     confirmDeleteBody: 'Cette action supprime définitivement le voyage et toutes ses données.',
     deleteFailedTitle: 'Suppression impossible',
     deleting: 'Suppression…',

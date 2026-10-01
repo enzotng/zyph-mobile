@@ -1,8 +1,16 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { Alert } from 'react-native'
+import { Alert, Share } from 'react-native'
 
-import { useDeleteTrip } from '@/features/trips'
+import {
+  getTripInboxAddress,
+  type TripInboxAddress,
+  tripInboxAddressQueryKey,
+  useCreateTripInboxAddress,
+  useDeleteTrip,
+  useSetTripInboxAutoValidate,
+} from '@/features/trips'
 import { haptics } from '@/lib/haptics'
 
 import { useLeaveTrip, useRegenerateInviteCode } from './use-group'
@@ -19,7 +27,10 @@ type DestructiveConfirm = {
 export function useTripAdminActions(tripId: string) {
   const router = useRouter()
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const regenerate = useRegenerateInviteCode(tripId)
+  const createInbox = useCreateTripInboxAddress()
+  const setInboxAutoValidate = useSetTripInboxAutoValidate()
   const deleteTripMutation = useDeleteTrip()
   const leaveTripMutation = useLeaveTrip()
 
@@ -69,16 +80,63 @@ export function useTripAdminActions(tripId: string) {
   }
 
   // Detaching or removing an account leaves the invite link working for it: the person can claim a
-  // place again straight away. Rotating the code is the only way to stop that.
-  function offerNewInviteLink(name: string) {
+  // place again straight away. Rotating the code is the only way to stop that. The trip email is a
+  // second way in that outlives membership, so it is offered alongside when the trip has one.
+  async function offerNewInviteLink(name: string) {
+    let inbox: TripInboxAddress | null = null
+    let inboxChecked = true
+    try {
+      // Read fresh and once: a stale answer misses an address, and the app's retries or an offline
+      // pause would hold the offer back until it no longer matches what the owner just did.
+      inbox = await queryClient.fetchQuery({
+        queryKey: tripInboxAddressQueryKey(tripId),
+        queryFn: () => getTripInboxAddress(tripId),
+        staleTime: 0,
+        retry: false,
+        networkMode: 'always',
+      })
+    } catch {
+      inboxChecked = false
+    }
+
+    if (!inbox) {
+      confirmDestructive({
+        title: t('group.offerNewLinkTitle'),
+        body: inboxChecked
+          ? t('group.offerNewLinkBody', { name })
+          : t('group.offerNewLinkInboxUncheckedBody', { name }),
+        confirmLabel: t('group.changeLink'),
+        cancelLabel: t('group.keepLink'),
+        failureTitle: t('group.regenerateFailedTitle'),
+        run: async () => {
+          await regenerate.mutateAsync()
+        },
+      })
+      return
+    }
+
     confirmDestructive({
-      title: t('group.offerNewLinkTitle'),
-      body: t('group.offerNewLinkBody', { name }),
-      confirmLabel: t('group.changeLink'),
-      cancelLabel: t('group.keepLink'),
+      title: t('group.offerNewLinkAndInboxTitle'),
+      body: t('group.offerNewLinkAndInboxBody', { name }),
+      confirmLabel: t('group.changeBoth'),
+      cancelLabel: t('group.keepBoth'),
       failureTitle: t('group.regenerateFailedTitle'),
       run: async () => {
         await regenerate.mutateAsync()
+        let address: string
+        try {
+          address = await createInbox.mutateAsync(tripId)
+        } catch {
+          throw new Error(t('group.inboxRotateFailedBody'))
+        }
+        // A new address starts with auto-validation off; failing to restore it keeps the safer one.
+        if (inbox.autoValidate) {
+          await setInboxAutoValidate.mutateAsync({ tripId, on: true }).catch(() => undefined)
+        }
+        Alert.alert(t('group.newInboxTitle'), address, [
+          { text: t('common.ok'), style: 'cancel' },
+          { text: t('group.share'), onPress: () => void Share.share({ message: address }) },
+        ])
       },
     })
   }

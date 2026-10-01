@@ -544,7 +544,7 @@ export const en = {
     inboxViewRow: 'View inbox',
     inboxTitle: 'Trip inbox address',
     inboxBody:
-      'Forward booking emails to this address and they appear here as proposals to review before joining the trip.',
+      'Forward booking emails to this address and they appear here as proposals to review before joining the trip. Everyone who has been on the trip knows it, so regenerate it when someone leaves.',
     inboxGenerate: 'Generate address',
     inboxCopy: 'Copy',
     inboxCopied: 'Copied!',
@@ -1212,6 +1212,16 @@ export const en = {
       '{{name}} can still come back with the current link. A new one stops that, but you will need to send it again to anyone who has not joined yet.',
     keepLink: 'Keep this link',
     changeLink: 'Change link',
+    offerNewLinkInboxUncheckedBody:
+      "{{name}} can still come back with the current link. A new one stops that, but you will need to send it again to anyone who has not joined yet. The trip email could not be checked: if the trip has one, change it from the trip's inbox settings too.",
+    offerNewLinkAndInboxTitle: 'Change the invite link and the trip email?',
+    offerNewLinkAndInboxBody:
+      '{{name}} can still come back with the current link, and still knows the trip email. New ones stop that, but you will need to send the link again to anyone who has not joined yet, and forward bookings to the new address.',
+    keepBoth: 'Keep them',
+    changeBoth: 'Change both',
+    newInboxTitle: 'New trip email',
+    inboxRotateFailedBody:
+      "The invite link changed, but the trip email did not. Change it from the trip's inbox settings.",
     confirmDeleteBody: 'This permanently deletes the trip and all its data.',
     deleteFailedTitle: 'Could not delete',
     deleting: 'Deleting…',

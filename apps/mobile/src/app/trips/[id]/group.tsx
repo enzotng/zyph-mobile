@@ -179,7 +179,7 @@ export default function TripGroupScreen() {
       return
     }
     if (!isGhost) {
-      offerNewInviteLink(name)
+      void offerNewInviteLink(name)
     }
   }
 
@@ -234,7 +234,7 @@ export default function TripGroupScreen() {
             Alert.alert(t('group.detachFailedTitle'), message || t('common.tryAgain'))
             return
           }
-          offerNewInviteLink(name)
+          void offerNewInviteLink(name)
         },
       },
     ])
