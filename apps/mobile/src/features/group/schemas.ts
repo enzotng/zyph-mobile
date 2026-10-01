@@ -16,5 +16,9 @@ export const claimOptionsSchema = z.object({
   slots: z.array(z.object({ slotId: z.uuid(), slotName: z.string().nullable() })),
 })
 
+// How get_trip_claim_options answers an unknown code: a value, not a raise, because a raise would
+// roll back the attempt the lookup just cost.
+export const unknownInviteCodeSchema = z.object({ error: z.literal('invalid_code') })
+
 export type ClaimOptions = z.infer<typeof claimOptionsSchema>
 export type ClaimOption = ClaimOptions['slots'][number]

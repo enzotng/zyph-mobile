@@ -228,4 +228,19 @@ describe('JoinTripScreen - a place taken meanwhile', () => {
     expect(mockRefetch).toHaveBeenCalled()
     expect(mockReplace).not.toHaveBeenCalled()
   })
+
+  // The claim spends the same attempts as the lookup: once they are gone, "check the code" sends
+  // someone holding a perfectly good code on a pointless retry.
+  it('says the attempts are spent when the claim is refused for it', async () => {
+    mockOptions({ data: options({ slots: [LEA] }) })
+    mockClaimSlot.mockRejectedValue(new Error('rate limited'))
+    render(<JoinTripScreen />)
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Léa'))
+    })
+
+    expect(screen.getByText('Too many attempts. Try again a bit later.')).toBeOnTheScreen()
+    expect(screen.queryByText('Check the code and try again.')).toBeNull()
+  })
 })

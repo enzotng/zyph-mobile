@@ -232,6 +232,19 @@ describe('getTripClaimOptions', () => {
 
     await expect(getTripClaimOptions('nope')).rejects.toThrow('invalid invite code')
   })
+
+  // An unknown code is answered as a value, so that the attempt it costs is not rolled back.
+  it('turns an unknown-code answer into the same refusal the screen routes on', async () => {
+    rpc.mockResolvedValue({ data: { error: 'invalid_code' }, error: null })
+
+    await expect(getTripClaimOptions('nope')).rejects.toThrow('invalid invite code')
+  })
+
+  it('does not mistake another error answer for an unknown code', async () => {
+    rpc.mockResolvedValue({ data: { error: 'something_else' }, error: null })
+
+    await expect(getTripClaimOptions('nope')).rejects.not.toThrow('invalid invite code')
+  })
 })
 
 describe('claimTripSlot', () => {
@@ -256,6 +269,12 @@ describe('claimTripSlot', () => {
     rpc.mockResolvedValue({ data: null, error: makePostgrestError('slot already claimed') })
 
     await expect(claimTripSlot('abcd1234', SLOT_ONE)).rejects.toThrow('slot already claimed')
+  })
+
+  it('treats a null answer as an unknown code rather than a trip to open', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+
+    await expect(claimTripSlot('nope', null)).rejects.toThrow('invalid invite code')
   })
 })
 

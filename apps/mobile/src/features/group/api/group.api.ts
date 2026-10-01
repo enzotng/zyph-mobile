@@ -1,6 +1,6 @@
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
-import { type ClaimOptions, claimOptionsSchema } from '../schemas'
+import { type ClaimOptions, claimOptionsSchema, unknownInviteCodeSchema } from '../schemas'
 
 type MemberRow = Database['public']['Tables']['trip_members']['Row']
 
@@ -80,11 +80,14 @@ export async function getTripClaimOptions(code: string): Promise<ClaimOptions> {
   if (error) {
     throw error
   }
+  if (unknownInviteCodeSchema.safeParse(data).success) {
+    throw new Error('invalid invite code')
+  }
   return claimOptionsSchema.parse(data)
 }
 
 // Binds the caller's account to a free place, or to a brand new one when slotId is null ("I am not
-// in the list").
+// in the list"). An unknown code answers null rather than raising, like get_trip_claim_options.
 export async function claimTripSlot(code: string, slotId: string | null): Promise<string> {
   const { data, error } = await supabase.rpc('claim_trip_slot', {
     _code: code,
@@ -92,6 +95,9 @@ export async function claimTripSlot(code: string, slotId: string | null): Promis
   })
   if (error) {
     throw error
+  }
+  if (!data) {
+    throw new Error('invalid invite code')
   }
   return data
 }

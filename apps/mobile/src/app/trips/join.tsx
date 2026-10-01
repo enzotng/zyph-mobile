@@ -80,8 +80,13 @@ export default function JoinTripScreen() {
       // The place was free when the list was drawn and is not any more. Refetching is what makes
       // it disappear, so the next tap cannot repeat the same refusal.
       const taken = message.includes('slot already claimed')
+      const attemptsSpent = message.includes('rate limited')
       setClaimError({
-        message: taken ? t('joinTrip.slotTaken') : t('joinTrip.errorBody'),
+        message: taken
+          ? t('joinTrip.slotTaken')
+          : attemptsSpent
+            ? t('joinTrip.rateLimited')
+            : t('joinTrip.errorBody'),
         forData: describing,
       })
       if (taken) {
