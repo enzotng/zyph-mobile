@@ -1185,7 +1185,7 @@ export const fr: Translations = {
       '{{name}} garde son historique de dépenses, et la place retourne dans la liste pour quelqu’un d’autre.',
     detachBlockedTitle: 'Cette place a un historique',
     detachBlockedBody:
-      '{{name}} a bougé les soldes depuis qu’il a pris cette place, elle ne peut donc pas retourner dans la liste. Tu peux le retirer à la place - ses dépenses restent.',
+      'Les soldes ont bougé depuis que {{name}} a pris cette place, elle ne peut donc pas retourner dans la liste. Tu peux plutôt retirer {{name}} du voyage - ses dépenses restent.',
     detachFailedTitle: 'Impossible de libérer la place',
     memberRole: 'Membre',
     owner: 'Propriétaire',
@@ -1220,6 +1220,11 @@ export const fr: Translations = {
     confirmRegenerateBody:
       'Le code actuel cessera de fonctionner. Les personnes déjà inscrites conservent leur accès.',
     regenerateFailedTitle: 'Régénération impossible',
+    offerNewLinkTitle: 'Changer aussi le lien d’invitation ?',
+    offerNewLinkBody:
+      '{{name}} peut encore revenir avec le lien actuel. Un nouveau lien l’en empêche, mais il faudra le renvoyer aux personnes qui n’ont pas encore rejoint.',
+    keepLink: 'Garder ce lien',
+    changeLink: 'Changer le lien',
     confirmDeleteBody: 'Cette action supprime définitivement le voyage et toutes ses données.',
     deleteFailedTitle: 'Suppression impossible',
     deleting: 'Suppression…',
