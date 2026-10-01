@@ -231,3 +231,30 @@ describe('confirmLeave', () => {
     expect(result.current.isLeaving).toBe(false)
   })
 })
+
+describe('offerNewInviteLink', () => {
+  it('names who can still come back, and keeps the link unless asked', () => {
+    const { result } = renderActions()
+
+    act(() => result.current.offerNewInviteLink('Léa'))
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Change the invite link too?',
+      'Léa can still come back with the current link. A new one stops that, but you will need to send it again to anyone who has not joined yet.',
+      expect.any(Array),
+    )
+    const buttons = alertSpy.mock.calls[0]?.[2] as AlertButton[]
+    expect(buttons.map((button) => button.text)).toEqual(['Keep this link', 'Change link'])
+    expect(api.regenerateInviteCode).not.toHaveBeenCalled()
+  })
+
+  it('regenerates the code when accepted', async () => {
+    jest.mocked(api.regenerateInviteCode).mockResolvedValue('newcode123456')
+    const { result } = renderActions()
+
+    act(() => result.current.offerNewInviteLink('Léa'))
+    await pressDestructive()
+
+    expect(api.regenerateInviteCode).toHaveBeenCalledWith('t1')
+  })
+})

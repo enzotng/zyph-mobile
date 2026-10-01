@@ -56,8 +56,15 @@ export default function TripGroupScreen() {
   const userId = session?.user.id
   const router = useRouter()
   const { t } = useTranslation()
-  const { confirmRegenerate, confirmDelete, confirmLeave, isRegenerating, isDeleting, isLeaving } =
-    useTripAdminActions(tripId)
+  const {
+    confirmRegenerate,
+    confirmDelete,
+    confirmLeave,
+    offerNewInviteLink,
+    isRegenerating,
+    isDeleting,
+    isLeaving,
+  } = useTripAdminActions(tripId)
   const removeMember = useRemoveTripMember(tripId)
   const detachMember = useDetachTripMember(tripId)
   const addGhost = useAddGhostMember(tripId)
@@ -161,7 +168,7 @@ export default function TripGroupScreen() {
 
   const isOwner = trip.owner_id === userId
 
-  async function removeNow(memberId: string) {
+  async function removeNow(memberId: string, name: string, isGhost: boolean) {
     try {
       await removeMember.mutateAsync(memberId)
     } catch (error) {
@@ -169,17 +176,21 @@ export default function TripGroupScreen() {
         t('group.removeFailedTitle'),
         error instanceof Error ? error.message : t('common.tryAgain'),
       )
+      return
+    }
+    if (!isGhost) {
+      offerNewInviteLink(name)
     }
   }
 
-  function confirmRemove(memberId: string, name: string) {
+  function confirmRemove(memberId: string, name: string, isGhost: boolean) {
     haptics.warning()
     Alert.alert(t('group.confirmRemoveTitle'), t('group.confirmRemoveBody', { name }), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('group.remove'),
         style: 'destructive',
-        onPress: () => void removeNow(memberId),
+        onPress: () => void removeNow(memberId, name, isGhost),
       },
     ])
   }
@@ -215,13 +226,15 @@ export default function TripGroupScreen() {
                 {
                   text: t('group.remove'),
                   style: 'destructive',
-                  onPress: () => void removeNow(memberId),
+                  onPress: () => void removeNow(memberId, name, false),
                 },
               ])
               return
             }
             Alert.alert(t('group.detachFailedTitle'), message || t('common.tryAgain'))
+            return
           }
+          offerNewInviteLink(name)
         },
       },
     ])
@@ -246,7 +259,7 @@ export default function TripGroupScreen() {
       actions.push({
         text: t('group.remove'),
         style: 'destructive',
-        onPress: () => confirmRemove(memberId, name),
+        onPress: () => confirmRemove(memberId, name, isGhost),
       })
     }
     // Android keeps only the last three buttons: a fourth would drop Cancel AND promote the

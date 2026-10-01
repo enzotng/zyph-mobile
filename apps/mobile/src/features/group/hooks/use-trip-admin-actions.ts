@@ -11,6 +11,7 @@ type DestructiveConfirm = {
   title: string
   body: string
   confirmLabel: string
+  cancelLabel?: string
   failureTitle: string
   run: () => Promise<void>
 }
@@ -26,12 +27,13 @@ export function useTripAdminActions(tripId: string) {
     title,
     body,
     confirmLabel,
+    cancelLabel = t('common.cancel'),
     failureTitle,
     run,
   }: DestructiveConfirm) {
     haptics.warning()
     Alert.alert(title, body, [
-      { text: t('common.cancel'), style: 'cancel' },
+      { text: cancelLabel, style: 'cancel' },
       {
         text: confirmLabel,
         style: 'destructive',
@@ -59,6 +61,21 @@ export function useTripAdminActions(tripId: string) {
       title: t('group.confirmRegenerateTitle'),
       body: t('group.confirmRegenerateBody'),
       confirmLabel: t('group.regenerate'),
+      failureTitle: t('group.regenerateFailedTitle'),
+      run: async () => {
+        await regenerate.mutateAsync()
+      },
+    })
+  }
+
+  // Detaching or removing an account leaves the invite link working for it: the person can claim a
+  // place again straight away. Rotating the code is the only way to stop that.
+  function offerNewInviteLink(name: string) {
+    confirmDestructive({
+      title: t('group.offerNewLinkTitle'),
+      body: t('group.offerNewLinkBody', { name }),
+      confirmLabel: t('group.changeLink'),
+      cancelLabel: t('group.keepLink'),
       failureTitle: t('group.regenerateFailedTitle'),
       run: async () => {
         await regenerate.mutateAsync()
@@ -96,6 +113,7 @@ export function useTripAdminActions(tripId: string) {
     confirmRegenerate,
     confirmDelete,
     confirmLeave,
+    offerNewInviteLink,
     isRegenerating: regenerate.isPending,
     isDeleting: deleteTripMutation.isPending,
     isLeaving: leaveTripMutation.isPending,

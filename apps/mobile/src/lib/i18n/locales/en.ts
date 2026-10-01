@@ -1207,6 +1207,11 @@ export const en = {
     confirmRegenerateBody:
       'The current code will stop working. People who already joined keep their access.',
     regenerateFailedTitle: 'Could not regenerate',
+    offerNewLinkTitle: 'Change the invite link too?',
+    offerNewLinkBody:
+      '{{name}} can still come back with the current link. A new one stops that, but you will need to send it again to anyone who has not joined yet.',
+    keepLink: 'Keep this link',
+    changeLink: 'Change link',
     confirmDeleteBody: 'This permanently deletes the trip and all its data.',
     deleteFailedTitle: 'Could not delete',
     deleting: 'Deleting…',

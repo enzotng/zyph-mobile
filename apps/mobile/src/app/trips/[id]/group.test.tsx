@@ -10,6 +10,7 @@ const mockAddGhost = jest.fn()
 const mockRenameGhost = jest.fn()
 const mockDetach = jest.fn()
 const mockRemove = jest.fn()
+const mockOfferNewInviteLink = jest.fn()
 
 jest.mock('@/lib/supabase')
 
@@ -44,6 +45,7 @@ jest.mock('@/features/group', () => ({
     confirmRegenerate: jest.fn(),
     confirmDelete: jest.fn(),
     confirmLeave: jest.fn(),
+    offerNewInviteLink: mockOfferNewInviteLink,
     isRegenerating: false,
     isDeleting: false,
     isLeaving: false,
@@ -212,6 +214,32 @@ describe('TripGroupScreen - detaching a claimed place', () => {
     expect(mockDetach).toHaveBeenCalledWith('m-lea')
   })
 
+  it('offers a new invite link once the account is unbound', async () => {
+    render(<TripGroupScreen />)
+
+    fireEvent.press(screen.getByLabelText('Manage Léa'))
+    pressAlertButton('Free up the place')
+    await act(async () => {
+      pressAlertButton('Free up the place')
+    })
+
+    expect(mockOfferNewInviteLink).toHaveBeenCalledWith('Léa')
+  })
+
+  it('keeps the link when the detach failed', async () => {
+    mockDetach.mockRejectedValue(new Error('owner only'))
+    render(<TripGroupScreen />)
+
+    fireEvent.press(screen.getByLabelText('Manage Léa'))
+    pressAlertButton('Free up the place')
+    await act(async () => {
+      pressAlertButton('Free up the place')
+    })
+
+    expect(mockDetach).toHaveBeenCalledWith('m-lea')
+    expect(mockOfferNewInviteLink).not.toHaveBeenCalled()
+  })
+
   // The server decides, not the client: no balance is pre-computed here, the guard's own message
   // is what routes to the fallback (spec 4.6).
   it('falls back to removal when the place moved the ledger since the claim', async () => {
@@ -232,6 +260,7 @@ describe('TripGroupScreen - detaching a claimed place', () => {
     })
 
     expect(mockRemove).toHaveBeenCalledWith('m-lea')
+    expect(mockOfferNewInviteLink).toHaveBeenCalledWith('Léa')
   })
 
   it('does not offer removal for an unrelated failure', async () => {
@@ -277,5 +306,43 @@ describe('TripGroupScreen - detaching a claimed place', () => {
     render(<TripGroupScreen />)
 
     expect(screen.queryByLabelText('Manage You')).toBeNull()
+  })
+})
+
+describe('TripGroupScreen - removing a member', () => {
+  async function removeThroughMenu(name: string) {
+    fireEvent.press(screen.getByLabelText(`Manage ${name}`))
+    pressAlertButton('Remove')
+    await act(async () => {
+      pressAlertButton('Remove')
+    })
+  }
+
+  it('offers a new invite link after removing an account', async () => {
+    render(<TripGroupScreen />)
+
+    await removeThroughMenu('Nina')
+
+    expect(mockRemove).toHaveBeenCalledWith('m-nina')
+    expect(mockOfferNewInviteLink).toHaveBeenCalledWith('Nina')
+  })
+
+  it('does not offer one after removing a place nobody held', async () => {
+    render(<TripGroupScreen />)
+
+    await removeThroughMenu('Papa')
+
+    expect(mockRemove).toHaveBeenCalledWith('m-ghost')
+    expect(mockOfferNewInviteLink).not.toHaveBeenCalled()
+  })
+
+  it('does not offer one when the removal failed', async () => {
+    mockRemove.mockRejectedValue(new Error('owner only'))
+    render(<TripGroupScreen />)
+
+    await removeThroughMenu('Nina')
+
+    expect(mockRemove).toHaveBeenCalledWith('m-nina')
+    expect(mockOfferNewInviteLink).not.toHaveBeenCalled()
   })
 })
