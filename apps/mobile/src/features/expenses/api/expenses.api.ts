@@ -3,7 +3,13 @@ import { supabase } from '@/lib/supabase'
 import type { ExpenseSplit } from '../splits'
 
 export type Expense = Database['public']['Tables']['expenses']['Row']
-export type TripBalance = Database['public']['Functions']['get_trip_balances']['Returns'][number]
+// The generator emits every `returns table` column as non-null, so the raw Returns row claims
+// `user_id: string` while get_trip_balances left-joins trip_members and yields null for a ghost.
+// Normalise it here, as listTripMemberNames already does for trip_member_names.
+export type TripBalance = Omit<
+  Database['public']['Functions']['get_trip_balances']['Returns'][number],
+  'user_id'
+> & { user_id: string | null }
 
 export async function getTripBalances(tripId: string): Promise<TripBalance[]> {
   const { data, error } = await supabase.rpc('get_trip_balances', { _trip_id: tripId })

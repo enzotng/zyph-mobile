@@ -129,7 +129,7 @@ function RootNavigator() {
   const [fontsLoaded] = useFonts(BRAND_FONTS)
   useProtectedRoute(session, isLoading, recovering)
   // Deep-link a tapped lock-screen push once the user is signed in.
-  usePushNotificationResponder(Boolean(session))
+  usePushNotificationResponder(session?.user.id ?? null)
 
   if (isLoading || !fontsLoaded) {
     return (

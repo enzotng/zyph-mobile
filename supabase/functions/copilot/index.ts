@@ -167,7 +167,7 @@ export default {
     if (req.method !== "POST") {
       return new Response("Method not allowed", { status: 405 })
     }
-    if (!(await isWithinRateLimit(ctx.supabase, "copilot", 20, 60))) {
+    if (!(await isWithinRateLimit(ctx.supabase, "copilot"))) {
       return Response.json({ error: "Too many requests, please slow down." }, { status: 429 })
     }
 

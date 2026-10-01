@@ -148,7 +148,7 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false },
     },
   )
-  if (!(await isWithinRateLimit(userClient, 'trip-cover', 15, 60))) {
+  if (!(await isWithinRateLimit(userClient, 'trip-cover'))) {
     return json({ error: 'Too many requests, please slow down.' }, 429)
   }
 

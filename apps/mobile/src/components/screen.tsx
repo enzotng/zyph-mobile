@@ -8,6 +8,8 @@ import { AppHeader } from './app-header'
 type ScreenProps = {
   title?: string
   showBack?: boolean
+  // Overrides the header's pop; see AppHeader.
+  onBack?: () => void
   right?: ReactNode
   // Wrap content in a ScrollView (forms); leave false for screens with their own list.
   scroll?: boolean
@@ -32,7 +34,15 @@ function KeyboardFooter({ children }: { children: ReactNode }) {
   return <Animated.View style={[styles.footer, footerStyle]}>{children}</Animated.View>
 }
 
-export function Screen({ title, showBack, right, scroll = false, footer, children }: ScreenProps) {
+export function Screen({
+  title,
+  showBack,
+  onBack,
+  right,
+  scroll = false,
+  footer,
+  children,
+}: ScreenProps) {
   const body = scroll ? (
     <ScrollView
       style={styles.flex}
@@ -51,7 +61,7 @@ export function Screen({ title, showBack, right, scroll = false, footer, childre
 
   return (
     <View style={styles.container}>
-      <AppHeader title={title} showBack={showBack} right={right} />
+      <AppHeader title={title} showBack={showBack} onBack={onBack} right={right} />
       {body}
       {footer != null ? <KeyboardFooter>{footer}</KeyboardFooter> : null}
     </View>

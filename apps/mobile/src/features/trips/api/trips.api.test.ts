@@ -134,6 +134,35 @@ describe('listTrips', () => {
     ])
   })
 
+  it('falls back to the trip alias for a ghost member with no profile', async () => {
+    const row = {
+      ...trip,
+      trip_members: [
+        {
+          id: 'm4',
+          user_id: null,
+          role: 'member',
+          status: 'active',
+          display_name: 'Léa',
+          profiles: null,
+        },
+      ],
+    }
+    from.mockReturnValue(makeQueryBuilder({ data: [row], error: null }))
+
+    const [card] = await listTrips()
+    expect(card.members).toEqual([
+      {
+        id: 'm4',
+        user_id: null,
+        role: 'member',
+        status: 'active',
+        display_name: 'Léa',
+        avatar_url: null,
+      },
+    ])
+  })
+
   it('defaults to empty members when trip_members is missing', async () => {
     const row = { ...trip, trip_members: null }
     from.mockReturnValue(makeQueryBuilder({ data: [row], error: null }))

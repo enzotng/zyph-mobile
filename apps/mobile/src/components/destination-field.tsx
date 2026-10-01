@@ -12,6 +12,10 @@ type DestinationFieldProps = {
   label?: string
   value: string
   error?: string
+  hasCoordinates: boolean
+  // Seeds the latch below. A caller that unmounts this field between steps has to remember for
+  // it, otherwise a destination whose coordinates were dropped comes back looking untouched.
+  everGeolocated?: boolean
   // Free-text typing: the caller stores the text and clears any saved coordinates.
   onChangeText: (text: string) => void
   // A suggestion was picked: the caller stores the canonical label + coordinates.
@@ -25,6 +29,8 @@ export function DestinationField({
   label,
   value,
   error,
+  hasCoordinates,
+  everGeolocated = false,
   onChangeText,
   onSelectPlace,
 }: DestinationFieldProps) {
@@ -32,11 +38,16 @@ export function DestinationField({
   const { theme } = useUnistyles()
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
+  // The caller drops the coordinates on every keystroke, so `hasCoordinates` alone cannot tell a
+  // destination that was never geolocated from one that just lost its geolocation - hence the latch.
+  const [wasGeolocated, setWasGeolocated] = useState(everGeolocated)
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(query), 300)
     return () => clearTimeout(id)
   }, [query])
+
+  if (hasCoordinates && !wasGeolocated) setWasGeolocated(true)
 
   const language = i18n.language === 'fr' ? 'fr' : 'en'
   const { data: results, isFetching } = usePlaceSearch(debounced, language)
@@ -65,6 +76,14 @@ export function DestinationField({
         autoCorrect={false}
         error={error}
       />
+      {/* An emptied field is a deliberate choice, not a lost geolocation: the destination is
+          optional, so telling them to re-pick a suggestion there would be nagging. */}
+      {wasGeolocated && !hasCoordinates && value.trim().length > 0 ? (
+        <View style={styles.hint}>
+          <Ionicons name="alert-circle-outline" size={14} color={theme.colors.warning} />
+          <Text style={styles.hintText}>{t('tripForm.geoHint')}</Text>
+        </View>
+      ) : null}
       {open ? (
         <Surface
           radius={theme.radius.md}
@@ -112,6 +131,17 @@ const styles = StyleSheet.create((theme) => ({
   },
   dropdown: {
     overflow: 'hidden',
+  },
+  hint: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.gap(1.5),
+  },
+  hintText: {
+    flex: 1,
+    color: theme.colors.warning,
+    fontFamily: theme.fonts.sans.regular,
+    fontSize: theme.fontSize.xs,
   },
   row: {
     flexDirection: 'row',

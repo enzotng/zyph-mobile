@@ -39,6 +39,20 @@ describe('routeToNotification', () => {
     expect(calls).toEqual([{ pathname: '/trips/[id]/group', params: { id: 'trip-1' } }])
   })
 
+  it('routes the ghost-place member notifications to the group screen', () => {
+    const { router, calls } = makeRouter()
+    routeToNotification(router, 'member.added', 'trip-1', { memberId: 'm1' } as never)
+    routeToNotification(router, 'member.claimed', 'trip-1', { memberId: 'm1' } as never)
+    routeToNotification(router, 'member.renamed', 'trip-1', { memberId: 'm1' } as never)
+    routeToNotification(router, 'member.detached', 'trip-1', { memberId: 'm1' } as never)
+    expect(calls).toEqual(
+      Array.from({ length: 4 }, () => ({
+        pathname: '/trips/[id]/group',
+        params: { id: 'trip-1' },
+      })),
+    )
+  })
+
   it('falls back to the trip overview for settlements and packing', () => {
     const { router, calls } = makeRouter()
     routeToNotification(router, 'settlement.created', 'trip-1', { role: 'to' } as never)
@@ -59,6 +73,18 @@ describe('routeToNotification', () => {
     const { router, calls } = makeRouter()
     routeToNotification(router, 'member.removed', 'trip-1', null)
     expect(calls).toEqual([])
+  })
+
+  it('does not route the detached account to a trip it can no longer read', () => {
+    const { router, calls } = makeRouter()
+    routeToNotification(router, 'member.detached', 'trip-1', { detachedUserId: 'u1' }, 'u1')
+    expect(calls).toEqual([])
+  })
+
+  it('still routes the rest of the group after a detach', () => {
+    const { router, calls } = makeRouter()
+    routeToNotification(router, 'member.detached', 'trip-1', { detachedUserId: 'u2' }, 'u1')
+    expect(calls).toEqual([{ pathname: '/trips/[id]/group', params: { id: 'trip-1' } }])
   })
 
   it('does not route when the trip id is missing', () => {

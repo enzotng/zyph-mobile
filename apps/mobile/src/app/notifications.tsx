@@ -9,17 +9,21 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Screen } from '@/components/screen'
 import { EmptyState, ListRow, SectionTitle, Spinner, Surface } from '@/components/ui'
+import { useAuth } from '@/features/auth'
 import {
+  ACTOR_MARK,
   groupNotificationsByDay,
   type Notification,
   type NotificationGroup,
   notificationContext,
   notificationIcon,
   notificationMessageKey,
+  notificationMessageValues,
   routeToNotification,
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
+  withoutActor,
 } from '@/features/notifications'
 import { haptics } from '@/lib/haptics'
 
@@ -29,6 +33,10 @@ export default function NotificationsScreen() {
   const { t, i18n } = useTranslation()
   const { theme } = useUnistyles()
   const router = useRouter()
+  const { session } = useAuth()
+  const userId = session?.user.id ?? null
+  // Rows written before the payloads named the actor fall back to the anonymous copy.
+  const someone = t('notifications.someone')
   const { data, isLoading, isError, isRefetching, refetch } = useNotifications()
   const markRead = useMarkNotificationRead()
   const markAll = useMarkAllNotificationsRead()
@@ -56,10 +64,11 @@ export default function NotificationsScreen() {
         router,
         n.type,
         n.trip_id,
-        (n.payload ?? {}) as { expenseId?: string; eventId?: string },
+        (n.payload ?? {}) as { expenseId?: string; eventId?: string; detachedUserId?: string },
+        userId,
       )
     },
-    [markRead, router],
+    [markRead, router, userId],
   )
 
   const renderGroup = useCallback(
@@ -76,12 +85,16 @@ export default function NotificationsScreen() {
           {group.items.map((n, index) => {
             const unread = n.read_at === null
             const context = notificationContext(n.payload)
+            const { actor, name } = notificationMessageValues(n.payload)
+            const key = notificationMessageKey(n.type, n.payload, userId)
+            const rest = withoutActor(t(key, { actor: ACTOR_MARK, name: name ?? someone }))
             return (
               <ListRow
                 key={n.id}
                 icon={notificationIcon(n.type) as Glyph}
                 iconColor={unread ? theme.colors.primary : theme.colors.muted}
-                title={t(notificationMessageKey(n.type, n.payload))}
+                titleActor={rest === null ? undefined : `${actor ?? someone} `}
+                title={rest ?? t(key, { actor: actor ?? someone, name: name ?? someone })}
                 subtitle={context ?? undefined}
                 detail={new Date(n.created_at).toLocaleTimeString(i18n.language, {
                   hour: '2-digit',
@@ -95,7 +108,7 @@ export default function NotificationsScreen() {
         </Surface>
       </View>
     ),
-    [i18n.language, openNotification, t, theme],
+    [i18n.language, openNotification, someone, t, theme, userId],
   )
 
   // A single icon in the header (the long "Mark all read" label wrapped to several lines).

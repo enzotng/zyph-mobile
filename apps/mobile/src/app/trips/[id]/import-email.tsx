@@ -87,10 +87,9 @@ export default function ImportEmailScreen() {
     }
     try {
       const result = await parseEmail.mutateAsync(text)
-      const memberInputs = activeMembers.map((m) => ({
-        userId: m.user_id,
-        displayName: m.display_name,
-      }))
+      const memberInputs = activeMembers.flatMap((m) =>
+        m.user_id != null ? [{ userId: m.user_id, displayName: m.display_name }] : [],
+      )
       setPreviews(
         result.events.map((event, index) =>
           parsedToPreview(event, index, memberInputs, t('smartImport.defaultTitle')),
