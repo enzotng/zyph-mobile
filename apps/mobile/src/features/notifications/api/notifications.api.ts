@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-
+import { toError } from '@/lib/supabase-error'
 import type { Notification, NotificationPreferences } from '../schemas'
 
 // Lists the signed-in user's notifications, newest first. RLS scopes rows to the recipient,
@@ -12,7 +12,7 @@ export async function listNotifications(): Promise<Notification[]> {
     .order('created_at', { ascending: false })
     .limit(100)
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -22,14 +22,14 @@ export async function listNotifications(): Promise<Notification[]> {
 export async function markNotificationRead(id: string): Promise<void> {
   const { error } = await supabase.rpc('mark_notification_read', { _id: id })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
   const { error } = await supabase.rpc('mark_all_notifications_read')
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -44,7 +44,7 @@ export async function getNotificationPreferences(
     .eq('user_id', userId)
     .maybeSingle()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -65,7 +65,7 @@ export async function registerPushToken(
     _locale: locale,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -74,7 +74,7 @@ export async function registerPushToken(
 export async function deletePushToken(token: string): Promise<void> {
   const { error } = await supabase.from('push_tokens').delete().eq('token', token)
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -110,7 +110,7 @@ export async function upsertNotificationPreferences(
     .select()
     .single()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }

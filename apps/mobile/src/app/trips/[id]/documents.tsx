@@ -20,6 +20,7 @@ import {
 } from '@/features/media'
 import { withAlpha } from '@/lib/color'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 function formatDocDate(iso: string | null, locale: string): string {
   if (!iso) {
@@ -64,10 +65,7 @@ export default function TripDocumentsScreen() {
         sizeBytes: asset.size ?? 0,
       })
     } catch (error) {
-      Alert.alert(
-        t('documents.uploadError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('documents.uploadError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 
@@ -77,10 +75,7 @@ export default function TripDocumentsScreen() {
       // In-app browser sheet (native PDF viewer + share on iOS), never leaves the app.
       await WebBrowser.openBrowserAsync(url)
     } catch (error) {
-      Alert.alert(
-        t('documents.openError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('documents.openError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 
@@ -95,10 +90,7 @@ export default function TripDocumentsScreen() {
           try {
             await del.mutateAsync(doc)
           } catch (error) {
-            Alert.alert(
-              t('documents.deleteError'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
+            Alert.alert(t('documents.deleteError'), toUserMessage(error, t('common.tryAgain')))
           } finally {
             setDeletingId(null)
           }

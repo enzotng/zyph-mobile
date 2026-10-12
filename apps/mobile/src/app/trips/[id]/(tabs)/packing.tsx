@@ -70,6 +70,7 @@ import { forecastToPrompt, useTripWeather, WeatherCard } from '@/features/weathe
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 type Glyph = keyof typeof Ionicons.glyphMap
 
@@ -445,7 +446,7 @@ export default function PackingScreen() {
       })
       setAddOpen(false)
     } catch (error) {
-      Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : '')
+      Alert.alert(t('common.tryAgain'), toUserMessage(error, ''))
     }
   }
 
@@ -489,10 +490,7 @@ export default function PackingScreen() {
           setPicked(new Set(result.map((_, index) => index)))
         },
         onError: (error) => {
-          Alert.alert(
-            t('packing.generateError'),
-            error instanceof Error ? error.message : t('common.tryAgain'),
-          )
+          Alert.alert(t('packing.generateError'), toUserMessage(error, t('common.tryAgain')))
         },
         onSettled: () => setBusy(null),
       },
@@ -555,8 +553,7 @@ export default function PackingScreen() {
           setPreview(null)
           setLastAdded(created.map((item) => item.id))
         },
-        onError: (error) =>
-          Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : ''),
+        onError: (error) => Alert.alert(t('common.tryAgain'), toUserMessage(error, '')),
       },
     )
   }
@@ -569,8 +566,7 @@ export default function PackingScreen() {
     assignItem.mutate(
       { itemId: assignTarget.id, memberId },
       {
-        onError: (error) =>
-          Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : ''),
+        onError: (error) => Alert.alert(t('common.tryAgain'), toUserMessage(error, '')),
       },
     )
     setAssignTarget(null)
@@ -582,8 +578,7 @@ export default function PackingScreen() {
     }
     claimItem.mutate(item.id, {
       onSuccess: () => haptics.success(),
-      onError: (error) =>
-        Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : ''),
+      onError: (error) => Alert.alert(t('common.tryAgain'), toUserMessage(error, '')),
     })
   }
 
@@ -596,8 +591,7 @@ export default function PackingScreen() {
         haptics.success()
         Alert.alert(t('packing.nudge'), t('packing.nudged', { name }))
       },
-      onError: (error) =>
-        Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : ''),
+      onError: (error) => Alert.alert(t('common.tryAgain'), toUserMessage(error, '')),
     })
   }
 
@@ -623,7 +617,7 @@ export default function PackingScreen() {
       haptics.success()
       Alert.alert(t('packing.splitGroup'), t('packing.splitDone'))
     } catch (error) {
-      Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : '')
+      Alert.alert(t('common.tryAgain'), toUserMessage(error, ''))
     }
   }
 
@@ -638,10 +632,7 @@ export default function PackingScreen() {
           try {
             await deleteItem.mutateAsync(item.id)
           } catch (error) {
-            Alert.alert(
-              t('packing.deleteError'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
+            Alert.alert(t('packing.deleteError'), toUserMessage(error, t('common.tryAgain')))
           }
         },
       },
@@ -681,7 +672,7 @@ export default function PackingScreen() {
       setSplitTarget(null)
       Alert.alert(t('packing.splitExpense'), t('packing.splitExpenseDone'))
     } catch (error) {
-      Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : '')
+      Alert.alert(t('common.tryAgain'), toUserMessage(error, ''))
     }
   }
 
@@ -693,8 +684,7 @@ export default function PackingScreen() {
     const ids = lastAdded
     setLastAdded([])
     deleteMany.mutate(ids, {
-      onError: (error) =>
-        Alert.alert(t('common.tryAgain'), error instanceof Error ? error.message : ''),
+      onError: (error) => Alert.alert(t('common.tryAgain'), toUserMessage(error, '')),
     })
   }
 

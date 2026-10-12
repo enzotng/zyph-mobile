@@ -7,6 +7,7 @@ import { tripInboxAddressQueryKey } from '@/features/trips'
 import * as tripsApi from '@/features/trips/api/trips.api'
 import { haptics } from '@/lib/haptics'
 import { queryClient as appQueryClient } from '@/lib/query-client'
+import { toError } from '@/lib/supabase-error'
 import { createQueryWrapper } from '@/test-utils/query-wrapper'
 
 import * as api from '../api/group.api'
@@ -87,23 +88,12 @@ describe('confirmRegenerate', () => {
     expect(api.regenerateInviteCode).not.toHaveBeenCalled()
   })
 
-  it('surfaces the failure message in the active language', async () => {
-    jest.mocked(api.regenerateInviteCode).mockRejectedValue(new Error('rate limited'))
-    const { result } = renderActions()
-
-    act(() => result.current.confirmRegenerate())
-    await pressDestructive()
-
-    expect(alertSpy).toHaveBeenLastCalledWith('Could not regenerate', 'rate limited')
-  })
-
-  // The discrimination is on SQLSTATE, and both existing tests reject plain Errors with no code -
-  // so neither could tell the branch from `error.message` alone.
-  it('hides a Postgres error that talks about the schema', async () => {
-    jest.mocked(api.regenerateInviteCode).mockRejectedValue({
-      code: '23505',
-      message: 'duplicate key value violates unique constraint "trip_members_trip_id_user_id_key"',
-    })
+  // What the API layer really throws: the RPC's raise converted by toError. Its English wording is
+  // not user copy, P0001 or not.
+  it('shows the generic copy for a refusal the RPC raised', async () => {
+    jest
+      .mocked(api.regenerateInviteCode)
+      .mockRejectedValue(toError({ message: 'owner cannot leave', code: 'P0001' }))
     const { result } = renderActions()
 
     act(() => result.current.confirmRegenerate())
@@ -112,15 +102,20 @@ describe('confirmRegenerate', () => {
     expect(alertSpy).toHaveBeenLastCalledWith('Could not regenerate', 'Please try again.')
   })
 
-  it('shows a raise the RPC wrote for the user', async () => {
-    const raised = Object.assign(new Error('owner cannot leave'), { code: 'P0001' })
-    jest.mocked(api.regenerateInviteCode).mockRejectedValue(raised)
+  it('hides a Postgres error that talks about the schema', async () => {
+    jest.mocked(api.regenerateInviteCode).mockRejectedValue(
+      toError({
+        code: '23505',
+        message:
+          'duplicate key value violates unique constraint "trip_members_trip_id_user_id_key"',
+      }),
+    )
     const { result } = renderActions()
 
     act(() => result.current.confirmRegenerate())
     await pressDestructive()
 
-    expect(alertSpy).toHaveBeenLastCalledWith('Could not regenerate', 'owner cannot leave')
+    expect(alertSpy).toHaveBeenLastCalledWith('Could not regenerate', 'Please try again.')
   })
 
   it('falls back to the generic retry copy for a non-Error rejection', async () => {

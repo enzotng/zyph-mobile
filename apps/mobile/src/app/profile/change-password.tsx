@@ -13,6 +13,7 @@ import {
   makeChangePasswordSchema,
   updatePassword,
 } from '@/features/auth'
+import { toUserMessage } from '@/lib/supabase-error'
 
 export default function ChangePasswordScreen() {
   const { t } = useTranslation()
@@ -38,10 +39,7 @@ export default function ChangePasswordScreen() {
         { text: t('common.ok'), onPress: () => router.back() },
       ])
     } catch (error) {
-      Alert.alert(
-        t('profile.changePasswordError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('profile.changePasswordError'), toUserMessage(error, t('common.tryAgain')))
       setSubmitting(false)
     }
   }

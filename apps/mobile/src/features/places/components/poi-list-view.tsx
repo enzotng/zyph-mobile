@@ -12,6 +12,7 @@ import { EmptyState, ListRow, SectionTitle, Skeleton, Surface } from '@/componen
 import { useTrip } from '@/features/trips'
 import { useDeletePoi, usePois } from '@/features/wayfinder'
 import { haptics } from '@/lib/haptics'
+import { toUserMessage } from '@/lib/supabase-error'
 
 const SKELETON_ROWS = [0, 1, 2, 3]
 
@@ -39,10 +40,7 @@ export function PoiListView({ tripId }: PoiListViewProps) {
           try {
             await deletePoi.mutateAsync(poiId)
           } catch (error) {
-            Alert.alert(
-              t('pois.deleteError'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
+            Alert.alert(t('pois.deleteError'), toUserMessage(error, t('common.tryAgain')))
           }
         },
       },

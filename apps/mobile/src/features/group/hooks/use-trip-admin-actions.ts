@@ -12,7 +12,7 @@ import {
   useSetTripInboxAutoValidate,
 } from '@/features/trips'
 import { haptics } from '@/lib/haptics'
-
+import { toUserMessage } from '@/lib/supabase-error'
 import { useLeaveTrip, useRegenerateInviteCode } from './use-group'
 
 type DestructiveConfirm = {
@@ -52,15 +52,7 @@ export function useTripAdminActions(tripId: string) {
           try {
             await run()
           } catch (error) {
-            // A SQLSTATE other than P0001 is Postgres talking about itself - a constraint, a
-            // policy, a timeout - and naming them to the user discloses schema. P0001 is a plpgsql
-            // RAISE EXCEPTION, i.e. copy an RPC wrote for them, and a plain Error comes from our
-            // own client code: both are meant to be read.
-            const code = (error as { code?: string } | null)?.code
-            const isInternal = typeof code === 'string' && code !== 'P0001'
-            const message =
-              !isInternal && error instanceof Error ? error.message : t('common.tryAgain')
-            Alert.alert(failureTitle, message)
+            Alert.alert(failureTitle, toUserMessage(error, t('common.tryAgain')))
           }
         },
       },

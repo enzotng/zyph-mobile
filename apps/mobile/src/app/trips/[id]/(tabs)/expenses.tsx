@@ -31,6 +31,7 @@ import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 // Text on the ink bezel stays light in both themes, so the "Your balance" card uses fixed
 // cream constants (mirrors RightNowCard) rather than theme tokens. Money tones stay token-driven.
@@ -224,10 +225,7 @@ export default function TripExpensesScreen() {
         await Share.share({ message: csv })
       }
     } catch (error) {
-      Alert.alert(
-        t('expenses.exportError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('expenses.exportError'), toUserMessage(error, t('common.tryAgain')))
     }
   }, [expenses, t, tripCurrency, payerName])
 

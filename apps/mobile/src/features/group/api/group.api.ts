@@ -1,5 +1,6 @@
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
+import { toError } from '@/lib/supabase-error'
 import { type ClaimOptions, claimOptionsSchema, unknownInviteCodeSchema } from '../schemas'
 
 type MemberRow = Database['public']['Tables']['trip_members']['Row']
@@ -17,7 +18,7 @@ export async function listTripMembers(tripId: string): Promise<TripMember[]> {
     .eq('status', 'active')
     .order('joined_at', { ascending: true })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data.map((member) => ({
     id: member.id,
@@ -40,7 +41,7 @@ export type TripMemberName = { id: string; user_id: string | null; display_name:
 export async function listTripMemberNames(tripId: string): Promise<TripMemberName[]> {
   const { data, error } = await supabase.rpc('trip_member_names', { _trip_id: tripId })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return (data ?? []).map((member) => ({
     id: member.id,
@@ -54,7 +55,7 @@ export async function listTripMemberNames(tripId: string): Promise<TripMemberNam
 export async function regenerateInviteCode(tripId: string): Promise<string> {
   const { data, error } = await supabase.rpc('regenerate_invite_code', { _trip_id: tripId })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -62,14 +63,14 @@ export async function regenerateInviteCode(tripId: string): Promise<string> {
 export async function leaveTrip(tripId: string): Promise<void> {
   const { error } = await supabase.rpc('leave_trip', { _trip_id: tripId })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
 export async function removeTripMember(memberId: string): Promise<void> {
   const { error } = await supabase.rpc('remove_trip_member', { _member_id: memberId })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -78,7 +79,7 @@ export async function removeTripMember(memberId: string): Promise<void> {
 export async function getTripClaimOptions(code: string): Promise<ClaimOptions> {
   const { data, error } = await supabase.rpc('get_trip_claim_options', { _code: code })
   if (error) {
-    throw error
+    throw toError(error)
   }
   if (unknownInviteCodeSchema.safeParse(data).success) {
     throw new Error('invalid invite code')
@@ -94,7 +95,7 @@ export async function claimTripSlot(code: string, slotId: string | null): Promis
     _slot_id: slotId ?? undefined,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
   if (!data) {
     throw new Error('invalid invite code')
@@ -105,7 +106,7 @@ export async function claimTripSlot(code: string, slotId: string | null): Promis
 export async function addGhostMember(tripId: string, name: string): Promise<string> {
   const { data, error } = await supabase.rpc('add_ghost_member', { _trip_id: tripId, _name: name })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -113,7 +114,7 @@ export async function addGhostMember(tripId: string, name: string): Promise<stri
 export async function renameGhostMember(memberId: string, name: string): Promise<void> {
   const { error } = await supabase.rpc('rename_ghost_member', { _member_id: memberId, _name: name })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -124,6 +125,6 @@ export async function renameGhostMember(memberId: string, name: string): Promise
 export async function detachTripMember(memberId: string): Promise<void> {
   const { error } = await supabase.rpc('detach_trip_member', { _member_id: memberId })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }

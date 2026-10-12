@@ -35,6 +35,7 @@ import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { getShareLocation, setShareLocation } from '@/lib/preferences'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 // The invite card sits on the ink bezel (dark in both themes), so text uses fixed cream tones
 // rather than theme.colors.foreground (mirrors RightNowCard / the spend feed balance card).
@@ -172,10 +173,7 @@ export default function TripGroupScreen() {
     try {
       await removeMember.mutateAsync(memberId)
     } catch (error) {
-      Alert.alert(
-        t('group.removeFailedTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('group.removeFailedTitle'), toUserMessage(error, t('common.tryAgain')))
       return
     }
     if (!isGhost) {
@@ -219,7 +217,7 @@ export default function TripGroupScreen() {
             const message = error instanceof Error ? error.message : ''
             // The tenure guard is the only authority on whether a place can go back on the list -
             // nothing is pre-computed here, so this reads its refusal and offers the way out the
-            // spec prescribes (4.6). Any other failure is reported as-is, with no false hope.
+            // spec prescribes (4.6). Any other failure gets the generic message, with no false hope.
             if (message.includes('place has ledger activity since claim')) {
               Alert.alert(t('group.detachBlockedTitle'), t('group.detachBlockedBody', { name }), [
                 { text: t('common.cancel'), style: 'cancel' },
@@ -231,7 +229,7 @@ export default function TripGroupScreen() {
               ])
               return
             }
-            Alert.alert(t('group.detachFailedTitle'), message || t('common.tryAgain'))
+            Alert.alert(t('group.detachFailedTitle'), toUserMessage(error, t('common.tryAgain')))
             return
           }
           void offerNewInviteLink(name)
@@ -288,7 +286,7 @@ export default function TripGroupScreen() {
         current.mode === 'add'
           ? t('group.addParticipantFailedTitle')
           : t('group.renameFailedTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
+        toUserMessage(error, t('common.tryAgain')),
       )
     }
   }

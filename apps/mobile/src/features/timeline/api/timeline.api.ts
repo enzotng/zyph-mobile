@@ -1,6 +1,7 @@
 import { isValidCategory, isValidSubcategory } from '@/features/taxonomy'
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
+import { toError } from '@/lib/supabase-error'
 
 export type TripEvent = Database['public']['Tables']['trip_events']['Row']
 
@@ -28,7 +29,7 @@ export async function listEvents(tripId: string): Promise<TripEvent[]> {
     .eq('trip_id', tripId)
     .order('starts_at', { ascending: true, nullsFirst: false })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -40,7 +41,7 @@ export async function getEvent(eventId: string): Promise<TripEvent | null> {
     .eq('id', eventId)
     .maybeSingle()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -105,7 +106,7 @@ export async function createEvent({
     .select()
     .single()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -157,7 +158,7 @@ export async function updateEvent({
     .select()
     .single()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -218,7 +219,7 @@ export async function createEvents(
   })
   const { data, error } = await supabase.from('trip_events').insert(rows).select()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data ?? []
 }
@@ -226,6 +227,6 @@ export async function createEvents(
 export async function deleteEvent(eventId: string): Promise<void> {
   const { error } = await supabase.from('trip_events').delete().eq('id', eventId)
   if (error) {
-    throw error
+    throw toError(error)
   }
 }

@@ -1,5 +1,6 @@
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
+import { toError } from '@/lib/supabase-error'
 
 export type TripPoi = Database['public']['Tables']['trip_pois']['Row']
 export type MemberLocation = Database['public']['Tables']['member_locations']['Row']
@@ -11,7 +12,7 @@ export async function listPois(tripId: string): Promise<TripPoi[]> {
     .eq('trip_id', tripId)
     .order('created_at', { ascending: true })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -19,7 +20,7 @@ export async function listPois(tripId: string): Promise<TripPoi[]> {
 export async function getPoi(poiId: string): Promise<TripPoi | null> {
   const { data, error } = await supabase.from('trip_pois').select('*').eq('id', poiId).maybeSingle()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -58,7 +59,7 @@ export async function createPoi({
     .select()
     .single()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -85,7 +86,7 @@ export async function updatePoi({
     .select()
     .single()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -93,7 +94,7 @@ export async function updatePoi({
 export async function deletePoi(poiId: string): Promise<void> {
   const { error } = await supabase.from('trip_pois').delete().eq('id', poiId)
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -120,14 +121,14 @@ export async function upsertMemberLocation({
     _heading_deg: typeof headingDeg === 'number' ? headingDeg : undefined,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
 export async function clearMemberLocation(tripId: string): Promise<void> {
   const { error } = await supabase.rpc('clear_member_location', { _trip_id: tripId })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -157,7 +158,7 @@ export async function listMemberLocations(tripId: string): Promise<MemberLocatio
 
   const { data, error } = await query
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data as unknown as MemberLocationWithMember[]
 }

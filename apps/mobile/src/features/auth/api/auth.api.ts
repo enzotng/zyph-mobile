@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser'
 
 import { unregisterForPushNotifications } from '@/features/notifications/push'
 import { supabase } from '@/lib/supabase'
+import { toError } from '@/lib/supabase-error'
 import type { SignInValues, SignUpValues } from '../schemas'
 
 // Deep link the confirmation / OAuth callbacks return to (scheme: zyph).
@@ -20,7 +21,7 @@ export async function signUp({ email, password, displayName }: SignUpValues) {
     },
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -28,7 +29,7 @@ export async function signUp({ email, password, displayName }: SignUpValues) {
 export async function signIn({ email, password }: SignInValues) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -56,7 +57,7 @@ export async function requestPasswordReset(email: string) {
     redirectTo: AUTH_REDIRECT_URL,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -64,7 +65,7 @@ export async function requestPasswordReset(email: string) {
 export async function updatePassword(password: string) {
   const { error } = await supabase.auth.updateUser({ password })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -77,7 +78,7 @@ export async function signInWithGoogle(): Promise<{ cancelled: boolean }> {
     options: { redirectTo: AUTH_REDIRECT_URL, skipBrowserRedirect: true },
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
   if (!data?.url) {
     throw new Error('Could not start Google sign-in')
@@ -136,7 +137,7 @@ export async function signInWithApple(): Promise<{ cancelled: boolean }> {
       nonce: rawNonce,
     })
     if (error) {
-      throw error
+      throw toError(error)
     }
     return { cancelled: false }
   } catch (error) {
@@ -144,6 +145,6 @@ export async function signInWithApple(): Promise<{ cancelled: boolean }> {
     if ((error as { code?: string }).code === 'ERR_REQUEST_CANCELED') {
       return { cancelled: true }
     }
-    throw error
+    throw toError(error)
   }
 }

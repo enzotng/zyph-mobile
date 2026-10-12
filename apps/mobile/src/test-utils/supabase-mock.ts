@@ -59,12 +59,8 @@ export function makeQueryBuilder<T>(result: MockResult<T>): QueryBuilderMock<T> 
   return builder as unknown as QueryBuilderMock<T>
 }
 
-// Minimal PostgrestError for error-path assertions. An Error instance so that the
-// api layer's `throw error` works with Jest's `.toThrow(message)`.
-export function makePostgrestError(message: string): PostgrestError {
-  const error = new Error(message) as Error & { details: string; hint: string; code: string }
-  error.details = ''
-  error.hint = ''
-  error.code = 'MOCK'
-  return error as unknown as PostgrestError
+// The shape PostgREST really returns: a plain object, not an Error instance. An Error here would
+// hide every caller that reads `error instanceof Error`, which is false at runtime.
+export function makePostgrestError(message: string, code = 'P0001'): PostgrestError {
+  return { message, details: '', hint: '', code } as unknown as PostgrestError
 }

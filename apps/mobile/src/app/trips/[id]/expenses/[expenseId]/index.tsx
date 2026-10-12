@@ -26,6 +26,7 @@ import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { formatRate } from '@/lib/money'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 export default function ExpenseDetailScreen() {
   const params = useGlobalSearchParams<{ id: string; expenseId: string }>()
@@ -80,10 +81,7 @@ export default function ExpenseDetailScreen() {
             await deleteExpense.mutateAsync(expenseId)
             router.back()
           } catch (error) {
-            Alert.alert(
-              t('expenseDetail.deleteError'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
+            Alert.alert(t('expenseDetail.deleteError'), toUserMessage(error, t('common.tryAgain')))
           }
         },
       },

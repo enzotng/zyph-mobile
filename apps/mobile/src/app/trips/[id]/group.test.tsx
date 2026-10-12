@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { Alert } from 'react-native'
 
+import { toError } from '@/lib/supabase-error'
+
 import TripGroupScreen from './group'
 
 const mockUseTripMembers = jest.fn()
@@ -244,7 +246,10 @@ describe('TripGroupScreen - detaching a claimed place', () => {
   // is what routes to the fallback (spec 4.6).
   it('falls back to removal when the place moved the ledger since the claim', async () => {
     mockDetach.mockRejectedValue(
-      new Error('place has ledger activity since claim; remove the member instead'),
+      toError({
+        message: 'place has ledger activity since claim; remove the member instead',
+        code: 'P0001',
+      }),
     )
     render(<TripGroupScreen />)
 
@@ -263,8 +268,8 @@ describe('TripGroupScreen - detaching a claimed place', () => {
     expect(mockOfferNewInviteLink).toHaveBeenCalledWith('Léa')
   })
 
-  it('does not offer removal for an unrelated failure', async () => {
-    mockDetach.mockRejectedValue(new Error('owner only'))
+  it('does not offer removal for an unrelated failure, nor show its server wording', async () => {
+    mockDetach.mockRejectedValue(toError({ message: 'owner only', code: 'P0001' }))
     render(<TripGroupScreen />)
 
     fireEvent.press(screen.getByLabelText('Manage Léa'))
@@ -274,7 +279,8 @@ describe('TripGroupScreen - detaching a claimed place', () => {
     })
 
     const lastCall = jest.mocked(Alert.alert).mock.calls.at(-1)
-    expect(lastCall?.[1]).toContain('owner only')
+    expect(lastCall?.[0]).toBe('Could not free up the place')
+    expect(lastCall?.[1]).toBe('Please try again.')
     expect(mockRemove).not.toHaveBeenCalled()
   })
 

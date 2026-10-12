@@ -24,6 +24,7 @@ import {
   useUpdateEvent,
 } from '@/features/timeline'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 export default function EditEventScreen() {
   const params = useGlobalSearchParams<{ id: string; eventId: string }>()
@@ -128,10 +129,7 @@ export default function EditEventScreen() {
       })
       router.back()
     } catch (error) {
-      Alert.alert(
-        t('events.edit.errorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('events.edit.errorTitle'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

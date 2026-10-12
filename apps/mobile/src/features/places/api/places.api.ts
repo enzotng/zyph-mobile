@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-
+import { toError } from '@/lib/supabase-error'
 import { type PlaceResult, placeSearchResponseSchema } from '../schemas'
 
 // Type-ahead address search via the place-search edge function (OSM Photon proxy).
@@ -8,7 +8,7 @@ export async function searchPlaces(query: string, language: 'en' | 'fr'): Promis
     body: { query, language },
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
   if (!data) {
     return []

@@ -25,6 +25,7 @@ import { TripBalanceStrip } from '@/features/trips/components/trip-balance-strip
 import { conditionIcon, useTripWeather } from '@/features/weather'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 // Staggered entrance for the content blocks below the cover. Short step, capped so the
 // last block never lags; the cover hero stays static (its corner-radius logic is untouched).
@@ -258,10 +259,7 @@ export default function TripDashboardScreen() {
         contentType: 'image/jpeg',
       })
     } catch (error) {
-      Alert.alert(
-        t('trip.coverError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('trip.coverError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 
@@ -282,10 +280,7 @@ export default function TripDashboardScreen() {
     try {
       await resetCover.mutateAsync(tripId)
     } catch (error) {
-      Alert.alert(
-        t('trip.coverError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('trip.coverError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

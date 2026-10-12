@@ -26,6 +26,7 @@ import {
 } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
+import { toUserMessage } from '@/lib/supabase-error'
 
 function FieldIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
   const { theme } = useUnistyles()
@@ -131,10 +132,7 @@ export default function NewTripScreen() {
       router.replace({ pathname: '/trips/[id]', params: { id: trip.id } })
     } catch (error) {
       haptics.error()
-      Alert.alert(
-        t('newTrip.errorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('newTrip.errorTitle'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

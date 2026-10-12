@@ -2,6 +2,7 @@ import { File } from 'expo-file-system'
 
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
+import { toError } from '@/lib/supabase-error'
 
 export type TripDocument = Database['public']['Tables']['media']['Row']
 
@@ -39,7 +40,7 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<TripDo
     upsert: false,
   })
   if (uploadError) {
-    throw uploadError
+    throw toError(uploadError)
   }
 
   const { data, error } = await supabase
@@ -59,7 +60,7 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<TripDo
   if (error) {
     // Avoid leaving an orphaned object if the metadata insert fails.
     await supabase.storage.from(BUCKET).remove([path])
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -71,7 +72,7 @@ export async function listEventDocuments(eventId: string): Promise<TripDocument[
     .eq('event_id', eventId)
     .order('created_at', { ascending: false })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -85,7 +86,7 @@ export async function listTripDocuments(tripId: string): Promise<TripDocument[]>
     .eq('kind', 'document')
     .order('created_at', { ascending: false })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -95,7 +96,7 @@ export async function getDocumentUrl(storagePath: string): Promise<string> {
     .from(BUCKET)
     .createSignedUrl(storagePath, SIGNED_URL_TTL)
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data.signedUrl
 }
@@ -105,10 +106,10 @@ export async function deleteDocument(doc: TripDocument): Promise<void> {
   // retried, whereas a row without its object would be a dead, undeletable entry.
   const { error: storageError } = await supabase.storage.from(BUCKET).remove([doc.storage_path])
   if (storageError) {
-    throw storageError
+    throw toError(storageError)
   }
   const { error } = await supabase.from('media').delete().eq('id', doc.id)
   if (error) {
-    throw error
+    throw toError(error)
   }
 }

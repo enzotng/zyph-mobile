@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { SupabaseRequestError } from '@/lib/supabase-error'
 import { makePostgrestError, makeQueryBuilder } from '@/test-utils/supabase-mock'
 
 import {
@@ -333,5 +334,22 @@ describe('detachTripMember', () => {
     rpc.mockResolvedValue({ data: null, error: makePostgrestError('owner only') })
 
     await expect(detachTripMember('m1')).rejects.toThrow('owner only')
+  })
+})
+
+// Screens route on these refusals by message: what they receive must be a real Error, which a
+// PostgREST error object is not. Jest's toThrow reads `.message` off any object, so it cannot tell.
+describe('the refusals screens route on', () => {
+  it.each([
+    ['claimTripSlot', () => claimTripSlot('abcd1234', SLOT_ONE)],
+    ['getTripClaimOptions', () => getTripClaimOptions('abcd1234')],
+    ['detachTripMember', () => detachTripMember('m1')],
+    ['removeTripMember', () => removeTripMember('m1')],
+    ['regenerateInviteCode', () => regenerateInviteCode('t1')],
+  ])('%s rejects with a SupabaseRequestError that keeps the code', async (_name, call) => {
+    rpc.mockResolvedValue({ data: null, error: makePostgrestError('refused', 'P0001') })
+
+    await expect(call()).rejects.toBeInstanceOf(SupabaseRequestError)
+    await expect(call()).rejects.toMatchObject({ message: 'refused', code: 'P0001' })
   })
 })

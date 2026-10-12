@@ -20,6 +20,7 @@ import {
 import { useCreateEvents } from '@/features/timeline'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 export default function ImportEmailScreen() {
   const params = useGlobalSearchParams<{ id: string; prefilledText?: string }>()
@@ -122,10 +123,7 @@ export default function ImportEmailScreen() {
       router.back()
     } catch (error) {
       haptics.error()
-      Alert.alert(
-        t('smartImport.createErrorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('smartImport.createErrorTitle'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

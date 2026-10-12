@@ -2,6 +2,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
+import { toError } from '@/lib/supabase-error'
 import type { BudgetLevel, CreateTripValues, Dietary, Interest, Pace, TripType } from '../schemas'
 
 export type Trip = Database['public']['Tables']['trips']['Row']
@@ -31,7 +32,7 @@ export type TripCover = {
 async function getMyTripBalances(): Promise<Map<string, number>> {
   const { data, error } = await supabase.rpc('get_my_trip_balances')
   if (error) {
-    throw error
+    throw toError(error)
   }
   return new Map((data ?? []).map((row) => [row.trip_id, row.balance_cents]))
 }
@@ -96,7 +97,7 @@ export async function uploadTripCover(
       const body = (await error.context.json().catch(() => null)) as { error?: string } | null
       throw new Error(body?.error ?? error.message)
     }
-    throw error
+    throw toError(error)
   }
   if (!data?.trip) {
     throw new Error('Cover upload returned no trip.')
@@ -114,7 +115,7 @@ export async function resetTripCover(tripId: string): Promise<Trip> {
     .select()
     .single()
   if (error || !data) {
-    throw error ?? new Error('Could not reset the cover')
+    throw error ? toError(error) : new Error('Could not reset the cover')
   }
   // Cover is now empty, so withCover re-fetches the automatic one (when there is a destination).
   return withCover(data)
@@ -131,7 +132,7 @@ export async function listTrips(): Promise<TripCard[]> {
     getMyTripBalances(),
   ])
   if (tripsResult.error) {
-    throw tripsResult.error
+    throw toError(tripsResult.error)
   }
   return (tripsResult.data ?? []).map((row) => {
     const { trip_members, ...trip } = row
@@ -154,7 +155,7 @@ export async function listTrips(): Promise<TripCard[]> {
 export async function getTrip(id: string): Promise<Trip> {
   const { data, error } = await supabase.from('trips').select('*').eq('id', id).single()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -191,7 +192,7 @@ export async function createTrip(input: CreateTripInput): Promise<Trip> {
     .select()
     .single()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return withCover(data)
 }
@@ -223,7 +224,7 @@ export async function updateTrip({
     .select()
     .single()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return withCover(data)
 }
@@ -256,7 +257,7 @@ export async function updateTripPreferences(input: UpdateTripPreferencesInput): 
     .select()
     .single()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -265,7 +266,7 @@ export async function deleteTrip(id: string): Promise<void> {
   // Cascades to members, events, expenses, splits and media via FK on delete cascade.
   const { error } = await supabase.from('trips').delete().eq('id', id)
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -275,7 +276,7 @@ export async function deleteTrip(id: string): Promise<void> {
 export async function createCalendarFeedToken(tripId: string): Promise<string> {
   const { data, error } = await supabase.rpc('create_calendar_feed_token', { _trip_id: tripId })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -288,7 +289,7 @@ export type TripInboxAddress = { address: string; autoValidate: boolean }
 export async function createTripInboxAddress(tripId: string): Promise<string> {
   const { data, error } = await supabase.rpc('create_trip_inbox_address', { _trip_id: tripId })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -298,7 +299,7 @@ export async function createTripInboxAddress(tripId: string): Promise<string> {
 export async function getTripInboxAddress(tripId: string): Promise<TripInboxAddress | null> {
   const { data, error } = await supabase.rpc('get_trip_inbox_address', { _trip_id: tripId })
   if (error) {
-    throw error
+    throw toError(error)
   }
   const row = data?.[0]
   if (!row) {
@@ -310,7 +311,7 @@ export async function getTripInboxAddress(tripId: string): Promise<TripInboxAddr
 export async function revokeTripInboxAddress(tripId: string): Promise<void> {
   const { error } = await supabase.rpc('revoke_trip_inbox_address', { _trip_id: tripId })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -320,6 +321,6 @@ export async function setTripInboxAutoValidate(tripId: string, on: boolean): Pro
     _on: on,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }

@@ -1,5 +1,6 @@
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
+import { toError } from '@/lib/supabase-error'
 
 export type TripSettlement = Database['public']['Tables']['trip_settlements']['Row']
 
@@ -26,7 +27,7 @@ export async function recordSettlement({
     _amount_cents: amountCents,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -39,7 +40,7 @@ export async function listSettlements(tripId: string): Promise<TripSettlement[]>
     .eq('status', 'active')
     .order('paid_at', { ascending: false })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -50,7 +51,7 @@ export async function listSettlements(tripId: string): Promise<TripSettlement[]>
 export async function reverseSettlement(id: string): Promise<TripSettlement> {
   const { data, error } = await supabase.rpc('reverse_settlement', { _id: id })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
