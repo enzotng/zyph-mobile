@@ -110,7 +110,9 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-status-bar",
+      ["expo-build-properties", { "ios": { "enableSceneSupport": true } }]
     ],
     "experiments": {
       "typedRoutes": true,
