@@ -2,5 +2,6 @@ packages:
   - apps/*
   - packages/*
 
-patchedDependencies:
-  '@supabase/supabase-js': patches/@supabase__supabase-js.patch
+# A release younger than two days is not installed: most malicious publishes are caught and pulled
+# within that window.
+minimumReleaseAge: 2880
