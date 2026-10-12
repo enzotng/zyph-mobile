@@ -64,6 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient.clear()
         void mmkvQueryPersister.removeClient()
         setRecovering(false)
+      } else if (event === 'TOKEN_REFRESHED') {
+        // Data requests are refused while the token cannot refresh (lib/session-guard), which
+        // leaves their queries in error with the cached data intact. The ones on screen are asked
+        // again now; the others retry on mount.
+        void queryClient.refetchQueries({
+          type: 'active',
+          predicate: (query) => query.state.status === 'error',
+        })
       } else if (event === 'PASSWORD_RECOVERY') {
         // The recovery link signed the user in; route them to set a new password.
         setRecovering(true)

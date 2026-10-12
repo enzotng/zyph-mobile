@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider, QueryObserver } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { type ReactNode } from 'react'
 
@@ -141,6 +141,39 @@ describe('AuthProvider', () => {
     expect(clearSpy).toHaveBeenCalled()
     // Purge the persisted MMKV cache too, so the next account can't restore this user's data.
     expect(mmkvQueryPersister.removeClient).toHaveBeenCalled()
+  })
+
+  // Requests refused while the token could not refresh left their queries in error with the cached
+  // data intact: the ones on screen are asked again once the session is back, the others on mount.
+  it('refetches only the errored queries on screen once the token is refreshed', async () => {
+    const { wrapper, getAuthCallback, queryClient } = buildWrapper()
+    const onScreen = jest.fn().mockRejectedValue(new Error('session unavailable'))
+    const offScreen = jest.fn().mockRejectedValue(new Error('session unavailable'))
+    const healthy = jest.fn().mockResolvedValue('ok')
+    await queryClient.fetchQuery({ queryKey: ['on'], queryFn: onScreen }).catch(() => undefined)
+    await queryClient.fetchQuery({ queryKey: ['off'], queryFn: offScreen }).catch(() => undefined)
+    await queryClient.fetchQuery({ queryKey: ['healthy'], queryFn: healthy })
+    const observers = [
+      new QueryObserver(queryClient, { queryKey: ['on'], queryFn: onScreen, retryOnMount: false }),
+      new QueryObserver(queryClient, {
+        queryKey: ['healthy'],
+        queryFn: healthy,
+        staleTime: Infinity,
+      }),
+    ]
+    const unsubscribers = observers.map((observer) => observer.subscribe(() => undefined))
+    renderHook(() => useAuth(), { wrapper })
+
+    act(() => {
+      getAuthCallback()?.('TOKEN_REFRESHED', mockSession)
+    })
+
+    await waitFor(() => expect(onScreen).toHaveBeenCalledTimes(2))
+    expect(offScreen).toHaveBeenCalledTimes(1)
+    expect(healthy).toHaveBeenCalledTimes(1)
+    for (const unsubscribe of unsubscribers) {
+      unsubscribe()
+    }
   })
 
   it('starts with recovering=false', () => {

@@ -93,6 +93,38 @@ describe('persistDehydrateOptions', () => {
     expect(dehydrate(queryClient, persistDehydrateOptions).queries).toHaveLength(0)
   })
 
+  // A refetch refused while the token could not refresh keeps its data: losing it from disk would
+  // empty the screen on the next cold start offline.
+  it('keeps the data of a query whose refetch the session guard refused', async () => {
+    const key = ['trips', TRIP_ID, 'events']
+    await queryClient.prefetchQuery({ queryKey: key, queryFn: async () => ['dinner'] })
+    await queryClient
+      .fetchQuery({
+        queryKey: key,
+        queryFn: () => Promise.reject(new Error('Error: session unavailable')),
+        staleTime: 0,
+      })
+      .catch(() => undefined)
+
+    const queries = dehydrate(queryClient, persistDehydrateOptions).queries
+    expect(queries).toHaveLength(1)
+    expect(queries[0]?.state.data).toEqual(['dinner'])
+  })
+
+  it('still drops a query that failed for another reason, even with data', async () => {
+    const key = ['trips', TRIP_ID, 'events']
+    await queryClient.prefetchQuery({ queryKey: key, queryFn: async () => ['dinner'] })
+    await queryClient
+      .fetchQuery({
+        queryKey: key,
+        queryFn: () => Promise.reject(new Error('not found')),
+        staleTime: 0,
+      })
+      .catch(() => undefined)
+
+    expect(dehydrate(queryClient, persistDehydrateOptions).queries).toHaveLength(0)
+  })
+
   it('never dehydrates a paused mutation, whose variables would carry raw GPS', async () => {
     const mutation = queryClient
       .getMutationCache()
