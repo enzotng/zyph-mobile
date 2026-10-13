@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons'
 import * as Clipboard from 'expo-clipboard'
 import * as Linking from 'expo-linking'
-import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, Platform, Pressable, Share, Text, View } from 'react-native'
+import { Alert, Platform, Pressable, RefreshControl, Share, Text, View } from 'react-native'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { Button } from '@/components/button'
@@ -46,11 +46,12 @@ const CREAM_FILL = 'rgba(244, 241, 232, 0.12)'
 export default function TripGroupScreen() {
   const params = useGlobalSearchParams<{ id: string }>()
   const tripId = paramString(params.id)
-  const { data: trip, isLoading, isError, refetch } = useTrip(tripId)
+  const { data: trip, isLoading, isError, isFetching: tripFetching, refetch } = useTrip(tripId)
   const {
     data: members,
     isLoading: membersLoading,
     isError: membersError,
+    isFetching: membersFetching,
     refetch: refetchMembers,
   } = useTripMembers(tripId)
   const { session } = useAuth()
@@ -81,6 +82,29 @@ export default function TripGroupScreen() {
   const [copied, setCopied] = useState(false)
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { status: shareStatus } = useShareLocation({ tripId, enabled: sharing })
+  const [refreshing, setRefreshing] = useState(false)
+
+  // The app has no realtime, so someone who joined or left since the list was cached only shows up
+  // on a refetch. Joins a fetch already in flight instead of restarting it: the first focus comes
+  // right after mount.
+  useFocusEffect(
+    useCallback(() => {
+      void refetchMembers({ cancelRefetch: false })
+    }, [refetchMembers]),
+  )
+
+  async function refreshGroup() {
+    haptics.light()
+    setRefreshing(true)
+    try {
+      await Promise.all([
+        refetch({ cancelRefetch: false }),
+        refetchMembers({ cancelRefetch: false }),
+      ])
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   useEffect(() => {
     setShareLocation(tripId, sharing)
@@ -301,6 +325,15 @@ export default function TripGroupScreen() {
       title={t('group.heading')}
       showBack
       scroll
+      refreshControl={
+        <RefreshControl
+          // Offline, a refetch pauses rather than fails and its promise waits for the network, so
+          // the spinner follows the fetches, not the promise.
+          refreshing={refreshing && (tripFetching || membersFetching)}
+          onRefresh={() => void refreshGroup()}
+          tintColor={theme.colors.primary}
+        />
+      }
       right={
         isOwner ? (
           <Pressable

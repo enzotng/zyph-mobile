@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
-import { Alert } from 'react-native'
+import { Alert, RefreshControl } from 'react-native'
 
 import { toError } from '@/lib/supabase-error'
 
@@ -13,10 +13,15 @@ const mockRenameGhost = jest.fn()
 const mockDetach = jest.fn()
 const mockRemove = jest.fn()
 const mockOfferNewInviteLink = jest.fn()
+const mockRefetchTrip = jest.fn()
+const mockRefetchMembers = jest.fn()
 
 jest.mock('@/lib/supabase')
 
 jest.mock('expo-router', () => ({
+  // Focus is the mount, here: each render is one screen coming into view.
+  useFocusEffect: (effect: () => void) =>
+    jest.requireActual<typeof import('react')>('react').useEffect(effect, [effect]),
   useGlobalSearchParams: () => ({ id: 't1' }),
   useRouter: () => ({ push: jest.fn(), back: jest.fn(), replace: jest.fn() }),
 }))
@@ -110,14 +115,18 @@ beforeEach(() => {
     data: { id: 't1', title: 'Lisbonne', invite_code: 'abc123', owner_id: 'u-owner' },
     isLoading: false,
     isError: false,
-    refetch: jest.fn(),
+    isFetching: false,
+    refetch: mockRefetchTrip,
   })
   mockUseTripMembers.mockReturnValue({
     data: [OWNER, CLAIMED, NINA, GHOST],
     isLoading: false,
     isError: false,
-    refetch: jest.fn(),
+    isFetching: false,
+    refetch: mockRefetchMembers,
   })
+  mockRefetchTrip.mockResolvedValue(undefined)
+  mockRefetchMembers.mockResolvedValue(undefined)
   mockAddGhost.mockResolvedValue('m-new')
   mockRenameGhost.mockResolvedValue(undefined)
   mockDetach.mockResolvedValue(undefined)
@@ -127,6 +136,59 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.restoreAllMocks()
+})
+
+describe('TripGroupScreen - keeping the list current', () => {
+  const pull = () =>
+    act(async () => {
+      screen.UNSAFE_getByType(RefreshControl).props.onRefresh()
+    })
+  const spinning = () => screen.UNSAFE_getByType(RefreshControl).props.refreshing
+
+  it('refetches the members when the screen comes into view, joining a fetch in flight', () => {
+    render(<TripGroupScreen />)
+
+    expect(mockRefetchMembers).toHaveBeenCalledWith({ cancelRefetch: false })
+  })
+
+  it('refetches on focus only, not on every render', () => {
+    render(<TripGroupScreen />)
+    screen.rerender(<TripGroupScreen />)
+
+    expect(mockRefetchMembers).toHaveBeenCalledTimes(1)
+  })
+
+  it('refetches the trip and the members on a pull, spinning until both are back', async () => {
+    let settle = () => {}
+    mockRefetchTrip.mockReturnValue(
+      new Promise<void>((resolve) => {
+        settle = resolve
+      }),
+    )
+    mockUseTripMembers.mockReturnValue({ ...mockUseTripMembers(), isFetching: true })
+    render(<TripGroupScreen />)
+    mockRefetchMembers.mockClear()
+
+    await pull()
+
+    expect(mockRefetchTrip).toHaveBeenCalledWith({ cancelRefetch: false })
+    expect(mockRefetchMembers).toHaveBeenCalledWith({ cancelRefetch: false })
+    expect(spinning()).toBe(true)
+
+    await act(async () => settle())
+
+    expect(spinning()).toBe(false)
+  })
+
+  // Offline the refetch pauses: its promise waits for the network while nothing is fetching.
+  it('stops spinning when the pull pauses offline', async () => {
+    mockRefetchTrip.mockReturnValue(new Promise(() => {}))
+    render(<TripGroupScreen />)
+
+    await pull()
+
+    expect(spinning()).toBe(false)
+  })
 })
 
 describe('TripGroupScreen - telling places from people', () => {
