@@ -67,11 +67,14 @@ export async function leaveTrip(tripId: string): Promise<void> {
   }
 }
 
-export async function removeTripMember(memberId: string): Promise<void> {
-  const { error } = await supabase.rpc('remove_trip_member', { _member_id: memberId })
+// Resolves true when the place was held by an account, which can then come back through the link,
+// and null when the server does not say (one that predates the answer).
+export async function removeTripMember(memberId: string): Promise<boolean | null> {
+  const { data, error } = await supabase.rpc('remove_trip_member', { _member_id: memberId })
   if (error) {
     throw toError(error)
   }
+  return typeof data === 'boolean' ? data : null
 }
 
 // Reads a trip's title and its free places from an invite code alone, for a caller RLS still hides

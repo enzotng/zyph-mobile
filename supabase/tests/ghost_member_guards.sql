@@ -359,16 +359,27 @@ begin
   end if;
 end $$;
 
--- 14. Removing a member drops their position.
+-- 14. Removing a member drops their position, and answers that the place was held by an account:
+--     the owner's list can be stale, so this answer alone decides whether to offer a new link.
 do $$
-declare _member uuid;
+declare _member uuid; _had_account boolean;
 begin
   select id into _member from public.trip_members
   where trip_id = 'aaaaaaaa-0000-0000-0000-00000000000f'
     and user_id = '33333333-3333-3333-3333-333333333333';
-  perform public.remove_trip_member(_member);
-exception when others then
-  perform pg_temp.fail('remove drops position', sqlerrm);
+  begin
+    _had_account := public.remove_trip_member(_member);
+  exception when others then
+    perform pg_temp.fail('remove drops position', sqlerrm);
+  end;
+  if _had_account is not true then
+    perform pg_temp.fail('remove reports account', 'removing a claimed place did not answer true');
+  end if;
+  -- Removed already, as from another device: the account can still come back, so the answer holds,
+  -- but nobody is told twice.
+  if public.remove_trip_member(_member) is not true then
+    perform pg_temp.fail('remove reports account', 'removing it again answered that nobody held it');
+  end if;
 end $$;
 
 reset role;
@@ -380,6 +391,50 @@ begin
     where m.trip_id = 'aaaaaaaa-0000-0000-0000-00000000000f'
   ) then
     perform pg_temp.fail('remove drops position', 'the removed member''s position survived');
+  end if;
+  if (select count(*) from public.notifications
+      where trip_id = 'aaaaaaaa-0000-0000-0000-00000000000f'
+        and recipient_id = '33333333-3333-3333-3333-333333333333'
+        and type = 'member.removed') <> 1 then
+    perform pg_temp.fail('remove reports account', 'the removed member was not told exactly once');
+  end if;
+end $$;
+
+-- 22. Removing a free place answers false: nobody can come back through the link to it.
+insert into public.trip_members (trip_id, user_id, role, status, display_name)
+values ('aaaaaaaa-0000-0000-0000-00000000000f', null, 'member', 'active', 'Ghost');
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+
+do $$
+declare _ghost uuid;
+begin
+  select id into _ghost from public.trip_members
+  where trip_id = 'aaaaaaaa-0000-0000-0000-00000000000f' and display_name = 'Ghost';
+  if public.remove_trip_member(_ghost) is not false then
+    perform pg_temp.fail('remove reports account', 'removing a free place did not answer false');
+  end if;
+end $$;
+
+reset role;
+
+-- 23. The drop and re-create of remove_trip_member kept it out of anonymous hands, and definer-run
+--     on an empty search_path.
+do $$
+begin
+  if has_function_privilege('anon', 'public.remove_trip_member(uuid)', 'execute') then
+    perform pg_temp.fail('remove grants', 'anon can execute remove_trip_member');
+  end if;
+  if not has_function_privilege('authenticated', 'public.remove_trip_member(uuid)', 'execute') then
+    perform pg_temp.fail('remove grants', 'authenticated cannot execute remove_trip_member');
+  end if;
+  if not exists (
+    select 1 from pg_proc
+    where oid = 'public.remove_trip_member(uuid)'::regprocedure
+      and prosecdef and proconfig = array['search_path=""']
+  ) then
+    perform pg_temp.fail('remove grants', 'remove_trip_member lost security definer or its search_path');
   end if;
 end $$;
 

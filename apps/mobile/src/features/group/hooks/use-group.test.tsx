@@ -95,7 +95,7 @@ describe('useLeaveTrip', () => {
 
 describe('useRemoveTripMember', () => {
   it('invalidates members and balances for the trip on success', async () => {
-    jest.mocked(api.removeTripMember).mockResolvedValue(undefined)
+    jest.mocked(api.removeTripMember).mockResolvedValue(true)
     const { wrapper, queryClient } = createQueryWrapper()
     const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
 

@@ -1333,7 +1333,7 @@ export type Database = {
         Args: { _proposal_id: string }
         Returns: undefined
       }
-      remove_trip_member: { Args: { _member_id: string }; Returns: undefined }
+      remove_trip_member: { Args: { _member_id: string }; Returns: boolean }
       rename_ghost_member: {
         Args: { _member_id: string; _name: string }
         Returns: undefined

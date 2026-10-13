@@ -169,14 +169,17 @@ export default function TripGroupScreen() {
 
   const isOwner = trip.owner_id === userId
 
+  // Whether to offer a new link is the server's answer, not the list's: a place shown as free may
+  // have been claimed on another device since the list loaded. The list only fills a silence.
   async function removeNow(memberId: string, name: string, isGhost: boolean) {
+    let hadAccount: boolean | null
     try {
-      await removeMember.mutateAsync(memberId)
+      hadAccount = await removeMember.mutateAsync(memberId)
     } catch (error) {
       Alert.alert(t('group.removeFailedTitle'), toUserMessage(error, t('common.tryAgain')))
       return
     }
-    if (!isGhost) {
+    if (hadAccount ?? !isGhost) {
       void offerNewInviteLink(name)
     }
   }

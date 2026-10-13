@@ -121,7 +121,7 @@ beforeEach(() => {
   mockAddGhost.mockResolvedValue('m-new')
   mockRenameGhost.mockResolvedValue(undefined)
   mockDetach.mockResolvedValue(undefined)
-  mockRemove.mockResolvedValue(undefined)
+  mockRemove.mockResolvedValue(true)
   jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
 })
 
@@ -334,12 +334,43 @@ describe('TripGroupScreen - removing a member', () => {
   })
 
   it('does not offer one after removing a place nobody held', async () => {
+    mockRemove.mockResolvedValue(false)
     render(<TripGroupScreen />)
 
     await removeThroughMenu('Papa')
 
     expect(mockRemove).toHaveBeenCalledWith('m-ghost')
     expect(mockOfferNewInviteLink).not.toHaveBeenCalled()
+  })
+
+  it('offers one when the server says a place shown as free was held by an account', async () => {
+    render(<TripGroupScreen />)
+
+    await removeThroughMenu('Papa')
+
+    expect(mockRemove).toHaveBeenCalledWith('m-ghost')
+    expect(mockOfferNewInviteLink).toHaveBeenCalledWith('Papa')
+  })
+
+  it('does not offer one when the server says a place shown as held was free', async () => {
+    mockRemove.mockResolvedValue(false)
+    render(<TripGroupScreen />)
+
+    await removeThroughMenu('Nina')
+
+    expect(mockRemove).toHaveBeenCalledWith('m-nina')
+    expect(mockOfferNewInviteLink).not.toHaveBeenCalled()
+  })
+
+  it('falls back on the list when the server does not say', async () => {
+    mockRemove.mockResolvedValue(null)
+    render(<TripGroupScreen />)
+
+    await removeThroughMenu('Papa')
+    expect(mockOfferNewInviteLink).not.toHaveBeenCalled()
+
+    await removeThroughMenu('Nina')
+    expect(mockOfferNewInviteLink).toHaveBeenCalledWith('Nina')
   })
 
   it('does not offer one when the removal failed', async () => {

@@ -168,10 +168,22 @@ describe('leaveTrip', () => {
 
 describe('removeTripMember', () => {
   it('calls rpc remove_trip_member with the member id', async () => {
+    rpc.mockResolvedValue({ data: true, error: null })
+
+    await expect(removeTripMember('m1')).resolves.toBe(true)
+    expect(rpc).toHaveBeenCalledWith('remove_trip_member', { _member_id: 'm1' })
+  })
+
+  it('resolves false when the place was held by nobody', async () => {
+    rpc.mockResolvedValue({ data: false, error: null })
+
+    await expect(removeTripMember('m1')).resolves.toBe(false)
+  })
+
+  it('resolves null when the server does not answer', async () => {
     rpc.mockResolvedValue({ data: null, error: null })
 
-    await expect(removeTripMember('m1')).resolves.toBeUndefined()
-    expect(rpc).toHaveBeenCalledWith('remove_trip_member', { _member_id: 'm1' })
+    await expect(removeTripMember('m1')).resolves.toBeNull()
   })
 
   it('throws when rpc errors (non-owner caller)', async () => {
