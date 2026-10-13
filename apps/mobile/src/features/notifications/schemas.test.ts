@@ -168,6 +168,21 @@ describe('notificationMessageValues', () => {
     expect(name).toBe(`${'x'.repeat(22)}…`)
   })
 
+  it('leaves no joiner dangling when a space follows it at the cut', () => {
+    const { name } = notificationMessageValues({
+      name: `${'x'.repeat(21)}\u200D ${'y'.repeat(10)}`,
+    })
+
+    expect(name).toBe(`${'x'.repeat(21)}…`)
+  })
+
+  // The legible part lies past the cut: what is left would name no one.
+  it('drops a capped name that no longer names anyone', () => {
+    const { name } = notificationMessageValues({ name: `${'\u0301'.repeat(23)}Bob` })
+
+    expect(name).toBeNull()
+  })
+
   it('keeps a place name at the cap whole', () => {
     const exact = 'x'.repeat(24)
 

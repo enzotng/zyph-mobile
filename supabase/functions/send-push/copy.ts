@@ -31,11 +31,34 @@ export function str(value: unknown): string | null {
   return cleaned.length > 0 ? cleaned : null
 }
 
+// A lock screen sets every name in the app's own words, at their weight: capped so a forged name
+// has little room to pass for a sentence of the app's. Same cut as headlineName in the app's
+// schemas.ts.
+const NAME_MAX = 24
+// Cut by code point, so a joiner or a combining mark left at the cut would dangle off the ellipsis.
+const CUT_TAIL = /[\s\p{M}\u200D]+$/u
+
+// Null when what survives the cut no longer names anyone: the legible part was past it.
+function capped(name: string): string | null {
+  if (name.length <= NAME_MAX) {
+    return name
+  }
+  const chars = Array.from(name)
+  if (chars.length <= NAME_MAX) {
+    return name
+  }
+  const cut = chars
+    .slice(0, NAME_MAX - 1)
+    .join('')
+    .replace(CUT_TAIL, '')
+  return LEGIBLE.test(cut) ? `${cut}…` : null
+}
+
 // Same legibility gate as private.clean_name, for the fields that name a person. str() stays
 // unguarded because it also carries free text and ids.
 function nameOf(value: unknown): string | null {
   const cleaned = str(value)
-  return cleaned !== null && LEGIBLE.test(cleaned) ? cleaned : null
+  return cleaned !== null && LEGIBLE.test(cleaned) ? capped(cleaned) : null
 }
 
 // Wording of notifications.someone in apps/mobile/src/lib/i18n: rows written before the member.*

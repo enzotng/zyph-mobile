@@ -351,3 +351,58 @@ describe('str', () => {
     )
   })
 })
+
+// Nothing on a lock screen tells the app's words from a name, so every name is capped: a forged one
+// cannot run on into a sentence of its own.
+describe('pushCopy - long names', () => {
+  const forged = 'Lea. Your payment of 240 EUR was cancelled, settle again'
+
+  it('caps the place name', () => {
+    expect(enCopy('member.claimed', { actorName: 'Marco', slotName: forged }).body).toBe(
+      'Marco joined as Lea. Your payment of 24…',
+    )
+  })
+
+  it('caps the actor, who comes first and survives truncation', () => {
+    expect(frCopy('member.joined', { actorName: forged }).body).toBe(
+      'Lea. Your payment of 24… a rejoint le voyage',
+    )
+  })
+
+  it('caps both sides of a rename', () => {
+    expect(enCopy('member.renamed', { actorName: 'Marco', oldName: forged, newName: forged }).body).toBe(
+      'Marco renamed Lea. Your payment of 24… to Lea. Your payment of 24…',
+    )
+  })
+
+  it('cuts between code points and leaves no joiner dangling off the ellipsis', () => {
+    expect(enCopy('member.added', { actorName: 'Marco', name: '🧳'.repeat(30) }).body).toBe(
+      `Marco added ${'🧳'.repeat(23)}…`,
+    )
+    expect(
+      enCopy('member.added', { actorName: 'Marco', name: `${'x'.repeat(22)}‍${'y'.repeat(10)}` })
+        .body,
+    ).toBe(`Marco added ${'x'.repeat(22)}…`)
+  })
+
+  it('leaves no joiner dangling when a space follows it at the cut', () => {
+    expect(
+      enCopy('member.added', { actorName: 'Marco', name: `${'x'.repeat(21)}\u200D ${'y'.repeat(10)}` })
+        .body,
+    ).toBe(`Marco added ${'x'.repeat(21)}…`)
+  })
+
+  // The legible part lies past the cut: the line falls back as if the name were missing.
+  it('drops a capped name that no longer names anyone', () => {
+    const unnamed = `${'\u0301'.repeat(23)}Bob`
+    expect(enCopy('member.joined', { actorName: unnamed }).body).toBe('Someone joined the trip')
+    expect(enCopy('member.added', { actorName: 'Marco', name: unnamed }).body).toBe(
+      'Marco added a participant',
+    )
+  })
+
+  it('keeps a name at the cap whole', () => {
+    const exact = 'x'.repeat(24)
+    expect(enCopy('member.added', { actorName: exact, name: 'Léa' }).body).toBe(`${exact} added Léa`)
+  })
+})

@@ -157,8 +157,8 @@ function payloadText(value: unknown): string | null {
 }
 
 // Interpolated in place of the actor so the rendered sentence can be split back apart, letting
-// the screen bound the untrusted half in its own node. Safe as a marker because it is stripped
-// from every payload value by the pass above, and Postgres text cannot carry it at all.
+// the screen bound the untrusted half in its own node. Safe as a marker because Postgres text, and
+// so every payload value, cannot carry it.
 export const ACTOR_MARK = '\u0000'
 
 // The words the app wrote, with the actor lifted out - or null when the locale does not lead with
@@ -169,9 +169,12 @@ export function withoutActor(rendered: string): string | null {
 }
 
 // The place name sits inside the app's words, at their weight, on a headline that wraps to two
-// lines: capped so a forged name cannot run on into a sentence of its own.
+// lines: capped so a forged name has little room to pass for a sentence of the app's.
 const HEADLINE_NAME_MAX = 24
+// Cut by code point, so a joiner or a combining mark left at the cut would dangle off the ellipsis.
+const CUT_TAIL = /[\s\p{M}\u200D]+$/u
 
+// Null when what survives the cut no longer names anyone: the legible part was past it.
 function headlineName(name: string | null): string | null {
   if (name === null || name.length <= HEADLINE_NAME_MAX) {
     return name
@@ -180,13 +183,11 @@ function headlineName(name: string | null): string | null {
   if (chars.length <= HEADLINE_NAME_MAX) {
     return name
   }
-  // Cut by code point, so a joiner or a combining mark left at the cut would dangle off the
-  // ellipsis.
-  return `${chars
+  const cut = chars
     .slice(0, HEADLINE_NAME_MAX - 1)
     .join('')
-    .replace(/[\p{M}\u200D]+$/u, '')
-    .trimEnd()}…`
+    .replace(CUT_TAIL, '')
+  return LEGIBLE.test(cut) ? `${cut}…` : null
 }
 
 // Interpolation values for the headline: who acted, and the place they acted on. Both are null on
