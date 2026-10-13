@@ -1,14 +1,21 @@
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
+import { toError } from '@/lib/supabase-error'
 import type { ExpenseSplit } from '../splits'
 
 export type Expense = Database['public']['Tables']['expenses']['Row']
-export type TripBalance = Database['public']['Functions']['get_trip_balances']['Returns'][number]
+// The generator emits every `returns table` column as non-null, so the raw Returns row claims
+// `user_id: string` while get_trip_balances left-joins trip_members and yields null for a ghost.
+// Normalise it here, as listTripMemberNames already does for trip_member_names.
+export type TripBalance = Omit<
+  Database['public']['Functions']['get_trip_balances']['Returns'][number],
+  'user_id'
+> & { user_id: string | null }
 
 export async function getTripBalances(tripId: string): Promise<TripBalance[]> {
   const { data, error } = await supabase.rpc('get_trip_balances', { _trip_id: tripId })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -21,7 +28,7 @@ export async function listExpenses(tripId: string): Promise<Expense[]> {
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -86,7 +93,7 @@ export async function createExpense({
       : undefined,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -108,7 +115,7 @@ export async function listMyExpenseShares(memberId: string): Promise<MyExpenseSh
     .eq('member_id', memberId)
     .is('expenses.deleted_at', null)
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data.map((row) => ({ expense_id: row.expense_id, share_cents: row.share_cents }))
 }
@@ -119,7 +126,7 @@ export async function listExpensePayers(expenseId: string): Promise<ExpensePayer
     .select('*')
     .eq('expense_id', expenseId)
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -132,7 +139,7 @@ export async function getExpense(expenseId: string): Promise<Expense | null> {
     .is('deleted_at', null)
     .maybeSingle()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -143,7 +150,7 @@ export async function listExpenseSplits(expenseId: string): Promise<ExpenseSplit
     .select('*')
     .eq('expense_id', expenseId)
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -194,7 +201,7 @@ export async function updateExpense({
       : undefined,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -205,6 +212,6 @@ export async function deleteExpense(expenseId: string): Promise<void> {
   // SECURITY DEFINER RPC because direct writes to expenses are locked down (RLS is SELECT-only).
   const { error } = await supabase.rpc('soft_delete_expense', { _expense_id: expenseId })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }

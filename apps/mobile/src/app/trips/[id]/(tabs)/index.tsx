@@ -3,7 +3,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
 import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
@@ -15,22 +15,18 @@ import { Screen } from '@/components/screen'
 import { AvatarStack, BottomSheet, CityImage, ErrorState, Skeleton } from '@/components/ui'
 import { useAuth } from '@/features/auth'
 import { useTripBalances } from '@/features/expenses'
-import { useLeaveTrip, useRegenerateInviteCode, useTripMembers } from '@/features/group'
+import { useTripAdminActions, useTripMembers } from '@/features/group'
 import { ActivitiesRail } from '@/features/places'
 import { eventStatus, useEvents } from '@/features/timeline'
-import {
-  formatTripDates,
-  useDeleteTrip,
-  useResetTripCover,
-  useTrip,
-  useUploadTripCover,
-} from '@/features/trips'
+import { formatTripDates, useResetTripCover, useTrip, useUploadTripCover } from '@/features/trips'
 import { CockpitTimeline } from '@/features/trips/components/cockpit-timeline'
 import { RightNowCard } from '@/features/trips/components/right-now-card'
 import { TripBalanceStrip } from '@/features/trips/components/trip-balance-strip'
 import { conditionIcon, useTripWeather } from '@/features/weather'
 import { haptics } from '@/lib/haptics'
+import { usePullRefresh } from '@/lib/pull-refresh'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 // Staggered entrance for the content blocks below the cover. Short step, capped so the
 // last block never lags; the cover hero stays static (its corner-radius logic is untouched).
@@ -121,30 +117,36 @@ export default function TripDashboardScreen() {
   const { session } = useAuth()
   const userId = session?.user.id
 
-  const { data: trip, isLoading, isError, refetch: refetchTrip } = useTrip(tripId)
-  const { data: balances, refetch: refetchBalances } = useTripBalances(tripId)
+  const {
+    data: trip,
+    isLoading,
+    isError,
+    isFetching: tripFetching,
+    refetch: refetchTrip,
+  } = useTrip(tripId)
+  const {
+    data: balances,
+    isFetching: balancesFetching,
+    refetch: refetchBalances,
+  } = useTripBalances(tripId)
   const { data: members } = useTripMembers(tripId)
-  const { data: events, refetch: refetchEvents } = useEvents(tripId)
-  const { data: weather, refetch: refetchWeather } = useTripWeather(trip)
+  const { data: events, isFetching: eventsFetching, refetch: refetchEvents } = useEvents(tripId)
+  const {
+    data: weather,
+    isFetching: weatherFetching,
+    refetch: refetchWeather,
+  } = useTripWeather(trip)
   // Snapshot once on mount; the countdown badge does not need to tick on this screen.
   const [now] = useState(() => Date.now())
-  const [refreshing, setRefreshing] = useState(false)
 
   // Pull-to-refresh refetches every query feeding the dashboard (trip, events, balances, weather).
-  const onRefresh = useCallback(async () => {
-    haptics.light()
-    setRefreshing(true)
-    try {
-      await Promise.all([refetchTrip(), refetchEvents(), refetchBalances(), refetchWeather()])
-    } finally {
-      setRefreshing(false)
-    }
-  }, [refetchTrip, refetchEvents, refetchBalances, refetchWeather])
+  const { refreshing, onRefresh } = usePullRefresh(
+    () => Promise.all([refetchTrip(), refetchEvents(), refetchBalances(), refetchWeather()]),
+    tripFetching || eventsFetching || balancesFetching || weatherFetching,
+  )
 
   const [actionsOpen, setActionsOpen] = useState(false)
-  const regenerate = useRegenerateInviteCode(tripId)
-  const deleteTripMutation = useDeleteTrip()
-  const leaveTripMutation = useLeaveTrip()
+  const { confirmRegenerate, confirmDelete, confirmLeave } = useTripAdminActions(tripId)
   const uploadCover = useUploadTripCover()
   const resetCover = useResetTripCover()
 
@@ -266,10 +268,7 @@ export default function TripDashboardScreen() {
         contentType: 'image/jpeg',
       })
     } catch (error) {
-      Alert.alert(
-        t('trip.coverError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('trip.coverError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 
@@ -290,85 +289,8 @@ export default function TripDashboardScreen() {
     try {
       await resetCover.mutateAsync(tripId)
     } catch (error) {
-      Alert.alert(
-        t('trip.coverError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('trip.coverError'), toUserMessage(error, t('common.tryAgain')))
     }
-  }
-
-  function confirmRegenerate() {
-    Alert.alert(
-      'Régénérer le code d’invitation',
-      'Le code actuel cessera de fonctionner. Les personnes déjà inscrites conservent leur accès.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('group.regenerate'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await regenerate.mutateAsync()
-            } catch (error) {
-              Alert.alert(
-                'Régénération impossible',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
-        },
-      ],
-    )
-  }
-
-  function confirmDelete() {
-    Alert.alert(
-      t('group.deleteTrip'),
-      'Cette action supprime définitivement le voyage et toutes ses données.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteTripMutation.mutateAsync(tripId)
-              router.replace('/')
-            } catch (error) {
-              Alert.alert(
-                'Suppression impossible',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
-        },
-      ],
-    )
-  }
-
-  function confirmLeave() {
-    Alert.alert(
-      t('group.leaveTrip'),
-      'Tu ne verras plus ce voyage ni ses dépenses. Les dépenses passées que tu as payées ou que tu dois restent comptabilisées.',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: 'Quitter',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await leaveTripMutation.mutateAsync(tripId)
-              router.replace('/')
-            } catch (error) {
-              Alert.alert(
-                'Impossible de quitter',
-                error instanceof Error ? error.message : t('common.tryAgain'),
-              )
-            }
-          },
-        },
-      ],
-    )
   }
 
   // Full-bleed cover: its corners trace the device's screen radius exactly (no inset to

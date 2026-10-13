@@ -24,6 +24,7 @@ import {
   useUpdateEvent,
 } from '@/features/timeline'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 export default function EditEventScreen() {
   const params = useGlobalSearchParams<{ id: string; eventId: string }>()
@@ -37,9 +38,11 @@ export default function EditEventScreen() {
   const members = useTripMembers(tripId)
   const activeMembers = useMemo(
     () =>
-      (members.data ?? [])
-        .filter((m) => m.status === 'active' && m.user_id)
-        .map((m) => ({ userId: m.user_id, displayName: m.display_name, avatarUrl: m.avatar_url })),
+      (members.data ?? []).flatMap((m) =>
+        m.status === 'active' && m.user_id != null
+          ? [{ userId: m.user_id, displayName: m.display_name, avatarUrl: m.avatar_url }]
+          : [],
+      ),
     [members.data],
   )
 
@@ -126,10 +129,7 @@ export default function EditEventScreen() {
       })
       router.back()
     } catch (error) {
-      Alert.alert(
-        t('events.edit.errorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('events.edit.errorTitle'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

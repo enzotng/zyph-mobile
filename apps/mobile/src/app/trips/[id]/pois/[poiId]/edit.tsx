@@ -13,6 +13,7 @@ import { TextField } from '@/components/text-field'
 import { Spinner } from '@/components/ui'
 import { type PoiIcon, type PoiValues, poiSchema, usePoi, useUpdatePoi } from '@/features/wayfinder'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 export default function EditPoiScreen() {
   const { t } = useTranslation()
@@ -60,10 +61,7 @@ export default function EditPoiScreen() {
       })
       router.back()
     } catch (error) {
-      Alert.alert(
-        t('poiForm.saveError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('poiForm.saveError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

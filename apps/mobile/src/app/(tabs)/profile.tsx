@@ -20,6 +20,7 @@ import {
   setThemePreference,
   type ThemePreference,
 } from '@/lib/preferences'
+import { toUserMessage } from '@/lib/supabase-error'
 
 export default function ProfileScreen() {
   const { t } = useTranslation()
@@ -73,10 +74,7 @@ export default function ProfileScreen() {
     try {
       await signOut()
     } catch (error) {
-      Alert.alert(
-        t('profile.signOutErrorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('profile.signOutErrorTitle'), toUserMessage(error, t('common.tryAgain')))
     } finally {
       setSigningOut(false)
     }
@@ -103,9 +101,7 @@ export default function ProfileScreen() {
       const message =
         error instanceof Error && error.message === ACCOUNT_HAS_SHARED_TRIPS
           ? t('profile.deleteAccountBlocked')
-          : error instanceof Error
-            ? error.message
-            : t('common.tryAgain')
+          : toUserMessage(error, t('common.tryAgain'))
       Alert.alert(t('profile.deleteAccountErrorTitle'), message)
       setDeleting(false)
     }

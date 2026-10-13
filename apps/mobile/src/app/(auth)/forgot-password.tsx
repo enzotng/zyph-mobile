@@ -23,6 +23,7 @@ import { TextField } from '@/components/text-field'
 import { makeEmailSchema, requestPasswordReset } from '@/features/auth'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
+import { toUserMessage } from '@/lib/supabase-error'
 
 type ForgotPasswordValues = { email: string }
 
@@ -50,10 +51,7 @@ export default function ForgotPasswordScreen() {
       haptics.success()
     } catch (error) {
       haptics.error()
-      Alert.alert(
-        t('auth.forgotPassword.errorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('auth.forgotPassword.errorTitle'), toUserMessage(error, t('common.tryAgain')))
     } finally {
       setSubmitting(false)
     }

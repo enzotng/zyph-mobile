@@ -1,6 +1,6 @@
 import type { Poi } from '@/features/places'
 import { supabase } from '@/lib/supabase'
-
+import { toError } from '@/lib/supabase-error'
 import { type Block, blockSchema, type CopilotResponse, copilotResponseSchema } from '../schemas'
 
 export type CopilotMessage = { role: 'user' | 'assistant'; content: string }
@@ -20,7 +20,7 @@ export async function askCopilot(input: AskCopilotInput): Promise<CopilotRespons
     body: input,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
   if (!data) {
     throw new Error('Empty response from the copilot.')

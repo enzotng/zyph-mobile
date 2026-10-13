@@ -19,6 +19,7 @@ import { useTripMembers } from '@/features/group'
 import { type CreateEventValues, createEventSchema, useCreateEvent } from '@/features/timeline'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 const ONE_HOUR_MS = 3_600_000
 
@@ -32,9 +33,11 @@ export default function AddEventScreen() {
   const members = useTripMembers(tripId)
   const activeMembers = useMemo(
     () =>
-      (members.data ?? [])
-        .filter((m) => m.status === 'active' && m.user_id)
-        .map((m) => ({ userId: m.user_id, displayName: m.display_name, avatarUrl: m.avatar_url })),
+      (members.data ?? []).flatMap((m) =>
+        m.status === 'active' && m.user_id != null
+          ? [{ userId: m.user_id, displayName: m.display_name, avatarUrl: m.avatar_url }]
+          : [],
+      ),
     [members.data],
   )
   const [hasEnd, setHasEnd] = useState(false)
@@ -95,10 +98,7 @@ export default function AddEventScreen() {
       router.back()
     } catch (error) {
       haptics.error()
-      Alert.alert(
-        t('events.add.errorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('events.add.errorTitle'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

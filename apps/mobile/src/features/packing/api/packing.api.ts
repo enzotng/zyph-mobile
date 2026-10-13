@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-
+import { toError } from '@/lib/supabase-error'
 import type { PackingCategory, PackingItem, PackingScope, SuggestedItem } from '../schemas'
 
 export async function listPackingItems(tripId: string): Promise<PackingItem[]> {
@@ -10,7 +10,7 @@ export async function listPackingItems(tripId: string): Promise<PackingItem[]> {
     .eq('trip_id', tripId)
     .order('created_at', { ascending: true })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -40,7 +40,7 @@ function toRow(item: NewPackingItem) {
 export async function addPackingItem(item: NewPackingItem): Promise<PackingItem> {
   const { data, error } = await supabase.from('packing_items').insert(toRow(item)).select().single()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -53,7 +53,7 @@ export async function addPackingItems(items: NewPackingItem[]): Promise<PackingI
   }
   const { data, error } = await supabase.from('packing_items').insert(items.map(toRow)).select()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data ?? []
 }
@@ -78,7 +78,7 @@ export async function updatePackingItem(id: string, patch: PackingItemPatch): Pr
     })
     .eq('id', id)
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -90,7 +90,7 @@ export async function assignPackingItem(itemId: string, memberId: string | null)
     _member_id: memberId ?? undefined,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -98,7 +98,7 @@ export async function assignPackingItem(itemId: string, memberId: string | null)
 export async function claimPackingItem(itemId: string): Promise<void> {
   const { error } = await supabase.rpc('claim_packing_item', { _item_id: itemId })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -106,14 +106,14 @@ export async function claimPackingItem(itemId: string): Promise<void> {
 export async function nudgePackingItem(itemId: string): Promise<void> {
   const { error } = await supabase.rpc('nudge_packing_item', { _item_id: itemId })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
 export async function deletePackingItem(id: string): Promise<void> {
   const { error } = await supabase.from('packing_items').delete().eq('id', id)
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -124,7 +124,7 @@ export async function deletePackingItems(ids: string[]): Promise<void> {
   }
   const { error } = await supabase.from('packing_items').delete().in('id', ids)
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -142,7 +142,7 @@ export async function expensePackingItem(
     _member_ids: memberIds,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
@@ -188,7 +188,7 @@ export async function generatePackingSuggestions(
     },
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
   const items = (data as { items?: unknown })?.items
   return Array.isArray(items) ? (items as SuggestedItem[]) : []

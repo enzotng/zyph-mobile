@@ -10,9 +10,12 @@ type AppHeaderProps = {
   // Force the back button on/off; defaults to whether navigation can go back.
   showBack?: boolean
   right?: ReactNode
+  // Overrides the pop. A screen holding several steps in local state needs the arrow to walk
+  // those steps back, otherwise it leaves and takes everything typed with it.
+  onBack?: () => void
 }
 
-export function AppHeader({ title, showBack, right }: AppHeaderProps) {
+export function AppHeader({ title, showBack, right, onBack }: AppHeaderProps) {
   const router = useRouter()
   const { theme } = useUnistyles()
   const { t } = useTranslation()
@@ -23,7 +26,7 @@ export function AppHeader({ title, showBack, right }: AppHeaderProps) {
       <View style={styles.side}>
         {canBack ? (
           <Pressable
-            onPress={() => router.back()}
+            onPress={onBack ?? (() => router.back())}
             accessibilityRole="button"
             accessibilityLabel={t('common.back')}
             hitSlop={8}

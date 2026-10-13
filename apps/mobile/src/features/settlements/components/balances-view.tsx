@@ -38,6 +38,7 @@ import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { formatAmount } from '@/lib/money'
+import { toUserMessage } from '@/lib/supabase-error'
 
 const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
 
@@ -189,9 +190,7 @@ export function BalancesView({ tripId }: { tripId: string }) {
         t('group.paymentFailedTitle'),
         done > 0
           ? t('balances.settleAllPartial', { done, total: myDebts.length })
-          : error instanceof Error
-            ? error.message
-            : t('common.tryAgain'),
+          : toUserMessage(error, t('common.tryAgain')),
       )
     } finally {
       setSettlingAll(false)
@@ -221,10 +220,7 @@ export function BalancesView({ tripId }: { tripId: string }) {
       haptics.success()
       setPendingSettlement(null)
     } catch (error) {
-      Alert.alert(
-        t('group.paymentFailedTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('group.paymentFailedTitle'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 
@@ -240,10 +236,7 @@ export function BalancesView({ tripId }: { tripId: string }) {
             await reverseSettlementMutation.mutateAsync(settlement.id)
             haptics.success()
           } catch (error) {
-            Alert.alert(
-              t('group.undoFailedTitle'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
+            Alert.alert(t('group.undoFailedTitle'), toUserMessage(error, t('common.tryAgain')))
           }
         },
       },

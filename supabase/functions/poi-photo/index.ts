@@ -24,7 +24,7 @@ export default {
       return new Response("Method not allowed", { status: 405 })
     }
 
-    if (!(await isWithinRateLimit(ctx.supabase, "poi-photo", 60, 60))) {
+    if (!(await isWithinRateLimit(ctx.supabase, "poi-photo"))) {
       return Response.json({ error: "Too many requests, please slow down." }, { status: 429 })
     }
 

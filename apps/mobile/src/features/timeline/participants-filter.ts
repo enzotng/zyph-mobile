@@ -12,7 +12,7 @@ export function concernsUser(
 // The trip-member fields needed to resolve a participants subset into avatar props.
 export type ParticipantMember = {
   id: string
-  user_id: string
+  user_id: string | null
   display_name: string | null
   avatar_url: string | null
 }
@@ -26,6 +26,6 @@ export function resolveParticipantAvatars(ids: string[] | null, members: Partici
   }
   const idSet = new Set(ids)
   return members
-    .filter((m) => idSet.has(m.user_id))
+    .filter((m) => m.user_id != null && idSet.has(m.user_id))
     .map((m) => ({ id: m.id, name: m.display_name ?? undefined, imageUrl: m.avatar_url }))
 }

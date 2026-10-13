@@ -20,6 +20,7 @@ import {
 import { useCreateEvents } from '@/features/timeline'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 export default function ImportEmailScreen() {
   const params = useGlobalSearchParams<{ id: string; prefilledText?: string }>()
@@ -87,10 +88,9 @@ export default function ImportEmailScreen() {
     }
     try {
       const result = await parseEmail.mutateAsync(text)
-      const memberInputs = activeMembers.map((m) => ({
-        userId: m.user_id,
-        displayName: m.display_name,
-      }))
+      const memberInputs = activeMembers.flatMap((m) =>
+        m.user_id != null ? [{ userId: m.user_id, displayName: m.display_name }] : [],
+      )
       setPreviews(
         result.events.map((event, index) =>
           parsedToPreview(event, index, memberInputs, t('smartImport.defaultTitle')),
@@ -123,10 +123,7 @@ export default function ImportEmailScreen() {
       router.back()
     } catch (error) {
       haptics.error()
-      Alert.alert(
-        t('smartImport.createErrorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('smartImport.createErrorTitle'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

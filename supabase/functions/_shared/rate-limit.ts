@@ -1,6 +1,7 @@
 // Per-user rate limiting shared by the LLM / geocoding edge functions. Calls the check_rate_limit
-// RPC with the user-scoped client (so auth.uid() resolves to the caller). Fails OPEN on any error
-// so a transient DB issue - or the RPC not yet being deployed - never blocks the feature.
+// RPC with the user-scoped client (so auth.uid() resolves to the caller). Each bucket's ceiling and
+// window live server-side in private.rate_limit_policies, and a bucket with no policy is refused.
+// Fails OPEN on any error so a transient DB issue never blocks the feature.
 
 type RpcClient = {
   rpc: (
@@ -9,18 +10,9 @@ type RpcClient = {
   ) => Promise<{ data: unknown; error: unknown }>
 }
 
-export async function isWithinRateLimit(
-  supabase: RpcClient,
-  bucket: string,
-  limit: number,
-  windowSeconds: number,
-): Promise<boolean> {
+export async function isWithinRateLimit(supabase: RpcClient, bucket: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase.rpc("check_rate_limit", {
-      _bucket: bucket,
-      _limit: limit,
-      _window_seconds: windowSeconds,
-    })
+    const { data, error } = await supabase.rpc("check_rate_limit", { _bucket: bucket })
     if (error) {
       // Surface a misconfigured/undeployed RPC instead of silently disabling all limits.
       console.error(`check_rate_limit error for "${bucket}"`, error)

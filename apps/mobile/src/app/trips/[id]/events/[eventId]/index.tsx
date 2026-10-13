@@ -29,6 +29,7 @@ import {
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 function formatEventDate(iso: string | null, locale: string): string | null {
   if (!iso) {
@@ -75,10 +76,7 @@ export default function EventDetailScreen() {
             await deleteEvent.mutateAsync(eventId)
             router.back()
           } catch (error) {
-            Alert.alert(
-              t('events.detail.deleteError'),
-              error instanceof Error ? error.message : t('common.tryAgain'),
-            )
+            Alert.alert(t('events.detail.deleteError'), toUserMessage(error, t('common.tryAgain')))
           }
         },
       },
@@ -104,10 +102,7 @@ export default function EventDetailScreen() {
         sizeBytes: asset.size ?? 0,
       })
     } catch (error) {
-      Alert.alert(
-        t('events.detail.uploadError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('events.detail.uploadError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 
@@ -117,10 +112,7 @@ export default function EventDetailScreen() {
       // Open in an in-app browser sheet (native PDF viewer on iOS) instead of leaving the app.
       await WebBrowser.openBrowserAsync(url)
     } catch (error) {
-      Alert.alert(
-        t('events.detail.openError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('events.detail.openError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 
@@ -139,7 +131,7 @@ export default function EventDetailScreen() {
             } catch (error) {
               Alert.alert(
                 t('events.detail.deleteError'),
-                error instanceof Error ? error.message : t('common.tryAgain'),
+                toUserMessage(error, t('common.tryAgain')),
               )
             }
           },

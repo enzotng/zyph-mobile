@@ -184,7 +184,7 @@ export default {
     if (req.method !== "POST") {
       return new Response("Method not allowed", { status: 405 })
     }
-    if (!(await isWithinRateLimit(ctx.supabase, "parse-receipt-email", 10, 60))) {
+    if (!(await isWithinRateLimit(ctx.supabase, "parse-receipt-email"))) {
       return Response.json({ error: "Too many requests, please slow down." }, { status: 429 })
     }
 

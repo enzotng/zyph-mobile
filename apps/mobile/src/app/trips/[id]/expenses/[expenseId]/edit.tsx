@@ -34,6 +34,7 @@ import { isValidCategory } from '@/features/taxonomy'
 import { useTrip } from '@/features/trips'
 import { formatAmount } from '@/lib/money'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
 
@@ -159,10 +160,7 @@ export default function EditExpenseScreen() {
         baseAmountCents = convertCents(amountCents, currency, tripCurrency, fx.rates)
         fxRate = crossRate(currency, tripCurrency, fx.rates)
       } catch (error) {
-        Alert.alert(
-          t('expenseForm.conversionFailed'),
-          error instanceof Error ? error.message : t('common.tryAgain'),
-        )
+        Alert.alert(t('expenseForm.conversionFailed'), toUserMessage(error, t('common.tryAgain')))
         return
       }
     }
@@ -191,10 +189,7 @@ export default function EditExpenseScreen() {
       })
       router.back()
     } catch (error) {
-      Alert.alert(
-        t('expenseForm.updateError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('expenseForm.updateError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

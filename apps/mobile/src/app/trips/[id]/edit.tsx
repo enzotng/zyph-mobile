@@ -16,6 +16,7 @@ import { type CreateTripValues, createTripSchema, useTrip, useUpdateTrip } from 
 import { CalendarFeedSheet } from '@/features/trips/components/calendar-feed-sheet'
 import { TripInboxSheet } from '@/features/trips/components/trip-inbox-sheet'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 export default function EditTripScreen() {
   const { t } = useTranslation()
@@ -60,6 +61,8 @@ export default function EditTripScreen() {
   const startDate = useWatch({ control, name: 'startDate' })
   const endDate = useWatch({ control, name: 'endDate' })
   const destination = useWatch({ control, name: 'destination' })
+  const latitude = useWatch({ control, name: 'latitude' })
+  const longitude = useWatch({ control, name: 'longitude' })
 
   // Keyboard "next"/"done" chaining: title hands focus to currency, currency submits the form.
   const currencyRef = useRef<TextInput>(null)
@@ -70,10 +73,7 @@ export default function EditTripScreen() {
       await updateTrip.mutateAsync({ id: tripId, ...values })
       router.back()
     } catch (error) {
-      Alert.alert(
-        t('tripForm.updateError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('tripForm.updateError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 
@@ -129,6 +129,7 @@ export default function EditTripScreen() {
         label={t('tripForm.destination')}
         value={destination}
         error={errors.destination?.message}
+        hasCoordinates={latitude !== null && longitude !== null}
         onChangeText={(text) => {
           setValue('destination', text, { shouldValidate: true })
           setValue('latitude', null)

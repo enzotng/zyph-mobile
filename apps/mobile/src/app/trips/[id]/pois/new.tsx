@@ -11,6 +11,7 @@ import { Screen } from '@/components/screen'
 import { TextField } from '@/components/text-field'
 import { type PoiValues, poiSchema, useCreatePoi } from '@/features/wayfinder'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 export default function NewPoiScreen() {
   const { t } = useTranslation()
@@ -61,10 +62,7 @@ export default function NewPoiScreen() {
       })
       router.back()
     } catch (error) {
-      Alert.alert(
-        t('poiForm.addError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('poiForm.addError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

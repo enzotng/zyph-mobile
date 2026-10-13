@@ -1,6 +1,6 @@
 import type { NewItineraryEvent } from '@/features/timeline'
 import { supabase } from '@/lib/supabase'
-
+import { toError } from '@/lib/supabase-error'
 import { type ImportProposal, importProposalSchema } from '../schemas'
 
 // Newest first, so a freshly forwarded email always surfaces at the top. RLS already scopes this
@@ -12,7 +12,7 @@ export async function getProposals(tripId: string): Promise<ImportProposal[]> {
     .eq('trip_id', tripId)
     .order('created_at', { ascending: false })
   if (error) {
-    throw error
+    throw toError(error)
   }
   // Validate/parse tolerantly: a row that still fails after the schema's own per-field
   // .catch() fallbacks drops itself rather than sinking the whole list.
@@ -34,13 +34,13 @@ export async function validateProposal(
     _events: events,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
 export async function rejectProposal(proposalId: string): Promise<void> {
   const { error } = await supabase.rpc('reject_import_proposal', { _proposal_id: proposalId })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }

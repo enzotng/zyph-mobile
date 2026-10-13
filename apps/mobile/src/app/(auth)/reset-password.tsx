@@ -10,6 +10,7 @@ import { ZyphMark } from '@/components/brand/zyph-mark'
 import { Button } from '@/components/button'
 import { TextField } from '@/components/text-field'
 import { makePasswordSchema, updatePassword, useAuth } from '@/features/auth'
+import { toUserMessage } from '@/lib/supabase-error'
 
 type ResetPasswordValues = { password: string }
 
@@ -35,10 +36,7 @@ export default function ResetPasswordScreen() {
       // screen is unmounting as we navigate, so we never re-enable the button (no double submit).
       clearRecovery()
     } catch (error) {
-      Alert.alert(
-        t('auth.resetPassword.errorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('auth.resetPassword.errorTitle'), toUserMessage(error, t('common.tryAgain')))
       setSubmitting(false)
     }
   }

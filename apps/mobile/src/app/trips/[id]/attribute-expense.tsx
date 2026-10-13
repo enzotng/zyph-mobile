@@ -45,6 +45,7 @@ import { useTrip } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 const MAX_INLINE_CHIPS = 4
 
@@ -413,10 +414,7 @@ function AttributionEditor({
         haptics.success()
         router.back()
       } catch (error) {
-        Alert.alert(
-          t('smartSplit.saveError'),
-          error instanceof Error ? error.message : t('common.tryAgain'),
-        )
+        Alert.alert(t('smartSplit.saveError'), toUserMessage(error, t('common.tryAgain')))
       }
       return
     }
@@ -439,10 +437,7 @@ function AttributionEditor({
       haptics.success()
       router.replace({ pathname: '/trips/[id]/expenses', params: { id: tripId } })
     } catch (error) {
-      Alert.alert(
-        t('smartSplit.saveError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('smartSplit.saveError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

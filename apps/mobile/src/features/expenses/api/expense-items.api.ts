@@ -1,6 +1,6 @@
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
-
+import { toError } from '@/lib/supabase-error'
 import type { SmartSplitAssignment, SmartSplitItem } from '../items-schemas'
 
 export type ExpenseItemRow = Database['public']['Tables']['expense_items']['Row']
@@ -14,7 +14,7 @@ export async function listExpenseItems(expenseId: string): Promise<ExpenseItemRo
     .eq('expense_id', expenseId)
     .order('position', { ascending: true })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -38,7 +38,7 @@ export async function listExpenseItemAssignments(
       items.map((i) => i.id),
     )
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -106,7 +106,7 @@ export async function createExpenseWithItems({
     _subcategory: subcategory ?? undefined,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -144,7 +144,7 @@ export async function upsertExpenseWithItems({
     _subcategory: subcategory ?? undefined,
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }

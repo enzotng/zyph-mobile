@@ -32,6 +32,7 @@ import {
 import { haptics } from '@/lib/haptics'
 import { formatAmount } from '@/lib/money'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 const EMPTY_PREFS: TripPreferencesValues = {
   tripType: null,
@@ -123,10 +124,7 @@ export default function TripPreferencesScreen() {
       router.back()
     } catch (error) {
       haptics.error()
-      Alert.alert(
-        t('tripPreferences.saveError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('tripPreferences.saveError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

@@ -22,6 +22,7 @@ import {
   useUpdateProfile,
   useUploadAvatar,
 } from '@/features/profile'
+import { toUserMessage } from '@/lib/supabase-error'
 
 export default function EditProfileScreen() {
   const { theme } = useUnistyles()
@@ -64,10 +65,7 @@ export default function EditProfileScreen() {
       await update.mutateAsync(values)
       router.back()
     } catch (error) {
-      Alert.alert(
-        t('profile.saveErrorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('profile.saveErrorTitle'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 
@@ -120,10 +118,7 @@ export default function EditProfileScreen() {
       }
       await uploadAvatar.mutateAsync({ imageBase64: image.base64, contentType: 'image/jpeg' })
     } catch (error) {
-      Alert.alert(
-        t('profile.photoErrorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('profile.photoErrorTitle'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

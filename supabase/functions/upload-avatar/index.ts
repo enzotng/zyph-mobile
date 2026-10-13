@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
     global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
     auth: { persistSession: false },
   })
-  if (!(await isWithinRateLimit(userClient, "upload-avatar", 10, 60))) {
+  if (!(await isWithinRateLimit(userClient, "upload-avatar"))) {
     return json({ error: "Too many uploads, please slow down." }, 429)
   }
 

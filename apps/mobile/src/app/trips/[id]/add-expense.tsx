@@ -36,6 +36,7 @@ import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { formatAmount } from '@/lib/money'
 import { paramString } from '@/lib/routing'
+import { toUserMessage } from '@/lib/supabase-error'
 
 const AMOUNT_RE = /^\d+([.,]\d{1,2})?$/
 const MAX_DESCRIPTION_LEN = 120
@@ -190,10 +191,7 @@ export default function AddExpenseScreen() {
         baseAmountCents = convertCents(amountCents, currency, tripCurrency, fx.rates)
         fxRate = crossRate(currency, tripCurrency, fx.rates)
       } catch (error) {
-        Alert.alert(
-          t('expenseForm.conversionFailed'),
-          error instanceof Error ? error.message : t('common.tryAgain'),
-        )
+        Alert.alert(t('expenseForm.conversionFailed'), toUserMessage(error, t('common.tryAgain')))
         return
       }
     }
@@ -224,10 +222,7 @@ export default function AddExpenseScreen() {
       router.back()
     } catch (error) {
       haptics.error()
-      Alert.alert(
-        t('expenseForm.createError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('expenseForm.createError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 

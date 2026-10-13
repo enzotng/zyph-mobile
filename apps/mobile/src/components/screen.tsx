@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { ScrollView, View } from 'react-native'
+import type { ReactElement, ReactNode } from 'react'
+import { type RefreshControlProps, ScrollView, View } from 'react-native'
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated'
 import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
@@ -8,9 +8,13 @@ import { AppHeader } from './app-header'
 type ScreenProps = {
   title?: string
   showBack?: boolean
+  // Overrides the header's pop; see AppHeader.
+  onBack?: () => void
   right?: ReactNode
   // Wrap content in a ScrollView (forms); leave false for screens with their own list.
   scroll?: boolean
+  // Pull-to-refresh; only a scroll screen can take it.
+  refreshControl?: ReactElement<RefreshControlProps>
   // A pinned bottom area (e.g. the primary action button). Stays above the keyboard and the
   // safe area, with a top divider - so every form's submit button is consistently sticky.
   footer?: ReactNode
@@ -32,7 +36,16 @@ function KeyboardFooter({ children }: { children: ReactNode }) {
   return <Animated.View style={[styles.footer, footerStyle]}>{children}</Animated.View>
 }
 
-export function Screen({ title, showBack, right, scroll = false, footer, children }: ScreenProps) {
+export function Screen({
+  title,
+  showBack,
+  onBack,
+  right,
+  scroll = false,
+  refreshControl,
+  footer,
+  children,
+}: ScreenProps) {
   const body = scroll ? (
     <ScrollView
       style={styles.flex}
@@ -42,6 +55,7 @@ export function Screen({ title, showBack, right, scroll = false, footer, childre
       // iOS: inset for the keyboard and scroll the focused field into view (no-op on Android,
       // which resizes the window instead).
       automaticallyAdjustKeyboardInsets
+      refreshControl={refreshControl}
     >
       {children}
     </ScrollView>
@@ -51,7 +65,7 @@ export function Screen({ title, showBack, right, scroll = false, footer, childre
 
   return (
     <View style={styles.container}>
-      <AppHeader title={title} showBack={showBack} right={right} />
+      <AppHeader title={title} showBack={showBack} onBack={onBack} right={right} />
       {body}
       {footer != null ? <KeyboardFooter>{footer}</KeyboardFooter> : null}
     </View>

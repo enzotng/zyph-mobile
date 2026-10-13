@@ -1,5 +1,7 @@
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
+import { toError } from '@/lib/supabase-error'
+import { type ClaimOptions, claimOptionsSchema, unknownInviteCodeSchema } from '../schemas'
 
 type MemberRow = Database['public']['Tables']['trip_members']['Row']
 
@@ -11,19 +13,21 @@ export type TripMember = Pick<MemberRow, 'id' | 'user_id' | 'role' | 'status'> &
 export async function listTripMembers(tripId: string): Promise<TripMember[]> {
   const { data, error } = await supabase
     .from('trip_members')
-    .select('id, user_id, role, status, profiles(display_name, avatar_url)')
+    .select('id, user_id, role, status, display_name, profiles(display_name, avatar_url)')
     .eq('trip_id', tripId)
     .eq('status', 'active')
     .order('joined_at', { ascending: true })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data.map((member) => ({
     id: member.id,
     user_id: member.user_id,
     role: member.role,
     status: member.status,
-    display_name: member.profiles?.display_name ?? null,
+    // Profile name first, place alias second: a claimed place follows the account's current name,
+    // while a ghost (no profile at all) and a detached place keep the alias frozen on the row.
+    display_name: member.profiles?.display_name ?? member.display_name ?? null,
     avatar_url: member.profiles?.avatar_url ?? null,
   }))
 }
@@ -37,7 +41,7 @@ export type TripMemberName = { id: string; user_id: string | null; display_name:
 export async function listTripMemberNames(tripId: string): Promise<TripMemberName[]> {
   const { data, error } = await supabase.rpc('trip_member_names', { _trip_id: tripId })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return (data ?? []).map((member) => ({
     id: member.id,
@@ -48,18 +52,10 @@ export async function listTripMemberNames(tripId: string): Promise<TripMemberNam
   }))
 }
 
-export async function joinTripByCode(code: string): Promise<string> {
-  const { data, error } = await supabase.rpc('join_trip_by_code', { _code: code })
-  if (error) {
-    throw error
-  }
-  return data
-}
-
 export async function regenerateInviteCode(tripId: string): Promise<string> {
   const { data, error } = await supabase.rpc('regenerate_invite_code', { _trip_id: tripId })
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -67,13 +63,71 @@ export async function regenerateInviteCode(tripId: string): Promise<string> {
 export async function leaveTrip(tripId: string): Promise<void> {
   const { error } = await supabase.rpc('leave_trip', { _trip_id: tripId })
   if (error) {
-    throw error
+    throw toError(error)
   }
 }
 
-export async function removeTripMember(memberId: string): Promise<void> {
-  const { error } = await supabase.rpc('remove_trip_member', { _member_id: memberId })
+// Resolves true when the place was held by an account, which can then come back through the link,
+// and null when the server does not say (one that predates the answer).
+export async function removeTripMember(memberId: string): Promise<boolean | null> {
+  const { data, error } = await supabase.rpc('remove_trip_member', { _member_id: memberId })
   if (error) {
-    throw error
+    throw toError(error)
+  }
+  return typeof data === 'boolean' ? data : null
+}
+
+// Reads a trip's title and its free places from an invite code alone, for a caller RLS still hides
+// the whole trip from. Rate-limited server-side, so a wrong code is not a free retry.
+export async function getTripClaimOptions(code: string): Promise<ClaimOptions> {
+  const { data, error } = await supabase.rpc('get_trip_claim_options', { _code: code })
+  if (error) {
+    throw toError(error)
+  }
+  if (unknownInviteCodeSchema.safeParse(data).success) {
+    throw new Error('invalid invite code')
+  }
+  return claimOptionsSchema.parse(data)
+}
+
+// Binds the caller's account to a free place, or to a brand new one when slotId is null ("I am not
+// in the list"). An unknown code answers null rather than raising, like get_trip_claim_options.
+export async function claimTripSlot(code: string, slotId: string | null): Promise<string> {
+  const { data, error } = await supabase.rpc('claim_trip_slot', {
+    _code: code,
+    _slot_id: slotId ?? undefined,
+  })
+  if (error) {
+    throw toError(error)
+  }
+  if (!data) {
+    throw new Error('invalid invite code')
+  }
+  return data
+}
+
+export async function addGhostMember(tripId: string, name: string): Promise<string> {
+  const { data, error } = await supabase.rpc('add_ghost_member', { _trip_id: tripId, _name: name })
+  if (error) {
+    throw toError(error)
+  }
+  return data
+}
+
+export async function renameGhostMember(memberId: string, name: string): Promise<void> {
+  const { error } = await supabase.rpc('rename_ghost_member', { _member_id: memberId, _name: name })
+  if (error) {
+    throw toError(error)
+  }
+}
+
+// Unbinds an account from its place, leaving the place and its whole ledger history behind. The RPC
+// refuses with 'place has ledger activity since claim; remove the member instead' when the current
+// tenure moved the balances - callers route their fallback on that message, so it must not be
+// wrapped or reworded here.
+export async function detachTripMember(memberId: string): Promise<void> {
+  const { error } = await supabase.rpc('detach_trip_member', { _member_id: memberId })
+  if (error) {
+    throw toError(error)
   }
 }

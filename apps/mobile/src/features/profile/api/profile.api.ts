@@ -2,6 +2,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
+import { toError } from '@/lib/supabase-error'
 
 export type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -13,7 +14,7 @@ export async function getProfile(): Promise<Profile> {
   }
   const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -39,7 +40,7 @@ export async function updateProfile({
     .select()
     .single()
   if (error) {
-    throw error
+    throw toError(error)
   }
   return data
 }
@@ -58,7 +59,7 @@ export async function uploadAvatar(imageBase64: string, contentType: string): Pr
       const body = (await error.context.json().catch(() => null)) as { error?: string } | null
       throw new Error(body?.error ?? error.message)
     }
-    throw error
+    throw toError(error)
   }
   if (!data?.profile) {
     throw new Error('Avatar upload returned no profile.')
@@ -84,6 +85,6 @@ export async function deleteAccount(): Promise<void> {
       const body = (await error.context.json().catch(() => null)) as { error?: string } | null
       throw new Error(body?.error ?? error.message)
     }
-    throw error
+    throw toError(error)
   }
 }

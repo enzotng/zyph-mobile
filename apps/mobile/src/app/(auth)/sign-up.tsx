@@ -26,6 +26,7 @@ import {
   signUp,
 } from '@/features/auth'
 import { haptics } from '@/lib/haptics'
+import { toUserMessage } from '@/lib/supabase-error'
 
 export default function SignUpScreen() {
   const router = useRouter()
@@ -58,10 +59,7 @@ export default function SignUpScreen() {
       }
     } catch (error) {
       haptics.error()
-      Alert.alert(
-        t('auth.signUp.errorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('auth.signUp.errorTitle'), toUserMessage(error, t('common.tryAgain')))
     } finally {
       setSubmitting(false)
     }
@@ -73,10 +71,7 @@ export default function SignUpScreen() {
       await signInWithGoogle()
       // The auth guard navigates once the session updates.
     } catch (error) {
-      Alert.alert(
-        t('auth.google.errorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('auth.google.errorTitle'), toUserMessage(error, t('common.tryAgain')))
     } finally {
       setGoogleSubmitting(false)
     }
@@ -88,10 +83,7 @@ export default function SignUpScreen() {
       await signInWithApple()
       // The auth guard navigates once the session updates.
     } catch (error) {
-      Alert.alert(
-        t('auth.apple.errorTitle'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('auth.apple.errorTitle'), toUserMessage(error, t('common.tryAgain')))
     } finally {
       setAppleSubmitting(false)
     }

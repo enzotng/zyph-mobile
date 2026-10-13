@@ -8,6 +8,10 @@ import { defaultShouldDehydrateQuery } from '@tanstack/react-query'
 export function isSensitiveQueryKey(queryKey: QueryKey): boolean {
   return (
     queryKey[0] === 'place-search' ||
+    // Holds myStatus, which decides whether the claim screen may offer named places at all, plus
+    // an invite code and other members' first names. A restored copy would answer for a
+    // membership that has since changed.
+    queryKey[0] === 'trip-claim-options' ||
     queryKey[0] === 'trip-inbox-address' ||
     queryKey[2] === 'member-locations'
   )

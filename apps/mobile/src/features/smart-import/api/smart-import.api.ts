@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-
+import { toError } from '@/lib/supabase-error'
 import { type ParsedEmailEvent, parsedEmailEventSchema, parseEmailResponseSchema } from '../schemas'
 
 export type ParseEmailResult = {
@@ -11,7 +11,7 @@ export async function parseEmailViaAi(text: string): Promise<ParseEmailResult> {
     body: { text },
   })
   if (error) {
-    throw error
+    throw toError(error)
   }
   if (!data) {
     throw new Error('Empty response from the parser.')

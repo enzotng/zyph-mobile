@@ -36,6 +36,7 @@ import {
 } from '@/features/trips'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
+import { toUserMessage } from '@/lib/supabase-error'
 
 // Self-contained Stats body: owns its own ScrollView (no parent Screen `scroll`) so it can be
 // dropped into both the Spend tab's in-place segment and the `/analytics` route wrapper.
@@ -346,10 +347,7 @@ function BudgetCard({ trip, spentCents }: { trip: Trip; spentCents: number }) {
       setEditing(false)
     } catch (error) {
       haptics.error()
-      Alert.alert(
-        t('tripPreferences.saveError'),
-        error instanceof Error ? error.message : t('common.tryAgain'),
-      )
+      Alert.alert(t('tripPreferences.saveError'), toUserMessage(error, t('common.tryAgain')))
     }
   }
 
