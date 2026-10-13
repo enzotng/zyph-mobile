@@ -1,13 +1,13 @@
 import type { Session } from '@supabase/supabase-js'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { useFonts } from 'expo-font'
-import { Stack, useGlobalSearchParams, useRouter, useSegments } from 'expo-router'
+import { Stack, ThemeProvider, useGlobalSearchParams, useRouter, useSegments } from 'expo-router'
 import { ShareIntentProvider } from 'expo-share-intent'
 import { useEffect } from 'react'
 import { Platform, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { KeyboardProvider, KeyboardToolbar } from 'react-native-keyboard-controller'
-import { StyleSheet } from 'react-native-unistyles'
+import { StyleSheet, useUnistyles } from 'react-native-unistyles'
 
 import { ErrorBoundary } from '@/components/error-boundary'
 import { OfflineBanner } from '@/components/offline-banner'
@@ -16,6 +16,7 @@ import { Spinner } from '@/components/ui'
 import { AuthProvider, useAuth } from '@/features/auth'
 import { usePushNotificationResponder } from '@/features/notifications'
 import '@/lib/i18n'
+import { buildNavigationTheme } from '@/lib/navigation-theme'
 import '@/lib/online-manager'
 import {
   clearPendingInvite,
@@ -127,6 +128,7 @@ function GlobalKeyboardToolbar() {
 function RootNavigator() {
   const { session, isLoading, recovering } = useAuth()
   const [fontsLoaded] = useFonts(BRAND_FONTS)
+  const { theme, rt } = useUnistyles()
   useProtectedRoute(session, isLoading, recovering)
   // Deep-link a tapped lock-screen push once the user is signed in.
   usePushNotificationResponder(Boolean(session))
@@ -140,11 +142,11 @@ function RootNavigator() {
   }
 
   return (
-    <>
+    <ThemeProvider value={buildNavigationTheme(theme.colors.background, rt.themeName === 'dark')}>
       <Stack screenOptions={{ headerShown: false }} />
       <ShareIntentRouter />
       <GlobalKeyboardToolbar />
-    </>
+    </ThemeProvider>
   )
 }
 
