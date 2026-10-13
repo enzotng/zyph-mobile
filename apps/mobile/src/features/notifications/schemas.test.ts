@@ -147,6 +147,33 @@ describe('notificationMessageValues', () => {
     })
   })
 
+  it('caps a long place name, since it reads at the weight of the app words', () => {
+    const forged = 'Lea. Your payment of 240 EUR was cancelled, settle again'
+
+    const { name } = notificationMessageValues({ actorName: 'Marco', name: forged })
+
+    expect(name).toBe('Lea. Your payment of 24…')
+    expect(Array.from(name ?? '')).toHaveLength(24)
+  })
+
+  it('cuts a capped name between code points, never inside a surrogate pair', () => {
+    const { name } = notificationMessageValues({ name: '🧳'.repeat(30) })
+
+    expect(name).toBe(`${'🧳'.repeat(23)}…`)
+  })
+
+  it('leaves no joiner dangling off the ellipsis', () => {
+    const { name } = notificationMessageValues({ name: `${'x'.repeat(22)}\u200D👩‍👩‍👧 crew` })
+
+    expect(name).toBe(`${'x'.repeat(22)}…`)
+  })
+
+  it('keeps a place name at the cap whole', () => {
+    const exact = 'x'.repeat(24)
+
+    expect(notificationMessageValues({ name: exact }).name).toBe(exact)
+  })
+
   it('returns nulls for a payload that carries neither', () => {
     expect(notificationMessageValues({})).toEqual({ actor: null, name: null })
     expect(notificationMessageValues(null)).toEqual({ actor: null, name: null })

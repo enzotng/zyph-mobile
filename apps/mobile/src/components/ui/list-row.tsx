@@ -18,10 +18,12 @@ type ListRowProps = {
   icon?: keyof typeof Ionicons.glyphMap
   iconColor?: string
   title: string
-  // Renders ahead of the title in its own node. Use when the leading word is untrusted text: on
-  // one line it is the only thing that shrinks, so it cannot borrow the title's words to read as
-  // a longer sentence than it is.
+  // Renders ahead of the title in its own node. Use when the leading word is untrusted text: it is
+  // capped at part of the row, so it cannot borrow the title's words to read as a longer sentence
+  // than it is.
   titleActor?: string
+  // Lines the title (after the actor) may take; the actor itself always stays on one.
+  titleLines?: number
   subtitle?: string
   detail?: string
   right?: ReactNode
@@ -40,6 +42,7 @@ export function ListRow({
   iconColor,
   title,
   titleActor,
+  titleLines = 1,
   subtitle,
   detail,
   right,
@@ -75,12 +78,12 @@ export function ListRow({
             <Text style={styles.titleActor(danger)} numberOfLines={1}>
               {titleActor}
             </Text>
-            <Text style={styles.titleRest(danger)} numberOfLines={1}>
+            <Text style={styles.titleRest(danger)} numberOfLines={titleLines}>
               {title}
             </Text>
           </View>
         ) : (
-          <Text style={styles.title(danger)} numberOfLines={1}>
+          <Text style={styles.title(danger)} numberOfLines={titleLines}>
             {title}
           </Text>
         )}
@@ -117,7 +120,7 @@ export function ListRow({
         onPress={handlePress}
         accessibilityRole={accessibilityRole}
         accessibilityState={accessibilityState}
-        accessibilityLabel={accessibilityLabel ?? title}
+        accessibilityLabel={accessibilityLabel ?? `${titleActor ?? ''}${title}`}
       >
         {inner}
       </Pressable>
@@ -168,17 +171,18 @@ const styles = StyleSheet.create((theme) => ({
   // name fits without truncating, it is the only thing telling the reader where the name ends and
   // the app's words begin.
   titleActor: (danger: boolean) => ({
-    flexShrink: 1,
-    // Floored: the rest of the line also carries untrusted text on some types, and without this
-    // a long name absorbs the whole row and ellipsizes the actor away to nothing.
+    // Never shrinks, only caps: a wrapping rest claims the full width and would squeeze a short
+    // name down to its first letter. The cap keeps a long forged name from crowding out the
+    // app's words, and the rest of the line (untrusted on some types) from crowding out the name.
+    flexShrink: 0,
     maxWidth: '55%',
     fontSize: theme.fontSize.md,
     color: danger ? theme.colors.destructive : theme.colors.foreground,
     fontFamily: theme.fonts.sans.semibold,
     fontWeight: '600' as const,
   }),
-  // Shrinks too, but the app's words come first inside it, so what truncates is the untrusted
-  // tail - never the verb phrase, and never the actor below its floor.
+  // Takes what the actor leaves. The app's words come first inside it, so what truncates is the
+  // untrusted tail, never the verb phrase.
   titleRest: (danger: boolean) => ({
     flexShrink: 1,
     fontSize: theme.fontSize.md,
@@ -190,7 +194,11 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.muted,
     fontFamily: theme.fonts.sans.regular,
   },
+  // Capped: a long value (a display name can run to 80 characters) would otherwise take the whole
+  // row and leave the title zero width.
   detail: {
+    flexShrink: 1,
+    maxWidth: '40%',
     fontSize: theme.fontSize.sm,
     color: theme.colors.muted,
     fontFamily: theme.fonts.sans.regular,

@@ -94,6 +94,7 @@ export default function NotificationsScreen() {
                 icon={notificationIcon(n.type) as Glyph}
                 iconColor={unread ? theme.colors.primary : theme.colors.muted}
                 titleActor={rest === null ? undefined : `${actor ?? someone} `}
+                titleLines={2}
                 title={rest ?? t(key, { actor: actor ?? someone, name: name ?? someone })}
                 subtitle={context ?? undefined}
                 detail={new Date(n.created_at).toLocaleTimeString(i18n.language, {

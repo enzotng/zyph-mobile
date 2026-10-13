@@ -60,13 +60,34 @@ describe('ListRow', () => {
 })
 
 // An untrusted leading word must not be able to borrow the row's own words: it gets its own node,
-// and it is the only one allowed to shrink.
+// capped in width.
 describe('ListRow titleActor', () => {
   it('renders the actor and the rest as separate nodes', () => {
     render(<ListRow titleActor="Marco " title="joined the trip" />)
 
     expect(screen.getByText('Marco')).toBeOnTheScreen()
     expect(screen.getByText('joined the trip')).toBeOnTheScreen()
+  })
+
+  // A notification names who acted AND what they did ("Léa joined as Léa"): on one line the second
+  // half is the one cut, and it is the half that tells a wrong claim from a right one.
+  it('lets the rest of the title wrap when asked, while the actor stays on one line', () => {
+    render(<ListRow titleActor="Léa " title="joined as Léa" titleLines={2} />)
+
+    expect(screen.getByText('joined as Léa')).toHaveProp('numberOfLines', 2)
+    expect(screen.getByText('Léa')).toHaveProp('numberOfLines', 1)
+  })
+
+  it('keeps the title on one line by default', () => {
+    render(<ListRow titleActor="Léa " title="joined as Léa" />)
+
+    expect(screen.getByText('joined as Léa')).toHaveProp('numberOfLines', 1)
+  })
+
+  it('reads the actor out with the rest, since it is who the row is about', () => {
+    render(<ListRow titleActor="Marco " title="joined the trip" onPress={() => {}} />)
+
+    expect(screen.getByLabelText('Marco joined the trip')).toBeOnTheScreen()
   })
 
   it('keeps a single node when no actor is given', () => {

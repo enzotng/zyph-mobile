@@ -168,6 +168,27 @@ export function withoutActor(rendered: string): string | null {
   return parts.length === 2 && parts[0] === '' ? parts[1] : null
 }
 
+// The place name sits inside the app's words, at their weight, on a headline that wraps to two
+// lines: capped so a forged name cannot run on into a sentence of its own.
+const HEADLINE_NAME_MAX = 24
+
+function headlineName(name: string | null): string | null {
+  if (name === null || name.length <= HEADLINE_NAME_MAX) {
+    return name
+  }
+  const chars = Array.from(name)
+  if (chars.length <= HEADLINE_NAME_MAX) {
+    return name
+  }
+  // Cut by code point, so a joiner or a combining mark left at the cut would dangle off the
+  // ellipsis.
+  return `${chars
+    .slice(0, HEADLINE_NAME_MAX - 1)
+    .join('')
+    .replace(/[\p{M}\u200D]+$/u, '')
+    .trimEnd()}…`
+}
+
 // Interpolation values for the headline: who acted, and the place they acted on. Both are null on
 // rows written before the payloads carried them, and the caller supplies the wording of that gap.
 export function notificationMessageValues(payload: unknown): {
@@ -177,7 +198,7 @@ export function notificationMessageValues(payload: unknown): {
   const p = payload as { actorName?: unknown; name?: unknown; slotName?: unknown } | null
   return {
     actor: payloadName(p?.actorName),
-    name: payloadName(p?.name) ?? payloadName(p?.slotName),
+    name: headlineName(payloadName(p?.name) ?? payloadName(p?.slotName)),
   }
 }
 
