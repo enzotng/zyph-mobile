@@ -23,12 +23,18 @@ import { haptics } from '@/lib/haptics'
 import { paramString } from '@/lib/routing'
 
 export default function JoinTripScreen() {
+  // Prefilled when opened from an invite deep link (zyph://trips/join?code=...).
+  const linkCode = paramString(useLocalSearchParams<{ code?: string }>().code).toUpperCase()
+  // A second link opened while this screen is up reaches it as new params, not a new screen: the
+  // key starts over on the new code, which every piece of state below is seeded from.
+  return <JoinTripForm key={linkCode} linkCode={linkCode} />
+}
+
+function JoinTripForm({ linkCode }: { linkCode: string }) {
   const { t } = useTranslation()
   const router = useRouter()
   const { theme } = useUnistyles()
 
-  // Prefilled when opened from an invite deep link (zyph://trips/join?code=...).
-  const linkCode = paramString(useLocalSearchParams<{ code?: string }>().code).toUpperCase()
   // The code the options query is keyed on. A deep link fills it immediately; typed codes only
   // land here on submit, so a half-typed code never spends a rate-limit attempt.
   const [submittedCode, setSubmittedCode] = useState(linkCode)

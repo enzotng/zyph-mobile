@@ -83,6 +83,17 @@ describe('JoinTripScreen - code entry', () => {
     expect(mockClaimSlot).not.toHaveBeenCalled()
   })
 
+  it('takes up the code of a second link opened while the screen is up', () => {
+    mockOptions({ data: undefined, error: new Error('invalid invite code') })
+    render(<JoinTripScreen />)
+
+    mockSearchParams = { code: 'zyph5678' }
+    screen.rerender(<JoinTripScreen />)
+
+    expect(mockUseClaimOptions).toHaveBeenLastCalledWith('ZYPH5678')
+    expect(screen.getByDisplayValue('ZYPH5678')).toBeOnTheScreen()
+  })
+
   it('re-fetches when the same refused code is submitted again', async () => {
     mockOptions({ data: undefined, error: new Error('invalid invite code') })
     render(<JoinTripScreen />)
