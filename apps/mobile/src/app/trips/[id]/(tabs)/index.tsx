@@ -3,7 +3,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
 import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useGlobalSearchParams, useRouter } from 'expo-router'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
@@ -24,6 +24,7 @@ import { RightNowCard } from '@/features/trips/components/right-now-card'
 import { TripBalanceStrip } from '@/features/trips/components/trip-balance-strip'
 import { conditionIcon, useTripWeather } from '@/features/weather'
 import { haptics } from '@/lib/haptics'
+import { usePullRefresh } from '@/lib/pull-refresh'
 import { paramString } from '@/lib/routing'
 import { toUserMessage } from '@/lib/supabase-error'
 
@@ -116,25 +117,33 @@ export default function TripDashboardScreen() {
   const { session } = useAuth()
   const userId = session?.user.id
 
-  const { data: trip, isLoading, isError, refetch: refetchTrip } = useTrip(tripId)
-  const { data: balances, refetch: refetchBalances } = useTripBalances(tripId)
+  const {
+    data: trip,
+    isLoading,
+    isError,
+    isFetching: tripFetching,
+    refetch: refetchTrip,
+  } = useTrip(tripId)
+  const {
+    data: balances,
+    isFetching: balancesFetching,
+    refetch: refetchBalances,
+  } = useTripBalances(tripId)
   const { data: members } = useTripMembers(tripId)
-  const { data: events, refetch: refetchEvents } = useEvents(tripId)
-  const { data: weather, refetch: refetchWeather } = useTripWeather(trip)
+  const { data: events, isFetching: eventsFetching, refetch: refetchEvents } = useEvents(tripId)
+  const {
+    data: weather,
+    isFetching: weatherFetching,
+    refetch: refetchWeather,
+  } = useTripWeather(trip)
   // Snapshot once on mount; the countdown badge does not need to tick on this screen.
   const [now] = useState(() => Date.now())
-  const [refreshing, setRefreshing] = useState(false)
 
   // Pull-to-refresh refetches every query feeding the dashboard (trip, events, balances, weather).
-  const onRefresh = useCallback(async () => {
-    haptics.light()
-    setRefreshing(true)
-    try {
-      await Promise.all([refetchTrip(), refetchEvents(), refetchBalances(), refetchWeather()])
-    } finally {
-      setRefreshing(false)
-    }
-  }, [refetchTrip, refetchEvents, refetchBalances, refetchWeather])
+  const { refreshing, onRefresh } = usePullRefresh(
+    () => Promise.all([refetchTrip(), refetchEvents(), refetchBalances(), refetchWeather()]),
+    tripFetching || eventsFetching || balancesFetching || weatherFetching,
+  )
 
   const [actionsOpen, setActionsOpen] = useState(false)
   const { confirmRegenerate, confirmDelete, confirmLeave } = useTripAdminActions(tripId)

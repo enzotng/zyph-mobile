@@ -34,6 +34,7 @@ import { useShareLocation } from '@/features/wayfinder'
 import { withAlpha } from '@/lib/color'
 import { haptics } from '@/lib/haptics'
 import { getShareLocation, setShareLocation } from '@/lib/preferences'
+import { usePullRefresh } from '@/lib/pull-refresh'
 import { paramString } from '@/lib/routing'
 import { toUserMessage } from '@/lib/supabase-error'
 
@@ -82,7 +83,6 @@ export default function TripGroupScreen() {
   const [copied, setCopied] = useState(false)
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { status: shareStatus } = useShareLocation({ tripId, enabled: sharing })
-  const [refreshing, setRefreshing] = useState(false)
 
   // The app has no realtime, so someone who joined or left since the list was cached only shows up
   // on a refetch. Joins a fetch already in flight instead of restarting it: the first focus comes
@@ -93,18 +93,11 @@ export default function TripGroupScreen() {
     }, [refetchMembers]),
   )
 
-  async function refreshGroup() {
-    haptics.light()
-    setRefreshing(true)
-    try {
-      await Promise.all([
-        refetch({ cancelRefetch: false }),
-        refetchMembers({ cancelRefetch: false }),
-      ])
-    } finally {
-      setRefreshing(false)
-    }
-  }
+  const { refreshing, onRefresh } = usePullRefresh(
+    () =>
+      Promise.all([refetch({ cancelRefetch: false }), refetchMembers({ cancelRefetch: false })]),
+    tripFetching || membersFetching,
+  )
 
   useEffect(() => {
     setShareLocation(tripId, sharing)
@@ -327,10 +320,8 @@ export default function TripGroupScreen() {
       scroll
       refreshControl={
         <RefreshControl
-          // Offline, a refetch pauses rather than fails and its promise waits for the network, so
-          // the spinner follows the fetches, not the promise.
-          refreshing={refreshing && (tripFetching || membersFetching)}
-          onRefresh={() => void refreshGroup()}
+          refreshing={refreshing}
+          onRefresh={() => void onRefresh()}
           tintColor={theme.colors.primary}
         />
       }
